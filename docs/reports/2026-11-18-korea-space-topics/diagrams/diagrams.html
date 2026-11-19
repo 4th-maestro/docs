@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>한국 공간 주제 도식</title>
+<style>
+@font-face { font-family: 'Pre'; src: url("../../fonts/Pretendard-Regular.ttf"); font-weight: 400; }
+@font-face { font-family: 'Pre'; src: url("../../fonts/Pretendard-Bold.ttf"); font-weight: 700; }
+:root { --navy: #1F3864; --blue: #2563EB; --line: #C5CCDA; --soft: #EEF1F7; --ink: #1A1A1A; --muted: #5A6478; --red: #B91C1C; --amber: #B45309; --green: #15803D; }
+* { box-sizing: border-box; }
+body { margin: 0; padding: 24px; background: #fff; font-family: 'Pre', sans-serif; color: var(--ink); word-break: keep-all; }
+section { width: 900px; padding: 20px; margin-bottom: 40px; background: #fff; }
+svg text { font-family: 'Pre', sans-serif; }
+
+/* 이야기 지도 */
+.axes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.axis { border-radius: 10px; background: var(--soft); padding: 12px; }
+.axis h3 { margin: 0 0 2px; font-size: 16px; color: var(--navy); }
+.axis .sub { font-size: 11.5px; color: var(--muted); margin-bottom: 10px; }
+.topic { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 10px; margin-top: 8px; }
+.topic .t { font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 6px; }
+.no { display: inline-flex; width: 18px; height: 18px; border-radius: 50%; background: var(--navy); color: #fff; font-size: 11px; align-items: center; justify-content: center; margin-right: 4px; }
+.topic .n { font-weight: 700; font-size: 18px; color: var(--red); margin: 4px 0 2px; }
+.topic .d { font-size: 11px; color: var(--muted); line-height: 1.45; }
+.topic .data { margin-top: 6px; font-size: 10.5px; color: var(--blue); font-weight: 700; }
+.common { margin-top: 12px; display: flex; align-items: center; gap: 6px; font-size: 12px; }
+.common b { color: var(--navy); margin-right: 6px; }
+.common span { flex: 1; text-align: center; padding: 7px 4px; border-radius: 6px; background: #fff; border: 1px solid var(--line); font-weight: 700; }
+.common span.ai { border-color: var(--blue); color: var(--blue); background: #F2F6FE; }
+.common span.ok { border-color: var(--green); color: var(--green); }
+.common i { font-style: normal; color: var(--muted); }
+
+/* 흐름 */
+.flow { display: flex; align-items: stretch; }
+.step { flex: 1; border: 1px solid var(--line); border-radius: 8px; padding: 10px; background: #fff; }
+.step .k { font-size: 10.5px; font-weight: 700; color: #fff; border-radius: 4px; padding: 1px 6px; display: inline-block; }
+.s1 .k { background: var(--muted); } .s2 .k { background: var(--navy); } .s3 .k { background: var(--blue); } .s4 .k { background: var(--green); }
+.s3 { border-color: var(--blue); background: #F2F6FE; }
+.s4 { border-color: var(--green); background: #F0FAF3; }
+.step b { display: block; font-size: 13px; margin: 6px 0 3px; }
+.step span { display: block; font-size: 11px; color: var(--muted); line-height: 1.45; }
+.to { width: 18px; flex: none; display: flex; align-items: center; justify-content: center; color: var(--muted); }
+.demo { margin-top: 10px; border: 1px solid var(--line); border-radius: 8px; display: grid; grid-template-columns: 1fr 1fr; overflow: hidden; }
+.demo .panel { padding: 8px 10px 6px; }
+.demo .panel + .panel { border-left: 1px dashed var(--line); }
+.demo .ph { font-size: 11.5px; font-weight: 700; margin-bottom: 4px; }
+.demo .ph.bad { color: var(--red); } .demo .ph.good { color: var(--green); }
+.demo svg { display: block; width: 100%; height: 150px; }
+.metric { margin-top: 8px; font-size: 12px; color: var(--muted); }
+.metric b { color: var(--green); }
+
+/* 공통 엔진 */
+.eng-top { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin-bottom: 8px; }
+.eng-top div { text-align: center; font-size: 11.5px; font-weight: 700; padding: 6px 2px; border-radius: 6px; background: var(--soft); color: var(--navy); }
+.layer { display: grid; grid-template-columns: 130px 1fr; gap: 8px; margin-bottom: 6px; }
+.layer .ln { background: var(--navy); color: #fff; border-radius: 8px; padding: 9px 10px; font-weight: 700; font-size: 13px; }
+.layer .ln span { display: block; font-weight: 400; font-size: 10.5px; opacity: .85; margin-top: 2px; }
+.layer.ai .ln { background: var(--blue); }
+.mods { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+.mod { border: 1px solid var(--line); border-radius: 6px; padding: 6px; font-size: 10.5px; line-height: 1.35; background: #fff; text-align: center; display: flex; align-items: center; justify-content: center; }
+.mod.span2 { grid-column: span 2; } .mod.span3 { grid-column: span 3; } .mod.span6 { grid-column: span 6; }
+.layer.ai .mod { border-color: var(--blue); background: #F2F6FE; }
+
+/* 한눈에 보기 카드 */
+.card { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.card-head { display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: var(--navy); color: #fff; }
+.card-head .num { width: 26px; height: 26px; border-radius: 50%; background: #fff; color: var(--navy); font-weight: 700; display: flex; align-items: center; justify-content: center; }
+.card-head b { font-size: 18px; }
+.card-head .type { margin-left: auto; font-size: 12px; padding: 3px 10px; border-radius: 999px; background: rgba(255,255,255,.18); }
+.card-row { display: grid; grid-template-columns: 1fr 1fr 1fr; border-top: 1px solid var(--line); }
+.card-row > div { padding: 12px 14px; }
+.card-row > div + div { border-left: 1px solid var(--line); }
+.lbl { font-size: 11px; font-weight: 700; color: var(--muted); margin-bottom: 4px; }
+.big { font-size: 24px; font-weight: 700; line-height: 1.2; }
+.big.red { color: var(--red); } .big.navy { color: var(--navy); }
+.txt { font-size: 12px; color: var(--ink); line-height: 1.5; margin-top: 3px; }
+.who b { display: block; font-size: 13px; margin-bottom: 2px; }
+.card-row2 { display: grid; grid-template-columns: 1.3fr 1fr 0.9fr; border-top: 1px solid var(--line); }
+.card-row2 > div { padding: 12px 14px; }
+.card-row2 > div + div { border-left: 1px solid var(--line); }
+.chips { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 6px; }
+.chip { font-size: 11px; padding: 3px 8px; border-radius: 6px; border: 1px solid var(--line); background: #fff; }
+.chip.kr { border-color: var(--amber); color: var(--amber); } .chip.gl { border-color: var(--navy); color: var(--navy); }
+.chiplbl { font-size: 10.5px; color: var(--muted); margin: 2px 0 3px; }
+.diff div:not(.lbl) { font-size: 12px; line-height: 1.45; padding-left: 14px; position: relative; margin-bottom: 4px; }
+.diff div:not(.lbl)::before { content: ''; position: absolute; left: 2px; top: 6px; width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+.score .row { display: grid; grid-template-columns: 44px 1fr 14px; align-items: center; gap: 6px; font-size: 11px; margin-bottom: 4px; }
+.score .bar { height: 8px; border-radius: 4px; background: #E5E7EB; overflow: hidden; }
+.score .bar i { display: block; height: 100%; background: var(--blue); }
+.score .sum { margin-top: 6px; font-size: 13px; font-weight: 700; color: var(--navy); text-align: right; }
+</style>
+</head>
+<body>
+
+<section id="d-k-map">
+  <div class="axes">
+    <div class="axis">
+      <h3>과밀</h3><div class="sub">사람과 환자가 한곳에 한꺼번에 몰림</div>
+      <div class="topic"><div class="t"><span class="no">1</span>인파 리허설</div><div class="n">28개 지역</div><div class="d">2026 핼러윈 인파 집중 관리 지역. 관리는 실시간 감시 중심</div><div class="data">서울시 실시간 도시데이터</div></div>
+      <div class="topic"><div class="t"><span class="no">2</span>응급실 길찾기</div><div class="n">2.5배</div><div class="d">구급대 현장 체류 60분 초과 사례, 2년 사이 증가</div><div class="data">응급의료기관 실시간 가용병상</div></div>
+    </div>
+    <div class="axis">
+      <h3>수급 불균형</h3><div class="sub">한쪽은 부족하고 다른 쪽은 남음</div>
+      <div class="topic"><div class="t"><span class="no">3</span>따릉이 재배치</div><div class="n">연 100억 원대 적자</div><div class="d">출퇴근 쏠림 대응에 집중관리대여소 330곳 전담 인력</div><div class="data">따릉이 실시간 대여정보</div></div>
+      <div class="topic"><div class="t"><span class="no">4</span>빈 공간 매칭</div><div class="n">폐교 4,037곳</div><div class="d">1,403곳은 교육청 보유. 공공시설은 시간대별로 비어 있음</div><div class="data">폐교재산현황, 공공서비스예약</div></div>
+    </div>
+    <div class="axis">
+      <h3>노후·기후 위험</h3><div class="sub">노후 기반시설과 기후 위험 증가</div>
+      <div class="topic"><div class="t"><span class="no">5</span>땅꺼짐 위험 지도</div><div class="n">5년간 1,118건</div><div class="d">싱크홀 원인의 70%가 상·하수관 손상·노후</div><div class="data">국토부 지하안전정보</div></div>
+      <div class="topic"><div class="t"><span class="no">6</span>폭염 쉼터 사각지대</div><div class="n">온열질환 4,460명</div><div class="d">2025년, 감시체계 운영 이후 두 번째로 많음</div><div class="data">행정안전부 무더위쉼터</div></div>
+    </div>
+  </div>
+  <div class="common"><b>공통 구조</b><span>공공데이터</span><i>→</i><span>공간 트윈 가시화</span><i>→</i><span class="ai">AI 판단</span><i>→</i><span class="ok">운영 변경</span></div>
+</section>
+
+<section id="d-k-flow-crowd">
+  <div class="flow">
+    <div class="step s1"><span class="k">데이터</span><b>인구·행사 정보</b><span>실시간 도시데이터 121개 장소 인구(5분), 무대·출입구 위치</span></div><div class="to">→</div>
+    <div class="step s2"><span class="k">가시화</span><b>3D 군중 재생</b><span>사람 점 수천 개가 보행로를 따라 이동, 밀집도 색 표시</span></div><div class="to">→</div>
+    <div class="step s3"><span class="k">AI 판단</span><b>원인과 대안 3개</b><span>병목 원인 설명, 출구 개방·일방통행·퇴장 분산 제안</span></div><div class="to">→</div>
+    <div class="step s4"><span class="k">최적화</span><b>대안별 재시뮬레이션</b><span>최대 밀집도, 전원 퇴장 시간 비교</span></div>
+  </div>
+  <div class="demo">
+    <div class="panel"><div class="ph bad">대안 전: 출구 1곳에 집중</div>
+      <svg viewBox="0 0 400 150"><rect x="10" y="10" width="380" height="130" rx="6" fill="#F7F8FB" stroke="#C5CCDA"/><rect x="30" y="30" width="110" height="40" rx="4" fill="#E5E7EB"/><text x="85" y="55" text-anchor="middle" font-size="11" fill="#5A6478">메인무대</text>
+      <rect x="370" y="60" width="20" height="36" fill="#B91C1C"/><text x="356" y="54" text-anchor="end" font-size="11" fill="#B91C1C" font-weight="700">북문 병목</text>
+      <g fill="#B91C1C"><circle cx="340" cy="70" r="4"/><circle cx="350" cy="78" r="4"/><circle cx="345" cy="88" r="4"/><circle cx="356" cy="70" r="4"/><circle cx="332" cy="82" r="4"/><circle cx="358" cy="90" r="4"/><circle cx="338" cy="96" r="4"/><circle cx="324" cy="74" r="4"/><circle cx="350" cy="62" r="4"/><circle cx="328" cy="92" r="4"/><circle cx="316" cy="84" r="4"/><circle cx="362" cy="80" r="4"/></g>
+      <g fill="#F59E0B"><circle cx="290" cy="80" r="4"/><circle cx="300" cy="90" r="4"/><circle cx="280" cy="95" r="4"/><circle cx="305" cy="72" r="4"/><circle cx="270" cy="84" r="4"/></g>
+      <g fill="#3B528B"><circle cx="200" cy="100" r="4"/><circle cx="160" cy="110" r="4"/><circle cx="230" cy="90" r="4"/><circle cx="120" cy="100" r="4"/><circle cx="180" cy="120" r="4"/></g></svg></div>
+    <div class="panel"><div class="ph good">대안 2 적용: 동문 임시 개방</div>
+      <svg viewBox="0 0 400 150"><rect x="10" y="10" width="380" height="130" rx="6" fill="#F7F8FB" stroke="#C5CCDA"/><rect x="30" y="30" width="110" height="40" rx="4" fill="#E5E7EB"/><text x="85" y="55" text-anchor="middle" font-size="11" fill="#5A6478">메인무대</text>
+      <rect x="370" y="60" width="20" height="36" fill="#15803D"/><rect x="240" y="130" width="40" height="10" fill="#15803D"/><text x="300" y="136" text-anchor="start" font-size="11" fill="#15803D" font-weight="700">동문</text>
+      <g fill="#3B528B"><circle cx="340" cy="78" r="4"/><circle cx="320" cy="70" r="4"/><circle cx="300" cy="90" r="4"/><circle cx="350" cy="92" r="4"/><circle cx="270" cy="110" r="4"/><circle cx="232" cy="122" r="4"/><circle cx="240" cy="100" r="4"/><circle cx="210" cy="95" r="4"/><circle cx="180" cy="110" r="4"/><circle cx="150" cy="100" r="4"/><circle cx="282" cy="76" r="4"/><circle cx="226" cy="116" r="4"/></g></svg></div>
+  </div>
+  <div class="metric">최적화 지표: <b>최대 밀집도(명/㎡)</b>, <b>전원 퇴장 시간(분)</b>. 그림은 설명용 예시</div>
+</section>
+
+<section id="d-k-flow-er">
+  <div class="flow">
+    <div class="step s1"><span class="k">데이터</span><b>병상·병원 정보</b><span>국립중앙의료원 실시간 가용병상(응급실·수술실·중환자실), 중증질환 수용 가능 정보</span></div><div class="to">→</div>
+    <div class="step s2"><span class="k">가시화</span><b>병상 지도</b><span>병원별 남은 병상 막대, 구급차 위치 기준 도착 시간</span></div><div class="to">→</div>
+    <div class="step s3"><span class="k">AI 판단</span><b>수용 가능 병원 순위</b><span>증상 입력, 수용 가능 여부와 도착 시간으로 순위 계산</span></div><div class="to">→</div>
+    <div class="step s4"><span class="k">최적화</span><b>병원 선정 시간 단축</b><span>병상 변동 시 즉시 재계산, 지역·시간대별 부족 예측</span></div>
+  </div>
+  <div class="demo">
+    <div class="panel"><div class="ph bad">지금: 전화로 병원마다 확인</div>
+      <svg viewBox="0 0 400 150"><rect x="10" y="10" width="380" height="130" rx="6" fill="#F7F8FB" stroke="#C5CCDA"/>
+      <circle cx="60" cy="80" r="10" fill="#B45309"/><text x="60" y="108" text-anchor="middle" font-size="11" fill="#5A6478">구급차</text>
+      <g font-size="11"><rect x="180" y="26" width="90" height="26" rx="4" fill="#fff" stroke="#C5CCDA"/><text x="225" y="43" text-anchor="middle">A병원 수용 불가</text>
+      <rect x="180" y="66" width="90" height="26" rx="4" fill="#fff" stroke="#C5CCDA"/><text x="225" y="83" text-anchor="middle">B병원 수용 불가</text>
+      <rect x="180" y="106" width="90" height="26" rx="4" fill="#fff" stroke="#C5CCDA"/><text x="225" y="123" text-anchor="middle">C병원 통화 중</text></g>
+      <g stroke="#B91C1C" stroke-dasharray="4 3" fill="none"><path d="M72 76 L178 40"/><path d="M72 80 L178 79"/><path d="M72 84 L178 118"/></g>
+      <text x="320" y="84" text-anchor="middle" font-size="13" fill="#B91C1C" font-weight="700">60분 초과</text></svg></div>
+    <div class="panel"><div class="ph good">트윈: 수용 가능 병원으로 바로 경로</div>
+      <svg viewBox="0 0 400 150"><rect x="10" y="10" width="380" height="130" rx="6" fill="#F7F8FB" stroke="#C5CCDA"/>
+      <circle cx="60" cy="80" r="10" fill="#B45309"/>
+      <g><rect x="190" y="30" width="8" height="30" fill="#E5E7EB"/><text x="210" y="50" font-size="11">A 응급실 0</text>
+      <rect x="190" y="100" width="8" height="30" fill="#E5E7EB"/><rect x="190" y="118" width="8" height="12" fill="#15803D"/><text x="210" y="120" font-size="11">C 응급실 2</text>
+      <rect x="300" y="64" width="8" height="30" fill="#E5E7EB"/><rect x="300" y="70" width="8" height="24" fill="#15803D"/><text x="318" y="84" font-size="11" font-weight="700" fill="#15803D">B 응급실 5</text></g>
+      <path d="M72 80 C150 70, 230 76, 296 79" stroke="#2563EB" stroke-width="3" fill="none"/><text x="120" y="62" font-size="11" fill="#2563EB" font-weight="700">1순위 B, 도착 12분</text></svg></div>
+  </div>
+  <div class="metric">최적화 지표: <b>병원 선정 시간</b>, <b>예상 도착 시간</b>. 병원과 수치는 설명용 예시</div>
+</section>
+
+<section id="d-k-flow-bike">
+  <div class="flow">
+    <div class="step s1"><span class="k">데이터</span><b>대여소 현황</b><span>따릉이 실시간 대여정보(대여가능 대수, 거치율), 1시간 단위 이력</span></div><div class="to">→</div>
+    <div class="step s2"><span class="k">가시화</span><b>쏠림 지도</b><span>빈 대여소 빨강, 넘친 대여소 파랑, 시간 슬라이더로 출근 시간 재생</span></div><div class="to">→</div>
+    <div class="step s3"><span class="k">AI 판단</span><b>1시간 뒤 예측</b><span>비거나 넘칠 대여소 예측, 재배치 트럭 경로 생성</span></div><div class="to">→</div>
+    <div class="step s4"><span class="k">최적화</span><b>재배치 효과 비교</b><span>빈 대여소 수, 트럭 이동 거리</span></div>
+  </div>
+  <div class="demo">
+    <div class="panel"><div class="ph bad">08:30 출근 시간: 업무지구 대여소 넘침</div>
+      <svg viewBox="0 0 400 150"><rect x="10" y="10" width="380" height="130" rx="6" fill="#F7F8FB" stroke="#C5CCDA"/>
+      <text x="80" y="30" font-size="11" fill="#5A6478" text-anchor="middle">주거지</text><text x="310" y="30" font-size="11" fill="#5A6478" text-anchor="middle">업무지구</text>
+      <g fill="#B91C1C"><circle cx="50" cy="60" r="9"/><circle cx="90" cy="80" r="9"/><circle cx="60" cy="110" r="9"/><circle cx="110" cy="115" r="9"/></g>
+      <g fill="#2563EB"><circle cx="290" cy="60" r="9"/><circle cx="330" cy="80" r="9"/><circle cx="300" cy="110" r="9"/><circle cx="350" cy="115" r="9"/></g>
+      <g fill="#9CA3AF"><circle cx="190" cy="70" r="7"/><circle cx="210" cy="110" r="7"/></g>
+      <text x="80" y="136" font-size="10.5" fill="#B91C1C" text-anchor="middle">빈 대여소</text><text x="320" y="136" font-size="10.5" fill="#2563EB" text-anchor="middle">넘친 대여소</text></svg></div>
+    <div class="panel"><div class="ph good">AI 재배치 경로 적용</div>
+      <svg viewBox="0 0 400 150"><rect x="10" y="10" width="380" height="130" rx="6" fill="#F7F8FB" stroke="#C5CCDA"/>
+      <g fill="#15803D"><circle cx="50" cy="60" r="9"/><circle cx="90" cy="80" r="9"/><circle cx="60" cy="110" r="9"/></g><circle cx="110" cy="115" r="9" fill="#B91C1C"/>
+      <g fill="#15803D"><circle cx="290" cy="60" r="9"/><circle cx="330" cy="80" r="9"/><circle cx="300" cy="110" r="9"/></g><circle cx="350" cy="115" r="9" fill="#2563EB"/>
+      <path d="M280 62 C220 40, 140 40, 62 58" stroke="#2563EB" stroke-width="2.5" fill="none" marker-end="url(#a)"/>
+      <path d="M318 84 C240 96, 160 96, 100 84" stroke="#2563EB" stroke-width="2.5" fill="none" marker-end="url(#a)"/>
+      <defs><marker id="a" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="#2563EB"/></marker></defs>
+      <text x="200" y="36" font-size="11" fill="#2563EB" text-anchor="middle" font-weight="700">재배치 트럭 경로</text></svg></div>
+  </div>
+  <div class="metric">최적화 지표: <b>빈 대여소 수</b>, <b>트럭 이동 거리(km)</b>. 그림은 설명용 예시</div>
+</section>
+
+<section id="d-k-flow-space">
+  <div class="flow">
+    <div class="step s1"><span class="k">데이터</span><b>빈 공간과 수요</b><span>시도교육청 폐교재산현황, 서울시 공공서비스예약(체육시설·시설대관), 생활인구</span></div><div class="to">→</div>
+    <div class="step s2"><span class="k">가시화</span><b>공간·시간 지도</b><span>폐교·공공시설 3D 위치, 시간대별 예약률 히트맵</span></div><div class="to">→</div>
+    <div class="step s3"><span class="k">AI 판단</span><b>용도·시간 매칭</b><span>주변 수요(돌봄, 체육, 노인복지)와 공간 크기 매칭, 빈 시간대 개방 제안</span></div><div class="to">→</div>
+    <div class="step s4"><span class="k">최적화</span><b>활용률 향상</b><span>시간 기준 공간 활용률, 수요 충족 인원</span></div>
+  </div>
+  <div class="demo">
+    <div class="panel"><div class="ph bad">지금: 체육관 주간 예약표</div>
+      <svg viewBox="0 0 400 150"><rect x="10" y="10" width="380" height="130" rx="6" fill="#F7F8FB" stroke="#C5CCDA"/>
+      <g font-size="10.5" fill="#5A6478"><text x="30" y="42">오전</text><text x="30" y="77">오후</text><text x="30" y="112">저녁</text></g>
+      <g fill="#E5E7EB"><rect x="70" y="28" width="300" height="22" rx="3"/><rect x="70" y="63" width="300" height="22" rx="3"/><rect x="70" y="98" width="300" height="22" rx="3"/></g>
+      <g fill="#3B528B"><rect x="70" y="98" width="120" height="22" rx="3"/><rect x="250" y="98" width="60" height="22" rx="3"/><rect x="130" y="63" width="40" height="22" rx="3"/></g>
+      <text x="220" y="140" font-size="11" fill="#B91C1C" text-anchor="middle" font-weight="700">빈 시간대 다수</text></svg></div>
+    <div class="panel"><div class="ph good">AI 매칭: 빈 시간대에 주변 수요 배정</div>
+      <svg viewBox="0 0 400 150"><rect x="10" y="10" width="380" height="130" rx="6" fill="#F7F8FB" stroke="#C5CCDA"/>
+      <g font-size="10.5" fill="#5A6478"><text x="30" y="42">오전</text><text x="30" y="77">오후</text><text x="30" y="112">저녁</text></g>
+      <g fill="#E5E7EB"><rect x="70" y="28" width="300" height="22" rx="3"/><rect x="70" y="63" width="300" height="22" rx="3"/><rect x="70" y="98" width="300" height="22" rx="3"/></g>
+      <g fill="#3B528B"><rect x="70" y="98" width="120" height="22" rx="3"/><rect x="250" y="98" width="60" height="22" rx="3"/><rect x="130" y="63" width="40" height="22" rx="3"/></g>
+      <g fill="#15803D"><rect x="70" y="28" width="140" height="22" rx="3"/><rect x="180" y="63" width="120" height="22" rx="3"/></g>
+      <g font-size="10.5" fill="#fff" font-weight="700"><text x="140" y="43" text-anchor="middle">어르신 체조</text><text x="240" y="78" text-anchor="middle">돌봄 교실</text></g></svg></div>
+  </div>
+  <div class="metric">최적화 지표: <b>시간 기준 공간 활용률(%)</b>, <b>수요 충족 인원</b>. 그림은 설명용 예시</div>
+</section>
+
+<section id="d-k-flow-sink">
+  <div class="flow">
+    <div class="step s1"><span class="k">데이터</span><b>사고·공사 이력</b><span>국토부 지하안전정보(지반침하 사고), 행안부 지반침하정보현황표준, 지하 공사 위치</span></div><div class="to">→</div>
+    <div class="step s2"><span class="k">가시화</span><b>지하 단면 3D</b><span>도로 아래 관로·사고 지점, 위험도 격자 지도</span></div><div class="to">→</div>
+    <div class="step s3"><span class="k">AI 판단</span><b>위험 점수와 원인</b><span>사고 이력·공사·관로 정보로 격자별 위험 점수와 근거 설명</span></div><div class="to">→</div>
+    <div class="step s4"><span class="k">최적화</span><b>탐사 순서 결정</b><span>한정된 GPR 탐사 장비로 위험 구간을 먼저 점검</span></div>
+  </div>
+  <div class="demo">
+    <div class="panel"><div class="ph bad">지금: 민원·정기 순서로 점검</div>
+      <svg viewBox="0 0 400 150"><rect x="10" y="10" width="380" height="130" rx="6" fill="#F7F8FB" stroke="#C5CCDA"/>
+      <rect x="20" y="30" width="360" height="16" fill="#9CA3AF"/><text x="200" y="42" text-anchor="middle" font-size="10.5" fill="#fff">도로</text>
+      <rect x="20" y="46" width="360" height="84" fill="#E7D9C4"/>
+      <rect x="30" y="80" width="340" height="12" rx="6" fill="#8A97B4"/><text x="200" y="112" text-anchor="middle" font-size="10.5" fill="#5A6478">하수관</text>
+      <ellipse cx="260" cy="70" rx="22" ry="12" fill="#fff" stroke="#B91C1C" stroke-dasharray="3 3"/><text x="260" y="74" text-anchor="middle" font-size="10" fill="#B91C1C">공동</text>
+      <path d="M40 38 L120 38" stroke="#2563EB" stroke-width="3"/><text x="80" y="24" text-anchor="middle" font-size="10.5" fill="#2563EB">탐사 구간</text></svg></div>
+    <div class="panel"><div class="ph good">트윈: 위험 격자부터 탐사</div>
+      <svg viewBox="0 0 400 150"><rect x="10" y="10" width="380" height="130" rx="6" fill="#F7F8FB" stroke="#C5CCDA"/>
+      <g><rect x="30" y="25" width="50" height="35" fill="#FDE725"/><rect x="85" y="25" width="50" height="35" fill="#5DC863"/><rect x="140" y="25" width="50" height="35" fill="#21908C"/><rect x="195" y="25" width="50" height="35" fill="#B91C1C"/><rect x="250" y="25" width="50" height="35" fill="#B91C1C"/><rect x="305" y="25" width="50" height="35" fill="#F59E0B"/>
+      <rect x="30" y="65" width="50" height="35" fill="#5DC863"/><rect x="85" y="65" width="50" height="35" fill="#21908C"/><rect x="140" y="65" width="50" height="35" fill="#F59E0B"/><rect x="195" y="65" width="50" height="35" fill="#B91C1C"/><rect x="250" y="65" width="50" height="35" fill="#F59E0B"/><rect x="305" y="65" width="50" height="35" fill="#5DC863"/></g>
+      <path d="M220 42 L275 42 L275 82 L220 82" stroke="#2563EB" stroke-width="3" fill="none"/><text x="200" y="125" text-anchor="middle" font-size="11" fill="#2563EB" font-weight="700">1순위 탐사 경로: 위험 격자 3칸</text></svg></div>
+  </div>
+  <div class="metric">최적화 지표: <b>탐사 1회당 위험 구간 커버리지(%)</b>. 그림은 설명용 예시</div>
+</section>
+
+<section id="d-k-flow-heat">
+  <div class="flow">
+    <div class="step s1"><span class="k">데이터</span><b>쉼터·기온·인구</b><span>행정안전부 무더위쉼터(위치, 이용가능인원, 냉방기), 기상청 기온, 고령 인구 격자</span></div><div class="to">→</div>
+    <div class="step s2"><span class="k">가시화</span><b>도보 10분 지도</b><span>쉼터별 도보 등시선, 고령 인구 격자, 운영 시간 표시</span></div><div class="to">→</div>
+    <div class="step s3"><span class="k">AI 판단</span><b>사각지대와 후보지</b><span>도보권 밖 고령 인구 격자 탐색, 경로당·주민센터 등 신규 쉼터 후보 추천</span></div><div class="to">→</div>
+    <div class="step s4"><span class="k">최적화</span><b>폭염일 운영 계획</b><span>38도 예보일 운영 시간 연장, 신규 지정 효과 계산</span></div>
+  </div>
+  <div class="demo">
+    <div class="panel"><div class="ph bad">지금: 쉼터 도보권 밖 고령 인구</div>
+      <svg viewBox="0 0 400 150"><rect x="10" y="10" width="380" height="130" rx="6" fill="#F7F8FB" stroke="#C5CCDA"/>
+      <g fill="#FECACA"><rect x="230" y="30" width="40" height="30"/><rect x="270" y="30" width="40" height="30"/><rect x="270" y="60" width="40" height="30"/><rect x="310" y="60" width="40" height="30"/><rect x="230" y="90" width="40" height="30"/></g>
+      <circle cx="110" cy="80" r="50" fill="rgba(37,99,235,.12)" stroke="#2563EB"/><rect x="104" y="74" width="12" height="12" fill="#2563EB"/><text x="110" y="140" text-anchor="middle" font-size="10.5" fill="#2563EB">쉼터 도보 10분</text>
+      <text x="290" y="136" text-anchor="middle" font-size="10.5" fill="#B91C1C" font-weight="700">사각지대 고령 인구</text></svg></div>
+    <div class="panel"><div class="ph good">경로당 신규 지정 후</div>
+      <svg viewBox="0 0 400 150"><rect x="10" y="10" width="380" height="130" rx="6" fill="#F7F8FB" stroke="#C5CCDA"/>
+      <g fill="#FECACA"><rect x="230" y="90" width="40" height="30"/></g>
+      <circle cx="110" cy="80" r="50" fill="rgba(37,99,235,.12)" stroke="#2563EB"/><rect x="104" y="74" width="12" height="12" fill="#2563EB"/>
+      <circle cx="290" cy="62" r="50" fill="rgba(21,128,61,.12)" stroke="#15803D"/><rect x="284" y="56" width="12" height="12" fill="#15803D"/><text x="290" y="128" text-anchor="middle" font-size="10.5" fill="#15803D" font-weight="700">경로당 신규 지정</text></svg></div>
+  </div>
+  <div class="metric">최적화 지표: <b>도보 10분 내 쉼터 이용 가능 고령 인구 비율(%)</b>. 그림은 설명용 예시</div>
+</section>
+
+<section id="d-k-engine">
+  <div class="eng-top"><div><span class="no">1</span>인파</div><div><span class="no">2</span>응급실</div><div><span class="no">3</span>따릉이</div><div><span class="no">4</span>빈 공간</div><div><span class="no">5</span>땅꺼짐</div><div><span class="no">6</span>폭염</div></div>
+  <div class="layer"><div class="ln">공공데이터 수집<span>API·파일 정기 수집</span></div><div class="mods">
+    <div class="mod">실시간 도시데이터</div><div class="mod">응급 가용병상</div><div class="mod">따릉이 실시간</div><div class="mod">폐교·공공예약</div><div class="mod">지하안전정보</div><div class="mod">무더위쉼터·기온</div></div></div>
+  <div class="layer"><div class="ln">공간 그래프<span>위치·연결 관계</span></div><div class="mods">
+    <div class="mod span6">지도·건물·도로 형상(브이월드, OSM) 위에 장소, 병원, 대여소, 시설, 관로, 쉼터를 같은 좌표 체계로 연결</div></div></div>
+  <div class="layer"><div class="ln">계산 모듈<span>시뮬레이션·예측</span></div><div class="mods">
+    <div class="mod">군중 시뮬레이션</div><div class="mod span2">도착 시간·수요 예측</div><div class="mod">일정 매칭</div><div class="mod span2">위험 점수·도보 접근성</div></div></div>
+  <div class="layer ai"><div class="ln">AI 에이전트<span>설명·대안 생성</span></div><div class="mods">
+    <div class="mod span6">자연어 질문 해석, 원인 설명, 대안 생성, 대안별 계산 실행 요청</div></div></div>
+  <div class="layer"><div class="ln">화면<span>3D 지도·비교</span></div><div class="mods">
+    <div class="mod span3">3D·평면 지도, 시간 슬라이더</div><div class="mod span3">대안 전후 지표 비교 그래프</div></div></div>
+</section>
+
+<section id="d-k-card-crowd">
+  <div class="card">
+    <div class="card-head"><span class="num">1</span><b>인파 리허설</b><span class="type">과밀</span></div>
+    <div class="card-row">
+      <div><div class="lbl">문제</div><div class="big red">28개 지역</div><div class="txt">2026 핼러윈 인파 집중 관리 지역. 현재 관리는 실시간 감시 중심</div></div>
+      <div class="who"><div class="lbl">누가, 무엇을</div><b>지자체·행사 주최 안전 담당</b><div class="txt">행사 전 동선 리허설, AI 대안 비교</div></div>
+      <div><div class="lbl">시장</div><div class="big navy">16.7억 달러</div><div class="txt">보행자 시뮬레이션·군중 분석 SW(2025), 2031년 25.5억 달러, 연 7.3%</div></div>
+    </div>
+    <div class="card-row2">
+      <div><div class="lbl">경쟁</div><div class="chiplbl">국내</div><div class="chips"><span class="chip kr">행안부 현장인파관리시스템</span><span class="chip kr">인텔리빅스 AI 관제</span><span class="chip kr">SKT 스파이더(망 관제)</span></div><div class="chiplbl">해외</div><div class="chips"><span class="chip gl">Arup MassMotion</span><span class="chip gl">Bentley LEGION</span><span class="chip gl">AnyLogic</span></div></div>
+      <div class="diff"><div class="lbl">차별점</div><div>국내 공개 인구 데이터로 행사 전 리허설</div><div>AI가 대안 생성 후 즉시 재계산</div><div>전문가 모델링 없이 운영자가 사용</div></div>
+      <div class="score"><div class="lbl">평가(5점 만점)</div><div class="row"><span>시장성</span><div class="bar"><i style="width:80%"></i></div><b>4</b></div><div class="row"><span>독창성</span><div class="bar"><i style="width:80%"></i></div><b>4</b></div><div class="row"><span>구현력</span><div class="bar"><i style="width:60%"></i></div><b>3</b></div><div class="row"><span>난이도</span><div class="bar"><i style="width:60%"></i></div><b>3</b></div><div class="row"><span>관계성</span><div class="bar"><i style="width:100%"></i></div><b>5</b></div><div class="sum">합계 19점</div></div>
+    </div>
+  </div>
+</section>
+
+<section id="d-k-card-er">
+  <div class="card">
+    <div class="card-head"><span class="num">2</span><b>응급실 길찾기</b><span class="type">과밀</span></div>
+    <div class="card-row">
+      <div><div class="lbl">문제</div><div class="big red">2.5배</div><div class="txt">구급대 현장 체류 60분 초과 사례, 2년 사이 증가</div></div>
+      <div class="who"><div class="lbl">누가, 무엇을</div><b>구급대·상황실(판단 보조), 시민</b><div class="txt">수용 가능 병원과 도착 시간 확인</div></div>
+      <div><div class="lbl">시장</div><div class="big navy">39억~49억 달러</div><div class="txt">병원 수용 능력 관리 솔루션(2025), 기관별 추정 차이</div></div>
+    </div>
+    <div class="card-row2">
+      <div><div class="lbl">경쟁</div><div class="chiplbl">국내</div><div class="chips"><span class="chip kr">E-Gen 종합상황판</span><span class="chip kr">119구급 스마트시스템</span><span class="chip kr">광역응급의료상황실(2026 시범)</span></div><div class="chiplbl">해외</div><div class="chips"><span class="chip gl">TeleTracking 등 병원 내부 병상 관리</span></div></div>
+      <div class="diff"><div class="lbl">차별점</div><div>병상 수, 도착 시간, 수용 가능성을 한 화면에</div><div>병상 변동 시 즉시 재계산</div><div>지역·시간대별 병상 부족 예측</div></div>
+      <div class="score"><div class="lbl">평가(5점 만점)</div><div class="row"><span>시장성</span><div class="bar"><i style="width:80%"></i></div><b>4</b></div><div class="row"><span>독창성</span><div class="bar"><i style="width:60%"></i></div><b>3</b></div><div class="row"><span>구현력</span><div class="bar"><i style="width:80%"></i></div><b>4</b></div><div class="row"><span>난이도</span><div class="bar"><i style="width:80%"></i></div><b>4</b></div><div class="row"><span>관계성</span><div class="bar"><i style="width:60%"></i></div><b>3</b></div><div class="sum">합계 18점</div></div>
+    </div>
+  </div>
+</section>
+
+<section id="d-k-card-bike">
+  <div class="card">
+    <div class="card-head"><span class="num">3</span><b>따릉이 재배치</b><span class="type">수급 불균형</span></div>
+    <div class="card-row">
+      <div><div class="lbl">문제</div><div class="big red">연 100억 원대</div><div class="txt">3년 연속 운영 적자. 쏠림은 집중관리대여소 330곳 인력으로 대응</div></div>
+      <div class="who"><div class="lbl">누가, 무엇을</div><b>서울시설공단 재배치 담당, 이용 시민</b><div class="txt">1시간 뒤 쏠림 예측과 트럭 경로</div></div>
+      <div><div class="lbl">시장</div><div class="big navy">40억~98억 달러</div><div class="txt">세계 공유 자전거 시장(2025), 연 4~10% 성장</div></div>
+    </div>
+    <div class="card-row2">
+      <div><div class="lbl">경쟁</div><div class="chiplbl">국내</div><div class="chips"><span class="chip kr">서울시 집중관리대여소 전담 인력</span><span class="chip kr">시민 참여 재배치 마일리지</span></div><div class="chiplbl">해외</div><div class="chips"><span class="chip gl">Lyft Urban Solutions(Urban Sharing AI)</span><span class="chip gl">SmartFlow 연구(불균형 95%↓, 시뮬레이션)</span></div></div>
+      <div class="diff"><div class="lbl">차별점</div><div>공개 실시간 API만으로 예측</div><div>LLM이 현장 직원용 작업 지시문 생성</div><div>마일리지 대상 대여소 자동 선정</div></div>
+      <div class="score"><div class="lbl">평가(5점 만점)</div><div class="row"><span>시장성</span><div class="bar"><i style="width:60%"></i></div><b>3</b></div><div class="row"><span>독창성</span><div class="bar"><i style="width:60%"></i></div><b>3</b></div><div class="row"><span>구현력</span><div class="bar"><i style="width:100%"></i></div><b>5</b></div><div class="row"><span>난이도</span><div class="bar"><i style="width:80%"></i></div><b>4</b></div><div class="row"><span>관계성</span><div class="bar"><i style="width:80%"></i></div><b>4</b></div><div class="sum">합계 19점</div></div>
+    </div>
+  </div>
+</section>
+
+<section id="d-k-card-space">
+  <div class="card">
+    <div class="card-head"><span class="num">4</span><b>빈 공간 매칭</b><span class="type">수급 불균형</span></div>
+    <div class="card-row">
+      <div><div class="lbl">문제</div><div class="big red">폐교 4,037곳</div><div class="txt">1,403곳은 교육청 보유. 공공시설은 시간대별로 빔</div></div>
+      <div class="who"><div class="lbl">누가, 무엇을</div><b>교육청·지자체 시설 담당, 주민·단체</b><div class="txt">빈 공간·빈 시간에 주변 수요 배정</div></div>
+      <div><div class="lbl">시장</div><div class="big navy">규모 미확인</div><div class="txt">공간 대여는 민간 플랫폼 중심. 폐교는 공공주택 등 정책 활용 확대</div></div>
+    </div>
+    <div class="card-row2">
+      <div><div class="lbl">경쟁</div><div class="chiplbl">국내</div><div class="chips"><span class="chip kr">공유누리(행안부·조달청)</span><span class="chip kr">서울시 공공서비스예약</span><span class="chip kr">스페이스클라우드(자연어 추천)</span></div><div class="chiplbl">해외</div><div class="chips"><span class="chip gl">확인한 직접 경쟁 제품 없음</span></div></div>
+      <div class="diff"><div class="lbl">차별점</div><div>예약 중개가 아닌 공급자 측 용도·개방 시간 제안</div><div>주변 인구 수요와 매칭</div><div>3D로 공간 배치 확인</div></div>
+      <div class="score"><div class="lbl">평가(5점 만점)</div><div class="row"><span>시장성</span><div class="bar"><i style="width:80%"></i></div><b>4</b></div><div class="row"><span>독창성</span><div class="bar"><i style="width:80%"></i></div><b>4</b></div><div class="row"><span>구현력</span><div class="bar"><i style="width:60%"></i></div><b>3</b></div><div class="row"><span>난이도</span><div class="bar"><i style="width:60%"></i></div><b>3</b></div><div class="row"><span>관계성</span><div class="bar"><i style="width:100%"></i></div><b>5</b></div><div class="sum">합계 19점</div></div>
+    </div>
+  </div>
+</section>
+
+<section id="d-k-card-sink">
+  <div class="card">
+    <div class="card-head"><span class="num">5</span><b>땅꺼짐 위험 지도</b><span class="type">노후</span></div>
+    <div class="card-row">
+      <div><div class="lbl">문제</div><div class="big red">1,118건</div><div class="txt">2021~2026-03 싱크홀, 원인 70%가 관로 손상·노후</div></div>
+      <div class="who"><div class="lbl">누가, 무엇을</div><b>지자체 지하안전 부서, 탐사 계획 담당</b><div class="txt">위험 구간부터 탐사 순서 결정</div></div>
+      <div><div class="lbl">시장</div><div class="big navy">3.1억~4.8억 달러</div><div class="txt">GPR 시장(2025), 2030년 5.8억~14억 달러, 유틸리티 탐지가 최대 분야</div></div>
+    </div>
+    <div class="card-row2">
+      <div><div class="lbl">경쟁</div><div class="chiplbl">국내</div><div class="chips"><span class="chip kr">서울시 GPR 탐사(2025 7,169km)</span><span class="chip kr">국토부 지하안전정보시스템</span><span class="chip kr">공동자동탐지 AI R&amp;D(2026~2028)</span></div><div class="chiplbl">해외</div><div class="chips"><span class="chip gl">Fracta(AI 관로 파손 확률)</span></div></div>
+      <div class="diff"><div class="lbl">차별점</div><div>판독이 아닌 탐사 순서 최적화</div><div>공개 사고·공사 이력 결합</div><div>지하 단면 3D 가시화</div></div>
+      <div class="score"><div class="lbl">평가(5점 만점)</div><div class="row"><span>시장성</span><div class="bar"><i style="width:80%"></i></div><b>4</b></div><div class="row"><span>독창성</span><div class="bar"><i style="width:80%"></i></div><b>4</b></div><div class="row"><span>구현력</span><div class="bar"><i style="width:40%"></i></div><b>2</b></div><div class="row"><span>난이도</span><div class="bar"><i style="width:40%"></i></div><b>2</b></div><div class="row"><span>관계성</span><div class="bar"><i style="width:80%"></i></div><b>4</b></div><div class="sum">합계 16점</div></div>
+    </div>
+  </div>
+</section>
+
+<section id="d-k-card-heat">
+  <div class="card">
+    <div class="card-head"><span class="num">6</span><b>폭염 쉼터 사각지대</b><span class="type">노후</span></div>
+    <div class="card-row">
+      <div><div class="lbl">문제</div><div class="big red">4,460명</div><div class="txt">2025 온열질환자. 38도 이상일 때 자택 환자 비중 12.8%</div></div>
+      <div class="who"><div class="lbl">누가, 무엇을</div><b>지자체 폭염 대응 담당, 고령자·보호자</b><div class="txt">도보권 밖 사각지대와 신규 쉼터 확인</div></div>
+      <div><div class="lbl">시장</div><div class="big navy">18억~32억 달러</div><div class="txt">기후 위험 분석 시장(2025), 연 17.8~19.4% 성장</div></div>
+    </div>
+    <div class="card-row2">
+      <div><div class="lbl">경쟁</div><div class="chiplbl">국내</div><div class="chips"><span class="chip kr">광주 우리 동네 폭염지도(96개 동)</span><span class="chip kr">기상청 폭염 영향예보 알림</span><span class="chip kr">안전디딤돌 쉼터 위치</span></div><div class="chiplbl">해외</div><div class="chips"><span class="chip gl">기후 위험 분석 플랫폼(금융·자산 중심)</span></div></div>
+      <div class="diff"><div class="lbl">차별점</div><div>위험 표시를 넘어 도보권 사각지대 계산</div><div>신규 지정·운영 시간 연장 효과 계산</div><div>전국 공공데이터로 확장</div></div>
+      <div class="score"><div class="lbl">평가(5점 만점)</div><div class="row"><span>시장성</span><div class="bar"><i style="width:60%"></i></div><b>3</b></div><div class="row"><span>독창성</span><div class="bar"><i style="width:60%"></i></div><b>3</b></div><div class="row"><span>구현력</span><div class="bar"><i style="width:80%"></i></div><b>4</b></div><div class="row"><span>난이도</span><div class="bar"><i style="width:80%"></i></div><b>4</b></div><div class="row"><span>관계성</span><div class="bar"><i style="width:80%"></i></div><b>4</b></div><div class="sum">합계 18점</div></div>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>

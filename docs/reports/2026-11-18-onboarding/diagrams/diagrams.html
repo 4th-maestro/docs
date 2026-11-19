@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>합류 안내 도식</title>
+<style>
+@font-face { font-family: 'Pre'; src: url("../../fonts/Pretendard-Regular.ttf"); font-weight: 400; }
+@font-face { font-family: 'Pre'; src: url("../../fonts/Pretendard-Bold.ttf"); font-weight: 700; }
+:root { --navy: #1F3864; --blue: #2563EB; --line: #C5CCDA; --soft: #EEF1F7; --ink: #1A1A1A; --muted: #5A6478; --red: #B91C1C; --amber: #B45309; --green: #15803D; --violet: #6D28D9; }
+* { box-sizing: border-box; }
+body { margin: 0; padding: 24px; background: #fff; font-family: 'Pre', sans-serif; color: var(--ink); word-break: keep-all; }
+section { width: 900px; padding: 20px; margin-bottom: 40px; background: #fff; }
+.tag { display: inline-block; font-size: 10.5px; font-weight: 700; padding: 1px 7px; border-radius: 999px; color: #fff; margin-left: 6px; vertical-align: 1px; }
+.t-h { background: var(--navy); } .t-a { background: var(--blue); } .t-r { background: var(--green); } .t-x { background: var(--amber); } .t-c { background: var(--muted); }
+
+/* 폴더 트리 */
+.tree { font-size: 13px; line-height: 1.35; }
+.node { display: grid; grid-template-columns: 330px 1fr; align-items: center; padding: 4px 0; border-bottom: 1px dashed #E5E7EB; }
+.node .name { font-family: 'Pre', monospace; font-weight: 700; }
+.node .name i { font-style: normal; color: var(--muted); font-weight: 400; }
+.node .desc { font-size: 12px; color: var(--muted); }
+.d2 .name { padding-left: 22px; } .d3 .name { padding-left: 44px; } .d4 .name { padding-left: 66px; }
+.legend { display: flex; gap: 14px; margin-top: 12px; font-size: 11.5px; color: var(--muted); }
+
+/* 문서 지도 */
+.docmap { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.dm { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+.dm h4 { margin: 0 0 4px; font-size: 14px; display: flex; align-items: center; gap: 6px; }
+.dm .q { font-size: 12px; color: var(--navy); font-weight: 700; margin-bottom: 4px; }
+.dm .p { font-family: monospace; font-size: 11px; color: var(--muted); margin-bottom: 6px; }
+.dm .ex { font-size: 11px; color: var(--ink); line-height: 1.45; }
+.dm.ai { border-color: var(--blue); background: #F2F6FE; }
+.dm.rep { border-color: var(--green); background: #F0FAF3; }
+.dm.rec { border-color: var(--amber); background: #FFF8EF; }
+
+/* 작업 흐름 */
+.flow { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.st { border: 1px solid var(--line); border-radius: 8px; padding: 9px 8px; background: #fff; position: relative; }
+.st .n { width: 22px; height: 22px; border-radius: 50%; background: var(--navy); color: #fff; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+.st b { display: block; font-size: 12.5px; margin: 6px 0 3px; }
+.st span { display: block; font-size: 10.5px; color: var(--muted); line-height: 1.4; }
+.st .rule { margin-top: 6px; font-size: 10px; color: var(--blue); font-weight: 700; }
+.st.human { border-color: var(--amber); background: #FFF8EF; }
+.st.human .n { background: var(--amber); }
+.st.check { border-color: var(--green); background: #F0FAF3; }
+.st.check .n { background: var(--green); }
+.lane { margin-top: 10px; display: flex; gap: 14px; font-size: 11.5px; color: var(--muted); }
+.lane span::before { content: ''; display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+.lane .l1::before { background: var(--navy); } .lane .l2::before { background: var(--green); } .lane .l3::before { background: var(--amber); }
+
+/* 규칙 카드 */
+.rules { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.rc { border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; }
+.rc .h { display: flex; align-items: center; gap: 7px; font-weight: 700; font-size: 13px; }
+.rc .h i { font-style: normal; width: 20px; height: 20px; border-radius: 50%; background: var(--navy); color: #fff; font-size: 11px; display: flex; align-items: center; justify-content: center; flex: none; }
+.rc .b { font-size: 11.5px; color: var(--ink); line-height: 1.45; margin-top: 5px; }
+.rc .w { font-size: 10.5px; color: var(--muted); margin-top: 5px; }
+.rc.done { border-color: var(--green); }
+.rc.done .h i { background: var(--green); }
+
+/* 문서 형식 해부 */
+.anat { display: grid; grid-template-columns: 1fr 300px; gap: 14px; }
+.doc { border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; font-size: 12px; line-height: 1.5; background: #FBFCFE; }
+.doc .h1 { font-size: 17px; font-weight: 700; margin-bottom: 8px; }
+.doc .sum { border-left: 4px solid var(--line); padding: 6px 10px; background: #fff; margin-bottom: 10px; }
+.doc .sum b { color: var(--navy); }
+.doc table { border-collapse: collapse; width: 100%; font-size: 11px; margin: 6px 0; }
+.doc td, .doc th { border: 1px solid var(--line); padding: 3px 6px; text-align: left; }
+.doc th { background: var(--soft); }
+.doc .h2 { font-size: 14px; font-weight: 700; margin: 12px 0 4px; }
+.doc .claim { font-weight: 700; color: var(--navy); }
+.doc .src { font-size: 10.5px; color: var(--muted); }
+.mark { display: inline-block; min-width: 18px; height: 18px; border-radius: 50%; background: var(--red); color: #fff; font-size: 11px; font-weight: 700; text-align: center; line-height: 18px; margin-right: 4px; }
+.notes div { display: flex; gap: 6px; font-size: 12px; line-height: 1.45; margin-bottom: 9px; }
+.notes b { display: block; }
+.notes span.t { color: var(--muted); font-size: 11px; }
+
+/* 기록 3종 */
+.recs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.rec { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.rec .top { background: var(--navy); color: #fff; padding: 9px 12px; font-weight: 700; font-size: 14px; }
+.rec .row { padding: 7px 12px; border-top: 1px solid var(--line); font-size: 11.5px; line-height: 1.45; }
+.rec .row .k { font-size: 10.5px; color: var(--muted); font-weight: 700; display: block; }
+.rec .row code { font-size: 10.5px; }
+
+/* 도구 */
+.tools { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.chain { border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+.chain h4 { margin: 0 0 8px; font-size: 14px; color: var(--navy); }
+.cstep { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.cstep .box { flex: 1; border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; font-size: 11.5px; background: #fff; }
+.cstep .box b { display: block; font-size: 12px; }
+.cstep .box code { font-size: 10.5px; color: var(--muted); }
+.arrow { text-align: center; color: var(--muted); font-size: 12px; margin: -2px 0 4px; }
+.cstep .box.out { border-color: var(--green); background: #F0FAF3; }
+</style>
+</head>
+<body>
+
+<section id="d-o-tree">
+  <div class="tree">
+    <div class="node d1"><div class="name">_maestro/</div><div class="desc">프로젝트 루트</div></div>
+    <div class="node d2"><div class="name">AGENTS.md <span class="tag t-a">AI 규칙</span></div><div class="desc">작업 규칙 원본. 사람과 AI가 모두 따르는 규칙</div></div>
+    <div class="node d2"><div class="name">CLAUDE.md</div><div class="desc"><code>@AGENTS.md</code> 한 줄. AGENTS.md를 참조</div></div>
+    <div class="node d2"><div class="name">docs.config.json, catalog.json</div><div class="desc">문서 검사 설정, 문서 목록(검사기가 생성)</div></div>
+    <div class="node d2"><div class="name">scripts/check_docs.py <span class="tag t-c">도구</span></div><div class="desc">문서 링크·제목·목록 검사기</div></div>
+    <div class="node d2"><div class="name">.github/workflows/docs-check.yml</div><div class="desc">PR·main 푸시 때 문서 검사 자동 실행</div></div>
+    <div class="node d2"><div class="name">docs/</div><div class="desc">모든 문서</div></div>
+    <div class="node d3"><div class="name">human/ <span class="tag t-h">사람용</span></div><div class="desc">사람이 읽는 원본 문서. README.md가 목차</div></div>
+    <div class="node d4"><div class="name">tutorials/ <i>처음 따라 하기</i></div><div class="desc">합류 안내(first-day.md)</div></div>
+    <div class="node d4"><div class="name">how-to/ <i>작업 방법</i></div><div class="desc">문서 작성 안내(write-docs.md)</div></div>
+    <div class="node d4"><div class="name">explanation/ <i>구조·배경</i></div><div class="desc">research/(조사), decisions/(기술 선택), troubleshooting/(장애)</div></div>
+    <div class="node d4"><div class="name">reference/ <i>정확한 값</i></div><div class="desc">디자인 시스템, 원본 문서 위치</div></div>
+    <div class="node d4"><div class="name">archive/ <i>과거 자료</i></div><div class="desc">현재 규칙과 다른 과거 보고서</div></div>
+    <div class="node d3"><div class="name">ai/ <span class="tag t-a">AI용</span></div><div class="desc">AI 작업 순서(README.md), 참고 파일 목록(sources.json)</div></div>
+    <div class="node d3"><div class="name">reports/ <span class="tag t-r">PDF 보고서</span></div><div class="desc">날짜-주제 폴더마다 report.md 원본, report.pdf, diagrams/</div></div>
+    <div class="node d4"><div class="name">fonts/, tools/</div><div class="desc">PDF 내장 폰트, 원문 캡처 도구(capture.mjs)</div></div>
+  </div>
+  <div class="legend"><span><span class="tag t-h">사람용</span> 사람이 읽는 원본</span><span><span class="tag t-a">AI</span> AI 작업 규칙·안내</span><span><span class="tag t-r">PDF</span> 발표·공유용 출력물</span><span><span class="tag t-c">도구</span> 검사·생성 스크립트</span></div>
+</section>
+
+<section id="d-o-docmap">
+  <div class="docmap">
+    <div class="dm"><h4>시작하기</h4><div class="q">처음 따라 해보는 일</div><div class="p">docs/human/tutorials/</div><div class="ex">준비물, 작은 목표, 실행 순서. 예: 합류 안내</div></div>
+    <div class="dm"><h4>작업 방법</h4><div class="q">알고 있는 작업의 절차</div><div class="p">docs/human/how-to/</div><div class="ex">적용 조건, 순서, 결과 확인. 예: 문서 작성 안내</div></div>
+    <div class="dm"><h4>구조 설명</h4><div class="q">동작 원리와 설계 이유</div><div class="p">docs/human/explanation/</div><div class="ex">개념, 배경, 선택 이유. 예: 공통 엔진 구조</div></div>
+    <div class="dm"><h4>규칙·값 참조</h4><div class="q">정확한 값과 규칙</div><div class="p">docs/human/reference/</div><div class="ex">정의, 표, 제한. 예: 디자인 시스템</div></div>
+    <div class="dm rec"><h4>기록 3종</h4><div class="q">조사·기술 선택·장애</div><div class="p">explanation/research, decisions, troubleshooting</div><div class="ex">날짜별 기록. 사실은 나중에 고치지 않음</div></div>
+    <div class="dm"><h4>과거 자료</h4><div class="q">현재와 다른 과거 문서</div><div class="p">docs/human/archive/</div><div class="ex">작성 날짜·목적과 현재 문서와의 관계 명시</div></div>
+    <div class="dm ai"><h4>AI 안내</h4><div class="q">AI가 작업 전에 읽을 내용</div><div class="p">AGENTS.md, docs/ai/</div><div class="ex">작업 범위, 읽을 파일, 검사 명령. 제품 설명은 사람용 원본으로 연결</div></div>
+    <div class="dm rep"><h4>PDF 보고서</h4><div class="q">발표·공유용 출력물</div><div class="p">docs/reports/날짜-주제/</div><div class="ex">report.md로 생성. 같은 내용의 원본은 docs/human/</div></div>
+    <div class="dm"><h4>원칙</h4><div class="q">같은 설명은 원본 1곳</div><div class="p">reference/document-locations.md</div><div class="ex">다른 문서는 링크로 연결. 복사 금지</div></div>
+  </div>
+</section>
+
+<section id="d-o-flow">
+  <div class="flow">
+    <div class="st"><div class="n">1</div><b>요청 확인</b><span>해석이 갈리면 선택지와 권장안으로 질문</span><div class="rule">모호한 요구사항 확인</div></div>
+    <div class="st"><div class="n">2</div><b>브랜치</b><span><code>&lt;type&gt;/&lt;작업&gt;</code>, AI 도구 이름 금지</span><div class="rule">브랜치 이름</div></div>
+    <div class="st"><div class="n">3</div><b>구현</b><span>토큰만 사용, 버튼 52/40, 시각화 범례·단위·기준 시각</span><div class="rule">UI 비율 점검</div></div>
+    <div class="st"><div class="n">4</div><b>문서 갱신</b><span>바뀐 API·화면·규칙을 사람용 원본에 반영</span><div class="rule">기능 변경 시 문서 갱신</div></div>
+    <div class="st check"><div class="n">5</div><b>검사</b><span>check_docs 2개, 문체 검사, 1440·390px 화면</span><div class="rule">완료 조건</div></div>
+    <div class="st"><div class="n">6</div><b>커밋·푸시</b><span>명사형 제목, 항목은 쉼표로 나열</span><div class="rule">커밋 메시지와 PR</div></div>
+    <div class="st human"><div class="n">7</div><b>PR·머지</b><span>사람이 생성하고 리뷰 후 머지</span><div class="rule">PR은 사람의 역할</div></div>
+  </div>
+  <div class="lane"><span class="l1">작업자(사람·AI)</span><span class="l2">완료 조건 확인</span><span class="l3">사람만 수행</span></div>
+</section>
+
+<section id="d-o-rules">
+  <div class="rules">
+    <div class="rc"><div class="h"><i>1</i>모호하면 먼저 질문</div><div class="b">결과가 갈리면 구현 전에 선택지와 권장안 제시. 에이전트 배치 전에도 확인</div><div class="w">임의로 정하고 나중에 보고 금지</div></div>
+    <div class="rc done"><div class="h"><i>2</i>UI 비율 점검</div><div class="b">같은 줄 버튼 높이 52 또는 40, 너비 1:1, 라벨 잘림 확인. 1440·390px 화면 확인</div><div class="w">완료 조건. 미확인 화면은 보고</div></div>
+    <div class="rc"><div class="h"><i>3</i>문서 위치</div><div class="b">사람용은 docs/human, AI용은 docs/ai. 같은 규칙을 양쪽에 복사하지 않음</div><div class="w">AI 안내는 원본으로 연결</div></div>
+    <div class="rc done"><div class="h"><i>4</i>기능 변경 시 문서 갱신</div><div class="b">바뀐 API·화면·설정을 같은 작업에서 원본 문서에 반영하고 검사 실행</div><div class="w">완료 조건. 보고에 문서와 검사 결과</div></div>
+    <div class="rc"><div class="h"><i>5</i>문서 형식</div><div class="b">맨 위 요약, 결론이 담긴 소제목, 비교 기준이 있는 수치, 끝에 다음 작업 표</div><div class="w">한국은행 경제전망 구성</div></div>
+    <div class="rc done"><div class="h"><i>6</i>외부 조사 기록</div><div class="b">조사 결과는 대화에만 두지 않고 explanation/research에 기록. 수치마다 출처</div><div class="w">완료 조건</div></div>
+    <div class="rc done"><div class="h"><i>7</i>비교 분석 기록</div><div class="b">방법·서비스·모델을 비교했으면 decisions에 날짜(제목).md로 기록. 탈락 후보 포함</div><div class="w">완료 조건</div></div>
+    <div class="rc done"><div class="h"><i>8</i>장애 기록</div><div class="b">배포된 서비스 오류를 고치면 troubleshooting에 기록. 재발은 기존 기록에 날짜 추가</div><div class="w">완료 조건. 오타 수정 제외</div></div>
+    <div class="rc"><div class="h"><i>9</i>다중 에이전트</div><div class="b">독립 기능 2개 이상이면 기능별 에이전트, 최대 4개. 각자 worktree·브랜치</div><div class="w">공유 자원과 머지는 주 작업자</div></div>
+    <div class="rc"><div class="h"><i>10</i>커밋 메시지와 PR</div><div class="b">짧은 명사형 제목, 나열은 쉼표, AI 도구 흔적 금지, PR은 사람이 생성</div><div class="w">비밀값과 .env 커밋 금지</div></div>
+    <div class="rc"><div class="h"><i>11</i>브랜치 이름</div><div class="b"><code>&lt;type&gt;/&lt;작업 내용&gt;</code>. codex, claude 등 AI 도구 이름 금지</div><div class="w">예: docs/human-ai-separation</div></div>
+    <div class="rc" style="background:var(--soft)"><div class="h"><i style="background:var(--green)">✓</i>표시 규칙</div><div class="b">초록 테두리는 작업 완료 조건에 포함되는 규칙</div><div class="w">원본: AGENTS.md</div></div>
+  </div>
+</section>
+
+<section id="d-o-format">
+  <div class="anat">
+    <div class="doc">
+      <div class="h1">문서 제목</div>
+      <div class="sum"><span class="mark">1</span><b>요약</b> (기준일 2026-11-18)<br>- 결론 1(명사형 종결)<br>- 결론 2
+        <table><tr><th>항목</th><th>현재 값</th><th>비교 기준</th></tr><tr><td>히트맵 갱신 주기</td><td>5분</td><td>목표 1분</td></tr></table>
+        <span class="mark">2</span><b>다음 작업</b>: 2026-11-20까지 화면 완성(프론트엔드)</div>
+      <div class="h2"><span class="mark">3</span>1. 데이터 수집: 5분 단위 구역별 인원으로 집계</div>
+      <div class="claim"><span class="mark">4</span>1-1. 주장 문장은 단독 줄에 씁니다.</div>
+      <div style="margin:4px 0 6px">근거와 수치는 빈 줄 다음 문단에 씁니다.</div>
+      <div><b><span class="mark">5</span>표 1.1 결론을 담은 표 제목</b></div>
+      <table><tr><th>항목</th><th>값</th></tr><tr><td>예시</td><td>10분(목표 5분)</td></tr></table>
+      <div class="src">주: 조건과 예외 · 자료: 출처 링크</div>
+      <div class="h2"><span class="mark">6</span>다음 작업</div>
+      <table><tr><th>작업</th><th>기한</th><th>담당</th></tr><tr><td>재실 데이터 수집기 작성</td><td>2026-11-19</td><td>미정</td></tr></table>
+    </div>
+    <div class="notes">
+      <div><span class="mark">1</span><span><b>요약 블록</b><span class="t">제목 바로 아래. 결론 2~3개와 핵심 수치 표, 기준일</span></span></div>
+      <div><span class="mark">2</span><span><b>다음 작업 줄</b><span class="t">남은 일이 없으면 "없음"</span></span></div>
+      <div><span class="mark">3</span><span><b>절 제목</b><span class="t">번호. 주제: 결론. 소제목만 읽어도 흐름 파악</span></span></div>
+      <div><span class="mark">4</span><span><b>주장 문장</b><span class="t">절 번호-순번, 단독 줄, 빈 줄 다음에 근거</span></span></div>
+      <div><span class="mark">5</span><span><b>표·그림 제목</b><span class="t">결론 1줄. 아래에 주:와 자료:. 수치에는 비교 기준</span></span></div>
+      <div><span class="mark">6</span><span><b>다음 작업 표</b><span class="t">작업, 기한, 담당. 정하지 않았으면 미정</span></span></div>
+      <div style="margin-top:12px"><span class="mark" style="background:var(--navy)">!</span><span><b>분량 상한</b><span class="t">표 칸 120자, 문단 300자, 문서 2만 자</span></span></div>
+    </div>
+  </div>
+</section>
+
+<section id="d-o-records">
+  <div class="recs">
+    <div class="rec"><div class="top">외부 조사 기록</div>
+      <div class="row"><span class="k">언제</span>뉴스·논문·데이터셋·시장을 조사했을 때</div>
+      <div class="row"><span class="k">어디에</span><code>explanation/research/</code></div>
+      <div class="row"><span class="k">무엇을</span>수치마다 출처와 확인 수준(원문, 초록, 2차 보도), 미확인 항목</div>
+      <div class="row"><span class="k">현재 문서</span>한국 공간 문제와 주제 6가지, 디지털트윈 조사</div></div>
+    <div class="rec"><div class="top">기술 선택 기록</div>
+      <div class="row"><span class="k">언제</span>방법·서비스·모델·라이브러리를 비교하고 하나를 골랐을 때</div>
+      <div class="row"><span class="k">어디에</span><code>explanation/decisions/YYYY-MM-DD(제목).md</code></div>
+      <div class="row"><span class="k">무엇을</span>후보, 측정 방법, 결과, 결정, 탈락 이유. 결정 변경 시 새 기록</div>
+      <div class="row"><span class="k">현재 문서</span>없음. 첫 기록은 해커톤 주제 선정</div></div>
+    <div class="rec"><div class="top">장애 기록</div>
+      <div class="row"><span class="k">언제</span>배포된 서비스의 오류를 고쳤을 때</div>
+      <div class="row"><span class="k">어디에</span><code>explanation/troubleshooting/YYYY-MM-DD(제목).md</code></div>
+      <div class="row"><span class="k">무엇을</span>증상, 조사 과정(틀린 가설 포함), 원인, 해결, 재발 시 확인 순서</div>
+      <div class="row"><span class="k">현재 문서</span>없음</div></div>
+  </div>
+</section>
+
+<section id="d-o-tools">
+  <div class="tools">
+    <div class="chain"><h4>문서 검사</h4>
+      <div class="cstep"><div class="box"><b>Markdown 작성·수정</b><code>docs/human/**/*.md</code></div></div>
+      <div class="arrow">↓</div>
+      <div class="cstep"><div class="box"><b>목록 갱신</b><code>python3 scripts/check_docs.py --write-catalog</code></div></div>
+      <div class="arrow">↓</div>
+      <div class="cstep"><div class="box"><b>링크·제목·목록 검사</b><code>python3 scripts/check_docs.py</code></div></div>
+      <div class="arrow">↓</div>
+      <div class="cstep"><div class="box out"><b>문체 검사(선택)</b><code>python3 devdog/scripts/kolint.py docs</code></div></div>
+    </div>
+    <div class="chain"><h4>PDF 보고서</h4>
+      <div class="cstep"><div class="box"><b>원문 캡처</b><code>node docs/reports/tools/capture.mjs</code></div></div>
+      <div class="arrow">↓</div>
+      <div class="cstep"><div class="box"><b>도식 PNG 생성</b><code>node docs/reports/&lt;폴더&gt;/diagrams/render.mjs</code></div></div>
+      <div class="arrow">↓</div>
+      <div class="cstep"><div class="box"><b>PDF 생성</b><code>python3 devdog/scripts/report.py report.md -o report.pdf</code></div></div>
+      <div class="arrow">↓</div>
+      <div class="cstep"><div class="box out"><b>폰트 확인</b><code>pdffonts report.pdf</code> 결과에 Type 3 없음</div></div>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>

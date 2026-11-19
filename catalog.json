@@ -1,0 +1,120 @@
+{
+  "schema_version": 1,
+  "repository": "maestro",
+  "documents": [
+    {
+      "path": "AGENTS.md",
+      "title": "Maestro 작업 공간 안내",
+      "audience": "ai",
+      "type": "navigation"
+    },
+    {
+      "path": "CLAUDE.md",
+      "title": "CLAUDE",
+      "audience": "ai",
+      "type": "navigation"
+    },
+    {
+      "path": "docs/ai/README.md",
+      "title": "AI 작업 안내",
+      "audience": "ai",
+      "type": "navigation"
+    },
+    {
+      "path": "docs/human/README.md",
+      "title": "Maestro 문서 요약",
+      "audience": "human",
+      "type": "navigation"
+    },
+    {
+      "path": "docs/human/archive/README.md",
+      "title": "과거 자료",
+      "audience": "human",
+      "type": "archive"
+    },
+    {
+      "path": "docs/human/explanation/README.md",
+      "title": "구조 설명",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/decisions/README.md",
+      "title": "기술 선택 기록",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/research/README.md",
+      "title": "외부 조사 기록",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/research/digital-twin-survey-papers.md",
+      "title": "디지털트윈 논문·기업 사례 상세",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/research/digital-twin-survey.md",
+      "title": "AI 디지털트윈 공간 가시화·운영 최적화 조사",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/research/korea-space-topics.md",
+      "title": "한국 공간 문제와 공공데이터 기반 디지털트윈 주제 6가지",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/troubleshooting/README.md",
+      "title": "장애 조사 기록",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/how-to/README.md",
+      "title": "작업 방법",
+      "audience": "human",
+      "type": "how-to"
+    },
+    {
+      "path": "docs/human/how-to/write-docs.md",
+      "title": "문서 작성 안내",
+      "audience": "human",
+      "type": "how-to"
+    },
+    {
+      "path": "docs/human/reference/README.md",
+      "title": "규칙·값 참조",
+      "audience": "human",
+      "type": "reference"
+    },
+    {
+      "path": "docs/human/reference/design-system.md",
+      "title": "Maestro 디자인 시스템",
+      "audience": "human",
+      "type": "reference"
+    },
+    {
+      "path": "docs/human/reference/document-locations.md",
+      "title": "원본 문서 위치",
+      "audience": "human",
+      "type": "reference"
+    },
+    {
+      "path": "docs/human/tutorials/README.md",
+      "title": "시작하기",
+      "audience": "human",
+      "type": "tutorials"
+    },
+    {
+      "path": "docs/human/tutorials/first-day.md",
+      "title": "Maestro 팀 합류 안내",
+      "audience": "human",
+      "type": "tutorials"
+    }
+  ]
+}

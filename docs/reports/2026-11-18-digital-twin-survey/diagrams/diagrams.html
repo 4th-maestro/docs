@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>보고서 도식</title>
+<style>
+@font-face { font-family: 'Pre'; src: url("../../fonts/Pretendard-Regular.ttf"); font-weight: 400; }
+@font-face { font-family: 'Pre'; src: url("../../fonts/Pretendard-Bold.ttf"); font-weight: 700; }
+:root { --navy: #1F3864; --blue: #2563EB; --line: #C5CCDA; --soft: #EEF1F7; --ink: #1A1A1A; --muted: #5A6478; --red: #B91C1C; --amber: #B45309; --green: #15803D; }
+* { box-sizing: border-box; }
+body { margin: 0; padding: 24px; background: #fff; font-family: 'Pre', sans-serif; color: var(--ink); word-break: keep-all; }
+section { width: 900px; padding: 20px; margin-bottom: 40px; background: #fff; }
+.title { font-weight: 700; font-size: 15px; color: var(--navy); margin-bottom: 14px; }
+
+/* 문제 구조 */
+.band { display: flex; align-items: stretch; gap: 12px; padding: 12px; border-radius: 10px; background: var(--soft); }
+.band + .arrow { text-align: center; color: var(--muted); font-size: 12px; font-weight: 700; padding: 6px 0; }
+.band-label { width: 92px; flex: none; display: flex; flex-direction: column; justify-content: center; font-weight: 700; color: var(--navy); font-size: 14px; }
+.band-label span { font-weight: 400; color: var(--muted); font-size: 11px; margin-top: 4px; line-height: 1.4; }
+.card { flex: 1; background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+.card .no { display: inline-block; font-size: 11px; font-weight: 700; color: #fff; background: var(--red); border-radius: 4px; padding: 1px 6px; }
+.card .name { font-weight: 700; font-size: 13px; margin: 6px 0 2px; }
+.card .num { font-weight: 700; font-size: 22px; color: var(--red); line-height: 1.2; }
+.card .desc { font-size: 11px; color: var(--muted); line-height: 1.45; margin-top: 2px; }
+
+/* 기술 계층 */
+.layer { display: grid; grid-template-columns: 120px 1fr 150px; gap: 10px; align-items: stretch; margin-bottom: 8px; }
+.layer .lname { background: var(--navy); color: #fff; border-radius: 8px; padding: 10px; font-weight: 700; font-size: 13px; display: flex; flex-direction: column; justify-content: center; }
+.layer .lname span { font-weight: 400; font-size: 11px; opacity: .85; margin-top: 3px; }
+.layer.llm .lname { background: var(--blue); }
+.techs { display: flex; gap: 8px; }
+.tech { flex: 1; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; background: #fff; }
+.layer.llm .tech { border-color: var(--blue); background: #F2F6FE; }
+.tech b { display: block; font-size: 12.5px; }
+.tech i { font-style: normal; font-size: 11px; color: var(--muted); display: block; margin-top: 2px; line-height: 1.4; }
+.solves { border: 1px dashed var(--line); border-radius: 8px; padding: 8px; font-size: 11px; color: var(--muted); display: flex; flex-direction: column; justify-content: center; gap: 4px; }
+.solves .tag { display: inline-block; font-size: 11px; font-weight: 700; color: var(--red); border: 1px solid var(--red); border-radius: 4px; padding: 0 5px; margin-right: 3px; }
+
+/* 흐름 */
+.flow { display: flex; align-items: stretch; gap: 0; }
+.step { flex: 1; border: 1px solid var(--line); border-radius: 8px; padding: 10px; background: #fff; }
+.step .n { width: 22px; height: 22px; border-radius: 50%; background: var(--navy); color: #fff; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+.step.ai .n { background: var(--blue); }
+.step.ai { border-color: var(--blue); background: #F2F6FE; }
+.step b { display: block; font-size: 13px; margin: 6px 0 3px; }
+.step span { display: block; font-size: 11px; color: var(--muted); line-height: 1.45; }
+.flow .to { width: 18px; flex: none; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 14px; }
+.lane { display: flex; justify-content: space-between; margin-top: 8px; font-size: 11px; color: var(--muted); }
+.lane div { flex: 1; text-align: center; border-top: 2px solid var(--line); padding-top: 4px; margin: 0 4px; }
+.lane .v { border-color: var(--navy); color: var(--navy); font-weight: 700; }
+.lane .o { border-color: var(--blue); color: var(--blue); font-weight: 700; }
+
+/* 화면 예시 */
+.mock { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.mock-top { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--line); font-size: 13px; }
+.mock-top b { font-size: 14px; }
+.mock-top .ts { font-size: 11px; color: var(--muted); }
+.mock-body { display: grid; grid-template-columns: 1fr 330px; }
+.plan { padding: 14px; border-right: 1px solid var(--line); }
+.floor { display: grid; grid-template-columns: repeat(6, 1fr); grid-template-rows: repeat(4, 54px); gap: 4px; }
+.room { border-radius: 4px; font-size: 10px; color: #fff; padding: 4px; font-weight: 700; display: flex; flex-direction: column; justify-content: space-between; }
+.room.dark { color: var(--ink); }
+.room.sel { outline: 3px solid var(--blue); outline-offset: 1px; }
+.room.core { background: #E5E7EB; color: var(--muted); }
+.legend { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 11px; color: var(--muted); }
+.legend .bar { flex: none; width: 180px; height: 10px; border-radius: 2px; background: linear-gradient(90deg, #440154, #3B528B, #21908C, #5DC863, #FDE725); }
+.agent { padding: 14px; background: #FAFBFD; display: flex; flex-direction: column; gap: 10px; }
+.q { align-self: flex-end; background: #E5E7EB; border-radius: 10px; padding: 7px 10px; font-size: 12px; }
+.a { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 10px; font-size: 12px; line-height: 1.5; }
+.a .k { font-weight: 700; }
+.a .effect { display: flex; gap: 6px; margin-top: 8px; }
+.a .effect div { flex: 1; background: var(--soft); border-radius: 6px; padding: 6px; text-align: center; font-size: 10.5px; color: var(--muted); }
+.a .effect b { display: block; font-size: 15px; color: var(--green); }
+.btns { display: flex; gap: 8px; }
+.btns div { flex: 1; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 12.5px; font-weight: 700; }
+.btn-p { background: var(--blue); color: #fff; }
+.btn-o { border: 1px solid var(--line); color: var(--ink); background: #fff; }
+.sample { font-size: 10.5px; color: var(--muted); padding: 6px 14px; border-top: 1px solid var(--line); }
+
+/* 포지셔닝 맵 */
+.map { position: relative; width: 860px; height: 520px; margin: 28px 0 0 20px; }
+.map .quad { position: absolute; width: 50%; height: 50%; border: 1px solid var(--line); }
+.map .axis-x { position: absolute; left: 0; right: 0; bottom: -26px; display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); }
+.map .axis-x b, .map .ylab b { color: var(--navy); font-size: 12px; }
+.map .ylab { position: absolute; left: 0; font-size: 11px; color: var(--muted); }
+.map .ylab.top { top: -24px; }
+.map .ylab.bot { bottom: 6px; left: 8px; }
+.pt { position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; }
+.pt i { width: 12px; height: 12px; border-radius: 50%; background: var(--navy); display: block; }
+.pt b { font-size: 12px; margin-top: 3px; white-space: nowrap; }
+.pt span { font-size: 10px; color: var(--muted); white-space: nowrap; }
+.pt.kr i { background: var(--amber); }
+.pt.me i { width: 18px; height: 18px; background: var(--blue); box-shadow: 0 0 0 5px rgba(37, 99, 235, .2); }
+.pt.me b { color: var(--blue); font-size: 13px; }
+.map .zone { position: absolute; right: 0; top: 0; width: 50%; height: 50%; background: rgba(37, 99, 235, .05); }
+.keys { display: flex; gap: 16px; margin: 40px 0 0 20px; font-size: 11px; color: var(--muted); }
+.keys .k::before { content: ''; display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; background: var(--navy); }
+.keys .kr::before { background: var(--amber); }
+.keys .me::before { background: var(--blue); }
+</style>
+</head>
+<body>
+
+<section id="d-problems">
+  <div class="band">
+    <div class="band-label">활용 계층<span>화면 이후 단계 부재</span></div>
+    <div class="card"><span class="no">P3</span><div class="name">가시화와 실행 단절</div><div class="num">참고 화면</div><div class="desc">예측 결과가 정비 일정 시스템과 미연결</div></div>
+    <div class="card"><span class="no">P4</span><div class="name">공간 활용률 측정 부재</div><div class="num">54% <small style="font-size:13px;color:var(--muted)">/ 목표 79%</small></div><div class="desc">2025 오피스 평균 활용률(JLL)</div></div>
+    <div class="card"><span class="no">P8</span><div class="name">인파 밀집 위험</div><div class="num">4단계 경보</div><div class="desc">기지국 데이터 밀집도 표시, 대응안은 사람 판단</div></div>
+  </div>
+  <div class="arrow">▲ 부정확한 입력으로 가시화 결과 신뢰도 하락</div>
+  <div class="band">
+    <div class="band-label">데이터 계층<span>형상·설비 데이터 불일치</span></div>
+    <div class="card"><span class="no">P1</span><div class="name">정적 3D 모델</div><div class="num">오차 1~5m</div><div class="desc">국토부 3D, 건물 정보 2014년 이후 미갱신</div></div>
+    <div class="card"><span class="no">P2</span><div class="name">설비 데이터 비표준</div><div class="num">80.5%</div><div class="desc">명명 규칙 준수 포인트 비율(948개 중 763개)</div></div>
+  </div>
+  <div class="arrow">▲ 예산·인력 부족으로 데이터 갱신 중단</div>
+  <div class="band">
+    <div class="band-label">조직 계층<span>예산·인력·노후화</span></div>
+    <div class="card"><span class="no">P5</span><div class="name">운영 인력 고령화</div><div class="num">68%</div><div class="desc">미국 시설 운영·기술 인력 중 45세 이상(IFMA)</div></div>
+    <div class="card"><span class="no">P6</span><div class="name">시설 노후화</div><div class="num">75.3%</div><div class="desc">2044년 준공 30년 이상 시설 비중 전망</div></div>
+    <div class="card"><span class="no">P7</span><div class="name">비용·조직 장벽</div><div class="num">기술 외 요인</div><div class="desc">조달, 정보 거버넌스, 인력 역량</div></div>
+  </div>
+</section>
+
+<section id="d-tech">
+  <div class="layer">
+    <div class="lname">공간 복원<span>사진·도면 → 형상</span></div>
+    <div class="techs">
+      <div class="tech"><b>T1 3D 가우시안 스플래팅</b><i>사진으로 실내 복원, 객체 분류 정보 부여</i></div>
+      <div class="tech"><b>T2 도면 VLM</b><i>도면 이미지를 벽·문 좌표 JSON으로 변환</i></div>
+    </div>
+    <div class="solves"><div><span class="tag">P1</span>정적 3D 모델</div></div>
+  </div>
+  <div class="layer">
+    <div class="lname">공간 의미<span>형상 → 그래프</span></div>
+    <div class="techs">
+      <div class="tech"><b>T3 3D 씬 그래프</b><i>건물·층·실·객체 계층 구조</i></div>
+      <div class="tech"><b>T4 Brick 메타데이터 매핑</b><i>설비 포인트 이름을 표준 클래스로 분류</i></div>
+      <div class="tech"><b>T10 카메라 없는 재실 추정</b><i>WiFi 신호로 구역별 인원 추정</i></div>
+    </div>
+    <div class="solves"><div><span class="tag">P2</span>설비 데이터 비표준</div><div><span class="tag">P4</span>활용률 측정</div></div>
+  </div>
+  <div class="layer llm">
+    <div class="lname">LLM 계층<span>질의·설정·생성</span></div>
+    <div class="techs">
+      <div class="tech"><b>T5 운영 에이전트</b><i>자연어 질의를 그래프 조회로 변환</i></div>
+      <div class="tech"><b>T6 시나리오 생성</b><i>what-if 조건을 시뮬레이션 입력으로 변환</i></div>
+      <div class="tech"><b>T7 이상 탐지 규칙 생성</b><i>물리 제약 기반 규칙 생성·평가·수정</i></div>
+    </div>
+    <div class="solves"><div><span class="tag">P3</span>실행 단절</div><div><span class="tag">P5</span>숙련 인력 부족</div></div>
+  </div>
+  <div class="layer">
+    <div class="lname">계산·실행<span>결과 → 조치</span></div>
+    <div class="techs">
+      <div class="tech"><b>T8 트윈 학습 강화학습 제어</b><i>공조 절감 10~35%(시뮬레이션)</i></div>
+      <div class="tech"><b>T9 대리 모델</b><i>CFD를 신경망으로 대체해 즉시 계산</i></div>
+    </div>
+    <div class="solves"><div><span class="tag">P3</span>실행 단절</div><div><span class="tag">P8</span>인파 대응</div></div>
+  </div>
+</section>
+
+<section id="d-flow">
+  <div class="flow">
+    <div class="step"><div class="n">1</div><b>데이터 수집</b><span>계량(BDG2), 예약 로그, 재실 추정</span></div>
+    <div class="to">→</div>
+    <div class="step"><div class="n">2</div><b>공간 그래프</b><span>층·실·설비·계량기 연결</span></div>
+    <div class="to">→</div>
+    <div class="step"><div class="n">3</div><b>히트맵</b><span>구역별 재실률·에너지 표시</span></div>
+    <div class="to">→</div>
+    <div class="step ai"><div class="n">4</div><b>에이전트 제안</b><span>저활용 구역 통합, 공조 일정 변경안</span></div>
+    <div class="to">→</div>
+    <div class="step ai"><div class="n">5</div><b>what-if 계산</b><span>면적, 공조 시간, kWh 변화</span></div>
+    <div class="to">→</div>
+    <div class="step"><div class="n">6</div><b>실행 요청</b><span>예약 시스템·BMS 일정 변경</span></div>
+  </div>
+  <div class="lane"><div>입력</div><div>구조화</div><div class="v">공간 가시화</div><div class="o">운영 최적화</div><div class="o">운영 최적화</div><div>실행</div></div>
+</section>
+
+<section id="d-mock">
+  <div class="mock">
+    <div class="mock-top"><b>본관 3층 재실 현황</b><span class="ts">데이터 기준 2026-11-20 14:00 · 5분 갱신</span></div>
+    <div class="mock-body">
+      <div class="plan">
+        <div class="floor">
+          <div class="room" style="background:#3B528B">회의실 A<span>18%</span></div>
+          <div class="room" style="background:#440154">회의실 B<span>6%</span></div>
+          <div class="room sel" style="background:#440154;grid-column:span 2">동쪽 좌석 32석<span>12%</span></div>
+          <div class="room dark" style="background:#5DC863;grid-column:span 2">서쪽 좌석 40석<span>71%</span></div>
+          <div class="room sel" style="background:#3B528B">회의실 C<span>15%</span></div>
+          <div class="room core" style="grid-column:span 4;grid-row:span 2">코어(계단·화장실)</div>
+          <div class="room dark" style="background:#FDE725">회의실 D<span>92%</span></div>
+          <div class="room" style="background:#21908C">라운지<span>44%</span></div>
+          <div class="room dark" style="background:#5DC863">회의실 E<span>68%</span></div>
+          <div class="room" style="background:#21908C;grid-column:span 2">탕비실<span>39%</span></div>
+          <div class="room sel" style="background:#440154;grid-column:span 2">동쪽 집중실<span>9%</span></div>
+          <div class="room dark" style="background:#FDE725;grid-column:span 2">서쪽 집중실<span>88%</span></div>
+        </div>
+        <div class="legend">재실률(%) 0<div class="bar"></div>100 <span style="margin-left:auto;color:var(--blue);font-weight:700">□ 통합 후보 구역</span></div>
+      </div>
+      <div class="agent">
+        <div class="q">금요일에 비울 수 있는 구역은?</div>
+        <div class="a"><span class="k">동쪽 구역(좌석 32석, 회의실 C, 집중실)</span>의 금요일 평균 재실률은 11%입니다. 인원 14명을 서쪽 구역으로 통합하면 동쪽 공조를 정지할 수 있습니다.
+          <div class="effect"><div><b>-10시간</b>공조 가동/주</div><div><b>-420kWh</b>전력/주</div><div><b>210㎡</b>비우는 면적</div></div>
+        </div>
+        <div class="btns"><div class="btn-o">근거 데이터 보기</div><div class="btn-p">일정 변경 요청</div></div>
+      </div>
+    </div>
+    <div class="sample">화면 예시. 수치는 설명용 가상 데이터</div>
+  </div>
+</section>
+
+<section id="d-position">
+  <div class="map">
+    <div class="zone"></div>
+    <div class="quad" style="left:0;top:0"></div><div class="quad" style="left:50%;top:0"></div>
+    <div class="quad" style="left:0;top:50%"></div><div class="quad" style="left:50%;top:50%"></div>
+    <div class="axis-x"><span>표·2D 대시보드</span><b>공간 가시화 수준 →</b><span>3D 트윈</span></div>
+    <div class="ylab top"><b>↑ 운영 실행 수준</b> 위쪽일수록 자동 제안·실행</div><div class="ylab bot">분석·리포트</div>
+    <div class="pt" style="left:14%;top:80%"><i></i><b>Density</b><span>레이더 인원 계수</span></div>
+    <div class="pt" style="left:28%;top:88%"><i></i><b>Butlr</b><span>열 센서 재실</span></div>
+    <div class="pt" style="left:32%;top:60%"><i></i><b>VergeSense</b><span>공간 계획 시뮬레이션</span></div>
+    <div class="pt" style="left:16%;top:40%"><i></i><b>SkySpark·Clockworks</b><span>규칙 기반 고장 진단</span></div>
+    <div class="pt" style="left:24%;top:14%"><i></i><b>Facilio</b><span>FM 에이전트 AI</span></div>
+    <div class="pt kr" style="left:42%;top:36%"><i></i><b>인텔리빅스</b><span>AI 영상 관제</span></div>
+    <div class="pt" style="left:88%;top:84%"><i></i><b>Matterport</b><span>3D 캡처</span></div>
+    <div class="pt kr" style="left:84%;top:54%"><i></i><b>이에이트 NDX Pro</b><span>시뮬레이션 트윈</span></div>
+    <div class="pt" style="left:78%;top:30%"><i></i><b>Willow</b><span>지식 그래프 운영 AI</span></div>
+    <div class="pt me" style="left:62%;top:14%"><i></i><b>후보 B</b><span>재실 기반 공간 운영 에이전트</span></div>
+  </div>
+  <div class="keys"><span class="k">해외</span><span class="k kr">국내</span><span class="k me">Maestro 후보 B</span><span style="margin-left:auto">위치는 공개 제품 설명 기준 작성자 판단</span></div>
+</section>
+
+</body>
+</html>

@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "sources": [
+    {
+      "id": "onboarding",
+      "repository": "maestro",
+      "path": "docs/human/tutorials/first-day.md",
+      "purpose": "처음 합류한 팀원 안내, 규칙 요약, 폴더 구조, 도구",
+      "kind": "tutorial"
+    },
+    {
+      "id": "research-korea-topics",
+      "repository": "maestro",
+      "path": "docs/human/explanation/research/korea-space-topics.md",
+      "purpose": "해커톤 주제 후보 6개, 한국 공간 문제와 국내 공공데이터",
+      "kind": "explanation"
+    },
+    {
+      "id": "docs-process",
+      "repository": "maestro",
+      "path": "docs/human/how-to/write-docs.md",
+      "purpose": "문서 작성·검증",
+      "kind": "policy"
+    },
+    {
+      "id": "design-system",
+      "repository": "maestro",
+      "path": "docs/human/reference/design-system.md",
+      "purpose": "UI 색·컴포넌트·공간 시각화 규칙",
+      "kind": "policy"
+    },
+    {
+      "id": "research-digital-twin",
+      "repository": "maestro",
+      "path": "docs/human/explanation/research/digital-twin-survey.md",
+      "purpose": "해커톤 주제 사전 조사, 주제 후보 평가",
+      "kind": "explanation"
+    },
+    {
+      "id": "research-digital-twin-papers",
+      "repository": "maestro",
+      "path": "docs/human/explanation/research/digital-twin-survey-papers.md",
+      "purpose": "논문·기업 사례 상세",
+      "kind": "explanation"
+    },
+    {
+      "id": "decisions",
+      "repository": "maestro",
+      "path": "docs/human/explanation/decisions/README.md",
+      "purpose": "기술 선택 기록 목록과 작성 방법",
+      "kind": "policy"
+    }
+  ]
+}

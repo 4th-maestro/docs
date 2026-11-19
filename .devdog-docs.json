@@ -1,0 +1,7 @@
+{
+  "files": {
+    ".github/workflows/docs-check.yml": "c641212bc0d67189a2a35646e5213d2de4cf53b5aba40d3555ccd21c2a61d683",
+    "scripts/check_docs.py": "8f1a0addd0b37b2cabb3ba97394a87fb7733972c83c39088e96ec2f52e824968"
+  },
+  "version": "0.1.0"
+}
