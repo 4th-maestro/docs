@@ -347,7 +347,18 @@
   body.hosted #bar, body.hosted #hostLink, body.hosted #kpis, body.hosted #actions, body.hosted #floorPicker, body.hosted #floorTags,
   body.hosted #floorTabs, body.hosted #roomBack, body.hosted #infoBtn, body.hosted #roomTools, body.hosted #roomTitle,
   body.hosted #inspector, body.hosted #legend, body.hosted #flow{display:none !important}  /* 데이터 흐름은 앱 모달(보고의 flow)로 표시 */
-  body.hosted #floorView{padding:16px !important}
+  body.hosted #floorView{padding:8px !important}
+  /* 앱 안 층 평면도(2026-11-20): 층 지표 카드를 평면도 위에 띄우고 평면도는 카드 전체 높이 사용
+     - 지표 5칸은 아래 한 줄, 안내 문구(사진 추정 공간 등)는 왼쪽 위. 평면도는 그 높이만큼만 비켜 겹치지 않음 */
+  body.hosted #planWrap{margin:0;padding:8px 8px 72px}
+  body.hosted #planWrap:has(~ #floorStats .note){padding-top:56px}
+  body.hosted #floorStats{position:absolute;inset:12px;padding:0;gap:8px;flex-wrap:nowrap;align-items:flex-end;justify-content:center;z-index:2;pointer-events:none}
+  body.hosted #floorStats div{flex:none;min-width:96px;padding:6px 12px;background:color-mix(in srgb,var(--canvas) 92%,transparent);border:1px solid var(--hairline);box-shadow:var(--shadow)}
+  body.hosted #floorStats b{font-size:18px}
+  body.hosted #floorStats .note{position:absolute;left:0;top:0;max-width:min(520px,100%);display:flex;gap:8px;align-items:flex-start;color:var(--body);line-height:1.4}
+  body.hosted #floorStats .note svg.i{flex:none;width:16px;height:16px;margin-top:2px}
+  /* 좁은 앱 화면: 지표 칸이 한 줄에 들어가지 않으면 두 줄, 평면도 아래 여백도 두 줄만큼 */
+  @media (max-width:640px){ body.hosted #floorStats{flex-wrap:wrap;align-content:flex-end} body.hosted #floorStats div{min-width:0} body.hosted #planWrap{padding-bottom:132px} }
   @media (min-width:761px){ #floorView{padding-right:372px} }
   @media (max-width:760px){ #actions{display:none} #persona button span{display:none} }
   #actions .hd{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 16px;border-bottom:1px solid var(--hairline)}
@@ -2253,7 +2264,7 @@ function renderFloorStats(){
   const f = state.floor; if (!f) return;
   setHTML($('#floorTabs'), FLOORS.map(x => `<button data-f="${x.id}" aria-selected="${x === f}">${x.id}</button>`).join(''));
   const a = floorAgg(f.rooms), on = a.acs.filter(x => x.status === 'on').length;
-  const floorNote = f.note ? "<div>" + esc(f.note) + "</div>" : "";
+  const floorNote = f.note ? '<div class="note">' + IC.info + esc(f.note) + "</div>" : "";
   if (f.note && !a.acs.length) { setHTML($("#floorStats"), floorNote); return; }
   setHTML($('#floorStats'), floorNote + `<div>평균 온도<b>${a.temp.toFixed(1)}<i>°C</i></b></div><div>평균 습도<b>${Math.round(a.hum)}<i>%</i></b></div>
     <div>전력<b>${a.power.toFixed(1)}<i>kW</i></b></div><div>${occName(f.rooms)}<b>${a.occ}<i>명</i></b></div><div>실내기 가동<b>${on}<i>/ ${a.acs.length}</i></b></div>`);

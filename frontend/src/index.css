@@ -72,7 +72,8 @@ h3 { font-size: 17px; font-weight: 600; margin: 0 0 8px; }
 .twin-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
 .twin-head h2 { margin: 0; }
 .modes { display: flex; gap: 8px; flex-wrap: wrap; }
-.embed { width: 100%; height: 560px; border: 0; border-radius: var(--r-sm); background: var(--surface-soft); }
+/* 3D 영역: 화면 높이의 64%(560~760px). 층 평면도가 높이에 맞춰 커지도록 고정 560px에서 변경(2026-11-20) */
+.embed { width: 100%; height: clamp(560px, 64vh, 760px); border: 0; border-radius: var(--r-sm); background: var(--surface-soft); }
 /* 트윈 안 버튼을 옮긴 도구 줄(2026-11-20): 같은 줄 버튼은 너비를 맞추기 위해 같은 칸 너비 */
 .tw-tools { display: grid; grid-template-columns: repeat(auto-fit, minmax(112px, 1fr)); gap: 8px; margin-bottom: 12px; }
 /* 트윈 보고 전 도구 줄 자리: 같은 격자에 도구 5칸(역할 3, 데이터 흐름, 설비 연결)을 두어 너비마다 높이가 실제 도구 줄과 같음 */
