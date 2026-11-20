@@ -11,8 +11,8 @@
 > | 입력 형식 | 4종(IFC, DXF·DWG, PDF, PNG·JPG) | 2026-11-20 이전: 평면도 사진 1종 |
 > | 실내기 유형 | 6종 | 이전 트윈 표시: 1방향·4방향 2종 |
 > | 업로드 파일 한도 | 파일당 200MB | API Gateway 요청 한도 10MB(그래서 S3 직접 업로드) |
-> | 구현 상태 | main 반영과 배포(Lambda #35, #36, #41, Frontend #27), Serverless Endpoint v2 | 배포 후 상태 머신 직접 실행 전 단계 성공(2026-11-20) |
-> | 실내기 인식(v2, 학습에 쓰지 않은 실제 도면) | mAP50 0.337, 4방향 카세트 0.931 | v1 0.006 |
+> | 구현 상태 | main 반영과 배포(Lambda #35, #36, #41, Frontend #27), Serverless Endpoint v3 | 배포 후 상태 머신 직접 실행 전 단계 성공(2026-11-20) |
+> | 실내기 인식(v3, 학습에 쓰지 않은 실제 도면) | mAP50 0.689, 4방향 0.908, 2방향 0.983, 스탠드형 0.201 | v2 0.337, v1 0.006 |
 >
 > **다음 작업**: 판매사 관리자 화면에서 실제 업로드 확인, 실제 도면으로 4종 입력 통합 확인(6절)
 
@@ -117,7 +117,7 @@
 
 ## 6. 구현 분담과 남은 일
 
-**6-1. 파서, API, 화면은 2026-11-20 main에 반영해 배포했고, 인식 Endpoint는 v2 모델로 배포했습니다.**
+**6-1. 파서, API, 화면은 2026-11-20 main에 반영해 배포했고, 인식 Endpoint는 v3 모델로 배포했습니다.**
 
 배포 직후 IngestFunction이 ifcopenshell import에 실패해 x86_64로 바꿨습니다([장애 기록](../explanation/troubleshooting/2026-11-20%28%EB%8F%84%EB%A9%B4%20%EB%B3%80%ED%99%98%20%EC%BB%A8%ED%85%8C%EC%9D%B4%EB%84%88%20ifcopenshell%20GLIBC%20%EB%B6%88%EC%9D%BC%EC%B9%98%29.md)). 재배포 후 상태 머신을 직접 실행해 Parse, Detect, Merge, SaveDraft가 모두 성공했습니다.
 
@@ -126,11 +126,11 @@
 | 파서(IFC, DXF·DWG, PDF, 병합) | Lambda `ingest/`(#35) | 테스트 12개 통과, DWG 1개 건너뜀. 공개 IFC 2개로 층 3개, 호실 21개 추출(0.3초) |
 | 작업 API, Step Functions, 인식 호출 Lambda | Lambda `src/plan_ingest.py`, `src/detect.py`, `statemachine/`(#36) | 테스트 통과, `sam validate --lint` 통과 |
 | 업로드, 2D 실내기 매핑, 3D 유형별 형상 | Frontend `src/ingest/`, 판매사 건물 추가의 도면 파일 단계(#27) | 데모 모드 화면 확인(1440px, 390px, 밝은·어두운 화면) |
-| 인식 Endpoint | `ml/serve/`, `hvac-symbol-detector-sls`(v2) | 타일당 1.0초, ultralytics와 결과 일치 |
+| 인식 Endpoint | `ml/serve/`, `hvac-symbol-detector-sls`(v3) | 타일당 1.0초, ultralytics와 결과 일치 |
 
 | 작업 | 기한 | 담당 |
 |---|---|---|
 | 판매사 관리자 계정으로 화면에서 업로드, 변환, 확정 저장 확인 | 미정 | 사용자 |
 | 실제 IFC(실내기 객체 포함), DXF, DWG, PDF로 4종 입력 통합 확인 | 미정 | 미정 |
 | 트윈 층별 2D 평면 보기의 실내기 유형별 기호(현재 모든 유형이 같은 아이콘) | 미정 | 미정 |
-| 실내기 인식 v3: 2방향 카세트 비율, 스탠드형 크기 합성 범위 보정 | 미정 | 미정 |
+| 실내기 인식 스탠드형 개선(실제 도면 라벨 혼합, mAP50 0.201) | 미정 | 미정 |
