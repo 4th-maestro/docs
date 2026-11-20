@@ -61,13 +61,20 @@ h3 { font-size: 17px; font-weight: 600; margin: 0 0 8px; }
 .kval { font-size: 34px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.2; }
 .kval small { font-size: 17px; font-weight: 500; margin-left: 2px; }
 .kval.bad { color: var(--danger); }
-.ksub { font-size: 14px; color: var(--muted); }
+.ksub { font-size: 14px; color: var(--muted); word-break: keep-all; }
 /* 묶음 지표 카드(4열 중 2열): 운영 상태 4칸, 전력·요금 3칸. 좁은 화면은 칸이 줄바꿈 */
 .kpi.wide { grid-column: span 2; display: grid; grid-template-columns: repeat(var(--n, 4), minmax(0, 1fr)); gap: 12px 16px; }
 @media (max-width: 743px) { .kpi.wide { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .kitem { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 /* 전력 추이: 전력·요금 카드 마지막 줄 전체 너비 */
 .ktrend { grid-column: 1 / -1; min-width: 0; }
+/* 전력·요금 카드: 칸 3개를 flex로 배치. 라벨·값은 줄바꿈하지 않고, 칸 합계가 카드 너비를 초과하면 마지막 칸이 다음 줄로 이동(가로 넘침 방지) */
+.kpi.wide.kpow { display: flex; flex-direction: row; flex-wrap: wrap; gap: 12px 16px; }
+.kpow > .kitem { flex: 1 1 0; min-width: min-content; }
+.kpow .klabel, .kpow .kval { white-space: nowrap; }
+.kpow > .ktrend { flex-basis: 100%; }
+/* 1128~1279px: 두 카드가 나란히 놓여 칸 너비 110~135px, 값 34px이면 요금 칸 라벨·값이 줄바꿈 → 두 카드 값 28px(743px 이하와 같은 크기) */
+@media (min-width: 1128px) and (max-width: 1279px) { .kpi.wide .kval { font-size: 28px; } }
 .pn.ktrend { gap: 6px; }
 .pn-keys > .ktrend-cmp { display: inline; }
 .ktrend-cmp strong { color: var(--ink); font-variant-numeric: tabular-nums; }

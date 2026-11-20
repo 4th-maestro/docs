@@ -1,4 +1,3 @@
-import type { CSSProperties } from 'react'
 import { Suspense, lazy, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { AlertTriangle, ArrowLeft, CalendarClock, Droplets, Info, Moon, RefreshCw, Sun, Zap } from 'lucide-react'
 import AdminPage from './admin/AdminPage'
@@ -461,7 +460,7 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
                   <KpiItem label="이상 감지" value={summary.anomaly} unit="건" sub="설정온도 미도달" bad={summary.anomaly > 0} />
                   <KpiItem label="재실 인원" value={occupants} unit="명" sub={`${scope} 합계`} />
                 </div>
-                <div className="kpi wide" role="group" aria-label="전력·요금" style={{ '--n': 3 } as CSSProperties}>
+                <div className="kpi wide kpow" role="group" aria-label="전력·요금">
                   <KpiItem label="현재 전력" value={summary.powerKw} unit="kW" sub={`외기 ${status.outdoorTemp}℃, ${hhmm(status.generatedAt)} 기준`} />
                   <KpiItem label="오늘 누적 사용량" value={todayKwh} unit="kWh" sub={`0시부터 ${hhmm(status.generatedAt)}까지`} />
                   <KpiItem label="오늘 전기요금(추정)" value={todayKwh != null && unitPrice != null ? Math.round(todayKwh * unitPrice) : null} unit="원" sub={unitPrice != null ? `단가 ${unitPrice}원/kWh` : '단가 조회 중'} />

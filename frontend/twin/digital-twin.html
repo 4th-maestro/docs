@@ -125,6 +125,9 @@
   #live.stale b{color:var(--muted)}
   /* 화면 도구: 돋보기(확대·축소) · 전체화면 */
   #viewTools button{padding:0;width:44px}
+  /* 앱 안(hosted): 상단 바(#bar)가 숨겨지므로 돋보기·전체화면을 3D 화면 오른쪽 아래에 세로로 띄움 (syncHost에서 body로 옮김) */
+  body.hosted > #viewTools{position:absolute;right:12px;bottom:12px;z-index:6;display:flex;flex-direction:column;gap:2px;padding:3px;border-radius:999px}
+  body.hosted > #viewTools button{height:40px;width:40px}
   #viewTools svg{width:18px;height:18px}
   #plan{transform-origin:50% 50%;transition:transform .22s ease-out}
   #planWrap.zoomed{cursor:grab}
@@ -203,7 +206,8 @@
   #planMode button{min-width:44px;height:32px;padding:0 12px;border-radius:999px;font-weight:600}
   #planMode button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
   body.plan3d #floorView{pointer-events:none}
-  body.plan3d #floorView #planMode, body.plan3d #floorView #floorTabs, body.plan3d #floorView #floorStats{pointer-events:auto}
+  /* 3D에서 클릭을 받는 건 버튼·카드 자체만: 앱 안(hosted)에서는 #floorStats 상자가 화면 전체(inset)를 덮으므로 상자는 통과시키고 카드만 받음 */
+  body.plan3d #floorView #planMode, body.plan3d #floorView #floorTabs, body.plan3d #floorView #floorStats > *{pointer-events:auto}
   /* 전환은 겹쳐 녹듯이: 평면도가 같은 각도의 3D 위에서 서서히 사라지고(또는 떠오르고) 카메라가 기울어짐 */
   #planWrap{transition:opacity .55s ease}
   #planBox{transition:background-color .55s ease, box-shadow .55s ease, backdrop-filter .55s ease, -webkit-backdrop-filter .55s ease}
@@ -2299,24 +2303,25 @@ function goBuilding(animate = true){
   const fromFloor = state.floor;
   if (fromFloor) tellHost('floorSelected', { floor:'' });
   if (state.view === 'floor' && fromFloor && animate && !reduceMotion) {
-    const fv = $('#floorView'), pc = planCamera(fromFloor, planScreenRect(fromFloor));
+    // 층 → 건물: 한 번의 이어진 비행으로 물러남 (중간에 멈췄다 다시 출발하지 않게)
+    //   2D: 평면도와 같은 위 시점의 3D 위에서 평면도가 녹아 사라진 뒤 출발 · 3D: 지금 보던 기울인 시점에서 바로 출발
+    //   벌어져 있던 층들은 비행이 시작되면 제자리로 천천히 내려앉음
+    const fv = $('#floorView'), tilted = plan3d || planAnim;
+    ++planSeq; planAnim = false;
     snapExplode(fromFloor);
-    camera.fov = FOV_PLAN; camera.updateProjectionMatrix(); camera.position.copy(pc.pos); controls.target.copy(pc.tgt);
+    if (!tilted) { const pc = planCamera(fromFloor, planScreenRect(fromFloor));
+      camera.fov = FOV_PLAN; camera.updateProjectionMatrix(); camera.position.copy(pc.pos); controls.target.copy(pc.tgt); }
     fv.classList.add('pre', 'in', 'leaving'); document.body.classList.add('diving');
     setBodyView('building'); state.floor = null; state.room = null; setInspector(false);
     controls.enabled = true; controls.autoRotate = false; controls.minDistance = 20; controls.maxDistance = 400 * SC;
     renderCrumbs(); recolorBuilding(); renderFloorPicker(); renderLegend(); renderKpis(); renderTags();
+    tween = { update(){} };
     requestAnimationFrame(() => requestAnimationFrame(() => {
       fv.classList.remove('in'); setTimeout(() => { fv.classList.remove('pre', 'leaving'); document.body.classList.remove('diving'); }, 700);
-      // hold the matching top view while the plan dissolves away, then pull back out and let the floors settle
-      tween = { update(){} };
       setTimeout(() => {
-        const y = floorY(fromFloor.index) + 1.2, c = homePos().sub(HOME.target).setY(0).normalize();
-        flyTo(new THREE.Vector3(c.x * 62 * fitK(), y + 40 * SC, c.z * 62 * fitK()), new THREE.Vector3(0, y, 0), 900, () => {
-          explodeF = null; hoverFloor = null;
-          flyTo(homePos(), HOME.target, 1300, () => { controls.autoRotate = !reduceMotion; controls.maxDistance = 240 * SC; });
-        }, FOV0);
-      }, 520);
+        setTimeout(() => { explodeF = null; hoverFloor = null; }, 350);
+        flyTo(homePos(), HOME.target, 1900, () => { controls.autoRotate = !reduceMotion; controls.maxDistance = 240 * SC; }, FOV0);
+      }, tilted ? 0 : 420);
     }));
     emit('twin:view', { view:'building' });
     return;
@@ -3090,7 +3095,7 @@ function clampPan(){   // 평면도 그림(여백 제외)이 틀 밖으로 완�
 function applyPlanZoom(){ svg.style.transform = PZ.k === 1 ? '' : `translate(${PZ.x}px,${PZ.y}px) scale(${PZ.k})`; $('#planWrap').classList.toggle('zoomed', PZ.k > 1); }
 function resetPlanZoom(){ PZ.k = 1; PZ.x = PZ.y = 0; applyPlanZoom(); }
 function zoomView(f){                                   // f < 1 확대, f > 1 축소
-  if (state.view === 'floor') { PZ.k = clamp(Math.round(PZ.k / f * 100) / 100, 1, 4); PZ.x /= f; PZ.y /= f; clampPan(); applyPlanZoom(); return; }
+  if (state.view === 'floor' && !plan3d) { PZ.k = clamp(Math.round(PZ.k / f * 100) / 100, 1, 4); PZ.x /= f; PZ.y /= f; clampPan(); applyPlanZoom(); return; }
   const tgt = controls.target.clone(), dir = camera.position.clone().sub(tgt), d = dir.length();
   const nd = clamp(d * f, controls.minDistance, controls.maxDistance); if (Math.abs(nd - d) < 1e-3) return;
   flyTo(tgt.clone().add(dir.setLength(nd)), tgt, 320);
@@ -3297,7 +3302,8 @@ function syncHost(m){
   // 대시보드가 다른 건물을 고르면 그 건물로 다시 열기
   if (m.building && BUILDING_ID && m.building !== BUILDING_ID) { const p = new URLSearchParams(location.search); p.set('building', m.building); p.delete('data'); location.replace('?' + p); return; }
   const first = !HOST.on;
-  if (first) { HOST.on = true; HOST.since = performance.now(); document.body.classList.add('hosted'); if (state.persona === 'sim') setPersona('owner', true); }
+  if (first) { HOST.on = true; HOST.since = performance.now(); document.body.classList.add('hosted'); if (state.persona === 'sim') setPersona('owner', true);
+    document.body.append($('#viewTools')); }   // 숨겨지는 상단 바 밖으로 (돋보기·전체화면 유지)
   const fresh = m.data?.rooms?.length && m.data.time !== HOST.dataAt;
   if (fresh) { HOST.dataAt = m.data.time; LIVE.external = true; ingest(hostSnapshot(m.data)); }
   // 데이터 반영 후 보고: 첫 시뮬레이션 보고부터 실측 여부(hasLive)가 맞게 전달됨
