@@ -39,7 +39,7 @@ AWS 자격 증명은 `aws configure --profile maestro`로 입력하십시오. �
 ```bash
 python3 -m unittest ml/test_synth.py        # Pillow 필요
 ml/sagemaker.sh setup                       # 1회: S3 버킷 sagemaker-maestro-<계정>, IAM 역할 maestro-sagemaker
-ml/sagemaker.sh data                        # CubiCasa5K 내려받기와 합성(ml.c5.4xlarge), 출력 s3://<버킷>/data/hvac-yolo
+ml/sagemaker.sh data                        # CubiCasa5K 합성(ml.c5.4xlarge), 출력 s3://<버킷>/data/<DATASET>. 원본은 첫 실행 때 data/src/에 보관
 ml/sagemaker.sh train smoke                 # 환경 점검: 1 에포크, 학습 데이터 5%
 ml/sagemaker.sh train                       # 본 학습: 최대 60 에포크, 최대 4시간
 ml/sagemaker.sh register <학습 작업 이름>     # Model Registry 그룹 hvac-symbol-detector에 승인 대기로 등록

@@ -9,8 +9,8 @@ import glob
 import json
 import os
 
-import yaml
 from ultralytics import YOLO
+from ultralytics.utils import YAML  # ultralytics 8.4는 PyYAML 없이 자체 YAML 사용
 
 ap = argparse.ArgumentParser()
 ap.add_argument('--data', default=os.environ.get('SM_CHANNEL_TRAIN', 'data'))
@@ -25,7 +25,7 @@ ap.add_argument('--fraction', type=float, default=1.0)
 a = ap.parse_args()
 
 data = os.path.join(a.data, 'data.yaml')
-names = yaml.safe_load(open(data))['names']
+names = YAML.load(data)['names']
 real_test = a.real and sorted(glob.glob(os.path.join(a.real, 'images', 'test', '*.png')))
 if a.real:
     # 이미지 목록 파일: 라벨은 경로의 /images/를 /labels/로 바꿔 찾음
@@ -36,9 +36,8 @@ if a.real:
     with open(os.path.join(work, 'train.txt'), 'w') as f:
         f.write('\n'.join(sorted(glob.glob(os.path.join(root, 'images', 'train', '*.png'))) + real_train * a.real_repeat) + '\n')
     data = os.path.join(work, 'data.yaml')
-    with open(data, 'w') as f:
-        yaml.safe_dump({'train': os.path.join(work, 'train.txt'), 'val': os.path.join(root, 'images', 'val'),
-                        'test': os.path.join(root, 'images', 'test'), 'names': names}, f, allow_unicode=True)
+    YAML.save(data, {'train': os.path.join(work, 'train.txt'), 'val': os.path.join(root, 'images', 'val'),
+                     'test': os.path.join(root, 'images', 'test'), 'names': names})
     print(f'real train tiles {len(real_train)} x{a.real_repeat}, real test tiles {len(real_test)}')
 
 model = YOLO(a.model)
@@ -57,9 +56,8 @@ result = score(model.val(data=data, split='test', imgsz=a.imgsz, project=a.out, 
 if real_test:
     # 실제 도면 테스트 타일: 학습에 쓰지 않은 건물
     real_yaml = os.path.join(a.out, 'lists', 'real.yaml')
-    with open(real_yaml, 'w') as f:
-        t = os.path.join(os.path.abspath(a.real), 'images', 'test')
-        yaml.safe_dump({'train': t, 'val': t, 'names': names}, f, allow_unicode=True)  # ultralytics는 train 키 필수
+    t = os.path.join(os.path.abspath(a.real), 'images', 'test')
+    YAML.save(real_yaml, {'train': t, 'val': t, 'names': names})  # ultralytics는 train 키 필수
     result['real'] = score(model.val(data=real_yaml, split='val', imgsz=a.imgsz, project=a.out, name='real', exist_ok=True))
 with open(os.path.join(a.out, 'test_metrics.json'), 'w') as f:
     json.dump(result, f, ensure_ascii=False, indent=1)

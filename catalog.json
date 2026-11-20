@@ -303,6 +303,12 @@
       "type": "reference"
     },
     {
+      "path": "docs/human/reference/plan-storage.md",
+      "title": "도면 저장 규약",
+      "audience": "human",
+      "type": "reference"
+    },
+    {
       "path": "docs/human/reference/requirements.md",
       "title": "요구사항: 기능 21개, 비기능 8개",
       "audience": "human",

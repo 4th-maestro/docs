@@ -15,6 +15,7 @@ import statistics
 import urllib.request
 import xml.etree.ElementTree as ET
 import zipfile
+from concurrent.futures import ThreadPoolExecutor
 from multiprocessing import Pool
 
 from PIL import Image, ImageDraw, ImageFont
@@ -362,6 +363,37 @@ def make(job):
         return split, [], f'{folder}: {e!r}'
 
 
+def fetch(url, path, parts=16):
+    """구간 요청 병렬 다운로드. Zenodo는 연결 1개당 속도가 제한되어 단일 연결로 5.5GB가 60분을 넘김(2026-11-20)."""
+    r = urllib.request.urlopen(urllib.request.Request(url, headers={'Range': 'bytes=0-0'}), timeout=60)
+    size = int(r.headers['Content-Range'].split('/')[1])
+    with open(path, 'wb') as f:
+        f.truncate(size)
+    step = -(-size // parts)
+
+    def part(i):
+        a, b = i * step, min(size, (i + 1) * step) - 1
+        for attempt in range(5):
+            try:
+                res = urllib.request.urlopen(urllib.request.Request(url, headers={'Range': f'bytes={a}-{b}'}), timeout=120)
+                pos = a
+                with open(path, 'r+b') as f:
+                    f.seek(a)
+                    while chunk := res.read(1 << 20):
+                        f.write(chunk)
+                        pos += len(chunk)
+                if pos == b + 1:
+                    return
+                raise IOError(f'part {i}: {pos - a}/{b - a + 1} bytes')
+            except Exception:
+                if attempt == 4:
+                    raise
+
+    with ThreadPoolExecutor(parts) as ex:
+        list(ex.map(part, range(parts)))
+    return path
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('src')
@@ -369,11 +401,14 @@ def main():
     ap.add_argument('--limit', type=int, default=0, help='분할마다 앞에서 N장만 처리(점검용)')
     ap.add_argument('--seed', type=int, default=0)
     a = ap.parse_args()
-    src, work = a.src, os.path.join(os.path.dirname(os.path.abspath(a.out)), 'cubicasa_src')
+    base = os.path.dirname(os.path.abspath(a.out))
+    src, work = a.src, os.path.join(base, 'cubicasa_src')
     if src.startswith('http'):
-        os.makedirs(work, exist_ok=True)
+        # src_cache에는 압축 파일만 저장. 처리 작업이 이 폴더를 S3에 보관(sagemaker.sh data)
+        cache = os.path.join(base, 'src_cache')
+        os.makedirs(cache, exist_ok=True)
         print('download', src, flush=True)
-        src, _ = urllib.request.urlretrieve(src, os.path.join(work, 'cubicasa5k.zip'))
+        src = fetch(src, os.path.join(cache, 'cubicasa5k.zip'))
     if src.endswith('.zip'):
         print('extract', src, flush=True)
         zipfile.ZipFile(src).extractall(work)

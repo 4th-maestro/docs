@@ -31,16 +31,25 @@ setup)
   echo "bucket=$BUCKET role=$ROLE_ARN" ;;
 data)
   # CubiCasa5K 내려받기와 기호 합성을 CPU 처리 작업 1회로 실행, 결과는 $DATA
+  # 원본 압축 파일(5.5GB)은 첫 실행 때 s3://$BUCKET/data/src/에 보관하고 이후에는 S3에서 읽음
   JOB=hvac-synth-$TS
   aws s3 cp synth.py "s3://$BUCKET/code/$JOB/synth.py" >/dev/null
+  ZIP=s3://$BUCKET/data/src/cubicasa5k.zip
+  if aws s3 ls "$ZIP" >/dev/null 2>&1; then
+    SRC=/opt/ml/processing/input/src/cubicasa5k.zip OUT=''
+    IN=", {\"InputName\": \"src\", \"S3Input\": {\"S3Uri\": \"$ZIP\", \"LocalPath\": \"/opt/ml/processing/input/src\", \"S3DataType\": \"S3Prefix\", \"S3InputMode\": \"File\"}}"
+  else
+    SRC=$SRC_URL IN=''
+    OUT=", {\"OutputName\": \"src\", \"S3Output\": {\"S3Uri\": \"s3://$BUCKET/data/src\", \"LocalPath\": \"/opt/ml/processing/src_cache\", \"S3UploadMode\": \"EndOfJob\"}}"
+  fi
   aws sagemaker create-processing-job --cli-input-json "$(cat <<EOF
 {"ProcessingJobName": "$JOB", "RoleArn": "$ROLE_ARN",
  "AppSpecification": {"ImageUri": "$CPU_IMAGE",
-   "ContainerEntrypoint": ["python3", "/opt/ml/processing/input/code/synth.py", "$SRC_URL", "/opt/ml/processing/output"]},
- "ProcessingInputs": [{"InputName": "code", "S3Input": {"S3Uri": "s3://$BUCKET/code/$JOB/", "LocalPath": "/opt/ml/processing/input/code", "S3DataType": "S3Prefix", "S3InputMode": "File"}}],
- "ProcessingOutputConfig": {"Outputs": [{"OutputName": "dataset", "S3Output": {"S3Uri": "$DATA", "LocalPath": "/opt/ml/processing/output", "S3UploadMode": "EndOfJob"}}]},
+   "ContainerEntrypoint": ["python3", "/opt/ml/processing/input/code/synth.py", "$SRC", "/opt/ml/processing/output"]},
+ "ProcessingInputs": [{"InputName": "code", "S3Input": {"S3Uri": "s3://$BUCKET/code/$JOB/", "LocalPath": "/opt/ml/processing/input/code", "S3DataType": "S3Prefix", "S3InputMode": "File"}}$IN],
+ "ProcessingOutputConfig": {"Outputs": [{"OutputName": "dataset", "S3Output": {"S3Uri": "$DATA", "LocalPath": "/opt/ml/processing/output", "S3UploadMode": "EndOfJob"}}$OUT]},
  "ProcessingResources": {"ClusterConfig": {"InstanceCount": 1, "InstanceType": "ml.c5.4xlarge", "VolumeSizeInGB": 40}},
- "StoppingCondition": {"MaxRuntimeInSeconds": 3600}}
+ "StoppingCondition": {"MaxRuntimeInSeconds": 7200}}
 EOF
 )" >/dev/null
   echo "$JOB" ;;
