@@ -32,10 +32,7 @@
 .edit-alignment-guide { stroke: var(--caution); stroke-width: 1.5; stroke-dasharray: 5 4; vector-effect: non-scaling-stroke; pointer-events: none; }
 .edit-anchor { fill: var(--edit-line); pointer-events: none; }
 .edit-preview.erase { stroke: var(--danger); }
-.edit-partition, .edit-unit { vector-effect: non-scaling-stroke; }
-.edit-partition { stroke: var(--ink); stroke-width: 2.5; pointer-events: none; }
-.edit-unit { fill: var(--edit-line); stroke: var(--canvas); stroke-width: 1.5; }
-.edit-plan.ac-remove .edit-unit { cursor: pointer; }
+.edit-partition { stroke: var(--ink); stroke-width: 2.5; vector-effect: non-scaling-stroke; pointer-events: none; }
 .edit-ac-capacity { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; font-size: 15px; color: var(--muted); }
 .edit-ac-capacity input, .edit-foot input { height: 44px; padding: 0 12px; color: var(--ink); background: var(--canvas); border: 1px solid var(--border-strong); border-radius: var(--r-sm); font: inherit; font-size: 16px; }
 .edit-ac-capacity input { width: 96px; }

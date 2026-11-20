@@ -190,6 +190,7 @@
 import * as P from './pipeline/pipeline-core.js';
 import * as EP from './pipeline/energyplus.js';
 import { detectPlanCorners, validCorners, floorNumber, occupiedFloorIds, expandFloorGroups, floorResultFor } from './pipeline/plan-upload.js';
+import { askDetect, detectRes, onPlans } from './pipeline/host-bridge.js';
 
 /* ───────── 상태: 레시피(사람이 한 모든 결정) + 이미지 ───────── */
 const newFloor = id => ({ id, image:null, corners:null, mode:'auto', params:{ dark:40, sat:70, close:1, minArea:3.5 }, ops:[] });
@@ -731,7 +732,7 @@ $('#side').addEventListener('click', e => {
   if (t.id === 'addAc') pickFiles(n => { n.forEach(file => R.acPhotos.push({ file, room:'', marks:[] })); photoSel = n[0]; tool = '4WAY'; renderSide(); draw(); });
   if (t.id === 'delPhoto') { for (const L of [R.interior, R.acPhotos]) { const i = L.findIndex(x => x.file === photoSel); if (i >= 0) L.splice(i, 1); } photoSel = null; renderSteps(); renderSide(); draw(); }
   // 대시보드의 '건물 추가'에서 열렸으면 만든 도면을 대시보드로 보냄 → 대시보드가 저장하고 그때부터 데이터 생성
-  if (t.id === 'openTwin' && window.parent !== window) { window.parent.postMessage({ source:'twin', type:'buildingRendered', building:OUT.json }, '*'); return; }
+  if (t.id === 'openTwin' && window.parent !== window) { sendBuiltModel(); return; }
   if (t.id === 'openTwin') { try { sessionStorage.setItem('twin:building', JSON.stringify(OUT.json)); } catch {} window.open('digital-twin.html', '_blank'); }
   if (t.id === 'dlBuilding') download('building.json', OUT.json);
   if (t.id === 'dlRecipe') download(`recipe-${R.id}.json`, cleanRecipe());
@@ -894,10 +895,33 @@ async function estimatePhotoTone(files, exterior) {
   return { color, unreadable };
 }
 
+// 기호 인식 결과(호스트 detect=1): 층 id → {background, detections}, 결과 전송 때 층에 붙임(좌표 변환, 호실 배정은 호스트)
+let DETECT = {}, DETECT_WARN = [];
+function withDetections(json) {
+  if (!Object.keys(DETECT).length) return json;
+  return { ...json, floors:json.floors.map(f => ({ ...f, ...DETECT[f.id] })), meta:{ ...json.meta, ingest:{ kind:'image', createdAt:new Date().toISOString(), warnings:DETECT_WARN } } };
+}
+async function detectFloors(status) {
+  DETECT = {}; DETECT_WARN = [];
+  if (batchQuery.get('detect') !== '1' || window.parent === window) return;
+  const W = R.building.size.w, D = R.building.size.d;
+  for (const floor of R.floors) {
+    const img = IMG.get(floor.image)?.data; if (!img || !floor.corners || !RECT.get(floor.id)?.rect) continue;
+    status.textContent = floorLabel(floor) + ' 실내기 기호 인식 중…';
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+    // 인식용 보정 이미지: 원본 이미지에서 최대 80px/m로 다시 보정(화면·벽 검출용 20px/m 보정 이미지는 그대로)
+    const pxPerM = detectRes(floor.corners, W, D, P.MARGIN), rect = P.rectify(img, floor.corners, W, D, pxPerM);
+    const ids = occupiedFloorIds(floor), res = await askDetect(ids, rect, pxPerM);
+    if (res.error) DETECT_WARN.push(floorLabel(floor) + ' 실내기 기호 인식 생략: ' + res.error);
+    // 보정 이미지 픽셀 (u, v) → 평면 m: x = u / pxPerM − MARGIN (rectify가 픽셀 i 중심을 (i + 0.5) / pxPerM − MARGIN에 둠)
+    const background = { ...(res.key ? { key:res.key } : {}), px:[rect.width, rect.height], toPlan:[1 / pxPerM, 0, -P.MARGIN, 0, 1 / pxPerM, -P.MARGIN] };
+    for (const id of ids) DETECT[id] = { background, detections:res.detections || [] };
+  }
+}
 function sendBuiltModel() {
   if (window.parent !== window) {
     const origin = document.referrer ? new URL(document.referrer).origin : location.origin;
-    window.parent.postMessage({ source:'twin', type:'buildingRendered', building:OUT.json }, origin);
+    window.parent.postMessage({ source:'twin', type:'buildingRendered', building:withDetections(OUT.json) }, origin);
     return;
   }
   sessionStorage.setItem('twin:building', JSON.stringify(OUT.json));
@@ -1016,6 +1040,7 @@ async function runBatch(event) {
       if (!found) floor.note = '닫힌 공간을 인식하지 못해 층 윤곽만 표시합니다.';
       else if (missing.includes(floor.id)) floor.note = '모서리 검출이 불확실해 이미지 전체를 사용했습니다. 공간과 설비는 추정값입니다.';
     }
+    await detectFloors(status);
     if (missing.length) next.building.assumed.push('모서리가 뚜렷하지 않아 이미지 전체를 사용한 평면도: ' + missing.join(', '));
     if (outside.unreadable + inside.unreadable) next.building.assumed.push('참고 사진 중 열 수 없는 파일 ' + (outside.unreadable + inside.unreadable) + '장 제외.');
     computeAll();
@@ -1041,6 +1066,13 @@ $('#advanced').onclick = () => { R.building.name = $('#batchName').value.trim() 
 batch.addEventListener('submit', runBatch);
 addBatchFloor();
 if (batchQuery.get('quick') === '1') showQuick(true);
+// 호스트가 넣은 평면도 이미지(이미지 파일, PDF 렌더링 페이지): 파일마다 층 행 1개(1F부터)
+onPlans(files => {
+  if (!files.length) return;
+  $('#batchFloors').replaceChildren();
+  for (const file of files) { const dt = new DataTransfer(); dt.items.add(file); addBatchFloor().querySelector('.batch-plan').files = dt.files; }
+  $('#batchStatus').textContent = '평면도 ' + files.length + '장을 넣었습니다. 층 번호를 확인하고 3D 트윈 만들기를 누르십시오.';
+});
 
 window.PIPE = { get recipe(){ return R; }, get out(){ return OUT; }, openRecipe, computeAll, sha, pinRoomIdus, unitsOf };
 

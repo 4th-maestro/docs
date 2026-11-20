@@ -2,6 +2,10 @@ AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: Maestro 건물 운영 디지털트윈 API와 웹 호스팅
 
+Metadata:
+  AWSToolsMetrics:
+    AWSAgentToolkit: aws-cloudformation@3
+
 Parameters:
   ModelId:
     Type: String
@@ -21,8 +25,8 @@ Parameters:
 
 Globals:
   Function:
-    Runtime: python3.12
-    Architectures: [arm64]
+    # Runtime은 zip 함수마다 지정: Globals에 두면 이미지 함수(IngestFunction)도 Runtime을 받아 SAM 변환 오류
+    # Architectures도 함수마다 지정: Globals 목록은 함수 값과 합쳐져 IngestFunction(x86_64)이 2개 값이 됨
     CodeUri: src/
     # CPU는 메모리에 비례(1,769MB에서 vCPU 1개). 512MB(약 0.3 vCPU)는 첫 호출 2.6~2.9초(2026-11-20 실측)
     MemorySize: 1024
@@ -118,6 +122,15 @@ Resources:
       AttributeDefinitions: [{AttributeName: companyId, AttributeType: S}, {AttributeName: at, AttributeType: S}]
       KeySchema: [{AttributeName: companyId, KeyType: HASH}, {AttributeName: at, KeyType: RANGE}]
 
+  # 도면 변환 작업(plan_ingest.py, 상태 머신): 상태, 단계, 파일, 초안 키, 오류. 7일 뒤 ttl로 자동 삭제
+  PlanJobsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions: [{AttributeName: jobId, AttributeType: S}]
+      KeySchema: [{AttributeName: jobId, KeyType: HASH}]
+      TimeToLiveSpecification: {AttributeName: ttl, Enabled: true}
+
   # 운영자 계정: 기업 코드로 자체 가입(가입 전 검사), 이메일 인증 코드 확인 후 구성원 등록(가입 확인 트리거), 비밀번호 재설정은 인증된 이메일
   # - 메일 발송: Cognito 기본 메일(하루 50통, 발신 no-reply@verificationemail.com)
   # - 이름 Maestro 유지: 사용자 풀 이름 변경은 재생성(기존 계정 삭제)
@@ -166,7 +179,9 @@ Resources:
   PreSignUpFunction:
     Type: AWS::Serverless::Function
     Properties:
+      Architectures: [arm64]
       Handler: signup.handler
+      Runtime: python3.12
       Policies:
         - DynamoDBReadPolicy: {TableName: !Ref CompaniesTable}
         - DynamoDBWritePolicy: {TableName: !Ref MembersTable}
@@ -183,7 +198,9 @@ Resources:
   PostConfirmationFunction:
     Type: AWS::Serverless::Function
     Properties:
+      Architectures: [arm64]
       Handler: confirm.handler
+      Runtime: python3.12
       Policies:
         - DynamoDBCrudPolicy: {TableName: !Ref MembersTable}
         - DynamoDBWritePolicy: {TableName: !Ref AuditTable}
@@ -199,7 +216,9 @@ Resources:
   WsAuthorizerFunction:
     Type: AWS::Serverless::Function
     Properties:
+      Architectures: [arm64]
       Handler: auth.handler
+      Runtime: python3.12
       Environment:
         Variables: {USER_POOL_ID: !Ref UserPool, USER_POOL_CLIENT_ID: !Ref UserPoolClient}
 
@@ -226,8 +245,14 @@ Resources:
   # - 판매사 건물 관리(admin.py): 트윈 테이블 Buildings·Rooms·Equipment·State 쓰기·삭제, 도면 버킷 plans/ 읽기·쓰기·삭제
   ApiFunction:
     Type: AWS::Serverless::Function
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: Shared API includes plan confirmation using the existing building registration validation.
+        must: Plan confirmation requires the existing JWT authorizer and admin group; preserve existing routes and storage.
     Properties:
+      Architectures: [arm64]
       Handler: api.handler
+      Runtime: python3.12
       MemorySize: 1769
       Timeout: 29
       Environment:
@@ -236,6 +261,8 @@ Resources:
           PLANS_BUCKET: !Ref PlansBucket
           EQUIPMENT_TABLE: !Sub '${TwinPrefix}-Equipment'
           STATE_TABLE: !Sub '${TwinPrefix}-State'
+          PLAN_JOBS_TABLE: !Ref PlanJobsTable
+          PLAN_STATE_MACHINE: !Ref PlanStateMachine
       Policies:
         - DynamoDBCrudPolicy: {TableName: !Sub '${TwinPrefix}-Buildings'}
         - DynamoDBCrudPolicy: {TableName: !Sub '${TwinPrefix}-Rooms'}
@@ -247,6 +274,16 @@ Resources:
         - DynamoDBCrudPolicy: {TableName: !Ref MembersTable}
         - DynamoDBCrudPolicy: {TableName: !Ref BuildingOwnersTable}
         - DynamoDBCrudPolicy: {TableName: !Ref AuditTable}
+        # 도면 변환 작업(plan_ingest.py): 작업 기록, 상태 머신 시작, 업로드 PUT(uploads/)·초안과 도면 이미지 GET(jobs/) 사전 서명
+        - DynamoDBCrudPolicy: {TableName: !Ref PlanJobsTable}
+        - StepFunctionsExecutionPolicy: {StateMachineName: !GetAtt PlanStateMachine.Name}
+        - Statement:
+            - Effect: Allow
+              Action: s3:PutObject
+              Resource: !Sub '${PlansBucket.Arn}/uploads/*'
+            - Effect: Allow
+              Action: s3:GetObject
+              Resource: !Sub '${PlansBucket.Arn}/jobs/*'
         - Statement:
             - Effect: Allow
               Action: [cognito-idp:ListUsers, cognito-idp:ListUsersInGroup]
@@ -302,11 +339,19 @@ Resources:
         RemoveMember: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: '/company/members/{sub}', Method: DELETE}}
         MyCompanyAudit: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /company/audit, Method: GET}}
         UpdateBuilding: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: '/buildings/{id}', Method: PATCH}}
+        # 도면 변환(plan_ingest.py, admin 전용): 작업 생성·시작, 인식 전용 작업, 상태 조회
+        CreatePlanJob: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /plans/jobs, Method: POST}}
+        StartPlanJob: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: '/plans/jobs/{jobId}/start', Method: POST}}
+        DetectPlan: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /plans/detect, Method: POST}}
+        GetPlanJob: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: '/plans/jobs/{jobId}', Method: GET}}
+        ConfirmPlanJob: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: '/plans/jobs/{jobId}/confirm', Method: POST}}
 
   QueryFunction:
     Type: AWS::Serverless::Function
     Properties:
+      Architectures: [arm64]
       Handler: query.handler
+      Runtime: python3.12
       Timeout: 30
       Environment:
         Variables: {MODEL_ID: !Ref ModelId, BEDROCK_REGION: !Ref BedrockRegion, KB_ID: !Ref KnowledgeBase}
@@ -390,7 +435,9 @@ Resources:
   WsFunction:
     Type: AWS::Serverless::Function
     Properties:
+      Architectures: [arm64]
       Handler: ws.handler
+      Runtime: python3.12
       # 통합 응답 대기는 29초에서 끊기지만 함수는 계속 실행되어 이벤트 전송, 화면 제한 45초보다 길게 설정
       Timeout: 60
       Environment:
@@ -502,6 +549,85 @@ Resources:
         BlockPublicPolicy: true
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
+      # 브라우저가 사전 서명 URL로 직접 업로드(PUT)하고 초안·도면 이미지를 조회(GET). 허용 출처는 HTTP API와 같음
+      CorsConfiguration:
+        CorsRules:
+          - {AllowedOrigins: [!Ref AllowedOrigin], AllowedMethods: [PUT, GET], AllowedHeaders: ['*']}
+      # 변환 업로드·초안은 작업 기록(PlanJobs ttl)과 같이 7일 뒤 삭제. 건물 삭제는 plans/만 지우므로 수명 주기로 정리, plans/는 대상 아님
+      LifecycleConfiguration:
+        Rules:
+          - {Id: expire-uploads, Status: Enabled, Prefix: uploads/, ExpirationInDays: 7}
+          - {Id: expire-jobs, Status: Enabled, Prefix: jobs/, ExpirationInDays: 7}
+
+  # 도면 파서(ingest/, 컨테이너 이미지, app.handler): op parse(형식별 초안·도면 이미지 생성), op merge(인식 결과 병합)
+  # - 이미지 빌드는 Docker 필요(sam build), 배포는 --resolve-image-repos
+  # - 아키텍처 x86_64: ifcopenshell 0.9.0 aarch64 바이너리는 GLIBC 2.38 필요, Lambda python:3.12 이미지는 2.34(2026-11-20 배포 후 import 실패)
+  # - 권한: 업로드 읽기(uploads/), 초안·도면 이미지 읽기·쓰기(jobs/)
+  IngestFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      PackageType: Image
+      Architectures: [x86_64]
+      MemorySize: 3008
+      Timeout: 900
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: s3:GetObject
+              Resource: [!Sub '${PlansBucket.Arn}/uploads/*', !Sub '${PlansBucket.Arn}/jobs/*']
+            - Effect: Allow
+              Action: s3:PutObject
+              Resource: !Sub '${PlansBucket.Arn}/jobs/*'
+    Metadata: {Dockerfile: Dockerfile, DockerContext: ./ingest, DockerTag: python3.12}
+
+  # Pillow: 인식 함수만 사용하므로 공용 패키지(src/requirements.txt) 대신 계층으로 분리
+  PillowLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      ContentUri: layers/pillow/
+      CompatibleRuntimes: [python3.12]
+      CompatibleArchitectures: [arm64]
+    Metadata: {BuildMethod: python3.12, BuildArchitecture: arm64}
+
+  # 실내기 기호 인식(detect.py): 도면 이미지를 타일로 나눠 Serverless Endpoint 호출. Endpoint(ml/serve/)가 먼저 있어야 함
+  # - 권한: 도면 이미지 읽기(jobs/, 인식 전용 작업은 uploads/), Endpoint 호출
+  DetectFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Architectures: [arm64]
+      Handler: detect.handler
+      Runtime: python3.12
+      Timeout: 600
+      Layers: [!Ref PillowLayer]
+      Environment:
+        Variables: {PLANS_BUCKET: !Ref PlansBucket, DETECT_ENDPOINT: hvac-symbol-detector-sls}
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: s3:GetObject
+              Resource: [!Sub '${PlansBucket.Arn}/uploads/*', !Sub '${PlansBucket.Arn}/jobs/*']
+            - Effect: Allow
+              Action: sagemaker:InvokeEndpoint
+              Resource: !Sub arn:aws:sagemaker:${AWS::Region}:${AWS::AccountId}:endpoint/hvac-symbol-detector-sls
+
+  # 도면 변환 상태 머신(statemachine/plan.asl.json, Standard): Parse → Detect(층별, 동시 2) → Merge → SaveDraft, 오류는 MarkFailed
+  # - 인식 전용 작업(입력 detect)은 Parse·Merge 생략, 인식 결과를 jobs/<작업>/draft.json에 저장
+  PlanStateMachine:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      DefinitionUri: statemachine/plan.asl.json
+      DefinitionSubstitutions:
+        IngestFunctionArn: !GetAtt IngestFunction.Arn
+        DetectFunctionArn: !GetAtt DetectFunction.Arn
+        PlanJobsTable: !Ref PlanJobsTable
+      Policies:
+        - LambdaInvokePolicy: {FunctionName: !Ref IngestFunction}
+        - LambdaInvokePolicy: {FunctionName: !Ref DetectFunction}
+        - DynamoDBWritePolicy: {TableName: !Ref PlanJobsTable}
+        - Statement:
+            - Effect: Allow
+              Action: s3:PutObject
+              Resource: !Sub '${PlansBucket.Arn}/jobs/*'
 
   WebBucket:
     Type: AWS::S3::Bucket

@@ -1,0 +1,140 @@
+{
+  "Comment": "도면 변환(docs/human/reference/plan-ingest.md 4-2절): Parse, Detect, Merge, SaveDraft. 입력에 detect가 있으면 인식 전용(Parse, Merge 생략, 인식 결과를 초안 파일로 저장)",
+  "QueryLanguage": "JSONata",
+  "StartAt": "Init",
+  "States": {
+    "Init": {
+      "Type": "Pass",
+      "Assign": {
+        "job": "{% $states.input %}",
+        "detect": "{% $exists($states.input.detect) ? $states.input.detect : [] %}",
+        "detected": [],
+        "draftKey": "{% 'jobs/' & $states.input.jobId & '/draft.json' %}"
+      },
+      "Next": "Route"
+    },
+    "Route": {
+      "Type": "Choice",
+      "Choices": [{"Condition": "{% $exists($job.detect) %}", "Next": "Detect"}],
+      "Default": "Parse"
+    },
+    "Parse": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Arguments": {"FunctionName": "${IngestFunctionArn}", "Payload": "{% $merge([$job, {'op': 'parse'}]) %}"},
+      "Assign": {"detect": "{% $states.result.Payload.detect %}", "draftKey": "{% $states.result.Payload.draftKey %}"},
+      "Retry": [{"ErrorEquals": ["Lambda.ServiceException", "Lambda.AWSLambdaException", "Lambda.SdkClientException", "Lambda.TooManyRequestsException"], "IntervalSeconds": 2, "MaxAttempts": 3, "BackoffRate": 2}],
+      "Catch": [{"ErrorEquals": ["States.ALL"], "Assign": {"err": "{% $states.errorOutput %}"}, "Next": "MarkFailed"}],
+      "Next": "NeedDetect"
+    },
+    "NeedDetect": {
+      "Type": "Choice",
+      "Choices": [{"Condition": "{% $count($detect) > 0 %}", "Next": "StepDetect"}],
+      "Default": "StepMerge"
+    },
+    "StepDetect": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::dynamodb:updateItem",
+      "Arguments": {
+        "TableName": "${PlanJobsTable}",
+        "Key": {"jobId": {"S": "{% $job.jobId %}"}},
+        "UpdateExpression": "SET #step = :step",
+        "ExpressionAttributeNames": {"#step": "step"},
+        "ExpressionAttributeValues": {":step": {"S": "detect"}}
+      },
+      "Catch": [{"ErrorEquals": ["States.ALL"], "Assign": {"err": "{% $states.errorOutput %}"}, "Next": "MarkFailed"}],
+      "Next": "Detect"
+    },
+    "Detect": {
+      "Type": "Map",
+      "Items": "{% $detect %}",
+      "MaxConcurrency": 2,
+      "ItemProcessor": {
+        "ProcessorConfig": {"Mode": "INLINE"},
+        "StartAt": "DetectFloor",
+        "States": {
+          "DetectFloor": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::lambda:invoke",
+            "Arguments": {"FunctionName": "${DetectFunctionArn}", "Payload": "{% $states.input %}"},
+            "Output": "{% $states.result.Payload %}",
+            "Retry": [{"ErrorEquals": ["Lambda.ServiceException", "Lambda.AWSLambdaException", "Lambda.SdkClientException", "Lambda.TooManyRequestsException"], "IntervalSeconds": 2, "MaxAttempts": 3, "BackoffRate": 2}],
+            "End": true
+          }
+        }
+      },
+      "Assign": {"detected": "{% $states.result %}"},
+      "Catch": [{"ErrorEquals": ["States.ALL"], "Assign": {"err": "{% $states.errorOutput %}"}, "Next": "MarkFailed"}],
+      "Next": "AfterDetect"
+    },
+    "AfterDetect": {
+      "Type": "Choice",
+      "Choices": [{"Condition": "{% $exists($job.detect) %}", "Next": "SaveDetections"}],
+      "Default": "StepMerge"
+    },
+    "SaveDetections": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::aws-sdk:s3:putObject",
+      "Arguments": {"Bucket": "{% $job.bucket %}", "Key": "{% $draftKey %}", "Body": "{% $string($detected[0]) %}", "ContentType": "application/json"},
+      "Catch": [{"ErrorEquals": ["States.ALL"], "Assign": {"err": "{% $states.errorOutput %}"}, "Next": "MarkFailed"}],
+      "Next": "SaveDraft"
+    },
+    "StepMerge": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::dynamodb:updateItem",
+      "Arguments": {
+        "TableName": "${PlanJobsTable}",
+        "Key": {"jobId": {"S": "{% $job.jobId %}"}},
+        "UpdateExpression": "SET #step = :step",
+        "ExpressionAttributeNames": {"#step": "step"},
+        "ExpressionAttributeValues": {":step": {"S": "merge"}}
+      },
+      "Catch": [{"ErrorEquals": ["States.ALL"], "Assign": {"err": "{% $states.errorOutput %}"}, "Next": "MarkFailed"}],
+      "Next": "Merge"
+    },
+    "Merge": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Arguments": {
+        "FunctionName": "${IngestFunctionArn}",
+        "Payload": {
+          "op": "merge",
+          "jobId": "{% $job.jobId %}",
+          "bucket": "{% $job.bucket %}",
+          "draftKey": "{% $draftKey %}",
+          "detections": "{% $merge([{}, $detected.{floor: detections}]) %}"
+        }
+      },
+      "Assign": {"draftKey": "{% $states.result.Payload.draftKey %}"},
+      "Retry": [{"ErrorEquals": ["Lambda.ServiceException", "Lambda.AWSLambdaException", "Lambda.SdkClientException", "Lambda.TooManyRequestsException"], "IntervalSeconds": 2, "MaxAttempts": 3, "BackoffRate": 2}],
+      "Catch": [{"ErrorEquals": ["States.ALL"], "Assign": {"err": "{% $states.errorOutput %}"}, "Next": "MarkFailed"}],
+      "Next": "SaveDraft"
+    },
+    "SaveDraft": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::dynamodb:updateItem",
+      "Arguments": {
+        "TableName": "${PlanJobsTable}",
+        "Key": {"jobId": {"S": "{% $job.jobId %}"}},
+        "UpdateExpression": "SET #status = :status, #draftKey = :draftKey",
+        "ExpressionAttributeNames": {"#status": "status", "#draftKey": "draftKey"},
+        "ExpressionAttributeValues": {":status": {"S": "review"}, ":draftKey": {"S": "{% $draftKey %}"}}
+      },
+      "Catch": [{"ErrorEquals": ["States.ALL"], "Assign": {"err": "{% $states.errorOutput %}"}, "Next": "MarkFailed"}],
+      "End": true
+    },
+    "MarkFailed": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::dynamodb:updateItem",
+      "Arguments": {
+        "TableName": "${PlanJobsTable}",
+        "Key": {"jobId": {"S": "{% $job.jobId %}"}},
+        "UpdateExpression": "SET #status = :status, #error = :error",
+        "ExpressionAttributeNames": {"#status": "status", "#error": "error"},
+        "ExpressionAttributeValues": {":status": {"S": "failed"}, ":error": {"S": "{% $err.Cause ? $err.Cause : $err.Error %}"}}
+      },
+      "Next": "Failed"
+    },
+    "Failed": {"Type": "Fail", "Error": "PlanIngestFailed"}
+  }
+}

@@ -8,6 +8,7 @@
 
 | 날짜 | 문제 | 요약 |
 |---|---|---|
+| 2026-11-20 | [도면 변환 컨테이너 ifcopenshell GLIBC 불일치](2026-11-20%28%EB%8F%84%EB%A9%B4%20%EB%B3%80%ED%99%98%20%EC%BB%A8%ED%85%8C%EC%9D%B4%EB%84%88%20ifcopenshell%20GLIBC%20%EB%B6%88%EC%9D%BC%EC%B9%98%29.md) | ifcopenshell 0.9.0 aarch64 바이너리가 GLIBC 2.38 요구(Lambda 2.34), IngestFunction만 x86_64로 전환 |
 | 2026-11-20 | [새로고침 후 3D 도면 미표시](2026-11-20%28%EC%83%88%EB%A1%9C%EA%B3%A0%EC%B9%A8%20%ED%9B%84%203D%20%EB%8F%84%EB%A9%B4%20%EB%AF%B8%ED%91%9C%EC%8B%9C%29.md) | 트윈 PR이 층 초기값을 빈 값으로 변경, 트윈 화면이 없으면 첫 층으로 시작하도록 수정 |
 | 2026-11-20 | [AI 다중 턴 되묻기 요청 유실](2026-11-20%28AI%20%EB%8B%A4%EC%A4%91%20%ED%84%B4%20%EB%90%98%EB%AC%BB%EA%B8%B0%20%EC%9A%94%EC%B2%AD%20%EC%9C%A0%EC%8B%A4%29.md) | 프롬프트에 현재 시각 없음, 메모리 직전 1턴만 보관. 현재 시각 전달, 최근 10턴 메모리로 해결 |
 | 2026-11-20 | [Bedrock Sonnet 5.5 모델 ID 404](2026-11-20%28Bedrock%20Sonnet%205.5%20%EB%AA%A8%EB%8D%B8%20ID%20404%29.md) | Mantle의 Sonnet 5.5 미제공, bedrock-runtime global 추론 프로필로 전환 |

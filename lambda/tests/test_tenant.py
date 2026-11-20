@@ -623,6 +623,41 @@ class VendorBuildingTest(Tenancy):
     def rows(self, name, bid):
         return {k[1] for k in self.t[name].items if k[0] == bid}
 
+    def test_plan_job_confirmation_registers_and_replaces_with_existing_rules(self):
+        import plan_ingest
+        job = {'jobId': 'confirm-1', 'building': 'b-abcd1234', 'kind': 'ifc', 'status': 'review'}
+        def put(item, old=None):
+            if old and job['status'] != old:
+                return False
+            job.clear()
+            job.update(item)
+            return True
+        request = {'operation': 'create', 'companyId': 'co-a',
+                   'registration': {**NEW, **upload('b-abcd1234', 3)}}
+        def confirm(body):
+            return adm('POST /plans/jobs/{jobId}/confirm', path={'jobId': 'confirm-1'}, body=body)
+        with patch.object(plan_ingest, '_job', side_effect=lambda _: dict(job)), patch.object(plan_ingest, '_put', side_effect=put):
+            code, receipt = confirm(request)
+            self.assertEqual((code, receipt['status'], receipt['building']['roomCount']), (200, 'done', 3))
+            self.assertEqual(self.t['O'].items['b-abcd1234']['companyId'], 'co-a')
+            self.assertEqual(self.t['B'].items['b-abcd1234']['virtual'], False)
+            self.assertEqual(len(self.rows('R', 'b-abcd1234')), 3)
+            self.assertEqual(len(self.rows('E', 'b-abcd1234')), 3)
+            self.assertIn('plans/b-abcd1234/building.json', self.s3.objects)
+            self.assertIn('plans/b-abcd1234/current.json', self.s3.objects)
+            files = dict(self.s3.objects)
+            self.assertEqual(confirm(request), (code, receipt))
+            self.assertEqual(self.s3.objects, files)
+            self.assertEqual(len(self.audits('building.create')), 1)
+            # 새 변환 작업으로 기존 건물 보정본을 확정하면 기존 교체 규칙으로 호실·버전 갱신.
+            job.clear()
+            job.update(jobId='confirm-2', building='b-abcd1234', kind='ifc', status='review')
+            code, receipt = confirm({'operation': 'replace', 'registration': upload('b-abcd1234', 2)})
+            self.assertEqual((code, receipt['version'], job['status']), (200, 2, 'done'))
+            self.assertEqual(len(self.rows('R', 'b-abcd1234')), 2)
+            self.assertEqual(len(self.rows('E', 'b-abcd1234')), 2)
+            self.assertEqual(len(self.audits('building.plan')), 1)
+
     def test_create_with_id_visible_to_members(self):
         code, body = self.create(id='b-abcd1234', **upload('b-abcd1234', 3))
         self.assertEqual((code, body), (201, {'building': {'id': 'b-abcd1234', 'name': '새 건물', 'use': '업무', 'floors': ['1F', '2F'], 'roomCount': 3,

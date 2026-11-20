@@ -33,8 +33,9 @@ SIZE = {
     1: lambda r: (L := r.uniform(7, 10), L * r.uniform(0.35, 0.45)),
     2: lambda r: (r.uniform(6.5, 9), r.uniform(1.6, 2.4)),
     3: lambda r: (L := r.uniform(8, 12), L * r.uniform(0.4, 0.6)),
-    4: lambda r: (L := r.uniform(4, 5), L * r.uniform(0.6, 0.8)),
-    5: lambda r: (L := r.uniform(7, 10), L * r.uniform(0.45, 0.6)),
+    # 스탠드형·2방향 범위는 실제 도면(29kW 스탠드형 약 0.74×1.24m, 2방향 비율 0.73)에 맞춰 v3에서 넓힘(2026-11-20)
+    4: lambda r: (L := r.uniform(4, 11), L * r.uniform(0.5, 0.8)),
+    5: lambda r: (L := r.uniform(7, 10), L * r.uniform(0.45, 0.8)),
 }
 
 
@@ -228,7 +229,8 @@ def draw_kr(d, k, box, side, ink, w):
     W, H = x1 - x0, y1 - y0
     cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
     m = min(W, H)
-    d.rectangle(box, outline=ink, width=max(2, round(m * 0.07)))
+    # 실제 도면의 2방향·스탠드형은 테두리가 기호 폭의 약 13%로 굵음
+    d.rectangle(box, outline=ink, width=max(2, round(m * (0.13 if k in (4, 5) else 0.07))))
     if k == 0:
         # 이중 테두리와 중앙 채움 사각형
         i, f = m * 0.13, m * 0.3

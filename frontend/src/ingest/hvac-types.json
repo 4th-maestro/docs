@@ -1,0 +1,61 @@
+{
+ "basis": "검출 클래스(synth.py CLASSES 순서)별 LG Multi V 실내기 예시 모델과 매뉴얼. 해외 LG 자료 기준이며 국내 판매 모델명은 미확인",
+ "checked": "2026-11-20",
+ "types": [
+  {
+   "class": "cassette_4way",
+   "name": "천장형 4방향 카세트",
+   "lgTypeCode": "TR, TQ(4-Way Mini), TP, TM(Dual Vane)",
+   "exampleModel": "ARNU12GTRB4",
+   "modelSource": "https://www.lg.com/uk/business/hvac/commercial-solutions/vrf-system/multi-v-indoor-units/arnu12gtrb4/",
+   "manual": "https://media.us.lg.com/m/77225649a9784fbc/original/EM_MultiV_CeilingCassette_wTA_IndoorUnits-pdf.pdf",
+   "aliases": "4\\s*-?\\s*way|4\\s*방향|사방향|four[\\s-]*way|round\\s*flow|360"
+  },
+  {
+   "class": "cassette_1way",
+   "name": "천장형 1방향 카세트",
+   "lgTypeCode": "TU, TT",
+   "exampleModel": "ARNU07GTUA4",
+   "modelSource": "https://Manualslib.com/manual/2294675/Lg-Multi-V-Arnu07gtua4.html?page=9",
+   "manual": "https://media.us.lg.com/m/77225649a9784fbc/original/EM_MultiV_CeilingCassette_wTA_IndoorUnits-pdf.pdf",
+   "aliases": "1\\s*-?\\s*way|1\\s*방향|one[\\s-]*way|일방향"
+  },
+  {
+   "class": "wall_mounted",
+   "name": "벽걸이형",
+   "lgTypeCode": "SV(Standard), SJ(Art Cool Mirror)",
+   "exampleModel": "ARNU07GSJN4",
+   "modelSource": "https://lg.com/africa/business/vrf/lg-arnu07gsjn4",
+   "manual": "https://media.us.lg.com/m/2bfdebb2dbac7442/original/EM_MultiV_Wall_Mounted_IndoorUnits-pdf.pdf",
+   "aliases": "wall\\s*-?\\s*mount|벽걸이|high\\s*wall|\\bwmu?\\b"
+  },
+  {
+   "class": "ceiling_duct",
+   "name": "천장 매립 덕트형",
+   "lgTypeCode": "B8(고정압 덕트) 외 미확인",
+   "exampleModel": null,
+   "modelSource": null,
+   "manual": "https://media.us.lg.com/m/7134a43dfa1c5415/original/SM_MultiV_Ducted_IDU_MFL69041302rev-pdf.pdf",
+   "aliases": "duct|덕트|concealed|매립|ceiling\\s*hidden"
+  },
+  {
+   "class": "floor_standing",
+   "name": "스탠드형",
+   "lgTypeCode": "미확인",
+   "exampleModel": null,
+   "modelSource": null,
+   "manual": "https://media.us.lg.com/m/5e10b60c54bde5ac/original/EM_MultiV_FloorStanding_IndoorUnits-pdf.pdf",
+   "aliases": "stand|스탠드|floor\\s*-?\\s*stand|바닥\\s*설치|console"
+  },
+  {
+   "class": "cassette_2way",
+   "name": "천장형 2방향 카세트",
+   "lgTypeCode": "TS",
+   "exampleModel": "ARNU12GTSC4",
+   "modelSource": "https://www.lg.com/uk/business/hvac/commercial-solutions/vrf-system/multi-v-indoor-units/arnu12gtsc4/",
+   "manual": "https://www.lg.com/content/dam/channel/wcms/ph/business/download/airsolution/2021%29_CST2WAY_spec_20210928_161346565_.pdf",
+   "aliases": "2\\s*-?\\s*way|2\\s*방향|two[\\s-]*way|양방향"
+  }
+ ],
+ "aliasNote": "aliases: IFC 객체 이름·ObjectType, CAD 블록 이름·속성에 적용하는 정규식(대소문자 무시). 일반 카세트(방향 표기 없음)는 4방향으로 판정. 판정 규칙 원본은 docs/human/reference/plan-ingest.md 2절"
+}

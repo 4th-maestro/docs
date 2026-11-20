@@ -267,6 +267,12 @@
       "type": "explanation"
     },
     {
+      "path": "docs/human/explanation/troubleshooting/2026-11-20(도면 변환 컨테이너 ifcopenshell GLIBC 불일치).md",
+      "title": "도면 변환 컨테이너 ifcopenshell GLIBC 불일치",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
       "path": "docs/human/explanation/troubleshooting/2026-11-20(새로고침 후 3D 도면 미표시).md",
       "title": "새로고침 후 3D 도면 미표시",
       "audience": "human",

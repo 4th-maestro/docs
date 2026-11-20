@@ -23,10 +23,12 @@
 | PDF 보고서 원본 | `docs/reports/<날짜-주제>/report.md` |
 | 웹 대시보드 코드 | `frontend/`(실행·배포는 `frontend/README.md`) |
 | Lambda·AWS 리소스 코드 | `lambda/`(테스트·배포는 `lambda/README.md`) |
+| 도면 파서 컨테이너(IFC, DXF·DWG, PDF → `twin.building/v1`) | `lambda/ingest/`(계약·빌드는 `lambda/ingest/README.md`) |
 | AI 도우미 KB 문서(규정·쾌적 기준) | `lambda/kb/`(근거는 `docs/human/explanation/research/kb-sources.md`, 반영은 `lambda/tools/kb_sync.sh`) |
 | 도면 실내기 기호 검출 학습(SageMaker) | `ml/`(실행은 `ml/README.md`) |
 | HVAC 제어 방식 비교(규칙 기반, JEV, DDPG, EnergyPlus) | `ml/hvac_control/`(실행은 `ml/hvac_control/README.md`) |
 | 3D 트윈 임베드 규약 | `docs/human/reference/twin-embed.md` |
+| 도면 변환 규약(IFC·CAD·PDF·이미지 → 2D 실내기 매핑 → 3D) | `docs/human/reference/plan-ingest.md` |
 
 문서는 작업에 필요한 것부터 읽는 것이 원칙입니다. 기존 사용자 변경과 병합 충돌은 보존할 대상입니다.
 

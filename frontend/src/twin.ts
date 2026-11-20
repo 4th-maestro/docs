@@ -72,6 +72,27 @@ export function onTwinChange(handlers: { floor?: (floor: string) => void; mode?:
   return () => window.removeEventListener('message', listener)
 }
 
+// 앱 임베드(2026-11-20): 트윈 안 버튼·칩·패널은 숨기고 앱 카드가 대신함
+// - 트윈 → {source:'twin', type:'twinUi', ui, kpis, actions}: 화면 상태, 역할별 지표 칸, 조치 목록(바뀔 때만)
+// - 앱 → {source:'maestro', type:'ui', action}: persona:<owner|engineer|facility|sim>, flow, pipes, back, rv:<vol|slice|hum|air>
+export type TwinUi = { view: 'building' | 'floor' | 'room'; persona: string; flow: boolean; pipes: boolean; rv: Record<string, boolean> }
+export type TwinKpi = { key: string; label: string; value: string; unit: string; bad: boolean }
+export type TwinActionItem = { room: string; floor: string; title: string; detail: string; lv: number }
+export type TwinActions = { title: string; scope: string; hero: { label: string; value: string; note: string } | null; items: TwinActionItem[] }
+export type TwinReport = { ui: TwinUi; kpis: TwinKpi[]; actions: TwinActions | null }
+export function onTwinReport(frame: () => HTMLIFrameElement | null, handler: (r: TwinReport) => void) {
+  const listener = (e: MessageEvent) => {
+    if (!TWIN_URL || e.origin !== twinOrigin() || e.data?.source !== 'twin' || e.data.type !== 'twinUi') return
+    if (e.source !== frame()?.contentWindow || !e.data.ui) return
+    handler({ ui: e.data.ui as TwinUi, kpis: (e.data.kpis ?? []) as TwinKpi[], actions: (e.data.actions ?? null) as TwinActions | null })
+  }
+  window.addEventListener('message', listener)
+  return () => window.removeEventListener('message', listener)
+}
+export function postUi(frame: HTMLIFrameElement | null, action: string) {
+  if (TWIN_URL) frame?.contentWindow?.postMessage({ source: 'maestro', type: 'ui', action }, twinOrigin())
+}
+
 // 서버 건물: 트윈 폴더에 도면이 없어서 트윈이 요청하면 서버 building.json(GET /buildings/{id}/twin)을 보냄, 없으면 null
 export function onNeedBuilding(frame: () => HTMLIFrameElement | null, get: (id: string) => Promise<unknown>) {
   const listener = (e: MessageEvent) => {

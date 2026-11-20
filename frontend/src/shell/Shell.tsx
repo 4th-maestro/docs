@@ -1,6 +1,6 @@
 import { useContext, useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { AlertTriangle, BarChart3, Briefcase, Building2, CheckCircle2, ChevronDown, LayoutDashboard, LogOut, Menu, Settings, X } from 'lucide-react'
+import { AlertTriangle, BarChart3, Briefcase, Building2, CheckCircle2, ChevronDown, FlaskConical, LayoutDashboard, LogOut, Menu, Settings, X } from 'lucide-react'
 import { AUTH_ON, currentEmail, isAdmin, signOut } from '../auth/cognito'
 import { MeContext, ROLE } from '../auth/me'
 import { LEVEL } from '../portfolio/level'
@@ -12,7 +12,7 @@ import { href, type FloorSummary, type Tab } from './route'
 import { Sk } from '../skeleton/Skeleton'
 import CountUp from '../motion/CountUp'
 
-// 화면 틀: 상단바(로고, 건물 토글, 운영·전력 분석 탭, 오른쪽 도구) + 왼쪽 사이드바(전체 현황, 층) + 본문
+// 화면 틀: 상단바(로고, 건물 토글, 운영·전력 분석·시뮬레이션 탭, 오른쪽 도구) + 왼쪽 사이드바(전체 현황, 층) + 본문
 // - 사이드바: 743px 이하에서 숨기고 상단바 메뉴 버튼으로 여닫음
 export function Layout({ building, tab, buildings, tools, side, admin, settings, children }: {
   building: string | null; tab: Tab; buildings: BuildingCard[]; tools: ReactNode; side?: ReactNode; admin?: boolean; settings?: boolean; children: ReactNode
@@ -38,6 +38,7 @@ export function Layout({ building, tab, buildings, tools, side, admin, settings,
           <nav className="vtabs" aria-label="건물 화면">
             <a href={href(building)} aria-current={tab === 'ops' ? 'page' : undefined}><LayoutDashboard size={18} aria-hidden />운영</a>
             <a href={href(building, 'energy')} aria-current={tab === 'energy' ? 'page' : undefined}><BarChart3 size={18} aria-hidden />전력 분석</a>
+            <a href={href(building, 'sim')} aria-current={tab === 'sim' ? 'page' : undefined}><FlaskConical size={18} aria-hidden />시뮬레이션</a>
           </nav>
         )}
         <div className="tools">

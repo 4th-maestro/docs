@@ -8,8 +8,13 @@ export type Segment = { a: Point; b: Point }
 export type WallAxis = 'vertical' | 'horizontal'
 export type Wall = Segment & { room: string; hole?: boolean }
 export type Opening = Segment & { rooms: string[] }
-export type PlanFloor = { id: string; rooms: PlanRoom[]; footprint?: Point[]; atrium?: boolean; openWalls?: Opening[]; partitions?: Segment[] }
-export type IndoorUnit = { id: string; room: string; pos: Point; model?: string; type?: string; coolKw?: number; ratedKw?: number; source?: string; basis?: string }
+// 도면 변환 확장 필드(background, detections, cls 등): docs/human/reference/plan-ingest.md 3절
+export type Affine = [number, number, number, number, number, number]
+export type Detection = { cls: string; conf: number; box: [number, number, number, number] }
+export type PlanBackground = { key?: string; px: [number, number]; toPlan: Affine | null }
+export type PlanFloor = { id: string; rooms: PlanRoom[]; footprint?: Point[]; atrium?: boolean; openWalls?: Opening[]; partitions?: Segment[]; elevation?: number; background?: PlanBackground; detections?: Detection[] }
+export type IndoorUnit = { id: string; room: string; pos: Point; model?: string; type?: string; coolKw?: number; ratedKw?: number; source?: string; basis?: string
+  cls?: string; manual?: string; conf?: number; review?: boolean; rot?: number; size?: [number, number]; ref?: string; floor?: string }
 export type Plan = {
   schema: 'twin.building/v1'
   building: { name: string; size: { w: number; d: number } }
@@ -17,6 +22,7 @@ export type Plan = {
   idus: IndoorUnit[]
   atrium?: { x0: number; y0: number; x1: number; y1: number }
   aps?: { room?: string; floor?: string; pos: Point }[]
+  meta?: { ingest?: { jobId?: string; kind?: string; createdAt?: string; warnings?: string[] } }
 }
 
 const EPS = 1e-5

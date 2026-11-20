@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 냉난방 기호 검출 학습을 AWS CLI로 실행
-# 사용: ml/sagemaker.sh setup | data | train [smoke] | ddpg [smoke] | register <학습 작업 이름> | status <작업 이름> | logs <작업 이름>
+# 사용: ml/sagemaker.sh setup | data | train [smoke] | ddpg [smoke] | register <학습 작업 이름> | deploy <best.onnx> <버전> | status <작업 이름> | logs <작업 이름>
 # 환경 변수: DATASET(합성 데이터 버전, 기본 hvac-yolo), REAL(실제 도면 타일 S3 경로, train에서 real 채널로 추가)
 set -euo pipefail
 export AWS_PROFILE=${AWS_PROFILE:-maestro} AWS_REGION=${AWS_REGION:-ap-northeast-2}
@@ -14,6 +14,9 @@ ECR=763104351884.dkr.ecr.$AWS_REGION.amazonaws.com/pytorch-training
 CPU_IMAGE=$ECR:2.8.0-cpu-py312-ubuntu22.04-sagemaker
 GPU_IMAGE=$ECR:2.8.0-gpu-py312-cu129-ubuntu22.04-sagemaker
 ECR_INF=763104351884.dkr.ecr.$AWS_REGION.amazonaws.com/pytorch-inference:2.6.0-gpu-py312-cu124-ubuntu22.04-sagemaker
+# Serverless Inference는 CPU 전용
+CPU_INF=763104351884.dkr.ecr.$AWS_REGION.amazonaws.com/pytorch-inference:2.6.0-cpu-py312-ubuntu22.04-sagemaker
+SLS=hvac-symbol-detector-sls
 INSTANCE=${INSTANCE:-ml.g6.xlarge}
 DATA=s3://$BUCKET/data/${DATASET:-hvac-yolo}
 SRC_URL=https://zenodo.org/api/records/2613548/files/cubicasa5k.zip/content
@@ -109,6 +112,23 @@ register)
  "CustomerMetadataProperties": {"trainingJob": "$2", "testMAP50": "${M% *}", "testMAP50-95": "${M#* }", "dataset": "$DATA"}}
 EOF
 )" --query ModelPackageArn --output text ;;
+deploy)
+  # Serverless Endpoint 배포(호출이 없으면 요금 없음). 인자: ONNX 가중치(train.py가 hvac/weights/best.onnx로 저장), 버전 이름(v2 등)
+  ONNX=$2 VER=$3 NAME=hvac-symbol-detector-$3-$TS
+  T=$(mktemp -d)
+  mkdir "$T/code" && cp "$ONNX" "$T/best.onnx" && cp serve/inference.py serve/requirements.txt "$T/code/"
+  tar czf "$T/model.tar.gz" -C "$T" best.onnx code
+  aws s3 cp "$T/model.tar.gz" "s3://$BUCKET/models/serve/$NAME/model.tar.gz" >/dev/null
+  aws sagemaker create-model --model-name "$NAME" --execution-role-arn "$ROLE_ARN" --primary-container \
+    "Image=$CPU_INF,ModelDataUrl=s3://$BUCKET/models/serve/$NAME/model.tar.gz,Environment={SAGEMAKER_PROGRAM=inference.py,MODEL_VERSION=$VER}" >/dev/null
+  aws sagemaker create-endpoint-config --endpoint-config-name "$NAME" \
+    --production-variants "VariantName=main,ModelName=$NAME,ServerlessConfig={MemorySizeInMB=6144,MaxConcurrency=2}" >/dev/null
+  if aws sagemaker describe-endpoint --endpoint-name $SLS >/dev/null 2>&1; then
+    aws sagemaker update-endpoint --endpoint-name $SLS --endpoint-config-name "$NAME" >/dev/null
+  else
+    aws sagemaker create-endpoint --endpoint-name $SLS --endpoint-config-name "$NAME" >/dev/null
+  fi
+  echo "$SLS <- $NAME" ;;
 status)
   case $2 in
   hvac-synth-*) aws sagemaker describe-processing-job --processing-job-name "$2" --query '{status:ProcessingJobStatus,reason:FailureReason,exit:ExitMessage}' ;;

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { ArrowLeft, FileBox, ImageIcon, Info } from 'lucide-react'
 import { buildingsChanged, createBuilding, getCompany, getTwin, putTwin, type BuildingInput, type CompanyDetail } from '../api'
 import BuildingEditor from '../BuildingEditor'
+import PlanIngest from '../ingest/PlanIngest'
 import type { Plan } from '../floor-edit'
 import type { AdminSub } from '../shell/route'
 import { SkRows, SkWrap } from '../skeleton/Skeleton'
@@ -11,7 +12,7 @@ import { msg } from './form'
 import { BuildingForm, type BuildingInfo } from './parts'
 
 // 판매사 건물 화면(관리자 전용, #/admin/<기업 id>/buildings/...)
-// - new: 건물 추가 방법 선택 → image: 도면 이미지 파이프라인 → 건물 정보 확인 → POST
+// - new: 건물 추가 방법 선택 → image: 도면 이미지 파이프라인, file: 도면 파일 변환과 실내기 매핑(PlanIngest) → 건물 정보 확인 → POST
 // - replace: 도면 교체 방법 선택 → image: 파이프라인 → 교체 확인 → PUT /buildings/{id}/twin
 // - plan: 서버 트윈 도면 편집(BuildingEditor) → PUT /buildings/{id}/twin
 const NO_TWIN = '트윈 도면이 없는 건물입니다. 도면 교체로 도면을 먼저 넣으십시오.'
@@ -28,17 +29,17 @@ export default function BuildingPage({ company, sub }: { company: string; sub: A
 
   if (sub.kind === 'plan') return <EditPlan back={back} title={title} building={sub.building!} />
   return (
-    <main className={sub.image ? 'adm adm-wide' : 'adm'}>
-      {sub.image
+    <main className={sub.image || sub.file ? 'adm adm-wide' : 'adm'}>
+      {sub.image || sub.file
         ? <a className="adm-back" href={base}><ArrowLeft size={18} aria-hidden />만들기 방법 선택</a>
         : <a className="adm-back" href={back}><ArrowLeft size={18} aria-hidden />기업 상세</a>}
       <h1>{title}</h1>
-      {sub.image ? <ImageStep company={company} building={sub.building} name={name} back={back} /> : <Methods base={base} />}
+      {sub.image || sub.file ? <ImageStep company={company} building={sub.building} name={name} back={back} file={sub.file} /> : <Methods base={base} />}
     </main>
   )
 }
 
-// 만들기 방법: 도면 이미지(동작), IFC 파일(준비 중, 비활성)
+// 만들기 방법: 도면 이미지(트윈 파이프라인), 도면 파일(IFC, DXF, DWG, PDF 변환과 실내기 자동 인식)
 function Methods({ base }: { base: string }) {
   return (
     <section className="card adm-card" aria-labelledby="bld-how">
@@ -49,11 +50,11 @@ function Methods({ base }: { base: string }) {
           <b>도면 이미지</b>
           <small>PNG, JPG 평면도 이미지로 3D 트윈을 만듭니다.</small>
         </a>
-        <button className="adm-method" type="button" disabled>
+        <a className="adm-method" href={`${base}/file`}>
           <FileBox size={28} aria-hidden />
-          <b>IFC 파일</b>
-          <small>IFC 업로드는 준비 중입니다.</small>
-        </button>
+          <b>도면 파일</b>
+          <small>IFC, DXF, DWG, PDF 도면을 변환하고 실내기를 자동 인식합니다.</small>
+        </a>
       </div>
     </section>
   )
@@ -80,8 +81,10 @@ export function TwinPipeline({ hidden, onRendered }: { hidden?: boolean; onRende
   )
 }
 
-// 파이프라인 단계: 결과 수신 → 확인(추가: 건물 정보 입력, 교체: 교체 확인) → 저장 후 기업 상세로 이동
-function ImageStep({ company, building, name, back }: { company: string; building?: string; name: string; back: string }) {
+// 도면 단계: 파이프라인 결과 또는 도면 파일 확정본 수신 → 확인(추가: 건물 정보 입력, 교체: 교체 확인) → 저장 후 기업 상세로 이동
+// - 도면 파일 변환 작업은 건물 id 형식이 필요해 추가 화면에서는 임시 id를 사용(저장할 때 새 id 생성)
+function ImageStep({ company, building, name, back, file }: { company: string; building?: string; name: string; back: string; file?: boolean }) {
+  const [jobId] = useState(() => building ?? newBuildingId())
   const [twin, setTwin] = useState<Twin | null>(null)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -136,7 +139,9 @@ function ImageStep({ company, building, name, back }: { company: string; buildin
           {!info.roomCount && <p className="adm-warn" role="alert">{NO_ROOMS}</p>}
         </section>
       )}
-      <TwinPipeline hidden={!!twin} onRendered={rendered} />
+      {file
+        ? <div hidden={!!twin}><PlanIngest buildingId={jobId} onDone={() => undefined} onConfirm={(p) => { setTwin(p as Twin); setError('') }} /></div>
+        : <TwinPipeline hidden={!!twin} onRendered={rendered} />}
     </>
   )
 }

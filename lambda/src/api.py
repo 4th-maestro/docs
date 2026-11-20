@@ -16,6 +16,7 @@ import customer
 import energy
 import history
 import plan
+import plan_ingest
 import portfolio
 import recommend
 import schedules
@@ -31,6 +32,7 @@ ROUTES = [
     ('/schedules', schedules.handler),
     ('/chat', chat.handler),
     ('/energy', energy.handler),
+    ('/plans', plan_ingest.handler),
     ('/admin', admin.handler),
     ('/company', customer.handler),
     # /me 하위 경로라 /me보다 먼저 확인

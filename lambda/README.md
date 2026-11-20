@@ -4,7 +4,7 @@
 
 | 경로 | 내용 |
 |---|---|
-| `template.yaml` | API Gateway HTTP API, WebSocket API, Lambda 6개(조회·관리 API 통합, AI 질의, WebSocket, 연결 인증, 가입 전 검사, 가입 확인), DynamoDB, Cognito, S3, CloudFront, Bedrock Knowledge Base(S3 Vectors) |
+| `template.yaml` | API Gateway HTTP API, WebSocket API, Lambda 8개(조회·관리 API 통합, AI 질의, WebSocket, 연결 인증, 가입 전 검사, 가입 확인, 도면 파서, 실내기 인식), Step Functions(도면 변환), DynamoDB, Cognito, S3, CloudFront, Bedrock Knowledge Base(S3 Vectors) |
 | `src/api.py` | 조회·관리 API 단일 진입점: 경로로 각 모듈 handler 호출(콜드 스타트 1회), 메모리 1769MB |
 | `src/status.py` | `GET /rooms/status?building=main&floor=1F` 건물 호실별 가상 상태, 건물 정보와 층 목록 |
 | `src/portfolio.py` | `GET /buildings` 건물별 현재 상태, 오늘 사용량, 절감 가능량, 점검 순서(전체 현황) |
@@ -17,12 +17,17 @@
 | `src/energy.py` | `GET /energy/compare·trend·heatmap·breakdown` 건물별 전력 사용량 비교, 기간 추이, 요일×시간 평균 kW, 층·용도 구성([설계](../docs/human/explanation/architecture.md) 11절) |
 | `src/tools.py` | LLM 도구 6종(호실 순위, 묶음 합계, 기간 추이, 스케줄 초안, 기준 문서 검색, 쾌적 지표) 정의와 서버 검증(층·용도는 질의 건물 기준), 결과 그래프 정의(`chart`: 막대·선), 문서 근거(`sources`) 생성 |
 | `src/comfort.py` | 불쾌지수(기상청 식)와 단계, PMV·PPD(ISO 7730 반복 계산, 외부 패키지 없음) |
+| `src/plan_ingest.py`, `src/plan_confirm.py` | 도면 변환 작업 API(`/plans/*`, `admin` 그룹 전용): 업로드·시작·인식·상태 조회, 보정본 확정과 건물 등록 연결. 규칙은 아래 "도면 변환" 절 |
+| `src/detect.py`, `layers/pillow/` | 실내기 기호 인식 Lambda(타일 분할, Serverless Endpoint 호출, NMS)와 Pillow 계층 |
+| `statemachine/plan.asl.json` | 도면 변환 상태 머신(JSONata): Parse, Detect, Merge, SaveDraft, 실패 기록 |
+| `ingest/` | 도면 파서 컨테이너 Lambda(`Dockerfile`, `app.handler`), 브랜치 `feat/plan-parsers` |
 | `kb/` | Knowledge Base 원본 문서(규정·쾌적 지표)와 `.md.metadata.json`(문서명, 원문 주소, 시행일, 원문 확인일). 근거는 [KB 문서 원문 확인](../docs/human/explanation/research/kb-sources.md) |
 | `tools/kb_sync.sh` | `kb/`를 KB 원본 버킷에 동기화하고 수집 작업 실행 후 완료 대기 |
 | `src/buildings.py`, `src/buildings.json` | 건물·호실 조회. 배포 환경은 `maestro-twin` 스택의 Buildings·Rooms 테이블(60초 캐시), 로컬·테스트는 `buildings.json`·`rooms.json` |
 | `src/sim.py`, `src/rooms.json` | 가상 HVAC 상태 생성, 본관 호실 137개(공개 IFC 의원 건물) |
 | `tools/demo_status.py` | Frontend 데모 상태 생성(`frontend/public/demo/<건물>.json`, `index.json`) |
 | `tools/build_floorplans.py` | 건물별 3D 도면 생성(`frontend/public/floorplans/<건물>.json`) |
+| `ingest/` | 도면 변환 컨테이너 Lambda(IFC, DXF·DWG, PDF를 `twin.building/v1` 초안으로 변환, YOLO 인식 결과 병합). handler 계약, 빌드, 테스트는 `ingest/README.md` |
 | `src/plan.py`, `tools/upload_plans.py` | 도면·트윈 파일 API `GET /buildings/{id}/plan`(도면 버킷 `plans/<건물>/current.json`), `GET /buildings/{id}/twin`(`plans/<건물>/building.json`), 초기 적재(`--bucket <PlansBucketName>`) |
 | `src/chat.py` | `GET·DELETE /chat?building=` 사용자별 대화 기록(90일), 대화 메모리(24시간, 1KB 요약) 저장 |
 | `src/auth.py` | WebSocket 연결 인증(쿼리 token, Cognito 액세스 토큰 검증), context에 sub·groups 전달 |
@@ -38,6 +43,8 @@ python3 -m unittest discover tests
 sam validate --lint
 ```
 
+도면 변환 Lambda(`ingest/`)는 의존성이 달라 별도 가상 환경에서 테스트하십시오. 절차는 `ingest/README.md` 4절에 있습니다.
+
 ## 배포
 
 AWS 자격 증명은 각자 터미널에서 입력하십시오. 키를 대화나 파일에 붙여 넣지 마십시오.
@@ -48,13 +55,15 @@ aws sts get-caller-identity --profile maestro
 sam build && sam deploy --guided --profile maestro
 ```
 
+`sam build`는 도면 파서 컨테이너 이미지(`ingest/`)를 만들므로 Docker가 실행 중이어야 합니다. 첫 배포(`--guided`)에서 ECR 저장소 자동 생성 질문에 `Y`를 선택하십시오.
+
 두 번째 배포부터는 아래 명령을 사용하십시오. 배포는 `main` 기준이며, 브랜치가 `main`이 아니거나 커밋하지 않은 변경이 있으면 빌드 전에 중단됩니다. `ModelId`는 스택에 저장된 이전 값이 허용 값 검사에서 거부되므로 매번 지정합니다.
 
 ```bash
 git switch main && git pull --ff-only \
   && test -z "$(git status --porcelain --untracked-files=no)" \
   && sam build \
-  && sam deploy --stack-name maestro --region ap-northeast-2 --profile maestro --capabilities CAPABILITY_IAM --resolve-s3 \
+  && sam deploy --stack-name maestro --region ap-northeast-2 --profile maestro --capabilities CAPABILITY_IAM --resolve-s3 --resolve-image-repos \
      --no-confirm-changeset --no-fail-on-empty-changeset --parameter-overrides ModelId=global.anthropic.claude-sonnet-5-5
 ```
 
@@ -174,8 +183,100 @@ python3 tools/migrate_tenancy.py --user-pool-id "$POOL" --profile maestro
 
 | 항목 | 방식 |
 |---|---|
-| 함수 구성 | 조회·관리 API 40개 경로를 `api.py` 함수 1개로 처리. 이전 9개 함수는 화면마다 콜드 스타트가 9번 발생(첫 호출 2.6~2.9초, 2026-11-20 실측) |
+| 함수 구성 | 조회·관리 API 45개 경로를 `api.py` 함수 1개로 처리. 이전 9개 함수는 화면마다 콜드 스타트가 9번 발생(첫 호출 2.6~2.9초, 2026-11-20 실측) |
 | 메모리 | 전체 기본 1024MB, API 함수 1769MB(vCPU 1개). 512MB에서 `/buildings` p50 4.0초 |
 | 캐시 | 지난 시간·지난 날짜 계산은 대상 스케줄을 키로 실행 환경 메모리에 보관(스케줄 변경 시 자동 재계산), `/buildings` 응답은 30초 |
 
 주: 로컬 측정(Apple Silicon) `/buildings` 계산 456ms → 재계산 52ms, 응답 캐시 적중 0.02ms. `/rooms/history` 68ms → 1ms.
+
+## 도면 변환
+
+업로드부터 초안 생성까지의 규약 원본은 [도면 변환 규약](../docs/human/reference/plan-ingest.md)입니다. 이 절은 Lambda 저장소의 구현 규칙입니다. 모든 경로는 판매사 총관리자(`admin` 그룹) 전용이고, 그 밖의 사용자는 403 `관리자만 사용할 수 있습니다.`입니다.
+
+| API | 요청 | 응답 |
+|---|---|---|
+| `POST /plans/jobs` | `{building, kind, files: [{name, size}]}` | 201 `{jobId, uploads: [{name, key, url}]}`. `url`은 S3 PUT 15분 |
+| `POST /plans/jobs/{jobId}/start` | `{options?: {scale?, pxPerM?}}` | 202 `{status: 'running'}`. 상태가 `created`·`failed`가 아니면 409 |
+| `POST /plans/detect` | `{building, key, pxPerM?}` | 202 `{jobId}`. 인식 전용 작업(`kind: 'detect'`) |
+| `GET /plans/jobs/{jobId}` | 없음 | `{jobId, building, kind, status, step, error?, draftUrl?, pages?: [{floor, url, px}]}`. URL은 S3 GET 15분 |
+
+| 항목 | 규칙 |
+|---|---|
+| 건물 | 기존 건물 id 또는 새 건물 id(`b-` + 소문자·숫자 8자리). 등록 전 건물도 변환하므로 존재 여부는 확인 안 함 |
+| 형식별 파일 | `ifc`: `.ifc`와 설비도면 이미지, `cad`: `.dxf`, `.dwg`, `pdf`: `.pdf`, `image`: `.png`, `.jpg`, `.jpeg`(대소문자 무시) |
+| 파일 검사 | 작업당 1~20개, 이름 1~200자(`/`, `\` 불가, 중복 불가), 크기 1바이트~200MB. 위반은 400 |
+| 업로드 | 키 `uploads/<jobId>/<파일 이름>`. PUT URL 서명에 `Content-Length` 포함, 신고 크기와 다른 파일은 S3가 거부 |
+| 시작 옵션 | `scale`(축척 분모, 예 200), `pxPerM`(1m당 픽셀) 양수만 허용, 파서에 그대로 전달 |
+| 상태 | `created` → `running` → `review`(사람 보정 대기) → `confirming` → `done`. 변환·확정 저장 실패는 `failed`. 동시 시작·확정은 조건부 기록으로 1건만 허용 |
+| 단계 | `parse`(시작 시 API 기록) → `detect` → `merge`(상태 머신 기록). 인식 전용 작업은 `detect`만 사용 |
+| 인식 전용 작업 | `key`는 같은 건물 작업으로 올린 이미지만 허용. 결과는 `jobs/<jobId>/draft.json` `{floor: null, detections, model}`, `pages` 없음 |
+| 오류 | 상태 머신이 `error`에 오류 원문 기록. Lambda 오류는 `errorMessage`만 응답 |
+| 확정 저장 | `POST /plans/jobs/{jobId}/confirm`이 기존 판매사 등록·트윈 교체 검증을 재사용해 저장하고 작업을 `done`으로 갱신. 기존 직접 저장 경로도 유지 |
+
+### 보정본 확정 API
+
+`POST /plans/jobs/{jobId}/confirm`은 `admin` 전용이며 요청은
+`{operation: 'create'·'replace', companyId?: 기업 id, registration: 보정한 등록 본문}`입니다.
+성공 응답은 200 `{status: 'done', building, version?}`입니다.
+
+- 신규 건물은 `operation: 'create'`, `companyId`, `registration: {name, use, hours, weekend, twin, rooms, plan}`을 보냅니다.
+  건물 id는 도면 작업의 `building`으로 고정됩니다. 다른 id를 보내면 400입니다.
+- 기존 건물은 `operation: 'replace'`, `registration: {twin, rooms, plan}`을 보냅니다.
+  기존 등록 API의 기업·호실·면적·층·권한 검사와 S3·DynamoDB 저장을 그대로 사용합니다.
+- `review` 상태의 변환 작업만 확정할 수 있습니다. 인식 전용 작업은 대상이 아닙니다.
+  같은 보정본 재전송은 캐시된 결과를 반환해 건물·버전을 다시 만들지 않습니다.
+  동시 확정 또는 완료 후 다른 보정본은 409입니다. 상태 조회에 `confirmation`, `confirmedAt`이 추가됩니다.
+- 입력 오류는 `review`로 돌아갑니다. 저장 예외는 `failed`/`step: confirm`으로 기록합니다.
+  기존 등록 처리는 S3·복수 테이블에 순차 기록하므로 중간 장애 때 부분 저장될 수 있습니다.
+  이때 건물·소속·도면을 확인해 복구해야 합니다. 강제 종료로 `confirming`에 남은 작업도 운영자 확인이 필요합니다.
+
+Step Functions는 초안 생성까지 실행되고, 사람 대기는 DynamoDB의 `review` 상태로 관리합니다(보관 7일).
+별도 목업 스택·장기 대기 태스크 토큰은 추가하지 않습니다. 3D 결과는 기존 렌더러의
+`twin.building/v1`·도면 JSON이며 IFC·glb 내보내기는 범위 밖입니다.
+프런트는 기존 직접 저장 대신 이 `/confirm` 경로를 호출하면 작업 완료까지 연결할 수 있습니다.
+기존 직접 저장은 작업 상태를 변경하지 않습니다. 이 변경에는 프런트 화면 수정이 포함되지 않습니다.
+
+| S3 키(도면 버킷) | 쓰는 곳 | 보관 |
+|---|---|---|
+| `uploads/<jobId>/<파일>` | 브라우저(사전 서명 PUT) | 수명 주기 규칙으로 7일 뒤 삭제 |
+| `jobs/<jobId>/draft.json`, `jobs/<jobId>/pages/<번호>.png` | 도면 파서, 상태 머신(인식 전용 결과) | 수명 주기 규칙으로 7일 뒤 삭제 |
+| `plans/<건물>/` | 판매사 건물 관리(`feat/vendor-buildings`) | 수명 주기 대상 아님 |
+
+주: 작업 기록(`PlanJobs`)도 `ttl`로 7일 뒤 삭제됩니다. 건물 삭제는 `plans/<건물>/`만 지우므로 `uploads/`, `jobs/`는 수명 주기 규칙으로 정리합니다. 버킷 CORS는 HTTP API와 같은 출처(`AllowedOrigin`)에 PUT, GET을 허용합니다.
+
+### 상태 머신
+
+`Init` → `Route` → `Parse`(파서 op `parse`) → `NeedDetect`(인식할 층이 있으면) → `StepDetect` → `Detect`(층별 Map, 동시 2) → `AfterDetect` → `StepMerge` → `Merge`(파서 op `merge`, `detections`는 층 id별 목록) → `SaveDraft`(`status: review`, `draftKey`). 인식할 층이 없으면 `NeedDetect`에서 `StepMerge`로 이동하고 `detections`는 `{}`입니다.
+
+인식 전용 작업은 실행 입력에 `detect` 목록이 있습니다. `Route`가 `Detect`로 바로 이동하고, `AfterDetect`가 `SaveDetections`(S3 `putObject`로 첫 결과 저장) → `SaveDraft`로 보냅니다. 같은 `Detect` 상태를 쓰므로 인식 처리는 한 곳에서 관리합니다.
+
+모든 Task와 Map의 오류는 `MarkFailed`(`status: failed`, `error`) → `Fail`로 처리합니다. Lambda 호출은 Lambda 서비스 오류에 한해 3회 재시도합니다. 2026-11-20 TestState API(목 결과)로 `Init`, `Route`, `NeedDetect`, `Parse`, `Detect`, `Merge`, `SaveDetections`, `SaveDraft`, `MarkFailed`의 식 평가를 확인했습니다. 같은 날 실제 API·상태 머신 전체 흐름도 아래와 같이 검증했습니다.
+
+### 실제 배포·통합 검증 (2026-11-20)
+
+- PR #43을 `dev`, PR #44를 `main`에 반영하고 커밋 `b39a8fc` 기준으로 `maestro` 스택을 배포했습니다.
+  파서는 검증한 x86_64 이미지, 나머지 함수는 arm64입니다. 스택 `UPDATE_COMPLETE`, 파서 `Active`를 확인했습니다.
+- 백엔드 테스트 164개 중 162개 통과·2개 건너뜀, 실제 Lambda x86_64 이미지의 파서 테스트는
+  17개 중 15개 통과·DWG 환경 검사 2개 건너뜀입니다. SAM lint·배포 아티팩트 검증도 통과했습니다.
+- 임시 계정으로 실제 HTTP API를 호출했습니다. JWT 없는 요청은 401, 관리자 그룹 없는 요청은 403입니다.
+  새 확정 경로에도 같은 권한 검사가 적용됨을 확인했습니다.
+- 테스트 IFC 업로드 → Step Functions 변환 → `review` → 보정본 `/confirm` → `done`을 확인했습니다.
+  Buildings·Rooms·Equipment, 기업 소속, 트윈·도면 JSON을 조회해 저장을 검증했습니다.
+  같은 확정 요청 재전송은 같은 결과를 반환하고 두 번째 버전을 만들지 않았습니다.
+- PNG 업로드 → 실제 실내기 인식 Endpoint 호출 → `review`, 잘못된 IFC → `failed` 기록도 확인했습니다.
+- 테스트 계정·기업·건물·작업 항목·업로드·초안·확정 파일은 검증 후 삭제했고 정리 오류는 없었습니다.
+- cfn-guard 전용 보안·준수 검사는 도구 미설치로 실행하지 않았습니다. 위 검증이 이를 대체하지 않습니다.
+
+| 함수 | 환경 변수 | 권한(도면 버킷) |
+|---|---|---|
+| API(`api.py`) | `PLAN_JOBS_TABLE`, `PLAN_STATE_MACHINE`, `PLANS_BUCKET` | `uploads/*` PutObject(사전 서명), `jobs/*` GetObject. 기존 `plans/*` 권한은 변경 없음 |
+| 도면 파서(`IngestFunction`) | 없음 | `uploads/*` GetObject, `jobs/*` GetObject·PutObject |
+| 실내기 인식(`DetectFunction`) | `PLANS_BUCKET`, `DETECT_ENDPOINT`(기본 `hvac-symbol-detector-sls`) | `uploads/*`·`jobs/*` GetObject, 해당 Endpoint `sagemaker:InvokeEndpoint` |
+| 상태 머신 | 없음 | `jobs/*` PutObject, PlanJobs 쓰기, 두 Lambda 호출 |
+
+### 배포 전 확인
+
+1. 도면 파서 `ingest/`(브랜치 `feat/plan-parsers`)가 `dev`에 머지되었는지 확인하십시오. `ingest/Dockerfile`이 없으면 `sam build`가 실패합니다. 이미지의 기본 명령은 `app.handler`, 아키텍처는 x86_64입니다(ifcopenshell aarch64 바이너리의 GLIBC 2.38 요구, `ingest/README.md` 3절). Apple Silicon에서는 amd64 에뮬레이션이 되는 Docker 빌더가 필요합니다.
+2. Docker를 실행한 상태에서 `sam build`를 실행하십시오. 배포 명령에는 `--resolve-image-repos`가 필요합니다.
+3. Serverless Endpoint `hvac-symbol-detector-sls`를 `ml/serve/` 스크립트로 먼저 만드십시오. Endpoint가 없으면 인식 단계가 실패하고 작업은 `failed`가 됩니다. Serverless Endpoint는 호출이 없으면 요금이 없습니다.
+4. `Runtime`은 Globals가 아니라 zip 함수마다 지정합니다. Globals에 두면 이미지 함수도 `Runtime`을 받아 SAM 변환 오류가 발생합니다.

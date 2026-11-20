@@ -18,12 +18,14 @@ import PowerTrend from './panels/PowerTrend'
 import RecommendPanel from './panels/RecommendPanel'
 import ScheduleTimeline from './panels/ScheduleTimeline'
 import SimPanel from './panels/SimPanel'
+import TwinActions from './panels/TwinActions'
+import TwinTools from './panels/TwinTools'
 import ExperimentPanel from './panels/ExperimentPanel'
 import { usePoll } from './panels/usePoll'
 import Portfolio from './portfolio/Portfolio'
 import { FloorList, Layout } from './shell/Shell'
 import { href, parseRoute, type FloorSummary, type Tab } from './shell/route'
-import { TWIN_URL, onNeedBuilding, onTwinControl, onRoomSelected, onTwinChange, postState, postTheme, twinSrc, type TwinBuilding, type TwinData } from './twin'
+import { TWIN_URL, onNeedBuilding, onTwinControl, onTwinReport, onRoomSelected, onTwinChange, postState, postTheme, postUi, twinSrc, type TwinBuilding, type TwinData, type TwinKpi, type TwinReport } from './twin'
 import type { BuildingCard, Draft, Mode, Room, Status } from './types'
 import { SkFloors, SkKpis, SkPlan } from './skeleton/Skeleton'
 import CountUp from './motion/CountUp'
@@ -154,6 +156,9 @@ type DashboardProps = { building: string; info?: BuildingCard; tab: Tab; buildin
 
 function Dashboard({ building, info, tab, buildings, themeButton, dark }: DashboardProps) {
   const ops = tab === 'ops'
+  // 시뮬레이션 탭도 트윈(운전 시뮬레이션 역할)과 층 목록을 쓰므로 운영 탭과 같은 5초 조회
+  const sim = tab === 'sim'
+  const live = ops || sim
   // 내장 3D 도면은 층 단위로만 그리므로 트윈 화면(TWIN_URL)이 없으면 첫 층으로 시작, 트윈은 건물 전체('')로 시작
   const [floor, setFloor] = useState(TWIN_URL ? '' : (info?.floors[0] ?? '1F'))
   const [mode, setMode] = useState<Mode>('temp')
@@ -174,9 +179,9 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
   // 트윈 주소는 첫 렌더링 값 유지: 테마 전환은 메시지로 전달(주소가 바뀌면 iframe을 다시 읽음)
   const [src] = useState(() => (TWIN_URL ? twinSrc(building) : ''))
 
-  // 운영 탭에서만 5초 주기 조회. 건물 전체 호실을 받아 사이드바 층별 요약과 선택 층 화면에 함께 사용
+  // 운영·시뮬레이션 탭에서 5초 주기 조회. 건물 전체 호실을 받아 사이드바 층별 요약과 선택 층 화면에 함께 사용
   useEffect(() => {
-    if (!ops) return
+    if (!live) return
     let alive = true
     const run = () => getStatus('', building).then(
       (s) => { if (alive) { setStatus(s); setLoadedAt(Date.now()) } },
@@ -185,7 +190,7 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
     run()
     const id = setInterval(run, LIVE_MS)
     return () => { alive = false; clearInterval(id) }
-  }, [building, ops, reloadKey])
+  }, [building, live, reloadKey])
   const load = () => setReloadKey((k) => k + 1)
   useEffect(() => onRoomSelected(setSelected), [])
   // 트윈 데이터가 없는 건물(트윈 조회 404 등): 트윈 화면 대신 내장 3D 도면, 트윈 연동 패널 숨김
@@ -193,6 +198,18 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
   const twinOn = Boolean(TWIN_URL) && !twinless
   useEffect(() => onNeedBuilding(() => frame.current, (id) => getTwin(id).catch((e: unknown) => { setTwinless(true); throw e })), [])
   useEffect(() => onTwinControl((room, sp) => { setRoomSetpoint(building, room, sp); load() }), [building])
+  // 트윈 보고(화면 상태, 지표 칸, 조치 목록): 트윈 안 버튼·패널을 숨기고 앱 카드가 대신 그림
+  const [report, setReport] = useState<TwinReport | null>(null)
+  useEffect(() => onTwinReport(() => frame.current, setReport), [])
+  // 운영·시뮬레이션 탭은 같은 iframe을 유지하고 역할만 전환: 시뮬레이션 탭은 운전 시뮬레이션, 운영 탭으로 돌아오면 에너지 총괄
+  // 시뮬레이션 탭에는 도구 줄이 없으므로 운영 탭에서 켠 데이터 흐름·설비 연결은 끔
+  const persona = report?.ui.persona, flowOn = report?.ui.flow, pipesOn = report?.ui.pipes
+  useEffect(() => {
+    if (sim && persona && persona !== 'sim') postUi(frame.current, 'persona:sim')
+    if (ops && persona === 'sim') postUi(frame.current, 'persona:owner')
+    if (sim && flowOn) postUi(frame.current, 'flow')
+    if (sim && pipesOn) postUi(frame.current, 'pipes')
+  }, [sim, ops, persona, flowOn, pipesOn])
 
   // 대화 기록: 서버(로그인 사용자·건물별), 실패하면 이 화면에만 기록
   useEffect(() => {
@@ -296,22 +313,22 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
 
   const tools = (
     <>
-      {ops && status && (
+      {live && status && (
         <span className={stale ? 'live stale' : 'live'} title={`5초마다 갱신(실시간 목업)${status.virtual ? ', 가상 데이터' : ''}`}>
           <i aria-hidden />{stale ? '갱신 지연' : '실시간'} {status.generatedAt.slice(11, 19)}
         </span>
       )}
-      {ops && <button className="icon" onClick={load} aria-label="새로고침"><RefreshCw size={18} /></button>}
+      {live && <button className="icon" onClick={load} aria-label="새로고침"><RefreshCw size={18} /></button>}
       {themeButton}
     </>
   )
 
   return (
     <Layout building={building} tab={tab} buildings={buildings} tools={tools}
-      side={ops && (status ? <FloorList floors={floorSummaries} floor={floor} onFloor={(f) => { setFloor(f); setSelected(null) }} /> : <SkFloors n={info?.floors.length ?? 2} />)}>
+      side={live && (status ? <FloorList floors={floorSummaries} floor={floor} onFloor={(f) => { setFloor(f); setSelected(null) }} /> : <SkFloors n={info?.floors.length ?? 2} />)}>
       <div className="page">
-        {!ops && <EnergyPage building={building} />}
-        {ops && (
+        {tab === 'energy' && <EnergyPage building={building} />}
+        {live && (
           <>
             {status?.virtual && (
               <div className="banner" role="note">
@@ -324,60 +341,78 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
               </div>
             )}
             {error && <p className="error" role="alert">{error}</p>}
-            {!status && <SkKpis />}
-            {status && (
+            {ops && !status && <SkKpis />}
+            {ops && status && (
               <section className="kpis" aria-label={`${scope} 요약`}>
                 <Kpi label="운전 중 HVAC" value={summary.on} unit="대" sub={`${scope} ${rooms.length}대 중`} />
                 <Kpi label="정지" value={summary.off} unit="대" sub="현재 OFF 상태" />
                 <Kpi label="이상 감지" value={summary.anomaly} unit="건" sub="설정온도 미도달" bad={summary.anomaly > 0} />
                 <Kpi label="현재 전력" value={summary.powerKw} unit="kW" sub={`외기 ${status.outdoorTemp}℃, ${hhmm(status.generatedAt)} 기준`} />
+                {twinOn && report?.kpis.filter((k) => !KPI_DUP[report.ui.persona]?.includes(k.key)).map((k) => <KpiText key={k.key} k={k} />)}
               </section>
             )}
 
             <main className="grid">
               <div className="main-col">
-                <section className="card twin" aria-label={`${scope} 3D 도면`}>
+                <section className="card twin" aria-label={`${scope} ${sim ? '운전 시뮬레이션' : '3D 도면'}`}>
                   <div className="twin-head">
-                    <h2>{scope} 3D 도면</h2>
-                    <div className="modes" role="tablist" aria-label="표시 지표">
+                    <h2>{scope} {sim ? '운전 시뮬레이션' : '3D 도면'}</h2>
+                    {ops && <div className="modes" role="tablist" aria-label="표시 지표">
                       {MODES.map((m) => (
                         <button key={m.id} role="tab" aria-selected={mode === m.id} className={mode === m.id ? 'pill on' : 'pill'} onClick={() => setMode(m.id)}>{m.label}</button>
                       ))}
-                    </div>
+                    </div>}
                   </div>
+                  {ops && twinOn && report && <TwinTools ui={report.ui} onAction={(a) => postUi(frame.current, a)} />}
                   {twinOn ? (
                     <iframe ref={frame} className="embed" src={src} title="3D 디지털트윈" onLoad={() => { postTheme(frame.current); postState(frame.current, building, floor, mode, rooms, highlight, twinData) }} />
+                  ) : sim ? (
+                    <p className="embed sim-none">이 건물은 3D 트윈 도면이 없어 운전 시뮬레이션을 사용할 수 없습니다.</p>
                   ) : floor ? (
                     <Suspense fallback={<div className="embed"><SkPlan /></div>}>
                       <Twin3D building={building} floor={floor} mode={mode} rooms={rooms} highlight={highlight} selectedId={selected} onSelect={setSelected} dark={dark} />
                     </Suspense>
                   ) : <div className="embed" />}
-                  <Legend mode={mode} status={status} />
+                  {/* 시뮬레이션 역할은 예상 실온을 같은 온도 척도로 칠함 */}
+                  <Legend mode={sim ? 'temp' : mode} status={status} />
                   {room ? <RoomDetail r={room} /> : <p className="muted pick-hint">{floor ? '호실을 누르면 HVAC 상태가 여기에 표시됩니다.' : '층을 선택하면 평면도가 표시됩니다.'}</p>}
                 </section>
-                {floor && <PowerTrend building={building} floor={floor} />}
+                {ops && floor && <PowerTrend building={building} floor={floor} />}
                 {/* 트윈 건물은 층이 비어 있을 수 있음: 빈 층이면 시간표는 전체 층 보기(2026-11-20 결정) */}
-                <ScheduleTimeline building={building} floor={floor || 'all'} floors={floors} refreshKey={scheduleKey} rooms={all} onLocate={locate} />
+                {ops && <ScheduleTimeline building={building} floor={floor || 'all'} floors={floors} refreshKey={scheduleKey} rooms={all} onLocate={locate} />}
               </div>
 
               <aside className="rail">
-                {/* 3D 트윈 안에 있던 운전 시뮬레이션: 임베딩 화면이 작아서 3D 도면 바로 옆 패널로 */}
-                {twinOn && <SimPanel frame={() => frame.current} onLocate={locate} />}
-                {import.meta.env.DEV && building === 'eng6' && <ExperimentPanel />}
-                <ChatPanel
+                {/* 운전 시뮬레이션은 시뮬레이션 탭(2026-11-20 이동). 이 탭의 트윈 iframe에 계산 요청을 보냄 */}
+                {sim && twinOn && <SimPanel frame={() => frame.current} onLocate={locate} />}
+                {sim && import.meta.env.DEV && building === 'eng6' && <ExperimentPanel />}
+                {ops && twinOn && report?.actions && <TwinActions actions={report.actions} at={status?.generatedAt} onLocate={locate} />}
+                {ops && <ChatPanel
                   ai={ai} messages={messages} rooms={rooms} suggestions={suggestions} busy={busy} history={history}
                   onSend={send} onClear={clear} onSave={save}
                   onClose={(m) => { setMessages((ms) => ms.map((x) => (x.id === m.id ? { ...x, draftState: 'closed' as const } : x))); setFocus(NO_IDS) }}
                   onFocus={setFocus} onSelect={setSelected}
-                />
-                {floor && <AnomalyPanel building={building} floor={floor} onLocate={(id) => { setMode('anomaly'); locate(id) }} />}
-                {floor && <RecommendPanel key={`${floor}-${scheduleKey}`} building={building} floor={floor} onDraft={showDraft} onLocate={locate} />}
+                />}
+                {ops && floor && <AnomalyPanel building={building} floor={floor} onLocate={(id) => { setMode('anomaly'); locate(id) }} />}
+                {ops && floor && <RecommendPanel key={`${floor}-${scheduleKey}`} building={building} floor={floor} onDraft={showDraft} onLocate={locate} />}
               </aside>
             </main>
           </>
         )}
       </div>
     </Layout>
+  )
+}
+
+// 트윈 지표 중 앱 요약 카드와 겹치는 칸(에너지 총괄의 건물 전력, 현장 엔지니어·시설 관리자의 실내기 대수)
+const KPI_DUP: Record<string, string[]> = { owner: ['power'], engineer: ['idu'], facility: ['idu'] }
+function KpiText({ k }: { k: TwinKpi }) {
+  return (
+    <div className="kpi">
+      <span className="klabel">{k.label}</span>
+      <span className={k.bad ? 'kval bad' : 'kval'}>{k.value}<small>{k.unit}</small></span>
+      <span className="ksub">3D 트윈 계산</span>
+    </div>
   )
 }
 

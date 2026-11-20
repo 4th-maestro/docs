@@ -29,6 +29,11 @@
 | `src/panels/` | 운영 패널 4종: 최적 제어 추천, 이상 감지, 오늘 스케줄(세로 시간표: 시작 시각부터 그날 끝까지 칸, 지금 선, 칸 선택 시 상세와 취소, 층 선택 버튼으로 층별 보기), 전력 추이(오늘·어제 SVG 그래프). 60초마다 다시 조회 |
 | `src/energy/` | 에너지 분석: `BuildingCompare`(건물별 kWh·1㎡당·전기요금 막대), `EnergyPage`(일·주·월 추이, 사용 구성 흐름도, 최근 4주 요일×시간 히트맵). API 실패 시 `mock.ts` 목업([설계](../docs/human/explanation/architecture.md) 11절) |
 | `src/panels/mock.ts` | 운영 패널·전체 현황 목업: 데모 상태 기반 추천·이상 감지·전력 곡선, 건물별 브라우저 메모리 스케줄 저장소 |
+| `src/BuildingEditor.tsx` | 평면도 편집: 방 이름, 벽 설치, 벽 삭제, 벽 이동, 칸막이, 실내기(`src/ingest/UnitTool.tsx`), 위치 맞춤, 실행 취소 |
+| `src/ingest/PlanIngest.tsx` | 도면 업로드, 2D 실내기 매핑, 확정 저장 진입 컴포넌트(판매사 건물 화면에서 사용). 입력 IFC, DXF, DWG, PDF, PNG, JPG |
+| `src/ingest/api.ts` | 도면 변환 API(작업 생성, S3 업로드, 시작, 3초 상태 조회), 기호 인식, 확정 저장 어댑터 `saveTwin` |
+| `src/ingest/UnitTool.tsx` | 실내기 도구(유형 6종 추가, 끌어서 이동, 삭제, 유형 변경, 확인 필요 목록)와 도면 위치 맞춤(기준점 2쌍) |
+| `src/ingest/units.ts` | 기준점 2쌍 유사 변환, 인식 결과 → 실내기, 호실 배정. 유형표 `hvac-types.json`은 `../ml/hvac_types.json` 복사본 |
 | `public/demo/<건물>.json` | 건물별 데모 상태와 건물 id 목록 `index.json`(`python3 tools/demo_status.py`를 `lambda` 폴더에서 실행해 생성) |
 | `public/floorplans/<건물>.json` | 건물별 3D 도면, API를 쓸 수 없을 때의 대체 파일. `python3 tools/build_floorplans.py`를 `lambda` 폴더에서 실행해 `public/floorplan.json`에서 생성. 운영 도면은 도면 버킷(`lambda/tools/upload_plans.py`) |
 
@@ -82,9 +87,26 @@ npm run dev
 - **값은 대시보드 한 곳에서만 만듭니다.** 트윈은 대시보드가 보낸 호실 상태(`postState`의 `data`)를 그대로 그려서 웹과 같은 값을 보입니다. 데모 값은 트윈 도면에서 만든 `public/demo/<id>.json`에 목업(`src/mock.ts`)이 ±변동을 준 것입니다.
 - **건물 목록은 트윈을 따릅니다**: 6공학관(`eng6`), 부산역 역사(`busan-station`). 호실 id·실내기 id도 트윈 `building.json`과 같습니다.
 - **건물 추가**(판매사 기업 상세의 건물 영역): 만들기 방법에서 도면 이미지를 고르면 트윈 파이프라인이 열립니다. 결과(`buildingRendered`)를 받으면 브라우저에서 `{twin, rooms, plan}`으로 변환해 서버에 저장합니다(`src/admin/convert.ts`). 운영 탭 트윈은 서버 건물의 도면을 `GET /buildings/{id}/twin`으로 받습니다.
-- 운영 탭 오른쪽 맨 위 **운전 시뮬레이션** 패널(`src/panels/SimPanel.tsx`)은 트윈 안에 있던 것을 옮긴 것입니다. 계산은 트윈이 하고 결과만 받습니다.
+- 건물 화면 상단 탭은 **운영**, **전력 분석**, **시뮬레이션**(`#/b/<id>/sim`)입니다. 시뮬레이션 탭에는 트윈 3D(운전 시뮬레이션 역할), **운전 시뮬레이션** 패널(`src/panels/SimPanel.tsx`), 시나리오 실험(개발 서버의 `eng6`만)이 있습니다. 계산은 트윈이 하고 결과만 받습니다. 트윈 도면이 없는 건물은 시뮬레이션을 사용할 수 없다고 안내합니다.
+- 운영 탭의 트윈은 3D 렌더링과 호실 선택만 합니다(2026-11-20). 트윈 안 버튼, 층 칩, 지표 칩, 우측 패널은 숨기고 앱이 대신 표시합니다.
+  - 3D 카드 도구 줄(`src/panels/TwinTools.tsx`): 역할(에너지 총괄, 현장 엔지니어, 시설 관리자), 데이터 흐름, 설비 연결. 호실 보기에서는 평면도로, 온도장, 바닥 등온선, 습도, 기류
+  - 상단 요약 카드: 앱 4개(운전 중, 정지, 이상 감지, 현재 전력)에 트윈 역할별 지표(예: 오늘 누적 사용량, 오늘 전기요금, 지금 절감 가능, 재실 인원)를 합침. 앱과 겹치는 칸(건물 전력, 실내기 대수)은 제외
+  - 조치 목록 카드(`src/panels/TwinActions.tsx`): 역할별 요약(예: 지금 바로 아낄 수 있는 전력)과 호실 목록, "3D에서 보기"
+  - 메시지: 트윈 → `twinUi`(화면 상태, 지표, 조치 목록), 앱 → `ui`(동작). 규약은 [3D 트윈 임베드 규약](../docs/human/reference/twin-embed.md) 8절
 - 트윈에서 방을 고르면 `{source:'twin', type:'roomSelected', roomId}`를 보냅니다(`src/twin.ts`가 받음). 방 설정온도를 바꾸면 `{source:'twin', type:'control'}`을 보내고 대시보드가 반영합니다.
 - `npm run build`는 트윈을 `dist/twin/`으로 복사합니다(EnergyPlus 결과 `twin/sim/`은 제외).
+- **도면 업로드와 실내기 매핑**(`src/ingest/`, [도면 변환 규약](../docs/human/reference/plan-ingest.md)): 아래 표의 순서로 처리합니다. 확인 필요(`review`) 실내기는 주황 점선 테두리와 "확인 필요 N대" 목록으로 표시합니다.
+
+| 입력 | 처리 | 2D 매핑 화면 |
+|---|---|---|
+| IFC, DXF, DWG | `POST /plans/jobs` → S3 PUT → `/start` → 3초마다 상태 조회(파일 해석, 도면 이미지 생성, 실내기 인식, 병합) | 서버 초안. 렌더링한 도면은 배경 이미지 |
+| PDF | 위와 같은 서버 작업 후 렌더링한 페이지를 트윈 파이프라인에 넣음 | 파이프라인 결과 |
+| PNG, JPG | 고른 파일을 트윈 파이프라인에 넣음(`plans` 메시지) | 파이프라인 결과 |
+
+- 파이프라인은 보정 평면도마다 기호 인식을 요청하고(`detectRequest`), 대시보드가 `POST /plans/detect`로 처리합니다. 메시지 목록은 [twin/README.md](twin/README.md) "호스트 연동 메시지"에 있습니다.
+- 2D 매핑 화면은 평면도 편집의 **실내기**와 **위치 맞춤** 도구입니다. 위치 맞춤은 도면 이미지 점 2개와 평면 점 2개로 회전, 축척, 이동을 구하고, 위치를 맞추지 않은 인식 결과(`floors[].detections`)를 실내기로 바꿉니다.
+- 확정 저장은 `saveTwin(buildingId, twin, convert)`입니다. 호출 쪽이 변환 함수(`src/admin/convert.ts`)를 넘기면 `PUT /buildings/{id}/twin` `{twin, rooms, plan}`, 없으면 이 브라우저에만 저장합니다(데모).
+- `VITE_API_BASE_URL`이 없으면 IFC, CAD, PDF 변환과 기호 인식은 동작하지 않고, PNG, JPG만 파이프라인으로 처리합니다.
 
 ## 확인
 
@@ -94,6 +116,8 @@ node src/admin/convert.check.mjs   # building.json 변환 자가 점검(접두�
 ```
 
 화면을 바꾸면 1440px와 390px 너비에서 버튼 높이·너비와 라벨 잘림을 확인하십시오.
+
+실내기 매핑 계산은 `node src/ingest/units.check.mjs`로 자가 점검합니다(Node 23.6 이상, 기준점 변환, 호실 배정, 인식 결과 변환, 인식용 보정 해상도).
 
 ## 배포
 

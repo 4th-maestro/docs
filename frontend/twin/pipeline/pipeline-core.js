@@ -30,12 +30,13 @@ export function homography(dst, src){
 }
 
 // corners: 사진 픽셀 좌표 [북서, 북동, 남동, 남서] (건물 좌표 (0,0) (W,0) (W,D) (0,D))
-export function rectify(img, corners, W, D){
+// res: 출력 해상도(px/m). 화면·벽 검출은 RES, 실내기 기호 인식은 host-bridge.js detectRes 값
+export function rectify(img, corners, W, D, res = RES){
   const map = homography([[0, 0], [W, 0], [W, D], [0, D]], corners);
-  const w = Math.round((W + 2 * MARGIN) * RES), h = Math.round((D + 2 * MARGIN) * RES);
+  const w = Math.round((W + 2 * MARGIN) * res), h = Math.round((D + 2 * MARGIN) * res);
   const out = new Uint8ClampedArray(w * h * 4), { width:iw, height:ih, data } = img;
   for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
-    const [u, v] = map((i + .5) / RES - MARGIN, (j + .5) / RES - MARGIN), o = (j * w + i) * 4;
+    const [u, v] = map((i + .5) / res - MARGIN, (j + .5) / res - MARGIN), o = (j * w + i) * 4;
     if (u < 0 || v < 0 || u > iw - 1 || v > ih - 1) { out[o] = out[o + 1] = out[o + 2] = 255; out[o + 3] = 255; continue; }
     const x0 = Math.floor(u), y0 = Math.floor(v), fx = u - x0, fy = v - y0, x1 = Math.min(x0 + 1, iw - 1), y1 = Math.min(y0 + 1, ih - 1);
     for (let c = 0; c < 3; c++) {

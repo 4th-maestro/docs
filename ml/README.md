@@ -12,6 +12,7 @@
 | `test_synth.py` | 합성 단위 테스트 5건 |
 | `real_labels/` | 실제 설계도면 실내기 라벨(페이지 좌표, 출처 공고번호). 도면 파일은 저장소에 넣지 않음 |
 | `real_tiles.py` | 실제 도면 라벨과 PDF로 YOLO 타일 생성(1m당 80px, 1400px 타일) |
+| `serve/` | Serverless Inference 진입점(`inference.py`, ONNX와 onnxruntime CPU), 후처리 테스트 2건. 요청·응답 규약은 [도면 변환 규약](../docs/human/reference/plan-ingest.md) 5절 |
 | `ifc_eval.py` | IFC 평가 세트: 의원 건물 급기구 좌표를 천장형 기호 3종으로 치환한 평면도 타일(1m당 80px, 1400px)과 라벨. 학습에는 미사용 |
 | `hvac_control/` | 규칙 기반·JEV 기반·DDPG HVAC 설정온도 제어 비교(EnergyPlus). DDPG SageMaker 학습은 `sagemaker.sh ddpg`. 실행은 [hvac_control/README.md](hvac_control/README.md) |
 
@@ -43,16 +44,19 @@ ml/sagemaker.sh data                        # CubiCasa5K 합성(ml.c5.4xlarge), 
 ml/sagemaker.sh train smoke                 # 환경 점검: 1 에포크, 학습 데이터 5%
 ml/sagemaker.sh train                       # 본 학습: 최대 60 에포크, 최대 4시간
 ml/sagemaker.sh register <학습 작업 이름>     # Model Registry 그룹 hvac-symbol-detector에 승인 대기로 등록
+ml/sagemaker.sh deploy <best.onnx> <버전>     # Serverless Endpoint hvac-symbol-detector-sls 생성 또는 갱신(메모리 6,144MB, 동시 실행 2)
 ml/sagemaker.sh status <작업 이름>
 ml/sagemaker.sh logs <작업 이름> --follow
 ```
 
-- 학습 인스턴스는 `INSTANCE` 환경 변수로 바꾸십시오. 기본값은 `ml.g6.xlarge`(L4 24GB, 서울 리전 시간당 $1.385, 2026-11-20 조회)입니다.
+- 학습 인스턴스는 `INSTANCE` 환경 변수로 바꾸십시오. 기본값은 `ml.g6.xlarge`(L4 24GB, 서울 리전 시간당 $1.385, 2026-11-20 조회)입니다. 이 인스턴스에서는 GPU 사용률 83~98%, vCPU 4개 사용률 약 93%로 모두 포화되었습니다. `INSTANCE=ml.g6e.4xlarge`(L40S, vCPU 16개, 시간당 $4.62)에서는 학습 속도가 3 it/s에서 8.8 it/s로 올랐습니다.
 - 합성 데이터 버전은 `DATASET` 환경 변수로 구분하십시오. 기본값은 `hvac-yolo`(v1, 단순 선 기호 5종)이고, 국내 CAD 기호 6종은 `DATASET=hvac-yolo-v2`입니다. `data`와 `train`에 같은 값을 주십시오.
 - 실제 도면 타일을 섞으려면 `REAL=s3://<버킷>/data/hvac-real/`을 지정하십시오. 학습 타일은 `REAL_REPEAT`(기본 20)회 반복해 넣고, `images/test` 타일은 별도로 채점해 `test_metrics.json`의 `real`에 저장합니다.
 - 결과는 `s3://<버킷>/models/<작업 이름>/output/model.tar.gz`입니다. 압축 안의 `hvac/weights/best.pt`가 가중치이고, `test_metrics.json`이 테스트 지표입니다.
 - 합성 결과를 로컬에서 확인하려면 `python3 ml/synth.py <cubicasa5k 폴더> <출력 폴더> --limit 5`를 실행하십시오.
-- Registry 등록 모델은 추론 코드가 없어 바로 배포할 수 없습니다. Endpoint 배포 작업에서 `inference.py`를 추가해 새 버전으로 등록하십시오. Endpoint 운영은 루트 `AGENTS.md`의 "SageMaker Endpoint 비용 관리"를 따르십시오.
+- Registry 등록 모델은 학습 산출물(`best.pt`)이며, 배포는 `deploy`로 ONNX를 `serve/inference.py`와 묶어 Serverless Endpoint에 올립니다. `train.py`는 학습 끝에 `hvac/weights/best.onnx`를 저장합니다. 이전 산출물은 `yolo export model=best.pt format=onnx imgsz=1024`로 만드십시오.
+- Serverless Endpoint는 호출이 없으면 요금이 없습니다. 실시간 Endpoint로 바꾸면 루트 `AGENTS.md`의 "SageMaker Endpoint 비용 관리"를 따르십시오.
+- 추론 전처리는 학습과 같은 OpenCV INTER_LINEAR 축소입니다. PIL bilinear로 바꾸면 얇은 선 도면에서 신뢰도가 0.76에서 0.54로 달라졌습니다(2026-11-20). 응답 시간은 첫 호출 2.3초, 이후 타일당 1.0초입니다(1400px 타일, 2026-11-20).
 
 IFC 평가 세트는 다음 순서로 만들고 채점하십시오. IFC 원본은 buildingsmart-community 저장소의 `Clinic_Architectural.ifc`, `Clinic_HVAC.ifc`(Git LFS)입니다.
 

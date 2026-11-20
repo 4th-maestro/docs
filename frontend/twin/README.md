@@ -122,6 +122,39 @@ node tools/sim-server.mjs 8766
 
 고친 내용은 모두 레시피에 남습니다. 레시피를 저장하면 명령줄에서도 같은 결과가 나옵니다.
 
+### 호스트 연동 메시지: 평면도 넣기, 실내기 기호 인식
+
+대시보드의 도면 업로드 화면(`src/ingest/PlanIngest.tsx`)은 파이프라인을 `pipeline.html?quick=1&detect=1`로 엽니다. 메시지 코드는 `pipeline/host-bridge.js`(파이프라인)와 `src/ingest/bridge.ts`(대시보드)입니다. 규약 원본은 [도면 변환 규약](../../docs/human/reference/plan-ingest.md)입니다.
+
+| 방향 | 메시지 | 필드 | 처리 |
+|---|---|---|---|
+| 대시보드 → 파이프라인 | `plans` | `files`(File 목록) | 파일마다 층 행 1개(1F부터)를 만들고 평면도를 채움. PNG, JPG 업로드와 PDF 렌더링 페이지에 사용 |
+| 파이프라인 → 대시보드 | `detectRequest` | `id`, `floors`(층 id 목록), `image`(인식용 보정 평면도 PNG Blob), `pxPerM`(인식용 해상도) | `detect=1`일 때 3D 트윈 만들기 중 층 그룹마다 1회 요청 |
+| 대시보드 → 파이프라인 | `detectResult` | `id`, `detections`(`{cls, conf, box}`, 보정 이미지 픽셀), `key`(S3 키), `error` | 대시보드가 `POST /plans/detect`로 인식. 서버가 없거나 실패하면 빈 목록과 `error` |
+| 파이프라인 → 대시보드 | `buildingRendered`(기존) | `building` | `detect=1`이면 층마다 `background`(`toPlan` = 보정 이미지 픽셀 → m), `detections`, `meta.ingest.warnings`를 붙임 |
+
+- 메시지는 `source`(`maestro` 또는 `twin`)와 부모 창과 iframe 창으로 출처를 확인합니다.
+- 인식용 보정 이미지는 화면용 20px/m 보정 이미지와 따로, 원본 이미지에서 다시 보정합니다. 해상도 `pxPerM`은 인식 모델 학습 해상도 80px/m, 원본의 실제 해상도(외곽 4변 중 최대), 여백 포함 긴 변 8000px 중 가장 작은 값입니다(`pipeline/host-bridge.js` `detectRes`).
+- 인식용 보정 이미지 픽셀 (u, v)와 평면 좌표의 관계는 `x = u / pxPerM − 6`, `y = v / pxPerM − 6`입니다(`MARGIN` 6m).
+- 좌표 변환과 호실 배정은 대시보드(`src/ingest/units.ts`)가 합니다. 인식 결과가 있는 층은 면적 추정 실내기(`source: estimate`)를 빼고, 신뢰도 0.5 미만, `unknown`, 실 밖 실내기는 `review: true`로 표시합니다.
+- 대시보드가 응답하지 않으면 6분 뒤 빈 결과로 진행합니다. `detect=1`이 없으면 요청하지 않습니다.
+
+### 실내기 유형별 3D 형상
+
+`building.json`의 `idus[].cls`가 있으면 방 화면이 유형별 형상을 그립니다(`pipeline/idu-shapes.js`). `cls`가 없는 기존 데이터는 이전처럼 `type`, `model` 문자열의 `1WAY` 여부로 1방향 또는 4방향 카세트를 그립니다.
+
+| `cls` | 형상 | 위치 |
+|---|---|---|
+| `cassette_4way`, `cassette_2way`, `cassette_1way` | 천장 패널과 방향 수만큼의 토출구, 베인 | 천장면 |
+| `ceiling_duct` | 천장 위 본체, 천장면 공급구와 흡입구 격자 | 천장면 |
+| `wall_mounted` | 얇은 상자, 앞면 아래 토출구 | 바닥에서 2.2m(천장고 − 0.25m 이하) |
+| `floor_standing` | 높이 1.8m 상자, 위쪽 앞면 토출구 | 바닥 |
+| `unknown` | 4방향 카세트 형상 | 천장면 |
+
+- 토출 방향은 `rot`(도)입니다. 0은 평면 x+(오른쪽), 90은 평면 y+(아래쪽)입니다. 값이 없으면 실 중심 쪽 긴 변 방향입니다.
+- 크기는 `size`(`[w, d]`, 평면 x, y 방향 길이, m)이고, 없으면 유형별 기본값을 씁니다.
+- 실내기 목록의 모델 칸은 `type`과 `model`을 함께 표시합니다(예: `천장형 4방향 카세트 · ARNU12GTRB4`).
+
 ### 스카이뷰로 건물 모양 검증
 
 스카이뷰(지도 항공사진, 북쪽이 위)는 **화면에 깔지 않고** 도면이 실제 건물과 맞는지 확인하는 데만 씁니다. 레시피 `site`에 적습니다.
@@ -331,7 +364,9 @@ node tools/run-scenario.mjs data/ --live 실시간.json --room 3F-6307 --room-sp
    - 호스트로 `twin:control {room, setTemp, idus}`(대시보드에는 `{source:'twin', type:'control'}`)를 보냅니다. 명령은 호스트가 실행하고, 바뀐 값이 다음 갱신에 들어옵니다.
    - 대시보드 목업은 기준값에 반영해서 웹·트윈이 함께 바뀝니다.
 
-대시보드에 넣으면 **운전 시뮬레이션** 패널은 트윈 안이 아니라 대시보드의 3D 도면 옆 패널에 나옵니다(트윈이 계산하고 결과를 `{source:'twin', type:'sim'}`로 보냄).
+대시보드에 넣으면 **운전 시뮬레이션** 패널은 트윈 안이 아니라 대시보드 시뮬레이션 탭의 패널에 나옵니다(트윈이 계산하고 결과를 `{source:'twin', type:'sim'}`로 보냄).
+
+대시보드에 넣은 상태(`body.hosted`)에서 트윈은 3D 렌더링과 호실 선택만 합니다(2026-11-20). 상단 바(역할, 데이터 흐름, 설비 연결, 지표, 데이터), 층 칩, 지표 칩, 우측 조치 패널, 범례, 호실 보기 도구를 숨깁니다. 대시보드가 `{source:'maestro', type:'ui', action}`(`persona:<역할>`, `flow`, `pipes`, `back`, `rv:<vol|slice|hum|air>`)으로 숨긴 버튼을 대신 누르고, 트윈은 1초마다 바뀐 경우에만 `{source:'twin', type:'twinUi', ui, kpis, actions}`를 보냅니다. 데이터 파일을 바꾸는 **데이터** 버튼은 관리 기능이라 대시보드에 옮기지 않았습니다.
 
 정적 데이터를 바꾸는 방법은 두 가지입니다.
 
