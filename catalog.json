@@ -267,6 +267,12 @@
       "type": "explanation"
     },
     {
+      "path": "docs/human/explanation/improvements/2026-11-21(시뮬레이션 탭 패널 통합).md",
+      "title": "시뮬레이션 탭 패널 통합",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
       "path": "docs/human/explanation/improvements/2026-11-21(자동 추정 공간 안내 제거).md",
       "title": "자동 추정 공간 안내 제거",
       "audience": "human",
