@@ -99,7 +99,7 @@ LLM 호출과 도구 실행은 query Lambda가 담당합니다. 모든 HTTP API�
 | DXF·DWG | 벽 선을 0.5m 팽창해 문 개구부를 막고 빈 영역을 호실로 생성, 블록 이름 별칭으로 실내기 판정. DWG는 libredwg로 DXF 변환 | 합성 도면 테스트만 통과, 실제 도면 미확인 |
 | PDF | 페이지 렌더링(`1/200` 문자가 있으면 1m당 80px) 후 트윈 파이프라인 평면도 단계로 호실 생성 | 구현, 실제 도면 통합 미확인 |
 | 이미지 | 트윈 파이프라인(원근 보정, 벽 검출, 공간 분할) | 기존 구현 |
-| 도면 실내기 기호 | IFC 실내기 객체·CAD 블록 우선, 없으면 YOLO 기호 검출 후 유형별 LG 모델 표(`ml/hvac_types.json`) 조회, 2D 화면에서 교정 | 실제 도면 mAP50 v1 0.006, v2 0.337, v3 0.689(12-2절) |
+| 도면 실내기 기호 | IFC 실내기 객체·CAD 블록 우선, 없으면 YOLO 기호 검출 후 유형별 LG 모델 표(`ml/hvac_types.json`) 조회, 2D 화면에서 교정 | 실제 도면 mAP50 v1 0.006, v2 0.337, v3 0.689, v4 0.776(12-2절) |
 | 층·호실 표 | 호실 번호, 용도(회의실 등)를 다각형과 이름으로 연결 | 미실험 |
 
 3D는 바닥 다각형을 층고만큼 돌출해 glTF로 만듭니다. 층고 정보가 없으면 3.6m를 기본값으로 씁니다.
@@ -326,13 +326,13 @@ docs/              문서(현재 구조 유지)
 | AI 서비스 | Jev(TypeSafe AI) 판단 API(외부) | 빈 방·이상 판단 | 규칙 기반과 비교 실험 중(`ml/hvac_control/`) |
 | AI 서비스 | SageMaker Endpoint | DRL 최적 제어 추천 | 계획. 현재 추천은 규칙 3종(8절) |
 | 3D 모델 생성 | Step Functions | 도면 변환 워크플로 | 구현·배포(파싱, 인식, 병합) |
-| 3D 모델 생성 | SageMaker Endpoint | 도면 인식 | Serverless Endpoint 배포(v3, 호출 시에만 과금) |
+| 3D 모델 생성 | SageMaker Endpoint | 도면 인식 | Serverless Endpoint 배포(v4, 호출 시에만 과금) |
 | 3D 모델 생성 | Lambda(컨테이너) | IFC·glb 생성 | 도면 파서(IFC, DXF, DWG, PDF → `twin.building/v1`) 배포(x86_64). 3D는 팀 트윈이 `twin.building/v1`을 직접 렌더링, glb 파일 생성은 미구현 |
-| 모델 학습 | S3, Processing, Training, Model Registry | 학습 데이터, 전처리, 학습, 모델 등록 후 Endpoint 배포 | 도면 인식 v1~v3 등록(12-2). DRL, EnergyPlus 보정은 계획 |
+| 모델 학습 | S3, Processing, Training, Model Registry | 학습 데이터, 전처리, 학습, 모델 등록 후 Endpoint 배포 | 도면 인식 v1~v4 등록(12-2). DRL, EnergyPlus 보정은 계획 |
 
 **12-2. 도면 인식 학습은 실내기 기호 검출부터 구현했으며, 코드는 `ml/`입니다.**
 
-CubiCasa5K 평면도에 실내기 기호 6종(단순 선 기호와 국내 CAD 기호)을 합성한 데이터와 나라장터 실제 설계도면 라벨로 YOLO를 미세조정합니다. 합성 기호만 학습한 v1은 실제 도면 mAP50 0.006이었습니다. 국내 CAD 기호를 합성한 v2는 실제 도면 mAP50 0.337, 2방향 비율과 스탠드형 크기 범위를 보정한 v3는 0.689입니다(스탠드형 0.201). 학습은 SageMaker Processing(합성)과 Training(학습)으로 실행하고, 학습 결과는 Model Registry에 승인 대기 상태로 등록합니다. 추론은 ONNX를 Serverless Endpoint(`hvac-symbol-detector-sls`)로 배포했습니다. 선택 근거와 결과는 [도면 실내기 기호 검출 모델](decisions/2026-11-20%28%EB%8F%84%EB%A9%B4%20%EC%8B%A4%EB%82%B4%EA%B8%B0%20%EA%B8%B0%ED%98%B8%20%EA%B2%80%EC%B6%9C%20%EB%AA%A8%EB%8D%B8%29.md) 기록에 있습니다.
+CubiCasa5K 평면도에 실내기 기호 6종(단순 선 기호와 국내 CAD 기호)을 합성한 데이터와 나라장터 실제 설계도면 라벨로 YOLO를 미세조정합니다. 합성 기호만 학습한 v1은 실제 도면 mAP50 0.006이었습니다. 국내 CAD 기호를 합성한 v2는 실제 도면 mAP50 0.337, 2방향 비율과 스탠드형 크기 범위를 보정한 v3는 0.689, 스탠드형 기호를 실제 모양으로 바꾼 v4는 0.776입니다(스탠드형 0.543, 2방향 0.847). 학습은 SageMaker Processing(합성)과 Training(학습)으로 실행하고, 학습 결과는 Model Registry에 승인 대기 상태로 등록합니다. 추론은 ONNX를 Serverless Endpoint(`hvac-symbol-detector-sls`)로 배포했습니다. 선택 근거와 결과는 [도면 실내기 기호 검출 모델](decisions/2026-11-20%28%EB%8F%84%EB%A9%B4%20%EC%8B%A4%EB%82%B4%EA%B8%B0%20%EA%B8%B0%ED%98%B8%20%EA%B2%80%EC%B6%9C%20%EB%AA%A8%EB%8D%B8%29.md) 기록에 있습니다.
 
 ## 다음 작업
 

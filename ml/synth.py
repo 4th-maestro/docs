@@ -23,6 +23,7 @@ from PIL import Image, ImageDraw, ImageFont
 # 클래스 순서가 YOLO 클래스 번호. LG 모델 연결은 hvac_types.json
 CLASSES = ['cassette_4way', 'cassette_1way', 'wall_mounted', 'ceiling_duct', 'floor_standing', 'cassette_2way']
 ON_WALL = {2, 4}
+CLASS_WEIGHT = [1, 1, 1, 1, 2, 1]
 # 국내 CAD 도면 배관 색(냉매 주황, 드레인 초록, 제어선 빨강)
 PIPE = [(240, 110, 40), (40, 160, 70), (220, 50, 50)]
 SVG = '{http://www.w3.org/2000/svg}'
@@ -107,7 +108,8 @@ def place(rng, rooms, t):
         if 'Outdoor' in c or a < (8 * t) ** 2 or rng.random() > 0.75:
             continue
         for _ in range(1 + (a > (45 * t) ** 2)):
-            k = rng.randrange(len(CLASSES))
+            # 스탠드형은 실제 도면 재현율이 가장 낮아(v3 0.206) 2배 비중으로 합성(v4, 2026-11-20)
+            k = rng.choices(range(len(CLASSES)), weights=CLASS_WEIGHT)[0]
             L, D = (s * t for s in SIZE[k](rng))
             xs, ys = [p[0] for p in pts], [p[1] for p in pts]
             for _ in range(20):
@@ -266,12 +268,42 @@ def draw_kr(d, k, box, side, ink, w):
         # 벽 부착형: 벽과 평행한 안쪽 표시와 방 안쪽 토출 화살표
         dx, dy = INTO[side]
         if k == 4:
-            i = m * 0.22
-            d.rectangle((x0 + i, y0 + i, x1 - i, y1 - i), outline=ink, width=w)
-            line(d, [(x0 + i, cy), (x1 - i, cy)] if dy else [(cx, y0 + i), (cx, y1 - i)], ink, w)
-        else:
-            d.rectangle((x0 + W * 0.1, cy - H * 0.15, x1 - W * 0.1, cy + H * 0.15) if dy else (cx - W * 0.15, y0 + H * 0.1, cx + W * 0.15, y1 - H * 0.1), fill=ink)
-        fans(d, box, side, ink, w, max(W, H) * (0.45 if k == 4 else 0.3))
+            return standing_kr(d, box, side, ink, w)
+        d.rectangle((x0 + W * 0.1, cy - H * 0.15, x1 - W * 0.1, cy + H * 0.15) if dy else (cx - W * 0.15, y0 + H * 0.1, cx + W * 0.15, y1 - H * 0.1), fill=ink)
+        fans(d, box, side, ink, w, max(W, H) * 0.3)
+
+
+def standing_kr(d, box, side, ink, w):
+    """실제 도면 스탠드형(v4): 검게 채운 본체, 벽 쪽 흰 띠와 가운데 막대, 앞면에서 떨어진 가는 곡선 토출 화살표 3개."""
+    x0, y0, x1, y1 = box
+    dx, dy = INTO[side]
+    d.rectangle(box, fill=ink)
+    # 깊이 방향은 벽에서 방 쪽으로 0.2~0.55, 길이 방향은 0.12~0.88 구간을 흰 띠로 비움
+    if dy:
+        a, b = (y0, y1) if dy > 0 else (y1, y0)
+        s0, s1 = sorted((a + (b - a) * 0.2, a + (b - a) * 0.55))
+        slot = (x0 + (x1 - x0) * 0.12, s0, x1 - (x1 - x0) * 0.12, s1)
+        bar = [(slot[0], (s0 + s1) / 2), (slot[2], (s0 + s1) / 2)]
+        L, fx, fy, ux, uy = x1 - x0, (x0 + x1) / 2, (y1 if dy > 0 else y0), 1, 0
+    else:
+        a, b = (x0, x1) if dx > 0 else (x1, x0)
+        s0, s1 = sorted((a + (b - a) * 0.2, a + (b - a) * 0.55))
+        slot = (s0, y0 + (y1 - y0) * 0.12, s1, y1 - (y1 - y0) * 0.12)
+        bar = [((s0 + s1) / 2, slot[1]), ((s0 + s1) / 2, slot[3])]
+        L, fx, fy, ux, uy = y1 - y0, (x1 if dx > 0 else x0), (y0 + y1) / 2, 0, 1
+    d.rectangle(slot, fill=(255, 255, 255))
+    line(d, bar, ink, max(1, round(min(slot[2] - slot[0], slot[3] - slot[1]) * 0.3)))
+    n, gap = L * 0.45, L * 0.08
+    for o, bend in ((-0.3, -1), (0, 0), (0.3, 1)):
+        # 가운데는 직선, 양쪽은 바깥으로 휘는 3점 꺾은선
+        p0 = (fx + ux * o * L + dx * gap, fy + uy * o * L + dy * gap)
+        p1 = (p0[0] + dx * n * 0.5 + ux * bend * n * 0.1, p0[1] + dy * n * 0.5 + uy * bend * n * 0.1)
+        p2 = (p0[0] + dx * n + ux * bend * n * 0.35, p0[1] + dy * n + uy * bend * n * 0.35)
+        line(d, [p0, p1, p2], ink, max(1, w))
+        vx, vy = p2[0] - p1[0], p2[1] - p1[1]
+        k = math.hypot(vx, vy) or 1
+        vx, vy, h = vx / k, vy / k, max(3, n * 0.18)
+        d.polygon([(p2[0] + vx * h * 0.6, p2[1] + vy * h * 0.6), (p2[0] - vy * h * 0.4, p2[1] + vx * h * 0.4), (p2[0] + vy * h * 0.4, p2[1] - vx * h * 0.4)], fill=ink)
 
 
 def context(d, rng, box, ink, avoid=()):
