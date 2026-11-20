@@ -2951,17 +2951,20 @@ function buildLive(){
   return { schema:'twin.live/v1', date:simDate, day:simDay, now:r2(simMin / 60), forecast:OUT_FCST_DATE === simDate ? OUT_FCST : {}, hours,
     occupancy:{ source:occKind(), wifiAps:Object.keys(MEAS.wifi || {}).length } };
 }
+// 건물 지정: 폴더에 도면이 있는 데모 건물은 data(폴더), 대시보드가 준 도면(등록 건물·도면 교체 편집본)은 building(도면 자체)
+//   building은 배포 계산 서버(Lambda 레포 infra/sim, 웹 /api/sim/*)가 임시 폴더에 써서 계산. 로컬 tools/sim-server.mjs는 400으로 거절
 async function simCompare(scenario, useLive){
-  if (HOST_PLAN) throw new Error('브라우저에 저장된 평면도의 EnergyPlus 계산은 지원되지 않습니다.');
+  if (HOST_PLAN && !DATA.building) throw new Error('대시보드에서 평면도를 받지 못해 계산할 수 없습니다.');
+  const where = HOST_PLAN ? { building:DATA.building } : { data:DATA_BASE };
   const r = await fetch('/api/sim/compare', { method:'POST', headers:{ 'Content-Type':'application/json' },
-    body:JSON.stringify({ data:DATA_BASE, scenario:{ mode:simMode(), ...scenario }, ...(useLive ? { live:buildLive() } : {}) }) });
+    body:JSON.stringify({ ...where, scenario:{ mode:simMode(), ...scenario }, ...(useLive ? { live:buildLive() } : {}) }) });
   const j = await r.json().catch(() => null);
   if (!r.ok || !j?.compare) throw new Error(j?.error || (r.status === 404 || r.status === 501 ? '계산 서버가 없어요 — start-twin.bat(node 서버)로 열어 주세요' : `서버 오류 ${r.status}`));
   return j;
 }
 async function simRun(){
   const f = simForm(), now = f.period === 'now' && hasLive(), useLive = now || (f.useLive && hasLive());
-  if (HOST_PLAN) { SIM.msg = '오류: 브라우저에 저장된 평면도의 EnergyPlus 계산은 지원되지 않습니다.'; SIM.ver++; renderSim(true); return; } SIM.busy = true; SIM.ver++; SIM.msg = `EnergyPlus 계산 중… (${useLive ? '오늘 실측 기준 · ' : ''}기존·선택 두 번, 10초 안팎)`; renderSim(true);
+  SIM.busy = true; SIM.ver++; SIM.msg = `EnergyPlus 계산 중… (${useLive ? '오늘 실측 기준 · ' : ''}기존·선택 두 번, 10초 안팎)`; renderSim(true);
   try {
     const j = await simCompare(now ? { name:'지금부터', coolSetpoint:+f.coolSetpoint, window:{ hours:+f.durH || 2 } }
       : { name:'내 선택', coolSetpoint:+f.coolSetpoint, hours:[f.start, f.end], offWhenEmpty:f.offWhenEmpty, precoolMin:+f.precoolMin }, useLive);
@@ -3772,7 +3775,7 @@ function tellHost(type, payload){ if (!HOST.on || HOST.applying) return; emit(ty
 function hostReport(force){
   if (!HOST.on || !hostReady()) return;
   const floors = FLOORS.map(f => { const acs = f.rooms.flatMap(r => r.acs);
-    return { floor:f.id, total:acs.length, on:acs.filter(a => a.status === 'on').length, anomaly:f.rooms.filter(r => r.alert.level).length, powerKw:+f.rooms.reduce((t, r) => t + r.power, 0).toFixed(1) }; });
+    return { floor:f.id, total:acs.length, on:acs.filter(a => a.status === 'on').length, anomaly:f.rooms.filter(r => r.acs.some(x => x.status === 'fault')).length, caution:f.rooms.filter(r => r.alert.level && !r.acs.some(x => x.status === 'fault')).length, powerKw:+f.rooms.reduce((t, r) => t + r.power, 0).toFixed(1) }; });
   const sig = JSON.stringify(floors), now = performance.now();
   if (!force && (sig === HOST.sig || now - (HOST.at || 0) < 3000)) return;
   HOST.sig = sig; HOST.at = now;

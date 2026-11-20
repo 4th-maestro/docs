@@ -1,6 +1,6 @@
 import { useContext, useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { AlertTriangle, BarChart3, Briefcase, Building2, CheckCircle2, ChevronDown, FlaskConical, LayoutDashboard, LogOut, Menu, Settings, X } from 'lucide-react'
+import { AlertCircle, AlertTriangle, BarChart3, Briefcase, Building2, CheckCircle2, ChevronDown, FlaskConical, LayoutDashboard, LogOut, Menu, Settings, X } from 'lucide-react'
 import { AUTH_ON, currentEmail, isAdmin, signOut } from '../auth/cognito'
 import { MeContext, ROLE } from '../auth/me'
 import { LEVEL } from '../portfolio/level'
@@ -124,27 +124,33 @@ function BuildingToggle({ buildings, current, tab }: { buildings: BuildingCard[]
   )
 }
 
-// 층 목록: 한 줄 행(층, kW, 이상), 위층이 위(건물 단면 순서), 맨 위 전체(건물 보기)
-// - 전체 행: 층 값 '', 전력·이상 건수는 층 합계. all이 false면 숨김
+// 층 목록: 한 줄 행(층, kW, 상태), 위층이 위(건물 단면 순서), 맨 위 전체(건물 보기)
+// - 전체 행: 층 값 '', 전력·이상·주의 건수는 층 합계. all이 false면 숨김
+// - 상태: 설비 이상(실내기 에러, 설정온도 미도달)은 "이상 N"(빨강), 쾌적도·습도·빈 방 운전 같은 주의만 있으면 "주의 N"(주황), 없으면 "정상"
+//   둘 다 있으면 이상을 표시하고 두 건수는 title과 화면 낭독 문구로 제공
 export function FloorList({ floors, floor, all, onFloor }: { floors: FloorSummary[]; floor: string; all?: boolean; onFloor: (f: string) => void }) {
-  const total = { floor: '', powerKw: Math.round(floors.reduce((s, f) => s + f.powerKw, 0) * 10) / 10, anomaly: floors.reduce((s, f) => s + f.anomaly, 0) }
+  const total = { floor: '', powerKw: Math.round(floors.reduce((s, f) => s + f.powerKw, 0) * 10) / 10, anomaly: floors.reduce((s, f) => s + f.anomaly, 0), caution: floors.reduce((s, f) => s + (f.caution ?? 0), 0) }
   return (
     <nav className="floors" aria-label="층 선택">
       <h2>층</h2>
       <ol>
-        {[...(all ? [total] : []), ...[...floors].reverse()].map((f) => (
-          <li key={f.floor || 'all'}>
-            <button className={f.floor === floor ? 'fl on' : 'fl'} aria-pressed={f.floor === floor} onClick={() => onFloor(f.floor)}>
-              <span className="fl-name">{f.floor || '전체'}</span>
-              <span className="fl-kw"><CountUp value={f.powerKw} />kW</span>
-              <span className={f.anomaly ? 'fl-st bad' : 'fl-st'}>
-                {/* 상태가 바뀔 때만 아이콘 다시 등장(key) */}
-                <span key={f.anomaly ? 'bad' : 'ok'} className="pop-in">{f.anomaly ? <AlertTriangle size={16} aria-hidden /> : <CheckCircle2 size={16} aria-hidden />}</span>
-                {f.anomaly ? `이상 ${f.anomaly}` : '정상'}
-              </span>
-            </button>
-          </li>
-        ))}
+        {[...(all ? [total] : []), ...[...floors].reverse()].map((f) => {
+          const caution = f.caution ?? 0, st = f.anomaly ? 'bad' : caution ? 'warn' : 'ok'
+          const detail = [f.anomaly ? `이상 ${f.anomaly}건` : '', caution ? `주의 ${caution}건` : ''].filter(Boolean).join(', ') || '정상'
+          return (
+            <li key={f.floor || 'all'}>
+              <button className={f.floor === floor ? 'fl on' : 'fl'} aria-pressed={f.floor === floor} onClick={() => onFloor(f.floor)} title={detail} aria-label={`${f.floor || '전체'}, ${f.powerKw}kW, ${detail}`}>
+                <span className="fl-name">{f.floor || '전체'}</span>
+                <span className="fl-kw"><CountUp value={f.powerKw} />kW</span>
+                <span className={st === 'ok' ? 'fl-st' : `fl-st ${st}`}>
+                  {/* 상태가 바뀔 때만 아이콘 다시 등장(key) */}
+                  <span key={st} className="pop-in">{st === 'bad' ? <AlertTriangle size={16} aria-hidden /> : st === 'warn' ? <AlertCircle size={16} aria-hidden /> : <CheckCircle2 size={16} aria-hidden />}</span>
+                  {st === 'bad' ? `이상 ${f.anomaly}` : st === 'warn' ? `주의 ${caution}` : '정상'}
+                </span>
+              </button>
+            </li>
+          )
+        })}
       </ol>
     </nav>
   )

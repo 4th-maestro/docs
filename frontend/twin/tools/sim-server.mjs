@@ -22,7 +22,9 @@ http.createServer(async (req, res) => {
   if (url.pathname === '/api/sim/compare' && req.method === 'POST') {
     let body = ''; for await (const c of req) { body += c; if (body.length > 4e6) return send(res, 413, { error:'too large' }); }
     try {
-      const { data = 'data/', scenario = {}, live = null } = JSON.parse(body || '{}');
+      const { data = 'data/', scenario = {}, live = null, building = null } = JSON.parse(body || '{}');
+      // 대시보드가 준 도면(등록 건물)은 배포 계산 서버(Lambda 레포 infra/sim)만 지원: 여기서 data 기본값으로 계산하면 다른 건물 결과가 나옴
+      if (building) return send(res, 400, { error:'로컬 서버는 등록 건물 도면 계산을 지원하지 않습니다(배포 환경에서 계산).' });
       const dir = path.resolve(ROOT, String(data));
       if (!dir.startsWith(ROOT) || !fs.existsSync(path.join(dir, 'building.json'))) return send(res, 400, { error:'데이터 폴더를 찾을 수 없음' });
       const job = busy.then(() => compare(path.relative(ROOT, dir) || '.', scenario, { ep, live }));

@@ -69,7 +69,7 @@ export function onRoomSelected(handler: (roomId: string) => void) {
 
 // 트윈에서 층·지표를 바꾸면 대시보드 버튼도 따라가게 (트윈 → {source:'twin', type:'floorSelected'|'modeSelected'})
 // 트윈이 인식한 건물의 층 목록과 층별 요약 (도면에서 5개 층이 나오면 5개)
-export type TwinFloor = { floor: string; on: number; total: number; anomaly: number; powerKw: number }
+export type TwinFloor = { floor: string; on: number; total: number; anomaly: number; caution?: number; powerKw: number }
 export type TwinBuilding = { id: string; name: string; floors: TwinFloor[] }
 
 export function onTwinChange(handlers: { floor?: (floor: string) => void; mode?: (mode: Mode) => void; building?: (b: TwinBuilding) => void }) {

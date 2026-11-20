@@ -63,6 +63,7 @@
 .fl-kw { justify-self: end; font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .fl-st { display: inline-flex; align-items: center; gap: 4px; font-size: 14px; font-weight: 700; color: var(--ok); white-space: nowrap; }
 .fl-st.bad { color: var(--danger); }
+.fl-st.warn { color: var(--caution); }
 .bt-btn:focus-visible, .side-link:focus-visible, .fl:focus-visible, .vtabs a:focus-visible, .user:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 
 @media (max-width: 1127px) {

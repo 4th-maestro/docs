@@ -6,7 +6,8 @@
 export type Tab = 'ops' | 'energy' | 'sim'
 export type AdminSub = { kind: 'new' | 'replace' | 'plan'; building?: string; image: boolean; file?: boolean }
 export type Route = { building: string | null; tab: Tab; admin?: boolean; company?: string; sub?: AdminSub; settings?: boolean }
-export type FloorSummary = { floor: string; on: number; total: number; anomaly: number; powerKw: number }
+// anomaly: 설비 이상(실내기 에러, 설정온도 미도달) 호실 수, caution: 그 밖의 주의(쾌적도, 습도, 빈 방·운영시간 외 운전) 호실 수(트윈 건물만)
+export type FloorSummary = { floor: string; on: number; total: number; anomaly: number; caution?: number; powerKw: number }
 
 export function parseRoute(hash: string): Route {
   const a = /^#\/admin(?:\/([\w-]+)(?:\/buildings\/(?:(new)|([\w-]+)\/(replace|plan))(\/image|\/file)?)?)?\/?$/.exec(hash)

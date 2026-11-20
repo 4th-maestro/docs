@@ -10,7 +10,7 @@
 | `src/portfolio/Portfolio.tsx` | 전체 현황: 전체 요약 4개, 건물 카드(점검 필요 순), 카드 아래 `compare` 영역 |
 | `src/heat.ts` | 지표별 순차 색 척도 |
 | `src/twin.ts` | 3D 트윈 iframe 연동([규약](../docs/human/reference/twin-embed.md)): 트윈·파이프라인 주소(`theme=light\|dark` 포함), 테마 전환 메시지 `{source:'maestro', type:'theme', theme}`(iframe 로드 시, 테마 전환 시), 서버 건물의 `needBuilding` 요청에 `GET /buildings/{id}/twin` 응답 전달(없으면 `null`) |
-| `src/shell/` | 화면 틀: 상단바(로고, 건물 토글, 운영·전력 분석 탭, 로그아웃), 왼쪽 사이드바 280px(전체 현황, 층 목록 한 줄 행 44px: 맨 위 전체(트윈 건물만, 층 합계 전력·이상, 선택 시 건물 보기)와 3F→1F 층별 전력·이상, 운영 탭은 층 목록 아래 오늘 스케줄, 아래에 소속 기업 이름·역할, 고객사 구성원용 기업 정보 메뉴, 관리자용 기업 관리 메뉴), 휴대폰 메뉴 서랍. 해시 경로는 `route.ts` |
+| `src/shell/` | 화면 틀: 상단바(로고, 건물 토글, 운영·전력 분석 탭, 로그아웃), 왼쪽 사이드바 280px(전체 현황, 층 목록 한 줄 행 44px: 맨 위 전체(트윈 건물만, 층 합계 전력·상태, 선택 시 건물 보기)와 3F→1F 층별 전력·상태. 상태는 설비 이상(실내기 에러, 설정온도 미도달) "이상 N"(빨강), 쾌적도·습도·빈 방·운영시간 외 운전만 있으면 "주의 N"(주황), 없으면 "정상", 두 건수는 title로 제공, 운영 탭은 층 목록 아래 오늘 스케줄, 아래에 소속 기업 이름·역할, 고객사 구성원용 기업 정보 메뉴, 관리자용 기업 관리 메뉴), 휴대폰 메뉴 서랍. 해시 경로는 `route.ts` |
 | `src/auth/` | 로그인 화면과 Cognito 호출: 로그인, 회원가입(기업 코드 `EGE-XXXX-XXXX`, `ClientMetadata.companyCode`로 가입 전 검사에 전달), 이메일 인증 코드, 비밀번호 재설정, 첫 로그인 비밀번호 변경, 토큰 갱신. `VITE_COGNITO_CLIENT_ID`가 없으면 로그인 생략 |
 | `src/auth/me.ts` | 로그인 사용자 소속(`GET /me`) 컨텍스트와 역할 이름, 다시 조회 이벤트(`ME_CHANGED`). 역할이 없는 계정(판매사 관리자 제외)은 건물 화면 대신 "소속 기업 없음" 화면(`LoginScreen.tsx`의 `NoCompany`, 기업 코드 입력 후 `POST /me/join`). 조회 실패는 확인 생략 |
 | `src/auth/LoginScreen.tsx` `Suspended` | 서비스 중지 화면: 소속 기업이 사용 중지(`GET /me`의 `company.status`가 `suspended`)이거나 API가 403 `COMPANY_SUSPENDED`를 반환하면 건물 화면 대신 서버 문구와 로그아웃 버튼 표시(판매사 관리자 제외) |
