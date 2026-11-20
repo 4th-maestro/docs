@@ -23,7 +23,7 @@
 | `ingest/` | 도면 파서 컨테이너 Lambda(`Dockerfile`, `app.handler`), 브랜치 `feat/plan-parsers` |
 | `kb/` | Knowledge Base 원본 문서(규정·쾌적 지표)와 `.md.metadata.json`(문서명, 원문 주소, 시행일, 원문 확인일). 근거는 [KB 문서 원문 확인](../docs/human/explanation/research/kb-sources.md) |
 | `tools/kb_sync.sh` | `kb/`를 KB 원본 버킷에 동기화하고 수집 작업 실행 후 완료 대기 |
-| `src/buildings.py`, `src/buildings.json` | 건물·호실 조회. 배포 환경은 `maestro-twin` 스택의 Buildings·Rooms 테이블(60초 캐시), 로컬·테스트는 `buildings.json`·`rooms.json` |
+| `src/buildings.py`, `src/buildings.json` | 건물·호실 조회. 배포 환경은 `maestro-twin` 스택의 Buildings·Rooms 테이블(60초 캐시, 3초마다 변경 표시 확인), 로컬·테스트는 `buildings.json`·`rooms.json` |
 | `src/sim.py`, `src/rooms.json` | 가상 HVAC 상태 생성, 본관 호실 137개(공개 IFC 의원 건물) |
 | `tools/demo_status.py` | Frontend 데모 상태 생성(`frontend/public/demo/<건물>.json`, `index.json`) |
 | `tools/build_floorplans.py` | 건물별 3D 도면 생성(`frontend/public/floorplans/<건물>.json`) |
@@ -112,15 +112,15 @@ aws cognito-idp admin-add-user-to-group --user-pool-id "$POOL" --username 관리
 | 고객사 변경 차단 | `PATCH /company`, `PATCH·DELETE /company/members/{sub}`, `PATCH /buildings/{id}`는 구성원(중지 기업 포함)에게 403 `판매사 관리자만 변경할 수 있습니다.`. 이전 화면 호환을 위해 경로 유지 |
 | 건물 정보 수정 | `PATCH /admin/buildings/{id}`. `name`(1~40자), `use`(1~20자), `hours`([시작, 종료] 0~24 정수, 시작 < 종료), `weekend`(true·false)만 대상. 층·호실은 트윈 확정 저장으로 변경 |
 | 수정 정보 저장 | BuildingOwnersTable 항목의 `overrides`. 트윈 Buildings 테이블은 적재 스크립트가 덮어써서 별도 저장. 소속 없는 건물은 `overrides`만 있는 항목 |
-| 수정 반영 | 같은 실행 환경은 즉시, 다른 실행 환경은 건물 캐시(60초) 만료 후. 호실 운영 프로필(가상 상태 계산)에도 반영 |
+| 수정 반영 | 같은 실행 환경은 즉시, 다른 실행 환경은 3초 안(변경 표시 `plans/_rev` 확인). 호실 운영 프로필(가상 상태 계산)에도 반영 |
 | 건물 등록·트윈 확정 저장 검사 | 본문 5MB 이하(초과 413), 호실 1개 이상, 호실 `id`·`idu` 중복 없음, 호실 층은 `plan.floors`에 있음, 도면 호실 `id`는 `rooms`에 있음, 숫자는 유한값. 위반은 400 |
 | 호실 id 전역 고유 | 다른 건물과 호실 `id`가 겹치면 409 `다른 건물과 호실 id가 겹칩니다: <id 최대 5개>`. 시뮬레이터 스케줄 매칭과 호실 조회의 기준이 호실 `id` |
 | 건물 등록 저장 | 트윈 테이블 Buildings(`floors` 층 정렬, `waste` 0.15, `virtual` false, `basis` `트윈 파이프라인(판매사 등록)`), Rooms, Equipment(호실당 실내기 1대, `ratedKw`는 `sim.rated`), BuildingOwnersTable 소속, 도면 버킷 `plans/<id>/building.json`·`building-v1.json`(트윈), `plans/<id>/current.json`·`v1.json`(도면) |
 | 트윈 확정 저장 | 도면 `v<n>.json`·`current.json`과 트윈 `building-v<n>.json`·`building.json`(n은 기존 도면·트윈 버전 최댓값 + 1), Rooms·Equipment 덮어쓰기, 빠진 호실의 Rooms·Equipment·State 행 삭제. Buildings 항목은 `floors`와 출처 필드만 변경(이름, 용도, 운영 시간, `waste` 유지) |
 | 건물 삭제 | 영구 삭제. Buildings 항목, Rooms·Equipment·State 행, 도면 버킷 `plans/<id>/` 전체(도면·트윈 현재 파일과 버전), 소속 항목(`overrides` 포함), 그 건물 스케줄(`buildingId` 없는 이전 항목은 `main`) 삭제. 변경 이력만 남김 |
-| 건물 관리 캐시 | 처리한 실행 환경은 즉시, 다른 실행 환경과 시뮬레이터는 60초 안에 반영 |
+| 건물 관리 캐시 | 처리한 실행 환경은 즉시, 다른 API 실행 환경은 3초 안(변경 표시), 시뮬레이터는 60초 안에 반영 |
 
-주: 구성원, 건물 소속, 기업 상태는 실행 환경별 60초 캐시라, 역할·소속·중지 변경은 최대 60초 뒤 다른 실행 환경에 반영됩니다. 변경한 실행 환경에는 즉시 반영됩니다. 환경 변수 `MEMBERS_TABLE`이 없으면(로컬·테스트) 소속 검사를 하지 않습니다.
+주: 구성원, 건물 소속, 기업 상태는 실행 환경별 60초 캐시입니다. 역할·소속·중지·건물 변경 요청은 도면 버킷의 변경 표시(`plans/_rev`)를 갱신하고(`tenant.changed`), 다른 실행 환경은 3초마다 표시를 확인해 캐시를 비웁니다. 변경한 실행 환경에는 즉시 반영됩니다. 환경 변수 `MEMBERS_TABLE`이 없으면(로컬·테스트) 소속 검사를 하지 않습니다.
 
 | 항목 | 규칙 |
 |---|---|

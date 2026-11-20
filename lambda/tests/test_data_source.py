@@ -5,6 +5,7 @@ import pathlib
 import sys
 import types
 import unittest
+import unittest.mock
 from decimal import Decimal
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / 'src'))
@@ -133,6 +134,62 @@ class CacheMissTest(unittest.TestCase):
             with self.assertRaises(ValueError):
                 buildings.get('b-none0000')
         self.assertEqual(self.calls, 2)
+
+
+class RevMarkerTest(unittest.TestCase):
+    """다른 실행 환경의 변경 반영: 쓰기 요청이 변경 표시를 갱신하면 다른 실행 환경은 확인 간격 뒤 다시 읽음"""
+
+    class S3:
+        def __init__(self):
+            self.etag, self.n = None, 0
+
+        def put_object(self, **kw):
+            self.n += 1
+            self.etag = f'"{self.n}"'
+
+        def head_object(self, Bucket, Key):
+            if self.etag is None:
+                raise KeyError(Key)
+            return {'ETag': self.etag}
+
+    def setUp(self):
+        self.real, self.calls = buildings._load, 0
+        base = self.real()
+
+        def load():
+            self.calls += 1
+            return base
+        buildings._load = load
+        self.s3 = plan._s3 = self.S3()
+        self.env = unittest.mock.patch.dict(os.environ, {'PLANS_BUCKET': 'P'})
+        self.env.start()
+        self.check = buildings.REV_CHECK_S
+        buildings.forget()
+
+    def tearDown(self):
+        buildings._load, plan._s3, buildings.REV_CHECK_S = self.real, None, self.check
+        self.env.stop()
+        buildings.forget()
+
+    def test_reload_after_other_container_write(self):
+        buildings.REV_CHECK_S = 0
+        buildings.version()
+        self.assertEqual(self.calls, 1)
+        buildings.version()  # 표시 변화 없음: 다시 읽지 않음
+        self.assertEqual(self.calls, 1)
+        tenant.changed()  # 다른 실행 환경의 쓰기(표시 갱신)
+        self.assertEqual(self.s3.n, 1)
+        buildings.version()
+        self.assertEqual(self.calls, 2)
+        buildings.version()  # 다시 읽은 뒤 같은 표시: 반복 없음
+        self.assertEqual(self.calls, 2)
+
+    def test_check_interval(self):
+        buildings.REV_CHECK_S = 3600
+        buildings.version()
+        tenant.changed()
+        buildings.version()  # 확인 간격 전: 캐시 사용
+        self.assertEqual(self.calls, 1)
 
 if __name__ == '__main__':
     unittest.main()

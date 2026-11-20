@@ -384,7 +384,7 @@ export function floorRooms(floor, res, W, D){
     const polygons = (floor.darkPlan || floor.shellFootprint) && inferred ? traceRoomRegion(lab,w,h,find,k,bb) : null;
     // 자동 공간이 층 윤곽의 35% 넘게 차지하면 벽을 못 나눈 복도·홀로 봄 (흰 덩어리 방 블록 대신 바닥만)
     const fpArea = floor.footprint?.length ? footArea(floor.footprint) : W * D, hall = inferred && area > fpArea * .35;
-    regs.push({ k, bb, area, a:a || (hall ? { type:'corridor', name:'복도·홀' } : inferred ? { type:'room', name:'자동 공간', use:'unknown' } : { type:'store', name:'미지정' }), unlabeled:!a && !inferred, inferred, polygons, rects:polygons ? [] : rectsOf(lab, w, h, find, k, bb, floor.mode === 'fill') });
+    regs.push({ k, bb, area, a:a || (hall ? { type:'corridor', name:'복도·홀' } : inferred ? { type:'room', name:'자동 공간', use:'unknown' } : { type:'store', name:'미지정' }), unlabeled:!a && !inferred, inferred, hall:!a && hall, polygons, rects:polygons ? [] : rectsOf(lab, w, h, find, k, bb, floor.mode === 'fill') });
   }
   // 층 전체에서 x·y 좌표를 묶어 인접한 방의 경계를 일치시킴 (외곽 0·W·D에는 붙임)
   const all = regs.flatMap(r => r.rects);
@@ -403,13 +403,15 @@ export function floorRooms(floor, res, W, D){
     }
     if (R.unlabeled) warn.push(`라벨 없는 공간 ${r1(R.area)}㎡ @ (${r1(toM(R.bb.x0, R.bb.y0)[0])}, ${r1(toM(R.bb.x0, R.bb.y0)[1])}) → 설비실로 둠`);
     const type = a.type || 'room';
-    const pieces = R.polygons ?? (type === 'room' ? [outline(rects)] : rects.map(r => [[r.x0, r.y0], [r.x1, r.y0], [r.x1, r.y1], [r.x0, r.y1]]));
+    // 복도·홀(벽을 못 나눈 자동 공간)은 사각형 조각으로 쪼개지 않고 한 공간으로 둠: 조각마다 공간이 되면 실내기를 고르게 펼 수 없음
+    const pieces = R.polygons ?? (type === 'room' || R.hall ? [outline(rects)] : rects.map(r => [[r.x0, r.y0], [r.x1, r.y0], [r.x1, r.y1], [r.x0, r.y1]]));
     pieces.forEach((poly, pi) => {
       if (poly.length < (R.polygons ? 3 : 4)) return;
       const id = type === 'room' && a.number ? `${floor.id}-${a.number}` : `${floor.id}-x${String(++xi).padStart(2, '0')}`;
       const room = { id: pieces.length > 1 && type === 'room' ? `${id}-${pi + 1}` : id,
         name: type === 'room' ? `${a.number || ''} ${a.name || USE_NAME[a.use] || '실'}`.trim() : (a.name || TYPE_NAME[type] || type), type, polygon:poly };
       if (poly.holes?.length) room.holes = poly.holes;
+      if (R.hall) room.hall = true;   // 실내기 면적 추정 대상(벽을 못 나눈 실과 복도가 섞인 공간)
       if (R.inferred) room.name = '자동 공간 ' + String(xi).padStart(2, '0');
       if (type === 'room') Object.assign(room, { number:a.number || null, use:a.use || 'office', capacity:+a.capacity || 0 });
       rooms.push(room);
@@ -466,8 +468,9 @@ export function placeIdus(floors, src, W){
   const idus = [], warn = [], conf = v => Math.round(v * 100) / 100;
   for (const f of floors) {
     let addr = 0;
-    const rooms = f.rooms.filter(r => r.type === 'room');
-    const owner = u => u.room ? rooms.find(r => r.id === u.room) : rooms.find(r => inRoom(u.x, u.y, r));
+    // 냉방 공간: 실, 그리고 사람이 표기하거나 모델·사진으로 실내기를 둔 복도·홀(면적 추정은 실에만)
+    const rooms = f.rooms.filter(r => r.type === 'room' || r.type === 'corridor');
+    const owner = u => u.room ? rooms.find(r => r.id === u.room) : rooms.find(r => r.type === 'room' && inRoom(u.x, u.y, r)) ?? rooms.find(r => inRoom(u.x, u.y, r));
     const ex = new Map(), pr = new Map();
     for (const u of explicit[f.id] || []) { const r = owner(u); if (r) (ex.get(r) || ex.set(r, []).get(r)).push(u); else warn.push(`${f.id}: 도면 표기 실내기 (${u.x}, ${u.y})가 냉방 실 밖에 있음`); }
     for (const u of predicted[f.id] || []) { if ((u.confidence ?? 1) < minConf) continue; const r = owner(u); if (r) (pr.get(r) || pr.set(r, []).get(r)).push(u); }
@@ -488,6 +491,7 @@ export function placeIdus(floors, src, W){
       } else if (n) {
         units = c.units.map((kind, k) => { const [x, y] = rulePos(r, n, k); return { x, y, kind, source:'photo', basis:`사진 ${c.photos.join(', ')}` }; });
       } else {
+        if (r.type !== 'room' && !r.hall) continue;   // 복도는 면적 추정 제외, 벽을 못 나눈 복도·홀은 실이 섞여 있어 추정
         const m = Math.max(1, Math.round(area / 40));
         units = Array.from({ length:m }, (_, k) => { const [x, y] = rulePos(r, m, k); return { x, y, kind:area < 40 ? '1WAY' : '4WAY', source:'estimate', basis:'추정(면적 40㎡당 1대)' }; });
       }

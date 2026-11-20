@@ -5,6 +5,7 @@
   - 판매사 건물 등록·도면 교체·삭제(admin.py)가 Buildings·Rooms 테이블에 직접 기록. 테이블 이름은 tenant.table(테스트는 가짜 테이블)
 - 캐시: 실행 환경별 60초. 다시 읽은 내용이 바뀌면 version()이 바뀌고, 다른 모듈의 파생 값은 version 기준으로 다시 계산
 - 캐시에 없는 건물 요청: 다른 실행 환경에서 방금 등록한 건물일 수 있어 한 번 다시 읽음(5초에 1회)
+- 변경 표시: 3초마다 도면 버킷 plans/_rev ETag를 비교해 다른 실행 환경의 건물·소속 변경을 반영(tenant.changed가 갱신)
 - 수정 정보: 환경 변수 OWNERS_TABLE이 있으면 BuildingOwnersTable 항목의 overrides(name, use, hours, weekend)를 원본 값 위에 덮어씀
   - 트윈 Buildings 테이블은 적재 스크립트가 항목 전체를 덮어써서 수정 정보를 별도 테이블에 저장. PATCH /admin/buildings/{id}(admin.py)가 기록
 - 파일 출처의 호실: main은 공개 IFC 의원 원본(호실 id는 IFC GUID), 가상 건물은 원본 층을 복제·선택하고 용도를 바꿔 생성(호실 id "건물.층.GUID")
@@ -24,7 +25,9 @@ import tenant
 _DIR = pathlib.Path(__file__).parent
 DEFAULT = 'main'
 TTL = 60
-_cache = {'at': 0.0, 'data': None}
+_cache = {'at': 0.0, 'data': None, 'rev': None, 'checked': 0.0}
+# 변경 표시(plan.REV_KEY) 확인 간격: 다른 실행 환경의 건물 등록·삭제·소속 변경을 이 시간 안에 반영
+REV_CHECK_S = 3
 
 
 def _make(b, base):
@@ -97,10 +100,21 @@ def _load():
     return {'list': lst, 'by_id': by_id, 'rooms': rooms, 'by_room': {r['id']: r for rs in rooms.values() for r in rs}, 'version': ver}
 
 
+def _rev():
+    import plan  # 순환 import 회피(plan이 buildings 사용)
+    return plan.rev()
+
+
 def _data():
     now = time.monotonic()
+    if _cache['data'] is not None and now - _cache['at'] <= TTL and now - _cache['checked'] > REV_CHECK_S:
+        _cache['checked'] = now
+        if _rev() != _cache['rev']:
+            _cache['data'] = None
+            tenant.forget()
     if _cache['data'] is None or now - _cache['at'] > TTL:
-        _cache['data'], _cache['at'] = _load(), now
+        _cache['rev'] = _rev()
+        _cache['data'], _cache['at'], _cache['checked'] = _load(), now, now
     return _cache['data']
 
 

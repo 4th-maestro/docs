@@ -37,7 +37,8 @@ export function useUnitTool({ model, commit, level, current, tool, scale, backgr
   const unit = model.idus.find(u => u.id === sel)
   const odus = (model.odus ?? []).filter(o => oduFloor(o) === level && o.mark)
   const odu = odus.find(o => o.id === selOdu)
-  const roomAt = (p: Point) => current.rooms.find(r => r.type === 'room' && inRoom(p, r))
+  // 실내기를 둘 공간: 실 우선, 그다음 복도·홀(로비 등 실제로 실내기가 있는 공간)
+  const roomAt = (p: Point) => current.rooms.find(r => r.type === 'room' && inRoom(p, r)) ?? current.rooms.find(r => r.type === 'corridor' && inRoom(p, r))
   const floorOf = (u: IndoorUnit) => model.floors.find(f => f.rooms.some(r => r.id === u.room))
   const patch = (id: string, change: Partial<IndoorUnit>) => commit({ ...model, idus: model.idus.map(u => (u.id === id ? { ...u, ...change } : u)) })
   const remove = (id: string) => { commit({ ...model, idus: model.idus.filter(u => u.id !== id) }); setSel(''); say('실내기를 삭제했습니다.') }

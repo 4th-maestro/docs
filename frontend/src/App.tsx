@@ -132,7 +132,13 @@ function Shell({ themeButton, dark }: { themeButton: React.ReactNode; dark: bool
   const known = buildings.find((b) => b.id === route.building)
   // 판매사 건물 추가·수정·삭제·연결 → 목록 다시 조회
   const { reload } = list
-  useEffect(() => { window.addEventListener(BUILDINGS_CHANGED, reload); return () => window.removeEventListener(BUILDINGS_CHANGED, reload) }, [reload])
+  // 건물 등록·수정·삭제 후: 바로 한 번, 4초 뒤 한 번 더 조회(서버 실행 환경이 변경 표시를 확인하는 간격 3초)
+  useEffect(() => {
+    let id = 0
+    const on = () => { reload(); clearTimeout(id); id = window.setTimeout(reload, 4000) }
+    window.addEventListener(BUILDINGS_CHANGED, on)
+    return () => { window.removeEventListener(BUILDINGS_CHANGED, on); clearTimeout(id) }
+  }, [reload])
 
   // 목록 도착 전에는 주소의 건물을 그대로 표시, 목록에 없는 건물만 안내
   if (route.building && (!list.data || known)) {
@@ -447,8 +453,9 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
             {ops && !status && <SkKpis />}
             {ops && status && (
               <section className="kpis" aria-label={`${scope} 요약`}>
-                {/* 운영 상태 4칸, 전력·요금 3칸을 각각 카드 1개(4열 중 2열)로 묶음. 역할별 지표는 3D 플로팅 요약(2026-11-20) */}
-                <div className="kpi wide" role="group" aria-label="운영 상태">
+                {/* 운영 상태 4칸, 전력·요금 3칸을 각각 카드 1개(4열 중 2열)로 묶음. 역할별 지표는 3D 플로팅 요약(2026-11-20)
+                    전력 추이는 전력·요금 카드 마지막 줄(층을 고르면 그 층, 아니면 건물 전체, 2026-11-21) */}
+                <div className="kpi wide kops" role="group" aria-label="운영 상태">
                   <KpiItem label="운전 중 HVAC" value={summary.on} unit="대" sub={`${scope} ${rooms.length}대 중`} />
                   <KpiItem label="정지" value={summary.off} unit="대" sub="현재 OFF 상태" />
                   <KpiItem label="이상 감지" value={summary.anomaly} unit="건" sub="설정온도 미도달" bad={summary.anomaly > 0} />
@@ -458,11 +465,10 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
                   <KpiItem label="현재 전력" value={summary.powerKw} unit="kW" sub={`외기 ${status.outdoorTemp}℃, ${hhmm(status.generatedAt)} 기준`} />
                   <KpiItem label="오늘 누적 사용량" value={todayKwh} unit="kWh" sub={`0시부터 ${hhmm(status.generatedAt)}까지`} />
                   <KpiItem label="오늘 전기요금(추정)" value={todayKwh != null && unitPrice != null ? Math.round(todayKwh * unitPrice) : null} unit="원" sub={unitPrice != null ? `단가 ${unitPrice}원/kWh` : '단가 조회 중'} />
+                  <PowerTrend poll={hist} scope={scope} id={`${building}-${floor}`} />
                 </div>
               </section>
             )}
-            {/* 전력 추이: 두 카드 아래 전체 너비, 항상 표시(층을 고르면 그 층, 아니면 건물 전체) */}
-            {ops && <div className="trend-wide"><PowerTrend poll={hist} scope={scope} id={`${building}-${floor}`} /></div>}
 
             <main className="grid">
               <div className="main-col">

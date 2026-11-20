@@ -780,7 +780,8 @@ class VendorBuildingTest(Tenancy):
         for name in ('R', 'E', 'S'):
             self.assertEqual(self.rows(name, 'b-abcd1234') | self.rows(name, 'main'), set(), name)
         self.assertTrue(self.rows('R', 'office'))
-        self.assertEqual(set(self.s3.objects), {'plans/office/v1.json', 'plans/office/current.json'})
+        # 남은 키: 다른 건물 도면과 변경 표시(plan.REV_KEY, 삭제 요청이 갱신)
+        self.assertEqual(set(self.s3.objects), {'plans/office/v1.json', 'plans/office/current.json', plan.REV_KEY})
         details = {a['target']: (a['companyId'], a['detail']) for a in self.audits('building.delete')}
         self.assertEqual(details['b-abcd1234'], ('co-a', {'name': '새 건물', 'rooms': 2, 'schedules': 1}))
         self.assertEqual(details['main'][1]['schedules'], 1)

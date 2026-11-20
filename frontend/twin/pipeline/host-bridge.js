@@ -18,9 +18,10 @@ export function onPlans(handler) {
   addEventListener('message', e => { if (fromHost(e, 'plans') && Array.isArray(e.data.files)) handler(e.data.files.filter(f => f instanceof File)); });
 }
 
-// 보정 평면도(ImageData 형식 {width, height, data}) 인식 요청 → {detections, key?, error?}
-// 호스트가 detect=1로 연 경우에만 호출. 응답이 없으면 6분 뒤 빈 결과로 진행
-export async function askDetect(floors, rect, pxPerM, timeoutMs = 6 * 60 * 1000) {
+// 보정 평면도(ImageData 형식 {width, height, data}) 인식 요청 → {detections, key?, px?, error?}
+// px: 호스트가 PDF로 바꿔 서버가 다시 렌더링한 쪽 크기(detections, key는 이 쪽 화소 기준), 없으면 보낸 이미지 크기
+// 호스트가 detect=1로 연 경우에만 호출. 응답이 없으면 11분 뒤 빈 결과로 진행(호스트 작업 조회 한도 10분보다 길게)
+export async function askDetect(floors, rect, pxPerM, timeoutMs = 11 * 60 * 1000) {
   const c = document.createElement('canvas');
   c.width = rect.width; c.height = rect.height;
   c.getContext('2d').putImageData(new ImageData(rect.data instanceof Uint8ClampedArray ? rect.data : new Uint8ClampedArray(rect.data), rect.width, rect.height), 0, 0);

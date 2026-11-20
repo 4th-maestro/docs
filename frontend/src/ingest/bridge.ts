@@ -20,7 +20,7 @@ export function sendPlans(frame: HTMLIFrameElement | null, files: File[]) {
 
 // 파이프라인의 보정 이미지 인식 요청 → run 실행 → detectResult 응답(실패하면 빈 목록과 오류 문구)
 export type DetectRequest = { floors: string[]; image: Blob; pxPerM?: number }
-export function onDetectRequest(frame: () => HTMLIFrameElement | null, run: (req: DetectRequest) => Promise<{ detections: Detection[]; key?: string; error?: string }>) {
+export function onDetectRequest(frame: () => HTMLIFrameElement | null, run: (req: DetectRequest) => Promise<{ detections: Detection[]; key?: string; px?: [number, number]; error?: string }>) {
   const listener = async (e: MessageEvent) => {
     const target = frame()?.contentWindow
     if (!TWIN_URL || !target || e.source !== target || e.origin !== origin() || e.data?.source !== 'twin' || e.data.type !== 'detectRequest') return

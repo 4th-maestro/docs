@@ -65,7 +65,8 @@ export const getChat = (building: string) =>
   call<{ messages: ChatRecord[] }>(`/chat${q(building)}`).then((r) => ({ ...r, server: true }), () => ({ messages: [] as ChatRecord[], server: false }))
 export const clearChat = (building: string) => call<{ deleted: number }>(`/chat${q(building)}`, { method: 'DELETE' }).catch(() => ({ deleted: 0 }))
 
-export const getBuildings = () => call<Portfolio>('/buildings').catch(() => mockBuildings())
+// 목업은 API 주소가 없을 때만: API 오류를 목업 목록으로 바꾸면 서버 건물(판매사 등록)이 목록에서 빠져 보임
+export const getBuildings = () => (HAS_API ? call<Portfolio>('/buildings') : mockBuildings())
 // 건물 목록 변경(판매사 건물 추가·수정·삭제·연결): 상단 건물 선택 목록 다시 조회
 export const BUILDINGS_CHANGED = 'maestro:buildings'
 export const buildingsChanged = () => window.dispatchEvent(new Event(BUILDINGS_CHANGED))

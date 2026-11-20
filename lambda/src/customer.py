@@ -33,7 +33,7 @@ def join(event, ctx):
     m = {'sub': ctx['sub'], 'companyId': cid, 'email': email,
          'role': 'operator' if tenant.company_members(cid) else 'manager', 'joinedAt': tenant.stamp()}
     members.put_item(Item=m)
-    tenant.forget()
+    tenant.changed()
     tenant.audit(cid, m, 'member.join', m['sub'], {'email': email, 'role': m['role']})
     return common.resp(200, {'company': {'id': cid, 'name': c['name'], 'status': c.get('status', 'active')}, 'role': m['role']})
 

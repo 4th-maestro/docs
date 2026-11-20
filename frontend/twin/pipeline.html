@@ -736,10 +736,10 @@ function editDown(e){
   if (editTool === 'room') { editSel = room?.id || null; renderSide(); draw(); return; }
   if (editTool === 'move' && hitIdu) { iduDrag = { id:hitIdu.id, room:hitIdu.room, pos:[...hitIdu.pos] }; cv.setPointerCapture(e.pointerId); return; }
   if (editTool === 'del' && hitIdu) { pinRoomIdus(hitIdu.room, unitsOf(hitIdu.room).filter(u => u.id !== hitIdu.id)); return; }
-  if (editTool === 'add' && room?.type === 'room') { pinRoomIdus(room.id, [...unitsOf(room.id), { x:m[0], y:m[1], kind:iduKind }]); return; }
+  if (editTool === 'add' && (room?.type === 'room' || room?.type === 'corridor')) { pinRoomIdus(room.id, [...unitsOf(room.id), { x:m[0], y:m[1], kind:iduKind }]); return; }
 }
 cv.addEventListener('pointerup', e => {
-  if (iduDrag) { const d = iduDrag; iduDrag = null; const J = OUT.json, f = J.floors[editF], target = f.rooms.find(x => x.type === 'room' && inRoomJ(d.pos[0], d.pos[1], x));
+  if (iduDrag) { const d = iduDrag; iduDrag = null; const J = OUT.json, f = J.floors[editF], target = f.rooms.find(x => x.type === 'room' && inRoomJ(d.pos[0], d.pos[1], x)) || f.rooms.find(x => x.type === 'corridor' && inRoomJ(d.pos[0], d.pos[1], x));
     if (!target) { draw(); return; }
     const zoneOf = id => f.rooms.find(x => x.id === id)?.zoneOf;
     if (target.id === d.room || (zoneOf(d.room) && zoneOf(d.room) === zoneOf(target.id))) pinRoomIdus(d.room, unitsOf(d.room).map(u => u.id === d.id ? { ...u, x:d.pos[0], y:d.pos[1] } : u));
@@ -1037,7 +1037,9 @@ async function detectFloors(status) {
     const ids = occupiedFloorIds(floor), res = await askDetect(ids, rect, pxPerM);
     if (res.error) DETECT_WARN.push(floorLabel(floor) + ' 실내기 기호 인식 생략: ' + res.error);
     // 보정 이미지 픽셀 (u, v) → 평면 m: x = u / pxPerM − MARGIN (rectify가 픽셀 i 중심을 (i + 0.5) / pxPerM − MARGIN에 둠)
-    const background = { ...(res.key ? { key:res.key } : {}), px:[rect.width, rect.height], toPlan:[1 / pxPerM, 0, -P.MARGIN, 0, 1 / pxPerM, -P.MARGIN] };
+    // 호스트가 보정 이미지를 PDF로 바꿔 서버가 다른 해상도로 렌더링했으면(res.px) 그 쪽 화소 기준으로 환산
+    const px = Array.isArray(res.px) && res.px[0] > 0 && res.px[1] > 0 ? res.px : [rect.width, rect.height], ppm = pxPerM * px[0] / rect.width;
+    const background = { ...(res.key ? { key:res.key } : {}), px, toPlan:[1 / ppm, 0, -P.MARGIN, 0, 1 / ppm, -P.MARGIN] };
     for (const id of ids) DETECT[id] = { background, detections:res.detections || [] };
   }
 }

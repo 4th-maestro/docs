@@ -184,7 +184,7 @@ def update_company(event):
     changed = {k: v for k, v in fields.items() if c.get(k) != v}
     c.update(fields)
     tenant.table('COMPANIES_TABLE').put_item(Item=c)
-    tenant.forget()  # 중지·재개를 같은 실행 환경에 즉시 반영
+    tenant.changed()  # 중지·재개를 이 실행 환경에 즉시, 다른 실행 환경에 3초 안에 반영
     tenant.audit(c['companyId'], actor(event), 'company.update', c['companyId'], changed)
     return common.resp(200, {'company': view(c)})
 
@@ -200,7 +200,7 @@ def delete_company(event):
     for m in tenant.query('MEMBERS_TABLE', 'company-index', 'companyId', c['companyId']):
         members.delete_item(Key={'sub': m['sub']})
     tenant.table('COMPANIES_TABLE').delete_item(Key={'companyId': c['companyId']})
-    tenant.forget()
+    tenant.changed()
     tenant.audit(c['companyId'], actor(event), 'company.delete', c['companyId'], {'name': c.get('name', '')})
     return common.resp(200, {'deleted': True})
 
@@ -240,7 +240,7 @@ def set_role(event, cid, sub):
     if role != m.get('role'):
         prev, m['role'] = m.get('role'), role
         tenant.table('MEMBERS_TABLE').put_item(Item=m)
-        tenant.forget()
+        tenant.changed()
         tenant.audit(cid, actor(event), 'member.role', m['sub'], {'email': m.get('email', ''), 'from': prev, 'to': role})
     return common.resp(200, {'member': member_view(m)})
 
@@ -250,7 +250,7 @@ def remove_member(event, cid, sub):
     if not m:
         return common.resp(404, {'error': NO_MEMBER})
     tenant.table('MEMBERS_TABLE').delete_item(Key={'sub': m['sub']})
-    tenant.forget()
+    tenant.changed()
     tenant.audit(cid, actor(event), 'member.remove', m['sub'], {'email': m.get('email', ''), 'role': m.get('role', '')})
     return common.resp(200, {'deleted': True})
 
@@ -308,7 +308,7 @@ def assign_building(event):
         owners.put_item(Item=item | ({'companyId': cid} if cid else {}))
     else:
         owners.delete_item(Key={'buildingId': bid})
-    tenant.forget()
+    tenant.changed()
     # 이력은 새 소속 기업(해제는 이전 기업) 기준
     if cid or prev:
         tenant.audit(cid or prev, actor(event), 'building.assign', bid, {'from': prev, 'to': cid})
@@ -359,6 +359,7 @@ def update_building(event):
         item['overrides'] = {**(item.get('overrides') or {}), **changed}
         owners.put_item(Item=item)
         buildings.forget()
+        tenant.changed()
         # 변경 이력은 기업별이라 소속 없는 건물은 기록 안 함
         if item.get('companyId'):
             tenant.audit(item['companyId'], actor(event), 'building.update', b['id'],
@@ -509,7 +510,7 @@ def _floors(req):
 
 def _refresh():
     buildings.forget()
-    tenant.forget()
+    tenant.changed()
 
 
 def _stored(fn):

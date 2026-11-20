@@ -169,10 +169,17 @@ def company_status(cid):
 
 
 def forget():
-    """관리 API가 소속·구성원·기업 상태를 바꾼 뒤 같은 실행 환경의 캐시 비움"""
+    """이 실행 환경의 소속·구성원·기업 상태 캐시 비움(변경 표시를 갱신하지 않음)"""
     _members.clear()
     _status.clear()
     _owners['map'] = None
+
+
+def changed():
+    """쓰기 요청 후: 이 실행 환경 캐시를 비우고 변경 표시 갱신(다른 실행 환경은 3초 안에 다시 읽음)"""
+    forget()
+    import plan  # 순환 import 회피(plan이 tenant 사용)
+    plan.bump()
 
 
 def caller(event):

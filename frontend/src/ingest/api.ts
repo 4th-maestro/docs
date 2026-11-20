@@ -1,5 +1,6 @@
 import { call } from '../api'
 import type { Detection, Plan } from '../floor-edit'
+import { planPdf } from './pdf'
 
 // 도면 변환 API 클라이언트(판매사 관리자 전용): docs/human/reference/plan-ingest.md 4절
 // - 파일은 사전 서명 URL로 S3에 직접 PUT(API Gateway 요청 한도 10MB 회피)
@@ -74,15 +75,17 @@ export const pageFiles = (pages: Page[]) => Promise.all(pages.map(async (p, i) =
   return new File([await r.blob()], `${p.floor ?? `page-${i + 1}`}.png`, { type: 'image/png' })
 }))
 
-// 실내기 기호 인식: 보정 이미지 업로드(kind image) → POST /plans/detect → 상태 조회 → draftUrl의 {floor, detections, model}
-export async function detect(building: string, image: Blob, pxPerM?: number): Promise<{ detections: Detection[]; key: string }> {
-  const file = new File([image], 'plan.png', { type: 'image/png' })
-  const { uploads } = await upload(building, 'image', [file])
-  const key = uploads[0].key
-  const { jobId } = await call<{ jobId: string }>('/plans/detect', post({ building, key, pxPerM }))
+// 실내기 기호 인식: 파이프라인 보정 평면도(전처리 끝난 도면) → 1쪽 PDF → pdf 작업(쪽 렌더링 → 인식 모델 → 병합) → 상태 조회
+// - pxPerM을 알면 축척(options.scale)을 함께 보내 서버가 1m=80px로 렌더링, 결과 상자는 렌더링 쪽 화소 기준
+// - 반환: detections(렌더링 쪽 화소), key(렌더링 쪽 PNG, 배경 이미지), px(렌더링 쪽 크기)
+type PdfDraft = { floors?: { background?: { key?: string; px?: [number, number] }; detections?: Detection[] }[] }
+export async function detect(building: string, image: Blob, pxPerM?: number): Promise<{ detections: Detection[]; key?: string; px?: [number, number] }> {
+  const { pdf, scale } = await planPdf(image, pxPerM)
+  const { jobId } = await upload(building, 'pdf', [new File([pdf], 'plan.pdf', { type: 'application/pdf' })])
+  await call(`/plans/jobs/${encodeURIComponent(jobId)}/start`, post(scale ? { options: { scale } } : {}))
   const job = await poll(jobId)
-  const out = job.draftUrl ? await getJson<{ detections?: Detection[] }>(job.draftUrl) : {}
-  return { detections: out.detections ?? [], key }
+  const floor = job.draftUrl ? (await getJson<PdfDraft>(job.draftUrl)).floors?.[0] : undefined
+  return { detections: floor?.detections ?? [], key: floor?.background?.key, px: floor?.background?.px }
 }
 
 // 확정 저장 어댑터: convert(호출 쪽이 넘기는 판매사 화면 변환 함수, src/admin/convert.ts의 toServer)가 있으면

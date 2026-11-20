@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 // 패널 주기 조회
 // - 첫 응답 전: data=null(스켈레톤)
@@ -18,7 +18,9 @@ export function usePoll<A, T>(fn: (arg: A) => Promise<T>, arg: A, ms = 60_000) {
     const id = setInterval(run, ms)
     return () => { alive = false; clearInterval(id) }
   }, [fn, arg, ms, tick])
-  return { data: state?.data ?? null, stale: state !== null && state.arg !== arg, error, reload: () => setTick((n) => n + 1) }
+  // reload는 고정 함수: 이벤트·타이머에 등록해도 렌더링마다 다시 등록되지 않음
+  const reload = useCallback(() => setTick((n) => n + 1), [])
+  return { data: state?.data ?? null, stale: state !== null && state.arg !== arg, error, reload }
 }
 
 export const hhmm = (iso: string) => iso.slice(11, 16)

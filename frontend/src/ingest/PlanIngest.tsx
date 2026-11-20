@@ -11,7 +11,7 @@ import './ingest.css'
 // 도면 업로드 → 2D 실내기 매핑 → 확정 저장(판매사 건물 화면에서 사용). 규약: docs/human/reference/plan-ingest.md
 // - IFC, DXF, DWG: 서버 변환 초안(draftUrl)을 바로 편집, 렌더링한 도면(pages)은 층별 배경 이미지
 // - PDF: 서버가 렌더링한 페이지를, PNG, JPG: 고른 파일을 트윈 파이프라인(iframe)에 넣어 호실을 만들고, 파이프라인 결과를 편집
-// - 파이프라인은 보정 평면도마다 기호 인식을 요청(detectRequest) → 이 화면이 POST /plans/detect로 처리, 보정 이미지는 배경 이미지
+// - 파이프라인은 보정 평면도마다 기호 인식을 요청(detectRequest) → 이 화면이 보정 이미지를 1쪽 PDF로 바꿔 pdf 작업(렌더링 → 인식 모델)으로 처리
 // - 확정: onConfirm이 있으면 호출한 화면이 저장(판매사 건물 화면), 없으면 saveTwin(buildingId, twin, convert) 후 onDone(twin)
 const STEPS = [['parse', '파일 해석'], ['detect', '실내기 인식'], ['merge', '병합']] as const
 const msg = (e: unknown) => (e instanceof Error ? e.message : String(e))

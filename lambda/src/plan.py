@@ -9,6 +9,7 @@
 import json
 import os
 import re
+import time
 
 import buildings
 import common
@@ -52,6 +53,29 @@ def delete(prefix):
     ks = keys(prefix)
     for i in range(0, len(ks), 1000):
         _client().delete_objects(Bucket=bucket(), Delete={'Objects': [{'Key': k} for k in ks[i:i + 1000]], 'Quiet': True})
+
+
+# 변경 표시: 건물·소속·구성원·기업 상태를 바꾼 요청이 갱신, 각 실행 환경은 3초마다 ETag를 비교해 캐시를 비움(buildings._data)
+REV_KEY = 'plans/_rev'
+
+
+def rev():
+    """변경 표시 ETag. 버킷이 없거나 표시가 없으면 None(조회 실패도 None: 60초 캐시로 동작)"""
+    if not bucket():
+        return None
+    try:
+        return _client().head_object(Bucket=bucket(), Key=REV_KEY)['ETag']
+    except Exception:
+        return None
+
+
+def bump():
+    """변경 표시 갱신. 실패해도 쓰기 결과는 유지(다른 실행 환경은 60초 안에 반영)"""
+    if bucket():
+        try:
+            put(REV_KEY, {'at': time.time()})
+        except Exception:
+            pass
 
 
 def twin_ids():
