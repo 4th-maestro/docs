@@ -6,6 +6,7 @@ import { STEP_ORDER, type AskResult, type AskState, type ServerEvent, type Step 
 // - 전송: VITE_WS_URL이 있으면 WebSocket으로 단계 이벤트 수신, 없거나 첫 이벤트 전에 연결이 실패하면 REST(api.ts, 실패 시 목업)
 // - REST 대기 중: 서버 단계를 알 수 없으므로 '분석 중' 단계 1개만 표시, 완료 후 응답의 steps 표시
 // - 제한: 45초 안에 done이 없으면 오류, 이전 요청의 requestId 이벤트는 무시
+// - 건물: 질의마다 buildingId 전송(서버가 건물의 층·용도로 도구 인자 검증)
 // - shortcut: 질의마다 새 연결(연결 수립 시간 추가), 연속 질의가 잦아지면 연결 재사용과 재연결 처리 추가
 const WS_URL = import.meta.env.VITE_WS_URL as string | undefined
 const TIMEOUT_MS = 45_000
@@ -23,7 +24,7 @@ function applyStep(s: AskState, { type: _t, requestId: _r, ...e }: Extract<Serve
   return { ...s, steps: steps.sort((a, b) => rank(a) - rank(b)), answer: reset ? '' : s.answer }
 }
 
-export function useAsk() {
+export function useAsk(building: string) {
   const [state, setState] = useState<AskState>(IDLE)
   const cur = useRef<{ id: string; ws?: WebSocket; tick?: number; timeout?: number } | null>(null)
 
@@ -61,7 +62,7 @@ export function useAsk() {
 
     const rest = () => {
       update((s) => ({ ...s, transport: 'rest', steps: [{ id: 'wait', status: 'active', label: '분석 중', at: Date.now() }] }))
-      askRest(text).then(
+      askRest(text, building).then(
         (r: AskResult) => succeed({ ...r, steps: r.steps ?? [] }, r.mock ? 'mock' : 'rest'),
         (e: Error) => fail(e.message),
       )
@@ -80,7 +81,7 @@ export function useAsk() {
       return rest() // 잘못된 주소 형식
     }
     c.ws = ws
-    ws.onopen = () => ws.send(JSON.stringify({ action: 'ask', requestId: id, text }))
+    ws.onopen = () => ws.send(JSON.stringify({ action: 'ask', requestId: id, text, buildingId: building }))
     ws.onmessage = (m) => {
       let e: ServerEvent
       try {
@@ -103,7 +104,7 @@ export function useAsk() {
       if (received) fail('AI 연결이 끊어졌습니다. 다시 시도하십시오.')
       else rest()
     }
-  }, [end])
+  }, [end, building])
 
   return { state, ask, reset }
 }

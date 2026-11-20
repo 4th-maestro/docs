@@ -30,8 +30,9 @@ function Key({ dashed }: { dashed?: boolean }) {
   )
 }
 
-export default function PowerTrend({ floor }: { floor: string }) {
-  const { data, error, stale } = usePoll(getHistory, floor)
+export default function PowerTrend({ building, floor }: { building: string; floor: string }) {
+  const load = useCallback((f: string) => getHistory(f, building), [building])
+  const { data, error, stale } = usePoll(load, floor)
   const [w, setW] = useState(0)
   const [hover, setHover] = useState<number | null>(null)
   const id = useId()

@@ -1,3 +1,4 @@
+import { useCallback } from 'react'
 import { CalendarPlus, LocateFixed, Moon, Thermometer, UserX } from 'lucide-react'
 import { getRecommendations } from '../api'
 import type { Draft } from '../types'
@@ -12,8 +13,10 @@ const RULES: Record<Rule, { label: string; Icon: typeof UserX }> = {
   overset: { label: '과냉·과열 설정', Icon: Thermometer },
 }
 
-export default function RecommendPanel({ floor, onDraft, onLocate }: { floor: string; onDraft(draft: Draft): void; onLocate(roomId: string): void }) {
-  const { data, error, stale } = usePoll(getRecommendations, floor)
+// building 변경 시 App이 key로 다시 마운트(이전 건물 값이 새 건물 값처럼 보이지 않도록)
+export default function RecommendPanel({ building, floor, onDraft, onLocate }: { building: string; floor: string; onDraft(draft: Draft): void; onLocate(roomId: string): void }) {
+  const load = useCallback((f: string) => getRecommendations(f, building), [building])
+  const { data, error, stale } = usePoll(load, floor)
   return (
     <Panel
       title="최적 제어 추천" at={data?.generatedAt} mock={data?.mock} error={error} loading={!data && !error} stale={stale}

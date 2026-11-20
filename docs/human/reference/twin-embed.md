@@ -3,7 +3,8 @@
 > **요약** (기준일 2026-11-20)
 >
 > - 대시보드는 팀원이 만든 3D 트윈 화면을 iframe으로 임베드하고, `postMessage`로 상태 색과 강조 호실을 전달
-> - 트윈은 호실을 IFC GUID(`id`)로 식별하고, 사용자가 호실을 선택하면 `roomSelected` 메시지를 대시보드로 보냄
+> - 트윈은 호실을 `id`(본관은 IFC GUID)로 식별하고, 사용자가 호실을 선택하면 `roomSelected` 메시지를 대시보드로 보냄
+> - 2026-11-20 `state` 메시지에 현재 건물 `building` 추가(이전에는 본관만 전송)
 > - 메시지는 출처(origin)를 확인한 뒤 처리
 >
 > **다음 작업**: 트윈 담당 팀원과 메시지 필드 확인(미정)
@@ -18,20 +19,23 @@
 
 ## 2. 대시보드 → 트윈: `state`
 
-**2-1. 층, 지표, 호실 목록이 바뀔 때마다 대시보드가 아래 메시지를 보냅니다.**
+**2-1. 건물, 층, 지표, 호실 목록이 바뀔 때마다 대시보드가 아래 메시지를 보냅니다.**
 
 | 필드 | 형식 | 내용 |
 |---|---|---|
 | `source` | `"maestro"` | 보낸 쪽 |
 | `type` | `"state"` | 메시지 종류 |
+| `building` | 문자열 | 현재 건물 id(`main`, `office`, `edu`, `lab`), 2026-11-20 추가 |
 | `floor` | 문자열 | 현재 층(예: `1F`) |
 | `mode` | `temp`, `powerKw`, `humidity`, `anomaly` | 히트맵 지표 |
-| `rooms[].id` | 문자열 | 호실 IFC GUID |
+| `rooms[].id` | 문자열 | 호실 id. 본관(`main`)은 IFC GUID, 가상 건물은 `건물.층.GUID` |
 | `rooms[].color` | `#RRGGBB` | 호실 바닥에 칠할 색 |
 | `rooms[].label` | 문자열 | 값과 단위(예: `21.3℃`) |
 | `rooms[].onOff` | 불리언 | HVAC 운전 여부 |
 | `rooms[].anomaly` | 문자열 또는 `null` | 이상 종류(`setpoint_unreached`) |
-| `highlight` | 문자열 배열 | 질의 결과로 강조할 호실 GUID |
+| `highlight` | 문자열 배열 | 질의 결과로 강조할 호실 id |
+
+주: 트윈이 본관 IFC만 표시한다면 `building`이 `main`이 아닌 메시지는 무시하십시오. 가상 건물 도면은 `frontend/public/floorplans/<건물>.json`에 있습니다.
 
 ## 3. 트윈 → 대시보드: `roomSelected`
 

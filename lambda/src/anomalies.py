@@ -1,12 +1,13 @@
-"""GET /anomalies?floor=1F: 설정온도 미도달 HVAC 상세(architecture.md 9절)
+"""GET /anomalies?building=main&floor=1F: 설정온도 미도달 HVAC 상세(architecture.md 9절)
 
-- 기대 온도: 같은 용도·같은 모드로 운전 중인 정상 HVAC의 (실내온도 - 설정온도) 평균을 이 호실 설정온도에 더한 값
+- 기대 온도: 같은 건물에서 같은 용도·같은 모드로 운전 중인 정상 HVAC의 (실내온도 - 설정온도) 평균을 이 호실 설정온도에 더한 값
 - 잔차: 실내온도 - 기대 온도
 - 감지 시각: 오늘 00:00부터 5분 간격으로 처음 미도달이 판정된 시각
 - 원인 후보: 규칙 기반 추정(causeBasis=rule), 진단 결과가 아님
 """
 import datetime as dt
 
+import buildings
 import common
 import sim
 
@@ -14,15 +15,20 @@ STEP = dt.timedelta(minutes=5)
 
 
 def handler(event, context):
+    try:
+        b = common.building(event)
+    except ValueError as e:
+        return common.bad_building(e)
     floor = (event.get('queryStringParameters') or {}).get('floor')
     t, schedules = sim.now(), common.list_schedules()
-    return common.resp(200, {'generatedAt': t.isoformat(), 'virtual': True, 'causeBasis': 'rule', 'items': anomalies(floor, t, schedules)})
+    return common.resp(200, {'generatedAt': t.isoformat(), 'virtual': True, 'causeBasis': 'rule', 'items': anomalies(floor, t, schedules, b['id'])})
 
 
-def anomalies(floor, t, schedules):
-    states = {r['id']: sim.state(r, t, schedules) for r in sim.ROOMS}
+def anomalies(floor, t, schedules, bid=None):
+    rooms = buildings.rooms(bid)
+    states = {r['id']: sim.state(r, t, schedules) for r in rooms}
     items = []
-    for room in sim.ROOMS:
+    for room in rooms:
         s = states[room['id']]
         if s['anomaly'] != 'setpoint_unreached' or (floor and room['floor'] != floor):
             continue

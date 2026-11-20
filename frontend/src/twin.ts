@@ -4,11 +4,11 @@ import type { Mode, Room } from './types'
 // 3D 트윈(iframe) 연동 규약: docs/human/reference/twin-embed.md
 export const TWIN_URL = import.meta.env.VITE_TWIN_URL as string | undefined
 
-export function postState(frame: HTMLIFrameElement | null, floor: string, mode: Mode, rooms: Room[], highlight: string[]) {
+export function postState(frame: HTMLIFrameElement | null, building: string, floor: string, mode: Mode, rooms: Room[], highlight: string[]) {
   if (!frame?.contentWindow || !TWIN_URL) return
   frame.contentWindow.postMessage(
     {
-      source: 'maestro', type: 'state', floor, mode, highlight,
+      source: 'maestro', type: 'state', building, floor, mode, highlight,
       rooms: rooms.map((r) => ({ id: r.id, color: color(mode, r), label: value(mode, r), onOff: r.onOff, anomaly: r.anomaly })),
     },
     new URL(TWIN_URL).origin,

@@ -9,6 +9,7 @@ import time
 
 from anthropic import AnthropicBedrock
 
+import buildings
 import common
 import sim
 import tools
@@ -16,14 +17,21 @@ import tools
 # bedrock-runtime + global 추론 프로필: bedrock-mantle은 Sonnet 5.5 ID를 404로 거부(2026-11-20)
 client = AnthropicBedrock(aws_region=os.environ.get('BEDROCK_REGION', 'ap-northeast-2'))
 MODEL = os.environ.get('MODEL_ID', 'global.anthropic.claude-sonnet-5-5')
-SYSTEM = f"""너는 건물 운영 디지털트윈의 운영 도우미다. 사용자는 건물 운영자다.
-- 층 목록: {', '.join(tools.FLOORS)}. 용도 목록: {', '.join(tools.USES)}.
-- 지표·상태 질문은 query_spaces, 켜기·끄기·설정온도 요청은 create_schedule 도구로 처리한다. 도구 결과에 없는 수치는 만들지 않는다.
-- 대상 층이나 용도가 불분명하면 도구를 쓰지 말고 후보를 들어 되묻는다.
-- 스케줄은 초안이며 운영자가 화면에서 확인해야 저장된다고 안내한다. 실제 설비 제어는 하지 않는다.
-- 답변은 한국어 3문장 이내로 쓰고, 마지막 문장에서 낭비를 줄일 다음 조치 1개를 제안한다."""
 LABELS = {'understand': '요청 해석', 'query': '데이터 조회', 'review': '결과 검토', 'answer': '답변 작성'}
 REFUSAL = '이 요청은 처리할 수 없습니다. 질문을 바꿔 다시 입력하십시오.'
+
+
+def system(b):
+    """건물별 시스템 프롬프트: 도구 enum은 전체 건물 합집합이라 이 건물의 층·용도를 프롬프트로 한정"""
+    uses = sorted({r['use'] for r in buildings.rooms(b['id'])})
+    kind = '가상 건물' if b['virtual'] else '공개 IFC 도면 건물'
+    return f"""너는 건물 운영 디지털트윈의 운영 도우미다. 사용자는 건물 운영자다.
+- 대상 건물: {b['name']}({b['use']}, {kind}). 다른 건물은 조회할 수 없다.
+- 층 목록: {', '.join(buildings.floors(b['id']))}. 용도 목록: {', '.join(uses)}.
+- 지표·상태 질문은 query_spaces, 켜기·끄기·설정온도 요청은 create_schedule 도구로 처리한다. 도구 결과에 없는 수치는 만들지 않는다.
+- 대상 층이나 용도가 불분명하거나 이 건물에 없으면 도구를 쓰지 말고 후보를 들어 되묻는다.
+- 스케줄은 초안이며 운영자가 화면에서 확인해야 저장된다고 안내한다. 실제 설비 제어는 하지 않는다.
+- 답변은 한국어 3문장 이내로 쓰고, 마지막 문장에서 낭비를 줄일 다음 조치 1개를 제안한다."""
 
 
 def clean(text):
@@ -32,16 +40,28 @@ def clean(text):
     return text if 0 < len(text) <= 500 else None
 
 
+def building(value):
+    """buildingId 검증: 없으면 main, 알 수 없으면 None"""
+    try:
+        return buildings.get(value)
+    except ValueError:
+        return None
+
+
 def handler(event, context):
-    text = clean((common.body(event) or {}).get('text'))
+    req = common.body(event) or {}
+    text, b = clean(req.get('text')), building(req.get('buildingId'))
     if not text:
         return common.resp(400, {'error': 'text는 1~500자'})
-    return common.resp(200, run(text, lambda e: None))
+    if not b:
+        return common.resp(400, {'error': f"알 수 없는 건물: {req.get('buildingId')}"})
+    return common.resp(200, run(text, lambda e: None, b['id']))
 
 
-def run(text, emit):
+def run(text, emit, bid=None):
     """질의 처리 후 {answer, highlight, draft, steps} 반환. emit 예외(연결 종료)는 그대로 전파해 모델 호출 중단"""
-    t, schedules = sim.now(), common.list_schedules()
+    b = buildings.get(bid)
+    prompt, t, schedules = system(b), sim.now(), common.list_schedules()
     messages, ui = [{'role': 'user', 'content': text}], {'highlight': [], 'draft': None}
     trace, started, t0 = {}, {}, time.monotonic()
 
@@ -75,7 +95,7 @@ def run(text, emit):
     for _ in range(3):
         chips = []  # 이번 라운드 도구 인자 조건(병렬 호출은 합침)
         with client.messages.stream(
-            model=MODEL, max_tokens=4096, system=SYSTEM, tools=tools.TOOLS,
+            model=MODEL, max_tokens=4096, system=prompt, tools=tools.TOOLS,
             output_config={'effort': 'low'}, messages=messages,
         ) as stream:
             for ev in stream:
@@ -97,7 +117,7 @@ def run(text, emit):
             if block.type != 'tool_use':
                 continue
             try:
-                out, view = tools.run(block.name, block.input, t, schedules)
+                out, view = tools.run(block.name, block.input, t, schedules, b['id'])
                 ui['highlight'] = view.get('highlight', ui['highlight'])
                 ui['draft'] = view.get('draft', ui['draft'])
                 found.update(view.get('highlight', []))

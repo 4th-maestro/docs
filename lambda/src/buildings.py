@@ -15,7 +15,8 @@ _BY_ID = {b['id']: b for b in LIST}
 
 
 def get(bid):
-    b = _BY_ID.get(bid or DEFAULT)
+    # 요청 본문 값 그대로 조회: 문자열이 아닌 값(목록 등)도 str 변환 후 없는 건물로 처리
+    b = _BY_ID.get(str(bid or DEFAULT))
     if not b:
         raise ValueError(f'알 수 없는 건물: {bid}')
     return b

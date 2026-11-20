@@ -1,12 +1,24 @@
 import type { Draft, QueryResult, Room, Status } from './types'
 
-// API를 쓸 수 없을 때 대신 쓰는 목업(데모 상태 JSON 기반). 결과에는 mock 표시가 붙음
+// API를 쓸 수 없을 때 대신 쓰는 목업(건물별 데모 상태 JSON 기반). 결과에는 mock 표시가 붙음
 // shortcut: 정규식 해석이라 예시 문장 형태만 처리, Bedrock 연결 후에는 사용되지 않음
 
-let cache: Status | null = null
-export async function demoStatus(): Promise<Status> {
-  cache ??= await (await fetch('/demo-status.json')).json()
-  return cache!
+// 건물별 public/demo/<id>.json(lambda/tools/demo_status.py 생성), 동시 요청이 한 번만 받도록 Promise 보관
+const cache = new Map<string, Promise<Status>>()
+export function demoStatus(building: string): Promise<Status> {
+  let p = cache.get(building)
+  if (!p) {
+    p = fetch(`/demo/${encodeURIComponent(building)}.json`).then((r) => r.json() as Promise<Status>).catch(() => {
+      cache.delete(building)
+      throw new Error('데모 데이터를 불러오지 못했습니다.')
+    })
+    cache.set(building, p)
+  }
+  return p
+}
+
+export async function demoBuildingIds(): Promise<string[]> {
+  return (await fetch('/demo/index.json')).json()
 }
 
 // 실시간 수신 목업: 조회할 때마다 범위 안에서 변동(온도 ±0.3℃, 습도 ±1.5%, 전력 ±8%), Lambda sim.py와 같은 범위
@@ -36,8 +48,8 @@ const METRICS: [RegExp, keyof Room, string, string][] = [
   [/습도/, 'humidity', '습도', '%'], [/온도/, 'temp', '실내온도', '℃'], [/./, 'powerKw', '전력', 'kW'],
 ]
 
-export async function mockAsk(text: string): Promise<QueryResult & { mock: true }> {
-  const all = (await demoStatus()).rooms
+export async function mockAsk(text: string, building: string): Promise<QueryResult & { mock: true }> {
+  const all = (await demoStatus(building)).rooms
   const fl = text.match(/(\d+)\s*(층|F)/i)
   const floor = fl ? `${fl[1]}F` : 'all'
   const use = USES.find(([re]) => re.test(text))?.[1] ?? 'all'
