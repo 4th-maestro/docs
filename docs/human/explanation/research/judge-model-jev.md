@@ -48,9 +48,25 @@ AI 운영 도우미가 새 도구(묶음 합계, 기간 추이)를 질문에 맞
 
 주: JEV는 AWS 밖의 외부 API입니다. 시연 데이터는 가상 데이터라 개인정보는 없지만, 사용 시 API 키 발급과 외부 전송이 필요합니다. AWS 안에서 끝내려면 Bedrock Haiku 5.5 판정이 대안입니다.
 
-## 4. 확인하지 못한 항목
+## 4. 호출 형식: 중개 서비스 문서 기준
 
-- TypeSafe 공식 API 문서, 엔드포인트, 요금표는 검색되지 않아 확인하지 못했습니다.
+**4-1. 요청은 `{model, state, questions}`, 선택형 응답은 `choice`, `confidence`, `probabilities`이며, 세 중개 서비스 문서의 필드 이름이 같습니다.**
+
+| 이용 경로 | 주소 | 모델 이름 | 출처 |
+|---|---|---|---|
+| DigitalOcean | `POST https://inference.do-ai.run/v1/systemone` | `typesafe-jev-1.13.0` | [DigitalOcean 문서](https://docs.digitalocean.com/products/inference/how-to/use-system-one-api/) |
+| AIML API | `POST https://api.aimlapi.com/v1/decisions` | `typesafe/jev`(현재 1.14) | [AIML API 문서](https://docs.aimlapi.com/api-references/decision-models/typesafe/jev.md) |
+| Cloudflare | `POST .../accounts/{계정}/ai/run`, 본문 `input` 아래에 state·questions | `typesafe/jev` | [Cloudflare 문서](https://developers.cloudflare.com/ai/models/typesafe/jev/) |
+| OpenRouter | `https://openrouter.ai/api/alpha/decisions` | `typesafe/jev-1.13` | [OpenRouter 문서](https://openrouter.ai/docs/api/api-reference/systemone/submit-a-system-one-request) |
+
+- 선택형 질문: `type: "choice"`, `instructions`, `criteria`(선택지별 적용 기준). 선택지는 1~255개입니다(AIML API).
+- 응답: `answers.<질문>.choice`(선택), `confidence`(0~1), `probabilities`(합계 1).
+- 문맥 한도는 문서마다 다릅니다(DigitalOcean 요청 전체 64K·state와 가장 긴 질문 32K, Cloudflare 32,000, AIML API 262,144 토큰).
+- 평가 스크립트 `lambda/tools/eval_ai.py`는 주소, 키, 모델 이름을 환경 변수(`JEV_URL`, `JEV_KEY`, `JEV_MODEL`)로 받습니다.
+
+## 5. 확인하지 못한 항목
+
+- TypeSafe 직접 호출 주소와 인증 방식은 어느 문서에도 없어 확인하지 못했습니다(`https://docs.typesafe.ai/models` 링크는 미확인).
 - 가격은 Arize 블로그 표 1건의 값이며 공식 가격표와 대조하지 않았습니다.
 
 ## 관련 자료
