@@ -24,15 +24,13 @@ import tenant
 UNIT_PRICE_KRW = 134.2
 PRICE_BASIS = '일반용(갑)I 고압A 선택I 전력량요금 연평균 120.2원 + 기후환경요금 9.0원 + 연료비조정요금 5.0원, 기본요금·부가가치세·전력산업기반기금 제외'
 WEEKDAYS = '월화수목금토일'
-_PROBE = dt.date(2026, 11, 16)  # 월요일
 
 
 def _idle_on(room):
-    # 재실 0명이어도 운전하는 시간(빈 공간 운전 호실): 운영 시작 1시간 전은 재실 0명이라 그 시각 운전 여부로 판별
+    # 재실 0명이어도 운전하는 시간(빈 공간 운전 호실). 운영 시작 0시 건물은 시작 1시간 전이 없어 0시부터(2026-11-21 장애)
     # shortcut: 시간 범위(운영 시작 1시간 전 ~ 종료 3시간 후)는 sim.state 규칙 복제, sim.py 규칙 변경 시 test_energy SkipTest로 확인
     h0, h1 = room.get('hours', (9, 18))
-    on = sim.state(room, dt.datetime.combine(_PROBE, dt.time(h0 - 1, 30), sim.KST))['onOff']
-    return frozenset(range(h0 - 1, h1 + 3)) if on else frozenset()
+    return frozenset(range(max(h0 - 1, 0), min(h1 + 3, 24))) if sim.wasteful(room) else frozenset()
 
 
 @functools.lru_cache(maxsize=4)

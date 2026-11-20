@@ -501,6 +501,12 @@
       "type": "explanation"
     },
     {
+      "path": "docs/human/explanation/troubleshooting/2026-11-21(운영 시작 0시 건물로 전력 분석 전체 400 오류).md",
+      "title": "운영 시작 0시 건물로 전력 분석 전체 400 오류",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
       "path": "docs/human/explanation/troubleshooting/README.md",
       "title": "장애 조사 기록",
       "audience": "human",

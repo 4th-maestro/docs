@@ -133,6 +133,29 @@ class SkipTest(unittest.TestCase):
                         self.assertAlmostEqual(a, b, places=9, msg=(bid, day, g))
 
 
+class MidnightStartTest(unittest.TestCase):
+    # 운영 시작 0시 건물(2026-11-21 장애): 빈 공간 운전 판정이 -1시를 만들지 않고, 정지 생략 규칙이 sim.state와 같음
+    def test_idle_hours_match_sim(self):
+        day = dt.date(2026, 11, 18)
+        for r in energy._ROOMS['main']:
+            room = {**r, 'hours': (0, 24)}
+            idle = energy._idle_on(room)
+            for h in range(24):
+                s = sim.state(room, dt.datetime.combine(day, dt.time(h, 30), sim.KST))
+                if s['onOff'] and s['occupants'] == 0:
+                    self.assertIn(h, idle, msg=(r['id'], h))
+
+    def test_compare_ok_with_midnight_building(self):
+        rooms = buildings.rooms
+        with patch.object(buildings, 'rooms', side_effect=lambda bid=None: [{**r, 'hours': (0, 24)} for r in rooms(bid)]):
+            energy._meta.cache_clear()
+            try:
+                code, body = call('/energy/compare', period='day')
+            finally:
+                energy._meta.cache_clear()
+        self.assertEqual(code, 200, body)
+
+
 class SamplingTest(unittest.TestCase):
     def test_half_hour_sample_within_1pct_of_5min(self):
         day, rooms = dt.date(2026, 11, 18), energy._ROOMS['main']

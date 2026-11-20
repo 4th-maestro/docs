@@ -67,13 +67,18 @@ def rated(room):
     return round(max(1.5, room['areaM2'] * 0.1), 1)
 
 
+def wasteful(room):
+    # 빈 공간 운전 호실: 운영 시작 1시간 전 ~ 종료 3시간 후에는 재실 0명이어도 운전(낭비 패턴 주입, 호실별 고정)
+    return _u(room['id'], 'waste') < room.get('waste', 0.12)
+
+
 def state(room, t, schedules=()):
     m, occ, out = mode(t), occupants(room, t), outdoor_temp(t)
-    wasteful = _u(room['id'], 'waste') < room.get('waste', 0.12)
+    idle = wasteful(room)
     h0, h1 = room.get('hours', (9, 18))
     overset = _u(room['id'], 'over') < 0.10
     fault = _u(room['id'], 'fault') < 0.03
-    on = occ > 0 or (wasteful and h0 - 1 <= t.hour < h1 + 3)
+    on = occ > 0 or (idle and h0 - 1 <= t.hour < h1 + 3)
     sp = (22 if overset else 26) if m == 'cooling' else (24 if overset else 20)
     for s in _scheduled(room, t, occ, schedules):
         if s['action'] == 'off':
