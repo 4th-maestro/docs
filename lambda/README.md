@@ -42,7 +42,17 @@ aws sts get-caller-identity --profile maestro
 sam build && sam deploy --guided --profile maestro
 ```
 
-두 번째 배포부터는 `sam deploy --stack-name maestro --region ap-northeast-2 --profile maestro --capabilities CAPABILITY_IAM --resolve-s3`를 사용하십시오. `ModelId` 기본값을 바꾼 배포는 `--parameter-overrides ModelId=global.anthropic.claude-sonnet-5-5`를 함께 지정하십시오. 스택에 저장된 이전 값이 허용 값 검사에서 거부됩니다.
+두 번째 배포부터는 아래 명령을 사용하십시오. 배포는 `main` 기준이며, 브랜치가 `main`이 아니거나 커밋하지 않은 변경이 있으면 빌드 전에 중단됩니다. `ModelId`는 스택에 저장된 이전 값이 허용 값 검사에서 거부되므로 매번 지정합니다.
+
+```bash
+git switch main && git pull --ff-only \
+  && test -z "$(git status --porcelain --untracked-files=no)" \
+  && sam build \
+  && sam deploy --stack-name maestro --region ap-northeast-2 --profile maestro --capabilities CAPABILITY_IAM --resolve-s3 \
+     --no-confirm-changeset --no-fail-on-empty-changeset --parameter-overrides ModelId=global.anthropic.claude-sonnet-5-5
+```
+
+주: 2026-11-20 작업 사본의 미커밋 변경 때문에 브랜치 전환이 실패한 상태에서 `sam build`가 이어 실행되어, 머지 전 코드가 약 3분간 배포되었습니다. 명령을 `&&`로 연결하고 브랜치·변경 확인을 앞에 둔 이유입니다.
 
 모델은 bedrock-runtime global 추론 프로필 `global.anthropic.claude-sonnet-5-5`입니다. bedrock-mantle 엔드포인트는 Sonnet 5.5를 제공하지 않습니다(2026-11-20 확인). 출력값 `ApiUrl`을 Frontend의 `VITE_API_BASE_URL`에, `WsUrl`을 `VITE_WS_URL`에 넣고, `WebBucketName`에 Frontend 빌드를 올리십시오.
 
