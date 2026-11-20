@@ -303,6 +303,12 @@
       "type": "explanation"
     },
     {
+      "path": "docs/human/explanation/improvements/2026-11-21(층 목록 이상과 주의 구분).md",
+      "title": "층 목록 이상과 주의 구분",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
       "path": "docs/human/explanation/improvements/README.md",
       "title": "개선 기록",
       "audience": "human",
