@@ -13,9 +13,9 @@
 .adm-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; }
 .adm-fields label, .adm-assign label { display: flex; flex-direction: column; gap: 4px; font-size: 15px; font-weight: 600; }
 .adm-fields .wide { grid-column: 1 / -1; }
-.adm-fields input, .adm-assign select { height: 48px; padding: 0 14px; border: 1px solid var(--border-strong); border-radius: var(--r-sm); background: var(--canvas); color: var(--ink); font: inherit; font-size: 16px; font-weight: 400; min-width: 0; }
-.adm-fields input[aria-invalid='true'] { border-color: var(--danger); }
-.adm-fields input:focus, .adm-assign select:focus { outline: 2px solid var(--ink); outline-offset: 1px; }
+.adm-fields input, .adm-fields select, .adm-assign select { height: 48px; padding: 0 14px; border: 1px solid var(--border-strong); border-radius: var(--r-sm); background: var(--canvas); color: var(--ink); font: inherit; font-size: 16px; font-weight: 400; min-width: 0; }
+.adm-fields input[aria-invalid='true'], .adm-fields select[aria-invalid='true'] { border-color: var(--danger); }
+.adm-fields input:focus, .adm-fields select:focus, .adm-assign select:focus { outline: 2px solid var(--ink); outline-offset: 1px; }
 
 /* 버튼: 아이콘 + 글자, 단독 버튼 최소 200px, 같은 줄 2개는 1:1 */
 .adm-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 200px; padding: 0 20px; white-space: nowrap; }
@@ -66,12 +66,32 @@
 .adm-table td { padding: 12px 4px; border-bottom: 1px solid var(--hairline-soft); overflow-wrap: anywhere; }
 .adm-name { font-size: 16px; font-weight: 700; color: var(--ink); text-underline-offset: 3px; }
 .adm-tag { display: inline-flex; align-items: center; gap: 4px; margin: 0 0 0 8px; vertical-align: 1px; }
+
+/* 구성원·건물 행: 재확인·수정 영역은 행 아래 전체 폭 */
+.adm-mem { flex-wrap: wrap; padding: 8px 0; }
+.adm-mem > .adm-ask { flex-basis: 100%; }
+
+/* 변경 이력 행: 동작·대상(왼쪽), 시각·사용자(오른쪽) */
+.adm-log { padding: 8px 0; }
+.adm-when { display: flex; flex-direction: column; align-items: flex-end; min-width: 0; font-size: 15px; font-variant-numeric: tabular-nums; text-align: right; overflow-wrap: anywhere; }
+.adm-when small { font-size: 14px; color: var(--muted); }
+
+/* 기업 정보 조회(운영자): 라벨 위, 2열(휴대폰 1열) */
+.adm-dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; margin: 0; }
+.adm-dl .wide { grid-column: 1 / -1; }
+.adm-dl dt { font-size: 14px; font-weight: 600; color: var(--muted); }
+.adm-dl dd { margin: 0; font-size: 16px; overflow-wrap: anywhere; }
 @media (max-width: 743px) {
   .adm-fields { grid-template-columns: 1fr; }
   .adm-btn, .adm-stack > .adm-btn, .adm-card > .adm-btn { align-self: stretch; min-width: 0; }
   .adm-btns { max-width: none; }
   .adm-assign { grid-template-columns: 1fr; row-gap: 8px; }
   .adm-codeval { font-size: 26px; }
+  .adm-dl { grid-template-columns: 1fr; }
+  /* 구성원 버튼 2개는 이메일 아래 한 줄 1:1, 변경 이력 시각·사용자는 동작 아래 */
+  .adm-mem > .adm-acts { flex-basis: 100%; }
+  .adm-log { flex-wrap: wrap; }
+  .adm-when { flex-basis: 100%; align-items: flex-start; padding-left: 30px; text-align: left; }
   /* 휴대폰 표: 가입일, 기업 코드·만료일 숨김(코드는 상세에서 확인) */
   .adm-table th:nth-child(3), .adm-table td:nth-child(3), .adm-cos th:nth-child(2), .adm-cos td:nth-child(2) { display: none; }
 }

@@ -5,7 +5,7 @@
 - savingKwh: recommend 합계(GET /recommendations 건물 전체 totalSavingKwh와 같은 값, 1일, 가상)
 - level: alert(이상 1건 이상), warn(절감 가능량이 오늘 사용량의 10% 이상), ok
 - 정렬: alert, warn, ok 순, 같은 level은 이상 건수 내림차순
-- 소속: 판매사 총관리자는 전체, 고객사 구성원은 소속 기업 건물만, 소속 없으면 빈 목록
+- 소속: 판매사 총관리자는 전체, 고객사 구성원은 소속 기업 건물만, 소속 없으면 빈 목록, 중지 기업 구성원은 403
 """
 import json
 import time
@@ -22,8 +22,8 @@ LEVELS = ('alert', 'warn', 'ok')
 WARN_RATIO = 0.1
 
 
-# 응답 캐시: 같은 스케줄이면 30초 동안 재사용(화면 조회 주기 60초, 현재 전력은 최대 30초 전 값)
-# - 스케줄 저장·취소 시 키가 바뀌어 즉시 재계산
+# 응답 캐시: 같은 스케줄·건물 정보면 30초 동안 재사용(화면 조회 주기 60초, 현재 전력은 최대 30초 전 값)
+# - 스케줄 저장·취소, 건물 정보 수정 시 키가 바뀌어 즉시 재계산
 TTL_S = 30
 _cache = {'key': None, 'at': 0.0, 'body': None}
 
@@ -31,7 +31,7 @@ _cache = {'key': None, 'at': 0.0, 'body': None}
 def handler(event, context):
     allowed = tenant.allowed_buildings(tenant.caller(event))
     schedules = common.list_schedules()
-    key = json.dumps(schedules, sort_keys=True, default=str)
+    key = json.dumps([buildings.version(), schedules], sort_keys=True, default=str)
     if not (_cache['key'] == key and time.monotonic() - _cache['at'] < TTL_S):
         t = sim.now()
         items = sorted((card(b, t, schedules) for b in buildings.LIST), key=lambda c: (LEVELS.index(c['level']), -c['now']['anomaly']))

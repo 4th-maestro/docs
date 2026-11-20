@@ -271,6 +271,17 @@ Resources:
         AdminBuildings: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /admin/buildings, Method: GET}}
         AssignBuilding: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: '/admin/buildings/{id}/company', Method: PUT}}
         Me: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /me, Method: GET}}
+        AdminUpdateMember: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: '/admin/companies/{id}/members/{sub}', Method: PATCH}}
+        AdminRemoveMember: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: '/admin/companies/{id}/members/{sub}', Method: DELETE}}
+        AdminCompanyAudit: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: '/admin/companies/{id}/audit', Method: GET}}
+        # 고객사 설정(customer.py): 기업 코드 가입, 기업 정보, 구성원, 변경 이력, 건물 정보 수정
+        JoinCompany: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /me/join, Method: POST}}
+        MyCompany: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /company, Method: GET}}
+        UpdateMyCompany: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /company, Method: PATCH}}
+        UpdateMember: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: '/company/members/{sub}', Method: PATCH}}
+        RemoveMember: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: '/company/members/{sub}', Method: DELETE}}
+        MyCompanyAudit: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /company/audit, Method: GET}}
+        UpdateBuilding: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: '/buildings/{id}', Method: PATCH}}
 
   QueryFunction:
     Type: AWS::Serverless::Function
@@ -285,7 +296,9 @@ Resources:
         - DynamoDBReadPolicy: {TableName: !Ref SchedulesTable}
         - DynamoDBCrudPolicy: {TableName: !Ref ChatTable}
         - DynamoDBReadPolicy: {TableName: !Ref MembersTable}
+        # 건물 소속·건물 수정 정보(overrides), 중지 기업 확인(tenant.py, buildings.py)
         - DynamoDBReadPolicy: {TableName: !Ref BuildingOwnersTable}
+        - DynamoDBReadPolicy: {TableName: !Ref CompaniesTable}
         - Statement:
             - Effect: Allow
               # 응답 스트리밍(messages.stream)은 InvokeModelWithResponseStream 권한 필요
@@ -368,7 +381,9 @@ Resources:
         - DynamoDBReadPolicy: {TableName: !Ref SchedulesTable}
         - DynamoDBCrudPolicy: {TableName: !Ref ChatTable}
         - DynamoDBReadPolicy: {TableName: !Ref MembersTable}
+        # 건물 소속·건물 수정 정보(overrides), 중지 기업 확인(tenant.py, buildings.py)
         - DynamoDBReadPolicy: {TableName: !Ref BuildingOwnersTable}
+        - DynamoDBReadPolicy: {TableName: !Ref CompaniesTable}
         - Statement:
             - Effect: Allow
               Action: [bedrock:InvokeModel, bedrock:InvokeModelWithResponseStream]

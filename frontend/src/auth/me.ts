@@ -6,3 +6,5 @@ import type { Me, Role } from '../api'
 export const MeContext = createContext<Me | null>(null)
 
 export const ROLE: Record<Role, string> = { admin: '판매사 관리자', manager: '고객사 관리자', operator: '운영자' }
+// 소속 다시 조회 요청: 구성원 역할 변경·제외 후 App이 GET /me를 다시 호출(사이드바 역할 표시, 제외 시 소속 기업 없음 화면)
+export const ME_CHANGED = 'maestro:me'

@@ -28,3 +28,8 @@
 .lg-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 @media (max-width: 743px) { .lg-card { padding: 24px 20px; } }
 .lg-icon-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+/* 소속 기업 없음: 기업 연결 아래 로그아웃 */
+.lg-submit + .lg-submit { margin-top: 8px; }
+/* 서비스 중지 안내: 아이콘 + 글자 */
+.lg-stop { display: flex; align-items: flex-start; gap: 8px; margin: 8px 0 0; font-size: 16px; line-height: 1.5; color: var(--danger); }
+.lg-stop svg { flex: none; margin-top: 2px; }

@@ -1,6 +1,6 @@
 import { useContext, useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { AlertTriangle, BarChart3, Briefcase, Building2, CheckCircle2, ChevronDown, LayoutDashboard, LogOut, Menu, Plus, X } from 'lucide-react'
+import { AlertTriangle, BarChart3, Briefcase, Building2, CheckCircle2, ChevronDown, LayoutDashboard, LogOut, Menu, Plus, Settings, X } from 'lucide-react'
 import { addCustom, buildingsChanged } from '../custom'
 import { AUTH_ON, currentEmail, isAdmin, signOut } from '../auth/cognito'
 import { MeContext, ROLE } from '../auth/me'
@@ -15,8 +15,8 @@ import CountUp from '../motion/CountUp'
 
 // 화면 틀: 상단바(로고, 건물 토글, 운영·전력 분석 탭, 오른쪽 도구) + 왼쪽 사이드바(전체 현황, 층) + 본문
 // - 사이드바: 743px 이하에서 숨기고 상단바 메뉴 버튼으로 여닫음
-export function Layout({ building, tab, buildings, tools, side, admin, children }: {
-  building: string | null; tab: Tab; buildings: BuildingCard[]; tools: ReactNode; side?: ReactNode; admin?: boolean; children: ReactNode
+export function Layout({ building, tab, buildings, tools, side, admin, settings, children }: {
+  building: string | null; tab: Tab; buildings: BuildingCard[]; tools: ReactNode; side?: ReactNode; admin?: boolean; settings?: boolean; children: ReactNode
 }) {
   const [drawer, setDrawer] = useState(false)
   const me = useContext(MeContext)
@@ -48,7 +48,7 @@ export function Layout({ building, tab, buildings, tools, side, admin, children 
       </header>
       <div className="body">
         <aside id="side" className={drawer ? 'side open' : 'side'} aria-label="이동">
-          <a className={building || admin ? 'side-link' : 'side-link on'} href="#/" aria-current={building || admin ? undefined : 'page'} onClick={() => setDrawer(false)}>
+          <a className={building || admin || settings ? 'side-link' : 'side-link on'} href="#/" aria-current={building || admin || settings ? undefined : 'page'} onClick={() => setDrawer(false)}>
             <LayoutDashboard size={20} aria-hidden />전체 현황
           </a>
           {side}
@@ -60,6 +60,12 @@ export function Layout({ building, tab, buildings, tools, side, admin, children 
                   <Building2 size={20} aria-hidden />
                   <span>{me.company.name}<small>{me.role ? ROLE[me.role] : ''}</small></span>
                 </p>
+              )}
+              {/* 고객사 기업 설정: 판매사 관리자는 기업 관리 사용 */}
+              {me?.company && me.role !== 'admin' && (
+                <a className={settings ? 'side-link on' : 'side-link'} href="#/settings" aria-current={settings ? 'page' : undefined} onClick={() => setDrawer(false)}>
+                  <Settings size={20} aria-hidden />기업 설정
+                </a>
               )}
               {/* 관리자 메뉴: 표시는 ID 토큰 그룹 또는 GET /me 역할 기준, 권한은 admin API가 판정 */}
               {(isAdmin() || me?.role === 'admin') && (

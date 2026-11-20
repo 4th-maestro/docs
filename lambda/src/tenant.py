@@ -3,7 +3,8 @@
 - 호출자: HTTP API는 JWT 권한 부여자 claims(sub, cognito:groups), WebSocket은 REQUEST 권한 부여자 context(sub, groups)
 - 역할: admin(판매사 총관리자, Cognito admin 그룹, 모든 건물), manager(고객사 관리자), operator(운영자). 고객사 역할은 MembersTable에서 읽음
 - 건물 소속: BuildingOwnersTable(buildingId → companyId). 소속 기업이 없는 건물은 admin만 접근
-- 캐시: 실행 환경별 60초(구성원, 건물 소속). 역할·소속 변경은 최대 60초 뒤 다른 실행 환경에 반영
+- 캐시: 실행 환경별 60초(구성원, 건물 소속, 기업 상태). 역할·소속·상태 변경은 최대 60초 뒤 다른 실행 환경에 반영
+- 중지 기업: 기업 status가 suspended면 구성원의 건물 API·/company API는 403(code COMPANY_SUSPENDED), GET /me는 허용, admin은 검사 안 함
 - 검사 해제: 환경 변수 MEMBERS_TABLE이 없으면(로컬·테스트) 모든 건물 허용
 - 가입 대기: MembersTable 키 pending#<소문자 이메일>, {companyId, ttl 2일}. 가입 전 검사가 쓰고 가입 확인 트리거가 구성원으로 전환
 """
@@ -22,13 +23,18 @@ PENDING = 'pending#'
 CODE_ALPHABET = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ'
 CODE_DAYS = 30
 FORBIDDEN = '이 건물에 접근할 권한이 없습니다.'
-_tables, _members, _owners, _emails = {}, {}, {'at': 0.0, 'map': None}, {}
+SUSPENDED = '서비스가 중지된 기업입니다. 판매사에 문의하십시오.'
+_tables, _members, _owners, _emails, _status = {}, {}, {'at': 0.0, 'map': None}, {}, {}
 _idp = None
 
 
 class Forbidden(Exception):
-    def __init__(self, message=FORBIDDEN):
+    def __init__(self, message=FORBIDDEN, code=None):
         super().__init__(message)
+        self.code = code
+
+    def body(self):
+        return {'error': str(self)} | ({'code': self.code} if self.code else {})
 
 
 # 저장소 접근
@@ -87,8 +93,9 @@ def company_buildings(cid):
 
 
 def audit(cid, actor, action, target, detail=None):
+    # 정렬 키 at: 밀리초 단위 시각(같은 초 안의 변경도 순서 유지) + uuid
     table('AUDIT_TABLE').put_item(Item={
-        'companyId': cid, 'at': f'{stamp()}#{uuid.uuid4()}',
+        'companyId': cid, 'at': f"{now().isoformat(timespec='milliseconds')}#{uuid.uuid4()}",
         'actor': {k: actor.get(k) or '' for k in ('sub', 'email', 'role')},
         'action': action, 'target': target, 'detail': detail or {},
     })
@@ -147,13 +154,22 @@ def owners():
     - shortcut: 테이블 전체 조회(건물 수십 개 규모), 건물이 수천 개를 초과하면 기업 보조 인덱스 조회로 교체
     """
     if _owners['map'] is None or time.monotonic() - _owners['at'] > TTL:
-        _owners.update(at=time.monotonic(), map={o['buildingId']: o['companyId'] for o in scan('OWNERS_TABLE')})
+        # 소속 없이 수정 정보(overrides)만 있는 항목은 제외
+        _owners.update(at=time.monotonic(), map={o['buildingId']: o['companyId'] for o in scan('OWNERS_TABLE') if o.get('companyId')})
     return _owners['map']
 
 
+def company_status(cid):
+    hit = _status.get(cid)
+    if not hit or time.monotonic() - hit[0] > TTL:
+        hit = _status[cid] = (time.monotonic(), (company(cid) or {}).get('status'))
+    return hit[1]
+
+
 def forget():
-    """관리 API가 소속·구성원을 바꾼 뒤 같은 실행 환경의 캐시 비움"""
+    """관리 API가 소속·구성원·기업 상태를 바꾼 뒤 같은 실행 환경의 캐시 비움"""
     _members.clear()
+    _status.clear()
     _owners['map'] = None
 
 
@@ -168,12 +184,19 @@ def caller(event):
     return {'sub': sub, 'role': m.get('role'), 'companyId': m.get('companyId'), 'email': m.get('email')}
 
 
+def require_active(ctx):
+    """소속 기업이 중지 상태면 Forbidden(COMPANY_SUSPENDED). admin과 소속 없는 사용자는 통과"""
+    if ctx['role'] != ADMIN and ctx['companyId'] and company_status(ctx['companyId']) == 'suspended':
+        raise Forbidden(SUSPENDED, 'COMPANY_SUSPENDED')
+
+
 def allowed_buildings(ctx):
-    """접근 가능한 건물 id 집합. None은 전체(admin, 검사 해제)"""
+    """접근 가능한 건물 id 집합. None은 전체(admin, 검사 해제). 중지 기업 구성원은 Forbidden"""
     if not enabled() or ctx['role'] == ADMIN:
         return None
     if not ctx['companyId']:
         return set()
+    require_active(ctx)
     return {b for b, c in owners().items() if c == ctx['companyId']}
 
 
@@ -187,6 +210,7 @@ def can_edit(ctx, bid):
     """건물·도면 수정 권한: admin, 또는 소속 기업의 고객사 관리자"""
     if not enabled() or ctx['role'] == ADMIN:
         return True
+    require_active(ctx)
     return ctx['role'] == 'manager' and bool(ctx['companyId']) and owners().get(bid) == ctx['companyId']
 
 
@@ -206,12 +230,12 @@ def email(sub):
 
 
 def me(event, context):
-    """GET /me: {email, role, company: {id, name} | None}"""
+    """GET /me: {email, role, company: {id, name, status} | None}. 중지 기업 구성원도 조회 가능"""
     # 가입 트리거 함수가 common·buildings를 불러오지 않도록 함수 안에서 import
     import common
     ctx = caller(event)
     c = company(ctx['companyId']) if ctx['companyId'] else None
     return common.resp(200, {
         'email': ctx['email'] or email(ctx['sub']), 'role': ctx['role'],
-        'company': {'id': c['companyId'], 'name': c['name']} if c else None,
+        'company': {'id': c['companyId'], 'name': c['name'], 'status': c.get('status', 'active')} if c else None,
     })

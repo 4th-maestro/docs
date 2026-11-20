@@ -61,12 +61,14 @@ def main():
         print(f"{tag}기업 {DEMO} 생성, 코드 {item['code']}")
 
     for bid in BUILDINGS:
-        cur = (t['BuildingOwnersTable'].get_item(Key={'buildingId': bid}).get('Item') or {}).get('companyId')
+        item = t['BuildingOwnersTable'].get_item(Key={'buildingId': bid}).get('Item') or {}
+        cur = item.get('companyId')
         if cur:
             print(f'건물 {bid}: 소속 {cur}, 유지')
             continue
         if not args.dry_run:
-            t['BuildingOwnersTable'].put_item(Item={'buildingId': bid, 'companyId': DEMO})
+            # 건물 수정 정보(overrides) 보존
+            t['BuildingOwnersTable'].put_item(Item={**item, 'buildingId': bid, 'companyId': DEMO})
         print(f'{tag}건물 {bid}: {DEMO} 지정')
 
     admins = {u['Username'] for r in pages(idp.list_users_in_group, 'NextToken', UserPoolId=args.user_pool_id, GroupName='admin', Limit=60) for u in r['Users']}

@@ -112,7 +112,7 @@ def handler(event, context):
     try:
         tenant.require_building(event, b['id'])
     except tenant.Forbidden as e:
-        return common.resp(403, {'error': str(e)})
+        return common.resp(403, e.body())
     return common.resp(200, converse(text, lambda e: None, b['id'], chat.user(event)))
 
 

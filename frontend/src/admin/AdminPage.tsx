@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
-import { AlertTriangle, ArrowLeft, Building2, CheckCircle2, CirclePause, Copy, Link2, Plus, RefreshCw, ShieldCheck, Trash2, Unlink } from 'lucide-react'
+import { ArrowLeft, Building2, Copy, Link2, Plus, RefreshCw, ShieldCheck, Trash2, Unlink } from 'lucide-react'
 import {
-  assignBuilding, createCompany, deleteCompany, getCompany, listAdminBuildings, listCompanies, listUsers, renewCode, updateCompany,
-  type AdminBuilding, type Company, type CompanyDetail, type CompanyInput, type CompanyRow, type UserRow,
+  assignBuilding, co, createCompany, deleteCompany, getCompany, listAdminBuildings, listCompanies, listUsers, renewCode, updateCompany,
+  type AdminBuilding, type Company, type CompanyDetail, type CompanyRow, type UserRow,
 } from '../api'
-import { ROLE } from '../auth/me'
 import { Seg } from '../energy/parts'
 import { SkRows, SkTable, SkWrap } from '../skeleton/Skeleton'
+import { auditNames, day, EMPTY, forCreate, formOk, forUpdate, msg, toForm, type Form } from './form'
+import { Audit, Expiry, Fields, Members, State } from './parts'
 import './admin.css'
 
 // 회원 상태: Cognito UserStatus → 운영자용 표현
@@ -16,28 +17,6 @@ const STATUS: Record<string, string> = {
 // 기업 코드 유효 기간: API 허용 1~365일, 기본 30일
 const DAYS: [string, string][] = [['7', '7일'], ['30', '30일'], ['90', '90일'], ['365', '1년']]
 const STATES: [Company['status'], string][] = [['active', '사용 중'], ['suspended', '사용 중지']]
-const EMAIL = /^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i
-// 날짜 표시: 한국 시각 기준 YYYY-MM-DD
-const day = (iso?: string) => (iso ? new Date(iso).toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' }) : '')
-const msg = (e: unknown) => (e as Error).message
-
-// 기업 정보 입력
-// - 생성: 빈 칸 제외, 수정: 바뀐 칸만 전송(지운 칸은 빈 문자열)
-type Form = { name: string; contactName: string; contactEmail: string; phone: string; address: string }
-const EMPTY: Form = { name: '', contactName: '', contactEmail: '', phone: '', address: '' }
-const FIELDS: { key: keyof Form; label: string; max: number; type?: string }[] = [
-  { key: 'name', label: '기업 이름(필수)', max: 60 },
-  { key: 'contactName', label: '담당자', max: 40 },
-  { key: 'contactEmail', label: '담당자 이메일', max: 100, type: 'email' },
-  { key: 'phone', label: '연락처', max: 30, type: 'tel' },
-  { key: 'address', label: '주소', max: 200 },
-]
-const toForm = (c: Company): Form => ({ name: c.name, contactName: c.contactName ?? '', contactEmail: c.contactEmail ?? '', phone: c.phone ?? '', address: c.address ?? '' })
-const trimmed = (f: Form) => Object.entries(f).map(([k, v]) => [k, v.trim()] as [keyof Form, string])
-const forCreate = (f: Form) => Object.fromEntries(trimmed(f).filter(([, v]) => v)) as CompanyInput
-const forUpdate = (f: Form, c: Company) => { const base = toForm(c); return Object.fromEntries(trimmed(f).filter(([k, v]) => v !== base[k])) as CompanyInput }
-const badMail = (f: Form) => !!f.contactEmail.trim() && !EMAIL.test(f.contactEmail.trim())
-const formOk = (f: Form) => !!f.name.trim() && !badMail(f)
 
 // 판매사 기업 관리(관리자 전용): #/admin 기업 목록·추가·가입한 사용자, #/admin/<기업 id> 기업 상세
 // - 권한 판정은 API(admin API)가 수행, 관리자가 아니면 403 안내 표시
@@ -135,8 +114,8 @@ function CompanyList() {
   )
 }
 
-// 기업 상세: 기업 코드(복사, 재발급), 기업 정보·사용 상태, 건물 연결, 구성원(조회만), 삭제
-// - 재확인: 코드 재발급, 건물 연결 해제, 기업 삭제(DESIGN.md 비가역 동작)
+// 기업 상세: 기업 코드(복사, 재발급), 기업 정보·사용 상태, 건물 연결, 구성원(역할 변경, 제외), 변경 이력, 삭제
+// - 재확인: 코드 재발급, 건물 연결 해제, 구성원 역할 변경·제외, 기업 삭제(DESIGN.md 비가역 동작)
 // - 결과 문구는 동작한 카드 안에 표시
 function CompanyView({ id }: { id: string }) {
   const [data, setData] = useState<CompanyDetail | null>(null)
@@ -279,20 +258,8 @@ function CompanyView({ id }: { id: string }) {
         {say('bld')}
       </section>
 
-      <section className="card adm-card" aria-labelledby="adm-mem">
-        <h2 id="adm-mem">구성원 {data.members.length}명</h2>
-        {data.members.length === 0 && <p className="muted">가입한 구성원이 없습니다. 기업 코드로 처음 가입한 사람이 고객사 관리자가 됩니다.</p>}
-        {!!data.members.length && (
-          <table className="adm-table">
-            <thead><tr><th>이메일</th><th>역할</th><th>가입일</th></tr></thead>
-            <tbody>
-              {data.members.map((m) => (
-                <tr key={m.sub}><td>{m.email}</td><td>{ROLE[m.role] ?? m.role}</td><td>{day(m.joinedAt)}</td></tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </section>
+      <Members base={co(id)} members={data.members} onChange={() => { load().catch((e) => setError(msg(e))) }} />
+      <Audit base={co(id)} at={data} names={auditNames(data)} />
 
       <section className="card adm-card" aria-labelledby="adm-del">
         <h2 id="adm-del">기업 삭제</h2>
@@ -311,36 +278,4 @@ function CompanyView({ id }: { id: string }) {
       </section>
     </main>
   )
-}
-
-function Fields({ value, onChange }: { value: Form; onChange: (f: Form) => void }) {
-  const bad = badMail(value)
-  return (
-    <div className="adm-fields">
-      {FIELDS.map((f) => (
-        <label key={f.key} className={f.key === 'address' ? 'wide' : undefined}>
-          {f.label}
-          <input type={f.type ?? 'text'} value={value[f.key]} maxLength={f.max} autoComplete="off" onChange={(e) => onChange({ ...value, [f.key]: e.target.value })}
-            aria-required={f.key === 'name' || undefined} aria-invalid={(f.key === 'contactEmail' && bad) || undefined} />
-        </label>
-      ))}
-      {bad && <p className="adm-warn wide">담당자 이메일 형식을 확인하십시오. 예: kim@company.com</p>}
-    </div>
-  )
-}
-
-// 기업 상태: 아이콘 + 글자
-function State({ status }: { status: Company['status'] }) {
-  return status === 'suspended'
-    ? <span className="adm-st off"><CirclePause size={16} aria-hidden />사용 중지</span>
-    : <span className="adm-st ok"><CheckCircle2 size={16} aria-hidden />사용 중</span>
-}
-
-// 코드 만료일: 남은 일수, 지나면 위험 색 + 아이콘 + 글자
-function Expiry({ iso }: { iso: string }) {
-  const [now] = useState(Date.now)
-  const left = Math.ceil((new Date(iso).getTime() - now) / 86_400_000)
-  return left > 0
-    ? <span className="adm-exp">{day(iso)}<small>{left}일 남음</small></span>
-    : <span className="adm-st bad"><AlertTriangle size={16} aria-hidden />{day(iso)} 만료</span>
 }

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
-import { Check, Circle, Eye, EyeOff, LogOut } from 'lucide-react'
+import { Check, Circle, CirclePause, Eye, EyeOff, Link2, LogOut } from 'lucide-react'
 import logo from '../../assets/ege.svg'
 import { authMessage, completeNewPassword, confirmForgotPassword, confirmSignUp, forgotPassword, resendCode, signIn, signOut, signUp, AuthError } from './cognito'
 import './login.css'
@@ -156,14 +156,56 @@ export default function LoginScreen({ onDone }: { onDone: () => void }) {
 }
 
 // 소속 기업 없음: 로그인했지만 GET /me의 역할이 없는 계정(판매사 관리자 제외). 건물 화면 대신 표시
-export function NoCompany({ email }: { email: string }) {
+// - 기업 코드 입력(회원가입과 같은 형식) → POST /me/join, 성공 시 onJoin이 소속을 다시 조회해 건물 화면 진입
+// - 서버 오류(400 코드 오류·만료, 409 이미 소속)는 입력칸 아래 표시
+export function NoCompany({ email, onJoin }: { email: string; onJoin: (code: string) => Promise<void> }) {
+  const [code, setCode] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const ready = CODE.test(code)
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!ready) return
+    setBusy(true); setError('')
+    try {
+      await onJoin(code)
+    } catch (err) {
+      setError((err as Error).message)
+      setBusy(false)
+    }
+  }
+
+  return (
+    <main className="lg">
+      <form className="lg-card" onSubmit={submit} noValidate>
+        <div className="lg-brand"><img src={logo} alt="에게" /><span>에너지게이트</span></div>
+        <h1>소속 기업 없음</h1>
+        <p className="lg-to">{email}</p>
+        <p className="lg-help">소속 기업이 없어 건물을 표시할 수 없습니다. 판매사에서 받은 기업 코드를 입력하십시오.</p>
+        <label htmlFor="lg-join">기업 코드</label>
+        <div className="lg-field">
+          <input id="lg-join" value={code} onChange={(e) => setCode(formatCode(e.target.value))} placeholder="EGE-XXXX-XXXX" autoComplete="off" autoCapitalize="characters" spellCheck={false} maxLength={13} autoFocus aria-invalid={!!error} />
+        </div>
+        {error && <p key={error} className="lg-error shake" role="alert">{error}</p>}
+        <button className="primary lg-submit lg-icon-btn" type="submit" disabled={busy || !ready}><Link2 size={18} aria-hidden />{busy ? '확인 중' : '기업 연결'}</button>
+        <button className="secondary lg-submit lg-icon-btn" type="button" onClick={signOut}><LogOut size={18} aria-hidden />로그아웃</button>
+        <p className="lg-note">기업 코드가 없으면 판매사에 요청하십시오.</p>
+      </form>
+    </main>
+  )
+}
+
+// 서비스 중지: 소속 기업이 사용 중지 상태(GET /me company.status, API 403 COMPANY_SUSPENDED). 건물 화면 대신 표시
+export function Suspended({ email, company, message }: { email: string; company?: string; message: string }) {
   return (
     <main className="lg">
       <div className="lg-card">
         <div className="lg-brand"><img src={logo} alt="에게" /><span>에너지게이트</span></div>
-        <h1>소속 기업 없음</h1>
+        <h1>서비스가 중지된 기업</h1>
+        {company && <p className="lg-to">{company}</p>}
         <p className="lg-to">{email}</p>
-        <p className="lg-help">소속 기업이 없어 건물을 표시할 수 없습니다. 판매사에 기업 코드를 요청하십시오.</p>
+        <p className="lg-stop" role="alert"><CirclePause size={20} aria-hidden />{message}</p>
         <button className="primary lg-submit lg-icon-btn" type="button" onClick={signOut}><LogOut size={18} aria-hidden />로그아웃</button>
       </div>
     </main>
