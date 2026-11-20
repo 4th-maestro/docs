@@ -3,7 +3,8 @@
    - 743px 이하: 사이드바는 메뉴 버튼으로 여는 서랍 */
 .app { min-height: 100vh; }
 .top { position: sticky; top: 0; z-index: 30; height: 64px; display: flex; align-items: center; gap: 12px; padding: 0 24px; border-bottom: 1px solid var(--hairline); background: var(--canvas); }
-.brand { font-size: 22px; font-weight: 700; color: var(--ink); text-decoration: none; }
+.brand { display: inline-flex; align-items: center; height: 44px; text-decoration: none; }
+.brand img { display: block; height: 28px; width: auto; }
 .slash { font-size: 22px; color: var(--border-strong); }
 .menu-btn { display: none; }
 .tools { margin-left: auto; display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
@@ -67,7 +68,7 @@
   .top { height: auto; min-height: 56px; flex-wrap: wrap; gap: 8px; padding: 6px 12px; }
   .menu-btn { display: grid; }
   .slash { display: none; }
-  .brand { font-size: 19px; }
+  .brand img { height: 24px; }
   .vtabs { order: 5; width: 100%; height: 48px; margin: 0; }
   .vtabs a { flex: 1; justify-content: center; }
   .tools .live { display: none; }

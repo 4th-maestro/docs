@@ -1,6 +1,6 @@
 # frontend
 
-Maestro 운영 대시보드(React, Vite, TypeScript)입니다. 디자인 기준은 루트 [DESIGN.md](../DESIGN.md), 데이터 시각화 기준은 [디자인 시스템](../docs/human/reference/design-system.md) 6절입니다. 화면 구성 레퍼런스는 [UI 레퍼런스](../docs/human/explanation/research/ui-references.md)에 있습니다.
+에게(에너지게이트) 운영 대시보드(React, Vite, TypeScript)입니다. 로고는 `assets/ege.svg`(상단바·로그인), 파비콘은 `public/favicon.svg`(로고의 "에" 글자)입니다. 디자인 기준은 루트 [DESIGN.md](../DESIGN.md), 데이터 시각화 기준은 [디자인 시스템](../docs/human/reference/design-system.md) 6절입니다. 화면 구성 레퍼런스는 [UI 레퍼런스](../docs/human/explanation/research/ui-references.md)에 있습니다.
 
 | 경로 | 내용 |
 |---|---|

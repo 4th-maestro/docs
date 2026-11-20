@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Check, Circle, Eye, EyeOff } from 'lucide-react'
 import { authMessage, completeNewPassword, signIn } from './cognito'
+import logo from '../../assets/ege.svg'
 import './login.css'
 
 // 비밀번호 조건: Cognito 사용자 풀 정책과 같은 값(lambda/template.yaml UserPool)
@@ -51,7 +52,7 @@ export default function LoginScreen({ onDone }: { onDone: () => void }) {
   return (
     <main className="lg">
       <form className="lg-card" onSubmit={submit} noValidate>
-        <div className="lg-brand">Maestro</div>
+        <div className="lg-brand"><img src={logo} alt="에게" /><span>에너지게이트</span></div>
         <h1>{changing ? '새 비밀번호 설정' : '로그인'}</h1>
         {changing ? (
           <>

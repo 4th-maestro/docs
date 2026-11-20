@@ -4,6 +4,7 @@ import { AlertTriangle, BarChart3, Building2, CheckCircle2, ChevronDown, LayoutD
 import { AUTH_ON, currentEmail, signOut } from '../auth/cognito'
 import { LEVEL } from '../portfolio/level'
 import type { BuildingCard } from '../types'
+import logo from '../../assets/ege.svg'
 import './shell.css'
 
 import { href, type FloorSummary, type Tab } from './route'
@@ -26,7 +27,7 @@ export function Layout({ building, tab, buildings, tools, side, children }: {
         <button className="icon menu-btn" onClick={() => setDrawer(!drawer)} aria-expanded={drawer} aria-controls="side" aria-label={drawer ? '메뉴 닫기' : '메뉴 열기'}>
           {drawer ? <X size={20} /> : <Menu size={20} />}
         </button>
-        <a className="brand" href="#/">Maestro</a>
+        <a className="brand" href="#/" aria-label="에게(에너지게이트) 전체 현황"><img src={logo} alt="" /></a>
         <span className="slash" aria-hidden>/</span>
         <BuildingToggle buildings={buildings} current={building} tab={tab} />
         {building && (

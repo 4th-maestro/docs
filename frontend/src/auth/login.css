@@ -4,7 +4,9 @@
    - 입력칸 높이 52px, 주 버튼 48px 전체 폭 */
 .lg { min-height: 100vh; display: grid; place-items: center; padding: 24px 16px; background: var(--page); }
 .lg-card { width: 100%; max-width: 420px; display: flex; flex-direction: column; gap: 8px; padding: 32px; border: 1px solid var(--hairline); border-radius: var(--r-md); background: var(--canvas); box-shadow: var(--shadow); }
-.lg-brand { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+.lg-brand { display: flex; align-items: flex-end; gap: 10px; margin-bottom: 12px; }
+.lg-brand img { height: 44px; width: auto; }
+.lg-brand span { font-size: 16px; font-weight: 600; color: var(--muted); padding-bottom: 2px; }
 .lg h1 { font-size: 24px; font-weight: 700; margin: 0 0 8px; }
 .lg-help { margin: 0 0 8px; font-size: 15px; color: var(--body); }
 .lg label { margin-top: 8px; font-size: 15px; font-weight: 600; }
