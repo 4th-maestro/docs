@@ -243,6 +243,12 @@
       "type": "explanation"
     },
     {
+      "path": "docs/human/explanation/improvements/2026-11-21(사이드바 층 목록 축소와 오늘 스케줄 배치).md",
+      "title": "사이드바 층 목록 축소와 오늘 스케줄 배치",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
       "path": "docs/human/explanation/improvements/2026-11-21(자동 추정 공간 안내 제거).md",
       "title": "자동 추정 공간 안내 제거",
       "audience": "human",
@@ -257,6 +263,12 @@
     {
       "path": "docs/human/explanation/improvements/2026-11-21(전력·요금 카드 좁은 너비 줄바꿈).md",
       "title": "전력·요금 카드 좁은 너비 줄바꿈",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/improvements/2026-11-21(최적 제어 추천 AI 운영 도우미 편입).md",
+      "title": "최적 제어 추천 AI 운영 도우미 편입",
       "audience": "human",
       "type": "explanation"
     },
