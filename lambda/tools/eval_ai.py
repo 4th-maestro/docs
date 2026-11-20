@@ -10,6 +10,7 @@ import argparse
 import datetime as dt
 import json
 import os
+import re
 import pathlib
 import sys
 import time
@@ -25,8 +26,8 @@ JEV_URL = 'https://api.typesafe.ai/v1/systemone'
 JEV_QUESTIONS = {
     'numbers': {
         'type': 'choice',
-        'instructions': '답변 글의 수치가 도구 결과(tool_results)와 일치하는지 판단하라. 도구 결과에 없는 수치를 만들었으면 inconsistent.',
-        'criteria': {'consistent': '답변의 모든 수치가 도구 결과에 있음', 'inconsistent': '도구 결과와 다르거나 없는 수치가 하나 이상 있음', 'no_numbers': '답변에 수치가 없음'},
+        'instructions': '답변 글의 측정값(전력, 온도, 습도, 인원, 대수, 건수, 절감량)이 도구 결과(tool_calls[].result)와 일치하는지 판단하라. 반올림과 단위 표기 차이는 일치로 본다. 층 이름, 시각, 질문에 나온 값은 측정값이 아니다.',
+        'criteria': {'consistent': '답변의 측정값이 모두 도구 결과에 있음', 'inconsistent': '도구 결과와 다르거나 도구 결과에 없는 측정값이 하나 이상 있음', 'no_numbers': '답변에 측정값이 없음(되묻기, 안내 포함)'},
     },
     'clarify': {
         'type': 'choice',
@@ -35,8 +36,8 @@ JEV_QUESTIONS = {
     },
     'clear': {
         'type': 'choice',
-        'instructions': '40~50대 건물 운영자가 한 번 읽고 다음 행동을 알 수 있는 답변인지 판단하라.',
-        'criteria': {'clear': '핵심 결론과 다음 조치가 분명함', 'unclear': '결론이 흐리거나 전문 용어·장황한 설명으로 이해가 어려움'},
+        'instructions': '40~50대 건물 운영자가 한 번 읽고 다음에 할 일을 알 수 있는 답변인지 판단하라. 되묻는 답변은 질문과 선택 후보가 분명하면 clear다.',
+        'criteria': {'clear': '결론 또는 되묻는 질문이 분명하고 다음에 할 일(조치, 확인, 답하기)을 바로 알 수 있음', 'unclear': '결론이 흐리거나 전문 용어, 장황한 설명, 내부 판단 서술로 이해가 어려움'},
     },
 }
 
@@ -62,7 +63,7 @@ def jev(state):
     req = urllib.request.Request(JEV_URL, json.dumps(body, ensure_ascii=False).encode(), {'Authorization': f'Bearer {key}', 'Content-Type': 'application/json'})
     with urllib.request.urlopen(req, timeout=30) as r:
         data = json.loads(r.read())
-    return {'model': data.get('model'), **{k: {'choice': a.get('choice'), 'confidence': a.get('confidence')} for k, a in data.get('answers', {}).items()}}
+    return {'model': data.get('model'), 'usage': data.get('usage'), **{k: {'choice': a.get('choice'), 'confidence': a.get('confidence'), 'probabilities': a.get('probabilities')} for k, a in data.get('answers', {}).items()}}
 
 
 def main():
@@ -78,8 +79,9 @@ def main():
     real_run, real_create = tools.run, query.client.messages.stream
 
     def spy_run(name, args, *rest, **kw):
-        calls.append({'name': name, 'args': dict(args)})
-        return real_run(name, args, *rest, **kw)
+        out = real_run(name, args, *rest, **kw)
+        calls.append({'name': name, 'args': dict(args), 'result': out[0] if isinstance(out, tuple) else out})
+        return out
 
     class Spy:
         # 스트림 관리자 감싸기: with 문은 클래스의 __enter__·__exit__를 사용하므로 위임 클래스로 토큰 집계
@@ -115,8 +117,9 @@ def main():
         ok, why = match(q, calls)
         row = {'id': q['id'], 'text': q['text'], 'expected': q.get('tool'), 'calls': list(calls), 'ok': ok, 'why': why,
                'answer': res.get('answer', ''), 'charts': len(res.get('charts') or []), 'sec': round(time.monotonic() - t0, 1)}
+        row['sentences'] = len(re.split(r'(?<=[.?!])\s+', row['answer'].strip()))  # 시스템 프롬프트 규칙: 3문장 이내
         try:
-            row['jev'] = jev({'question': q['text'], 'tool_calls': row['calls'], 'tool_results': res.get('charts'), 'answer': row['answer']})
+            row['jev'] = jev({'question': q['text'], 'tool_calls': row['calls'], 'answer': row['answer']})
         except Exception as e:
             row['jev'] = {'error': str(e)[:200]}
         rows.append(row)
@@ -124,7 +127,7 @@ def main():
     passed = sum(r['ok'] for r in rows)
     review = [r['id'] for r in rows if isinstance(r.get('jev'), dict) and any(isinstance(v, dict) and (v.get('confidence') or 0) < REVIEW_BELOW for v in r['jev'].values())]
     summary = {'at': dt.datetime.now().isoformat(timespec='seconds'), 'model': query.MODEL, 'building': a.building, 'total': len(rows), 'passed': passed,
-               'tokens': usage, 'jevReview': review}
+               'tokens': usage, 'over3Sentences': [r['id'] for r in rows if r['sentences'] > 3], 'jevReview': review}
     pathlib.Path(a.out).write_text(json.dumps({'summary': summary, 'rows': rows}, ensure_ascii=False, indent=1))
     print(json.dumps(summary, ensure_ascii=False))
 
