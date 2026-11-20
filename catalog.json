@@ -129,6 +129,12 @@
       "type": "explanation"
     },
     {
+      "path": "docs/human/explanation/decisions/2026-11-21(고객사 관리자 호실 이름·용도 변경 허용).md",
+      "title": "고객사 관리자 호실 이름·용도 변경 허용",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
       "path": "docs/human/explanation/decisions/README.md",
       "title": "기술 선택 기록",
       "audience": "human",
