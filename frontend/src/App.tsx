@@ -1,9 +1,15 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react'
 import { AlertTriangle, ArrowUp, CalendarClock, Droplets, Info, RefreshCw, Zap } from 'lucide-react'
-import { ask, getStatus, saveSchedule } from './api'
-import { ANOMALY, SCALES, color, ink, value } from './heat'
+import { ThinkingBadge, ThinkingPanel } from './ai/ThinkingPanel'
+import type { AskResult } from './ai/types'
+import { useAsk } from './ai/useAsk'
+import { getStatus, saveSchedule } from './api'
+import { ANOMALY, SCALES } from './heat'
 import { TWIN_URL, onRoomSelected, postState } from './twin'
-import type { Draft, Mode, QueryResult, Room, Status } from './types'
+import type { Draft, Mode, Room, Status } from './types'
+
+// three.js 청크(약 620kB)는 3D 영역 표시 시점에 로드
+const Twin3D = lazy(() => import('./twin3d/Twin3D'))
 
 const MODES: { id: Mode; label: string }[] = [
   { id: 'temp', label: '온도' },
@@ -21,7 +27,7 @@ const SUGGESTIONS = [
 const ACTION = { off: '운전 OFF', on: '운전 ON', setpoint: '설정온도 변경' }
 
 const hhmm = (iso: string) => iso.slice(11, 16)
-// 실시간 연동(목업): WebSocket 대신 5초 주기로 상태 재조회, 값은 Lambda·목업이 범위 안에서 변동
+// 상태 실시간 연동(목업): 5초 주기 재조회, 값은 Lambda·목업이 범위 안에서 변동. AI 질의만 WebSocket 사용
 const LIVE_MS = 5_000
 const NO_ROOMS: Room[] = []
 const NO_IDS: string[] = []
@@ -34,7 +40,9 @@ export default function App() {
   const [text, setText] = useState('')
   const [asked, setAsked] = useState('')
   const [busy, setBusy] = useState(false)
-  const [result, setResult] = useState<QueryResult | null>(null)
+  const { state: ai, ask } = useAsk()
+  const [seen, setSeen] = useState<AskResult | null>(null)
+  const [draft, setDraft] = useState<Draft | null>(null)
   const [saved, setSaved] = useState('')
   const [selected, setSelected] = useState<string | null>(null)
   const [loadedAt, setLoadedAt] = useState(0)
@@ -48,6 +56,13 @@ export default function App() {
   }, [floor]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => onRoomSelected(setSelected), [])
 
+  // 새 AI 결과 수신 시 초안 표시, 초안 대상 층으로 이동(렌더 중 상태 조정 패턴)
+  if (ai.result !== seen) {
+    setSeen(ai.result)
+    setDraft(ai.result?.draft ?? null)
+    if (ai.result?.draft && ai.result.draft.floor !== 'all') setFloor(ai.result.draft.floor)
+  }
+  const result = ai.result
   const rooms = status?.rooms ?? NO_ROOMS
   const highlight = result?.highlight ?? NO_IDS
   useEffect(() => postState(frame.current, floor, mode, rooms, highlight), [floor, mode, rooms, highlight])
@@ -60,18 +75,10 @@ export default function App() {
     return (picked.length ? picked : [...rooms].sort((a, b) => b.powerKw - a.powerKw)).slice(0, 6)
   }, [rooms, highlight])
 
-  async function submit(q = text) {
-    if (!q.trim() || busy) return
-    setBusy(true); setError(''); setSaved(''); setAsked(q)
-    try {
-      const r = await ask(q)
-      setResult(r)
-      if (r.draft && r.draft.floor !== 'all') setFloor(r.draft.floor)
-    } catch (e) {
-      setError((e as Error).message)
-    } finally {
-      setBusy(false)
-    }
+  function submit(q = text) {
+    if (!q.trim() || ai.status === 'running') return
+    setError(''); setSaved(''); setAsked(q); setDraft(null)
+    ask(q)
   }
 
   async function confirm(draft: Draft) {
@@ -79,7 +86,7 @@ export default function App() {
     try {
       const r = await saveSchedule(draft, asked)
       setSaved(r.mock ? `${draft.time} ${ACTION[draft.action]} 스케줄을 목업으로 저장했습니다. 서버에는 기록되지 않습니다.` : `${draft.time} ${ACTION[draft.action]} 스케줄을 저장했습니다. 시뮬레이션에만 반영됩니다.`)
-      setResult((r) => (r ? { ...r, draft: null } : r))
+      setDraft(null)
       load()
     } catch (e) {
       setError((e as Error).message)
@@ -106,7 +113,8 @@ export default function App() {
       <form className="search" onSubmit={(e) => { e.preventDefault(); submit() }}>
         <label htmlFor="q">자연어 질의</label>
         <input id="q" value={text} onChange={(e) => setText(e.target.value)} placeholder="예: 2층 13시 이후 미사용 회의실 냉방 OFF" maxLength={500} />
-        <button className="orb" type="submit" disabled={busy || !text.trim()} aria-label="질의 보내기"><ArrowUp size={20} /></button>
+        <ThinkingBadge state={ai} />
+        <button className="orb" type="submit" disabled={ai.status === 'running' || !text.trim()} aria-label="질의 보내기"><ArrowUp size={20} /></button>
       </form>
       <p className="hint">AI 해석은 틀릴 수 있습니다. 제어 요청은 확인 후에만 저장됩니다.</p>
       <div className="chips">
@@ -140,9 +148,9 @@ export default function App() {
           {TWIN_URL ? (
             <iframe ref={frame} className="embed" src={TWIN_URL} title="3D 디지털트윈" onLoad={() => postState(frame.current, floor, mode, rooms, highlight)} />
           ) : (
-            <div className="tiles" aria-label="호실 상태(3D 트윈 연결 전 목록 보기)">
-              {rooms.map((r) => <Tile key={r.id} r={r} mode={mode} hot={highlight.includes(r.id)} onClick={() => setSelected(r.id)} />)}
-            </div>
+            <Suspense fallback={<div className="embed" aria-label="3D 도면 불러오는 중" />}>
+              <Twin3D floor={floor} mode={mode} rooms={rooms} highlight={highlight} selectedId={selected} onSelect={setSelected} />
+            </Suspense>
           )}
           <Legend mode={mode} status={status} />
         </section>
@@ -150,17 +158,16 @@ export default function App() {
         <aside className="rail">
           <section className="card">
             <h2>AI 응답</h2>
-            {busy && <p className="muted">해석 중입니다.</p>}
-            {!busy && !result && (
+            {ai.status === 'idle' && (
               <ul className="suggest">
                 {SUGGESTIONS.map(({ icon: Icon, text: q }) => (
                   <li key={q}><button onClick={() => { setText(q); submit(q) }}><Icon size={16} aria-hidden />{q}</button></li>
                 ))}
               </ul>
             )}
-            {result?.mock && <span className="tag">목업 응답</span>}
-            {result && <p className="answer">{result.answer}</p>}
-            {result?.draft && <DraftCard d={result.draft} busy={busy} onCancel={() => setResult({ ...result, draft: null })} onSave={() => confirm(result.draft!)} />}
+            {(result?.mock || (ai.transport === 'mock' && ai.status === 'done')) && <span className="tag">목업 응답</span>}
+            <ThinkingPanel state={ai} query={asked} />
+            {draft && <DraftCard d={draft} busy={busy} onCancel={() => setDraft(null)} onSave={() => confirm(draft)} />}
             {saved && <p className="ok">{saved}</p>}
           </section>
           {room && <RoomCard r={room} />}
@@ -192,17 +199,6 @@ function Kpi({ label, value, unit, sub, bad }: { label: string; value: number; u
       <span className={bad ? 'kval bad' : 'kval'}>{value}<small>{unit}</small></span>
       <span className="ksub">{sub}</span>
     </div>
-  )
-}
-
-function Tile({ r, mode, hot, onClick }: { r: Room; mode: Mode; hot: boolean; onClick: () => void }) {
-  const style = { background: color(mode, r), color: ink(mode, r), outlineColor: r.anomaly && mode === 'anomaly' ? ANOMALY : undefined }
-  return (
-    <button className={`tile${hot ? ' hot' : ''}${r.anomaly && mode === 'anomaly' ? ' bad' : ''}`} style={style} onClick={onClick} title={r.name}>
-      <span className="tname">{r.name}</span>
-      <span className="tval">{value(mode, r)}</span>
-      <span className="tidu">{r.onOff ? '운전' : 'OFF'}, {r.occupants}명</span>
-    </button>
   )
 }
 

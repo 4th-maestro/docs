@@ -161,7 +161,8 @@ export default function Twin3D({ floor, mode, rooms, highlight, selectedId, onSe
       ctx.top = topView
       const fov = THREE.MathUtils.degToRad(camera.fov) / 2
       const half = Math.min(fov, Math.atan(Math.tan(fov) * camera.aspect))
-      const dist = (ctx.radius / Math.sin(half)) * 1.05
+      // 구도: 경계 구는 사선 시점에서 과대 추정이라 tan 기준으로 축소(사선 0.86, 위 0.9)
+      const dist = (ctx.radius / Math.tan(half)) * (topView ? 0.9 : 0.86)
       controls.target.set(0, 0, 0)
       camera.position.setFromSphericalCoords(dist, topView ? 0 : 0.95, topView ? 0 : Math.PI / 4)
       controls.maxPolarAngle = topView ? 0 : MAX_POLAR
