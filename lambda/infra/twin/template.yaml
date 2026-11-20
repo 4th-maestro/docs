@@ -6,13 +6,37 @@ Description: Maestro ② 디지털 트윈 데이터 기반(건물·호실·설�
 # - 기존 maestro 스택(template.yaml)과 독립: 팀원 배포와 서로 덮어쓰지 않음
 # - 모든 테이블 온디맨드(PAY_PER_REQUEST), 이력성 테이블은 ttl 속성(epoch 초)으로 자동 삭제
 # - 테이블은 AWS::DynamoDB::Table 유지: SAM SimpleTable은 정렬 키·Streams·TTL 미지원
-# - 다음 단계: weather·simulator Lambda(AWS::Serverless::Function)와 EventBridge 주기 실행 추가
+# - simulator: 1분마다 전 호실 상태 계산(src/sim.py) → State 덮어쓰기, HistoryEveryMinutes분마다 Timeseries·Occupancy 추가
 
 Parameters:
   Prefix:
     Type: String
     Default: maestro
     Description: 테이블 이름 앞머리(예 maestro-Buildings)
+  SimulatorEnabled:
+    Type: String
+    Default: 'false'
+    AllowedValues: ['true', 'false']
+    Description: 1분 스케줄 실행 여부. 쓰기 비용(State 1분 + 이력 5분, 하루 약 92만 건)이 있어 기본 꺼짐, 데모·검증 기간에만 true
+  HistoryEveryMinutes:
+    Type: Number
+    Default: 5
+    MinValue: 1
+    MaxValue: 60
+    Description: Timeseries·Occupancy 기록 주기(분 정각 기준)
+  SchedulesTableName:
+    Type: String
+    Default: ''
+    Description: maestro 스택의 스케줄 테이블 이름(저장된 스케줄 반영). 비우면 스케줄 없이 계산
+  OwnersTableName:
+    Type: String
+    Default: ''
+    Description: maestro 스택의 BuildingOwnersTable 이름(고객사가 수정한 운영 시간 반영). 비우면 원본 값
+
+Conditions:
+  SimulatorOn: !Equals [!Ref SimulatorEnabled, 'true']
+  HasSchedules: !Not [!Equals [!Ref SchedulesTableName, '']]
+  HasOwners: !Not [!Equals [!Ref OwnersTableName, '']]
 
 Resources:
   # 건물 목록: src/buildings.json 필드 그대로(floors, hours, weekend, waste, remap 등)
@@ -110,7 +134,68 @@ Resources:
         - {AttributeName: ts, KeyType: RANGE}
       TimeToLiveSpecification: {AttributeName: ttl, Enabled: true}
 
+  # 팀 공용 모듈(src/: sim, buildings, common, tenant 등)을 import만 하기 위한 Layer. src/requirements.txt도 함께 설치
+  TwinSrcLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: !Sub ${AWS::StackName}-src
+      Description: Lambda/src 모듈(simulator가 import)
+      ContentUri: ../../src/
+      CompatibleRuntimes: [python3.12]
+      CompatibleArchitectures: [arm64]
+    Metadata:
+      BuildMethod: python3.12
+      BuildArchitecture: arm64
+
+  # 1분 주기 상태 계산(functions/simulator.py): 로컬 계산 533호실 약 50ms, 쓰기 포함 실행 시간은 배포 후 측정
+  SimulatorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: simulator.handler
+      CodeUri: functions/
+      Runtime: python3.12
+      Architectures: [arm64]
+      MemorySize: 1024
+      # 다음 1분 실행과 겹치지 않게 1분 미만
+      Timeout: 50
+      Layers: [!Ref TwinSrcLayer]
+      # 실패 시 다음 분 실행이 같은 일을 하므로 비동기 재시도 없음
+      EventInvokeConfig: {MaximumRetryAttempts: 0}
+      Environment:
+        Variables:
+          BUILDINGS_TABLE: !Ref BuildingsTable
+          ROOMS_TABLE: !Ref RoomsTable
+          STATE_TABLE: !Ref StateTable
+          TIMESERIES_TABLE: !Ref TimeseriesTable
+          OCCUPANCY_TABLE: !Ref OccupancyTable
+          HISTORY_EVERY_MIN: !Ref HistoryEveryMinutes
+          SCHEDULES_TABLE: !If [HasSchedules, !Ref SchedulesTableName, !Ref AWS::NoValue]
+          OWNERS_TABLE: !If [HasOwners, !Ref OwnersTableName, !Ref AWS::NoValue]
+      Policies:
+        - DynamoDBReadPolicy: {TableName: !Ref BuildingsTable}
+        - DynamoDBReadPolicy: {TableName: !Ref RoomsTable}
+        - DynamoDBWritePolicy: {TableName: !Ref StateTable}
+        - DynamoDBWritePolicy: {TableName: !Ref TimeseriesTable}
+        - DynamoDBWritePolicy: {TableName: !Ref OccupancyTable}
+        - !If [HasSchedules, {DynamoDBReadPolicy: {TableName: !Ref SchedulesTableName}}, !Ref AWS::NoValue]
+        - !If [HasOwners, {DynamoDBReadPolicy: {TableName: !Ref OwnersTableName}}, !Ref AWS::NoValue]
+      Events:
+        Tick:
+          Type: Schedule
+          Properties:
+            Schedule: rate(1 minute)
+            State: !If [SimulatorOn, ENABLED, DISABLED]
+            RetryPolicy: {MaximumRetryAttempts: 0}
+
+  SimulatorLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${SimulatorFunction}
+      RetentionInDays: 14
+
 Outputs:
+  SimulatorFunctionName:
+    Value: !Ref SimulatorFunction
   BuildingsTableName:
     Value: !Ref BuildingsTable
     Export: {Name: !Sub '${AWS::StackName}-BuildingsTable'}

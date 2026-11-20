@@ -82,9 +82,23 @@ npm run lint && npm run build
 
 ## 배포
 
+배포는 `main` 기준입니다. 운영 빌드에는 환경 변수 4개가 모두 필요합니다.
+
 ```bash
-npm run build
-aws s3 sync dist s3://<WebBucketName> --delete --profile maestro
+git switch main && git pull --ff-only \
+  && test -z "$(git status --porcelain --untracked-files=no)" \
+  && VITE_API_BASE_URL=<ApiUrl> VITE_WS_URL=<WsUrl> VITE_COGNITO_CLIENT_ID=<UserPoolClientId> \
+     VITE_TWIN_URL=/twin/digital-twin.html npm run build \
+  && aws s3 sync dist s3://<WebBucketName> --delete --profile maestro
 ```
+
+| 환경 변수 | 값 | 빠지면 |
+|---|---|---|
+| `VITE_API_BASE_URL` | `sam deploy` 출력 `ApiUrl` | 모든 화면이 목업 데이터 |
+| `VITE_WS_URL` | 출력 `WsUrl` | AI 질의가 HTTP로만 동작(단계 실시간 표시 없음) |
+| `VITE_COGNITO_CLIENT_ID` | 출력 `UserPoolClientId` | 로그인 없이 동작 |
+| `VITE_TWIN_URL` | `/twin/digital-twin.html` | 건물 추가 화면에 "3D 트윈 주소(VITE_TWIN_URL)가 없어 도면을 넣을 수 없습니다" 표시 |
+
+주: `VITE_TWIN_URL`이 있으면 운영 탭 3D 영역도 트윈 화면(iframe)을 사용합니다. 트윈 데이터(`twin/data/`)가 없는 건물은 "데이터를 넣어 주세요"를 표시합니다(2026-11-20 기준 본관, 업무동, 교육관, 연구동). 배포 후 CloudFront 무효화(`/*`)를 실행하십시오.
 
 `WebBucketName`과 `WebUrl`은 `lambda`의 `sam deploy` 출력값입니다.
