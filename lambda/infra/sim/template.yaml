@@ -1,0 +1,86 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Maestro 운전 시뮬레이션 계산 서버(EnergyPlus 24.2 컨테이너 Lambda, 웹 /api/sim/*)
+
+# 웹(CloudFront, maestro 스택 WebDistribution)의 /api/sim/* 경로 → 이 함수의 Function URL
+# - API Gateway를 쓰지 않는 이유: HTTP API 통합 응답 대기가 30초에서 끊김(EnergyPlus 2회 + 첫 호출 이미지 적재)
+# - 접근: Function URL은 인증 없음(AuthType NONE). CloudFront가 붙이는 비밀 헤더(x-maestro-sim)를 함수가 확인
+#   비밀 값은 Secrets Manager(SimSecretName)에 두고 이 스택과 maestro 스택이 동적 참조로 읽음(값은 템플릿·파라미터에 없음)
+# - 비용 보호: 예약 동시성 ReservedConcurrency(기본 2), 요청 3MB 이하, 등록 건물 도면 크기 제한(handler.mjs)
+
+Parameters:
+  Prefix:
+    Type: String
+    Default: maestro
+  SimSecretName:
+    Type: String
+    Default: maestro/sim-origin-secret
+    Description: CloudFront 비밀 헤더 값을 담은 Secrets Manager 이름(문자열 값)
+  # 판매사가 수정한 건물 정보(overrides: hours·weekend 등)가 있는 maestro 스택 BuildingOwnersTable(자동 생성 이름, 출력 없음)
+  # 비어 있으면 원본 Buildings 값만 사용
+  OwnersTableName:
+    Type: String
+    Default: ''
+  ReservedConcurrency:
+    Type: Number
+    Default: 2
+    MinValue: 1
+    MaxValue: 10
+
+Conditions:
+  HasOwners: !Not [!Equals [!Ref OwnersTableName, '']]
+
+Resources:
+  SimFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${Prefix}-sim
+      PackageType: Image
+      Architectures: [x86_64]
+      # 3GB ≈ vCPU 2개: EnergyPlus 기존·선택 두 번을 동시에 실행(sim-runner Promise.all)
+      MemorySize: 3008
+      Timeout: 90
+      EphemeralStorage: {Size: 2048}   # /tmp: 트윈 복사본 + 실행 결과(eplusout.*) 캐시
+      ReservedConcurrentExecutions: !Ref ReservedConcurrency
+      Environment:
+        Variables:
+          SIM_SECRET: !Sub '{{resolve:secretsmanager:${SimSecretName}}}'
+          # 등록 건물 운영 시간(hours·weekend): 판매사가 대시보드에서 정한 값으로 도면의 operation을 덮어씀(maestro-twin 스택 테이블)
+          BUILDINGS_TABLE: !Sub ${Prefix}-Buildings
+          OWNERS_TABLE: !Ref OwnersTableName
+      Policies:
+        - DynamoDBReadPolicy: {TableName: !Sub '${Prefix}-Buildings'}
+        - !If
+          - HasOwners
+          - DynamoDBReadPolicy: {TableName: !Ref OwnersTableName}
+          - !Ref AWS::NoValue
+      FunctionUrlConfig:
+        AuthType: NONE
+        InvokeMode: BUFFERED
+    Metadata:
+      Dockerfile: Dockerfile
+      DockerContext: .
+      DockerTag: v1
+
+  # 2025-10 이후 Function URL 공개 호출은 InvokeFunctionUrl과 함께 InvokeFunction(Function URL 경유 한정) 권한도 필요
+  SimFunctionUrlInvoke:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref SimFunction
+      Action: lambda:InvokeFunction
+      Principal: '*'
+      InvokedViaFunctionUrl: true
+
+  SimLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${Prefix}-sim
+      RetentionInDays: 14
+
+Outputs:
+  SimFunctionUrl:
+    Value: !GetAtt SimFunctionUrl.FunctionUrl
+  # maestro 스택 SimOriginDomain 파라미터 값(https://, 끝 / 제외)
+  SimOriginDomain:
+    Value: !Select [2, !Split ['/', !GetAtt SimFunctionUrl.FunctionUrl]]
+    Export: {Name: !Sub '${AWS::StackName}-SimOriginDomain'}

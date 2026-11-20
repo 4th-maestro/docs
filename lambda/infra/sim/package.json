@@ -1,0 +1,9 @@
+{
+  "name": "maestro-sim",
+  "private": true,
+  "type": "module",
+  "description": "운전 시뮬레이션 계산 서버(EnergyPlus). 대시보드 건물 설정 조회용 DynamoDB 클라이언트만 사용",
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "3.1161.0"
+  }
+}

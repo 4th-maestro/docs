@@ -3,6 +3,7 @@ import datetime as dt
 import pathlib
 import sys
 import unittest
+from unittest import mock
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / 'src'))
 import sim  # noqa: E402
@@ -88,6 +89,67 @@ class ToolsTest(unittest.TestCase):
             tools.run('query_spaces', {'floor': '6F', 'use': 'all', 'metric': 'temp', 'order': 'desc', 'limit': 3}, T, [])
         with self.assertRaises(ValueError):
             tools.run('create_schedule', {'floor': '1F', 'use': 'all', 'action': 'off', 'time': '25:00', 'condition': 'always', 'setpoint': 0}, T, [])
+
+
+class RoomNamePickTest(unittest.TestCase):
+    """create_schedule 호실 이름 선택: 도면 등록 건물처럼 용도가 모두 '기타'이고 이름만 다른 호실"""
+    def setUp(self):
+        base = [r for r in sim.ROOMS if r['floor'] == '1F'][:3] + [r for r in sim.ROOMS if r['floor'] == '2F'][:2]
+        names = [('회의실 A', '1F'), ('회의실 B', '1F'), ('Lounge', '1F'), ('회의실 A', '2F'), ('대회의실', '2F')]
+        self.rooms = [{**r, 'name': n, 'floor': f, 'use': '기타'} for r, (n, f) in zip(base, names)]
+        patcher = mock.patch.object(tools.buildings, 'rooms', return_value=self.rooms)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def draft(self, rooms, floor='all'):
+        args = {'floor': floor, 'use': 'all', 'rooms': rooms, 'action': 'off', 'time': '13:00', 'condition': 'unused', 'setpoint': 0}
+        return tools.run('create_schedule', args, T, [])[1]['draft']
+
+    def ids(self, *idx):
+        return [self.rooms[i]['id'] for i in idx]
+
+    def test_exact_names_on_floor(self):
+        d = self.draft(['회의실 A', '회의실 B'], '1F')
+        self.assertEqual(d['roomIds'], self.ids(0, 1))
+        self.assertEqual((d['floor'], d['use'], d['pick'], d['roomNames']), ('1F', 'all', 'rooms', ['회의실 A', '회의실 B']))
+
+    def test_ignores_whitespace_and_case(self):
+        self.assertEqual(self.draft(['회의실a', ' LOUNGE '], '1F')['roomIds'], self.ids(0, 2))
+
+    def test_unique_contains_match_sets_single_floor(self):
+        d = self.draft(['대회의'])
+        self.assertEqual((d['roomIds'], d['floor']), (self.ids(4), '2F'))
+
+    def test_floor_restricts_same_name(self):
+        self.assertEqual(self.draft(['회의실 A'], '2F')['roomIds'], self.ids(3))
+        d = self.draft(['회의실 A', '회의실A'])  # 층 미지정: 같은 이름 전부, 중복 제거
+        self.assertEqual((d['roomIds'], d['floor']), (self.ids(0, 3), 'all'))
+
+    def test_not_found_lists_candidates_on_floor(self):
+        with self.assertRaises(ValueError) as e:
+            self.draft(['회의실 A', '회의실 C'], '1F')
+        msg = str(e.exception)
+        self.assertIn('회의실 C', msg)
+        self.assertIn('회의실 B', msg)
+        self.assertNotIn('대회의실', msg)
+
+    def test_ambiguous_contains_lists_matches(self):
+        with self.assertRaises(ValueError) as e:
+            self.draft(['회의실'], '1F')
+        self.assertIn('후보: 회의실 A, 회의실 B', str(e.exception))
+
+    def test_empty_rooms_keeps_group_pick(self):
+        args = {'floor': '1F', 'use': '기타', 'rooms': [], 'action': 'off', 'time': '13:00', 'condition': 'unused', 'setpoint': 0}
+        d = tools.run('create_schedule', args, T, [])[1]['draft']
+        self.assertEqual((d['roomIds'], d['pick'], d['use']), (self.ids(0, 1, 2), 'group', '기타'))
+
+    def test_rejects_non_list_rooms(self):
+        with self.assertRaises(ValueError):
+            self.draft('회의실 A')
+
+    def test_chips_show_room_names(self):
+        chips = tools.chips('create_schedule', {'floor': '1F', 'use': 'all', 'rooms': ['회의실 A', '회의실 B', 'Lounge', 'x'], 'action': 'off', 'time': '13:00'})
+        self.assertIn('회의실 A, 회의실 B, Lounge 외 1곳', chips)
 
 
 if __name__ == '__main__':

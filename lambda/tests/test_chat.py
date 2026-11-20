@@ -43,6 +43,13 @@ class ChatTest(unittest.TestCase):
         mem = chat.make_memory(mem, '현재 재실 0곳 꺼줘', {'answer': '초안', 'steps': [], 'highlight': [], 'draft': draft})
         mem = chat.make_memory(mem, '몇 시?', ask)
         self.assertEqual(mem['draft']['time'], '15:26')  # 되묻기 턴에도 초안 유지
+        self.assertNotIn('rooms', mem['draft'])
+
+    def test_memory_keeps_room_names_of_name_pick_draft(self):
+        draft = {'roomIds': ['r1', 'r2'], 'roomNames': ['회의실 A', '회의실 B'], 'floor': '1F', 'use': 'all', 'pick': 'rooms',
+                 'action': 'off', 'time': '13:00', 'condition': 'unused', 'setpoint': None}
+        mem = chat.make_memory(None, '1층 회의실 A, 회의실 B 꺼줘', {'answer': '초안', 'steps': [], 'highlight': [], 'draft': draft})
+        self.assertEqual((mem['draft']['rooms'], mem['draft']['targets']), (['회의실 A', '회의실 B'], 2))
 
     def test_old_memory_format_carried_over(self):
         mem = chat.make_memory({'lastQuestion': '이전 질문', 'lastAnswer': '이전 답'}, '새 질문', {'answer': '새 답', 'steps': []})

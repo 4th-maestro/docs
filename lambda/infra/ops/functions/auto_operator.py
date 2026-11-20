@@ -2,6 +2,12 @@
 
 - 후보(빈 방 운전, kind=idle): 지금·15분 전·30분 전 모두 재실 0명으로 운전(src/recommend.py 'idle' 규칙과 같은 기준, src/sim.py로 계산)
 - 후보(이상, kind=anomaly): 지금 설정온도 미도달(sim.state anomaly). Jev 없이 알림(status=alert)
+- 후보(전력 이상, kind=power, ④ 시간대별 빈도 비교): 운전 중인 호실을 최근 4주 같은 요일·같은 시각(src/usage.py baseline)과 비교, Jev 없이 알림(status=alert)
+  - unusual_hours: 재실 0명인데 평소 이 시각에 운전한 주가 0회(밤에 켜 두고 간 경우). 빈 방 운전 후보(30분 재실 0)면 끄기 제안이 나가므로 건너뜀
+  - power_high: 평소 운전 주 POWER_MIN_ON_WEEKS(기본 2) 이상, 지금 전력 ≥ 운전 주 평균 × POWER_RATIO(1.3) 그리고 +POWER_DIFF_KW(1.0) 이상,
+    재실은 운전 주 최대 재실 이하(사람이 더 와서 늘어난 전력은 정상 사용으로 봄)
+  - 설정온도 미도달(anomaly) 호실은 이미 알림이 나가므로 제외
+  - 2026-11-16~22 simulator 표본 44,772건(2시간 간격) 측정: unusual_hours 0건(켜기 스케줄로 재현), power_high 17건
 - 후보(설정온도, kind=setpoint, ⑤ 규칙 기반 제어): 운전 중이고 빈 방 후보가 아닌 호실의 과냉·과열 설정
   - 기준: src/recommend.py 'overset'과 같음(냉방 COOL_MIN 26℃ 미만, 난방 HEAT_MAX 20℃ 초과 → 그 값으로 조정)
     recommend.recommend()는 호실당 1건이라 업무 외 운전(after_hours)이 먼저 잡히면 설정 추천이 빠지므로 기준값만 가져와 직접 판정
@@ -181,6 +187,23 @@ def gate(answer, auto_apply, conf_min, empty_min):
     return 'pending'
 
 
+def power_anomaly(room, st, t, schedules, idle=False):
+    """전력 이상 근거 또는 None. 평소 = 최근 4주 같은 요일·같은 시각(usage.baseline)"""
+    import usage
+    if not st['onOff'] or st['anomaly']:
+        return None
+    b = usage.baseline(room, t, schedules)
+    ev = {**b, 'powerKw': st['powerKw'], 'occupants': st['occupants']}
+    if b['onWeeks'] == 0:
+        return {**ev, 'rule': 'unusual_hours'} if st['occupants'] == 0 and not idle else None
+    if b['onWeeks'] < oc.env_int('POWER_MIN_ON_WEEKS', 2) or st['occupants'] > b['onMaxOccupants']:
+        return None
+    excess = st['powerKw'] - b['onAvgKw']
+    if st['powerKw'] >= b['onAvgKw'] * oc.env_float('POWER_RATIO', 1.3) and excess >= oc.env_float('POWER_DIFF_KW', 1.0):
+        return {**ev, 'rule': 'power_high', 'excessKw': round(excess, 2)}
+    return None
+
+
 def setpoint_candidate(room, st, t, schedules):
     """과냉·과열 설정 근거 또는 None(recommend.py 'overset' 기준·절감량 계산 재사용)"""
     import recommend
@@ -242,7 +265,7 @@ def run(t, schedules, ask=None, write=True):
     max_sp = oc.env_int('MAX_SETPOINT_PER_BUILDING', 5)
     since = t - dt.timedelta(minutes=max(cooldown, ttl_min) + 5)
     ttl = int((t + dt.timedelta(days=oc.HISTORY_DAYS)).timestamp())
-    out, counts = [], {'pending': 0, 'applied': 0, 'skipped': 0, 'alert': 0, 'expired': 0, 'deferred': 0, 'setpoint': 0}
+    out, counts = [], {'pending': 0, 'applied': 0, 'skipped': 0, 'alert': 0, 'expired': 0, 'deferred': 0, 'setpoint': 0, 'power': 0}
     buildings.forget()
     # 1) 건물별 후보 수집: 이상은 바로 알림, 빈 방 운전은 Jev 판단 대기열(빈 채 운전 전력량 큰 방부터)
     queues, ctx = {}, {}
@@ -267,7 +290,15 @@ def run(t, schedules, ask=None, write=True):
                             'message': oc.anomaly_message(room, st),
                             'evidence': {k: st[k] for k in ('temp', 'setpoint', 'mode', 'onOff', 'anomaly')}})
                 counts['alert'] += 1
-            if is_idle(room, t, schedules):
+            idle = is_idle(room, t, schedules)
+            if ('power', rid) not in blocked:
+                ev = power_anomaly(room, st, t, schedules, idle)
+                if ev:
+                    out.append({**_base(bid, room, t, ttl), 'decisionId': oc.new_decision_id(t), 'kind': 'power', 'status': 'alert',
+                                'message': oc.power_message(room, ev), 'evidence': ev})
+                    counts['alert'] += 1
+                    counts['power'] += 1
+            if idle:
                 # 빈 방 운전은 끄기가 우선(recommend.py와 같은 순서): 설정온도 후보로 보지 않음
                 if ('idle', rid) not in blocked:
                     queues.setdefault(bid, []).append((room, st, jev_state(b, room, t, schedules)))

@@ -3,8 +3,10 @@
 - LLM은 도구 이름과 인자만 생성, 층·용도·동작은 아래 목록 값만 허용
 - 층·용도 enum: 전체 건물의 합집합(도구 정의 1개 유지), 질의 건물에 없는 값은 run에서 거부
 - create_schedule은 초안만 반환하고 저장은 운영자 확인 후 POST /schedules
+  - 대상: rooms(호실 이름)가 있으면 이름 선택(pick=rooms, use 무시), 없으면 층·용도 선택(pick=group)
 - search_documents: Bedrock Knowledge Base(KB_ID) Retrieve 상위 4개. 화면 근거 목록은 view['sources'](문서별 1건)
 - comfort_index: 불쾌지수(기상청 식)와 PMV·PPD(ISO 7730)를 comfort.py로 계산. 가정값은 결과 assumptions에 포함
+- usage_frequency: 최근 4주 같은 요일·같은 시각 사용률(usage.py). rooms는 호실 순위, hours는 시간대별 평균 사용률 + 건물 평소 전력(energy.heatmap)
 - 그래프: 각 도구가 결과 데이터로 화면용 그래프 정의(chart)를 만듦. 숫자는 항상 도구 결과에서 가져오고 LLM은 view로 표시 방식만 제안
   - bar: {kind, title, unit, items: [{label, sub, value, id?}]}, line: {kind, title, unit, labels, series: [{name, role, values}]}
   - prefer=table이면 화면이 표를 먼저 표시
@@ -19,6 +21,7 @@ import comfort
 import energy
 import operations
 import sim
+import usage
 
 METRICS = {'powerKw': '전력(kW)', 'temp': '실내온도(℃)', 'humidity': '습도(%)', 'setpoint': '설정온도(℃)'}
 # 묶음 합계 지표: (표시 이름, 단위, 계산)
@@ -28,6 +31,7 @@ AGG = {
     'anomaly': ('이상 감지', '건', lambda rs: sum(bool(s['anomaly']) for s in rs)),
     'temp': ('평균 실내온도', '℃', lambda rs: round(sum(s['temp'] for s in rs) / len(rs), 1)),
 }
+WEEKDAYS = '월화수목금토일'
 PERIODS = {'day': ('오늘', '어제', '시간별'), 'week': ('이번 주', '지난주', '일별'), 'month': ('이번 달', '지난달', '일별')}
 VIEW = {'type': 'string', 'enum': ['auto', 'chart', 'table'], 'description': '표시 방식 제안. 보통 auto, 사용자가 표를 원하면 table'}
 
@@ -85,14 +89,16 @@ def _definitions(version):
     },
     {
         'name': 'create_schedule',
-        'description': '층·용도로 대상 호실을 골라 냉난방 제어 스케줄 초안을 만든다. condition=unused는 그 시각 이후 재실이 없을 때만 적용한다.',
+        'description': '층·용도 또는 호실 이름으로 대상 호실을 골라 냉난방 제어 스케줄 초안을 만든다. condition=unused는 그 시각 이후 재실이 없을 때만 적용한다.',
         'strict': True,
         'input_schema': {
             'type': 'object', 'additionalProperties': False,
-            'required': ['floor', 'use', 'action', 'time', 'condition', 'setpoint'],
+            'required': ['floor', 'use', 'rooms', 'action', 'time', 'condition', 'setpoint'],
             'properties': {
                 'floor': {'type': 'string', 'enum': FLOORS + ['all']},
                 'use': {'type': 'string', 'enum': USES + ['all']},
+                'rooms': {'type': 'array', 'items': {'type': 'string'},
+                          'description': '사용자가 말한 호실 이름(예: 회의실 A, 101호). 이름으로 고르면 use는 무시, 층·용도로 고르면 빈 배열'},
                 'action': {'type': 'string', 'enum': ['off', 'on', 'setpoint']},
                 'time': {'type': 'string', 'description': '24시간 형식 HH:MM'},
                 'condition': {'type': 'string', 'enum': ['unused', 'always']},
@@ -128,6 +134,27 @@ def _definitions(version):
                 'floor': {'type': 'string', 'enum': FLOORS + ['all']},
                 'use': {'type': 'string', 'enum': USES + ['all']},
                 'scope': {'type': 'string', 'enum': ['latest', 'all']},
+            },
+        },
+    },
+    {
+        'name': 'usage_frequency',
+        'description': ('최근 4주 같은 요일·같은 시각의 호실 사용 빈도(재실이 있던 주 수)와 빈 채 운전 빈도를 조회한다. 지금 상태가 아니라 평소 사용 패턴 질문에 사용한다. '
+                        'focus=rooms는 그 시각 호실별 사용률 순위("이 시간에 잘 안 쓰는 방", "금요일 오후에 자주 쓰는 회의실"), '
+                        'focus=hours는 대상 호실 평균의 시간대별 사용률과 건물 평소 전력("3층 회의실은 평소 언제 써?", "사람 많은 시간대")이다.'),
+        'strict': True,
+        'input_schema': {
+            'type': 'object', 'additionalProperties': False,
+            'required': ['floor', 'use', 'weekday', 'hour', 'focus', 'order', 'limit'],
+            'properties': {
+                'floor': {'type': 'string', 'enum': FLOORS + ['all']},
+                'use': {'type': 'string', 'enum': USES + ['all']},
+                'weekday': {'type': 'string', 'enum': ['today'] + list(WEEKDAYS), 'description': '요일을 말하지 않으면 today'},
+                'hour': {'type': 'integer', 'description': '0~23시. 시각을 말하지 않으면 -1(현재 시각)'},
+                'focus': {'type': 'string', 'enum': ['rooms', 'hours']},
+                'order': {'type': 'string', 'enum': ['asc', 'desc'], 'description': 'rooms일 때 asc=잘 안 쓰는 순, desc=자주 쓰는 순'},
+                'limit': {'type': 'integer', 'description': 'rooms일 때 1~20곳'},
+                'view': VIEW,
             },
         },
     },
@@ -184,11 +211,19 @@ def chips(name, args):
         out += ['층별' if args.get('group_by') == 'floor' else '용도별', AGG.get(args.get('metric'), ('',))[0]]
     elif name == 'comfort_index':
         out += [f"불쾌지수 {'낮은' if args.get('order') == 'asc' else '높은'} 순", args.get('limit') and f"{args['limit']}곳"]
+    elif name == 'usage_frequency':
+        wd = args.get('weekday')
+        hour = args.get('hour')
+        out += ['최근 4주 사용 빈도', f'{wd}요일' if wd and wd != 'today' else '오늘 요일',
+                f'{hour}시' if args.get('focus') == 'rooms' and isinstance(hour, int) and hour >= 0 else None,
+                '시간대별' if args.get('focus') == 'hours' else ('잘 안 쓰는 순' if args.get('order') == 'asc' else '자주 쓰는 순')]
     elif name == 'list_operations':
         out += ['자동 운영 조회', args.get('status', 'pending')]
     elif name == 'operations_action':
         out += ['자동 운영 초안', {'accept': '수락', 'reject': '거절', 'undo': '되돌리기'}.get(args.get('action'))]
     elif name == 'create_schedule':
+        if isinstance(args.get('rooms'), list) and args['rooms']:
+            out[1] = _names([str(n) for n in args['rooms']])
         action = {'off': '운전 OFF', 'on': '운전 ON'}.get(args.get('action')) or f"설정온도 {args.get('setpoint', 0):g}℃"
         out += [args.get('time') and f"{args['time']} 이후", '재실 없을 때' if args.get('condition') == 'unused' else None, action]
     return [c for c in out if c]
@@ -196,6 +231,33 @@ def chips(name, args):
 
 def _pick(rooms, floor, use):
     return [r for r in rooms if floor in ('all', r['floor']) and use in ('all', r['use'])]
+
+
+def _norm(s):
+    return re.sub(r'\s+', '', str(s)).lower()
+
+
+def _names(names, n=3):
+    return ', '.join(names[:n]) + (f' 외 {len(names) - n}곳' if len(names) > n else '')
+
+
+def _pick_names(rooms, floor, names):
+    """호실 이름 선택: 공백·대소문자 무시 완전 일치(이름 또는 id) 우선, 없으면 포함 일치 1곳. 못 찾거나 여러 곳이면 ValueError(후보 이름 포함)"""
+    pool = _pick(rooms, floor, 'all')
+    picked, bad, near = {}, [], []
+    for q in names:
+        key = _norm(q)
+        hits = [r for r in pool if key in (_norm(r['name']), _norm(r['id']))] or [r for r in pool if key and key in _norm(r['name'])]
+        if hits and (len(hits) == 1 or _norm(hits[0]['name']) == key):
+            picked.update((r['id'], r) for r in hits)
+        else:
+            bad.append(q)
+            near += [r['name'] for r in hits]
+    if bad:
+        where = '' if floor == 'all' else f'{floor} '
+        cand = list(dict.fromkeys(near or [r['name'] for r in pool]))[:10]
+        raise ValueError(f"{where}호실 이름 확인 필요: {', '.join(bad)}(없거나 여러 곳). 후보: {', '.join(cand) or '없음'}")
+    return list(picked.values())
 
 
 def run(name, args, t, schedules, bid=None):
@@ -215,6 +277,8 @@ def run(name, args, t, schedules, bid=None):
         raise ValueError(f"use는 {', '.join(uses)}, all 중 하나")
     if name in ('list_operations', 'operations_action'):
         return operations.run(name, args, t, buildings.get(bid)['id'])
+    if name == 'usage_frequency':
+        return _frequency(args, t, schedules, rooms, bid, view)
     if name == 'query_spaces':
         if args['metric'] not in METRICS or args['order'] not in ('desc', 'asc'):
             raise ValueError('metric 또는 order 값 오류')
@@ -266,12 +330,18 @@ def run(name, args, t, schedules, bid=None):
             raise ValueError('time은 HH:MM 형식')
         if args['action'] == 'setpoint' and not 16 <= args['setpoint'] <= 30:
             raise ValueError('setpoint는 16~30')
-        targets = _pick(rooms, args['floor'], args['use'])
+        if not isinstance(args.get('rooms', []), list):
+            raise ValueError('rooms는 호실 이름 배열')
+        names = [str(n) for n in args.get('rooms') or [] if str(n).strip()]
+        targets = _pick_names(rooms, args['floor'], names) if names else _pick(rooms, args['floor'], args['use'])
         if not targets:
             raise ValueError('대상 호실 없음')
+        floors_hit = {r['floor'] for r in targets}
         draft = {
             'roomIds': [r['id'] for r in targets], 'roomNames': [r['name'] for r in targets][:10],
-            'floor': args['floor'], 'use': args['use'], 'action': args['action'], 'time': args['time'],
+            'floor': (floors_hit.pop() if len(floors_hit) == 1 else 'all') if names else args['floor'],
+            'use': 'all' if names else args['use'], 'pick': 'rooms' if names else 'group',
+            'action': args['action'], 'time': args['time'],
             'condition': args['condition'], 'setpoint': args['setpoint'] if args['action'] == 'setpoint' else None,
         }
         before, after = _effect(targets, t, schedules, draft)
@@ -348,6 +418,51 @@ def _effect(rooms, t, schedules, draft):
         before.append(round(sum(sim.state(r, ts, schedules)['powerKw'] for r in rooms), 1))
         after.append(round(sum(sim.state(r, ts, after_list)['powerKw'] for r in rooms), 1))
     return before, after
+
+
+FREQUENCY_BASIS = '최근 4주 같은 요일(오늘 제외), 시간마다 HH:30 표본, 재실 1명 이상이면 사용(가상 데이터)'
+
+
+def _frequency(args, t, schedules, rooms, bid, view):
+    """usage_frequency: 같은 요일 기준 사용 빈도. weekday는 오늘부터 거슬러 가장 가까운 그 요일"""
+    wd, hour, focus = args.get('weekday'), args.get('hour'), args.get('focus')
+    if wd not in ['today'] + list(WEEKDAYS) or focus not in ('rooms', 'hours') or args.get('order') not in ('asc', 'desc'):
+        raise ValueError('weekday(today, 월~일), focus(rooms, hours), order(asc, desc) 값 오류')
+    if type(hour) is not int or not -1 <= hour <= 23:
+        raise ValueError('hour는 0~23 정수, 현재 시각은 -1')
+    base = t if wd == 'today' else t - dt.timedelta(days=(t.weekday() - WEEKDAYS.index(wd)) % 7)
+    h = t.hour if hour == -1 else hour
+    targets = _pick(rooms, args['floor'], args['use'])
+    if not targets:
+        raise ValueError('대상 호실 없음')
+    profiles = [(r, usage.profile(r, base, schedules)) for r in targets]
+    day, weeks = WEEKDAYS[base.weekday()], usage.WEEKS
+    common_out = {'weekday': day, 'weeks': weeks, 'basis': FREQUENCY_BASIS, 'rooms': len(targets)}
+    if focus == 'hours':
+        rate = [round(sum(p['usageRate'][i] for _, p in profiles) / len(profiles), 2) for i in range(24)]
+        idle = [round(sum(p['idleOnRate'][i] for _, p in profiles) / len(profiles), 2) for i in range(24)]
+        kw = energy.heatmap({'building': bid}, t)['cells'][base.weekday()]
+        chart = _prefer(view, {
+            'kind': 'line', 'title': f"{_where(args)} {day}요일 시간대별 평균 사용률(최근 {weeks}주)", 'unit': '%', 'labels': [f'{i}시' for i in range(24)],
+            'series': [{'name': '사용률', 'role': 'current', 'values': [round(v * 100) for v in rate]},
+                       {'name': '빈 채 운전률', 'role': 'previous', 'values': [round(v * 100) for v in idle]}],
+            'note': f"대상 {len(targets)}곳, 가장 자주 쓰는 시간 " + (', '.join(f'{x}시' for x in usage.peak_hours(rate)) or '없음'),
+        })
+        return ({**common_out, 'usageRate': rate, 'idleOnRate': idle, 'peakHours': usage.peak_hours(rate), 'busyHours': usage.busy_hours(rate),
+                 'buildingAvgKw': kw, 'buildingAvgKwBasis': f'건물 전체 {day}요일 시간별 평균 전력(kW, 최근 4주, 히트맵과 같은 값)'},
+                {'chart': chart})
+    limit = min(20, max(1, int(args['limit'])))
+    rows = [{'id': r['id'], 'name': r['name'], 'floor': r['floor'], 'use': r['use'],
+             'usedWeeks': p['usedWeeks'][h], 'usageRate': p['usageRate'][h], 'idleOnWeeks': p['idleOnWeeks'][h],
+             'busyHours': usage.busy_hours(p['usageRate'])} for r, p in profiles]
+    rows.sort(key=lambda x: (x['usageRate'] if args['order'] == 'asc' else -x['usageRate'], -x['idleOnWeeks'], x['floor'], x['name']))
+    rows = rows[:limit]
+    chart = _prefer(view, {
+        'kind': 'bar', 'title': f"{_where(args)} {day}요일 {h}시대 사용률 {'낮은' if args['order'] == 'asc' else '높은'} 순 {len(rows)}곳(최근 {weeks}주)", 'unit': '%',
+        'items': [{'id': x['id'], 'label': x['name'], 'sub': f"{x['floor']}, {x['use']}, {x['usedWeeks']}/{weeks}회", 'value': round(x['usageRate'] * 100)} for x in rows],
+    })
+    return ({**common_out, 'hour': h, 'items': [{k: v for k, v in x.items() if k != 'id'} for x in rows]},
+            {'highlight': [x['id'] for x in rows], 'chart': chart})
 
 
 def _trend(args, t, bid, view):

@@ -91,10 +91,21 @@ class RunTest(unittest.TestCase):
         self.assertTrue(sent['is_error'] and sent['content'] == query.FLOOR_ASK)
         self.assertEqual(result['answer'], '어느 층에 적용할까요?\n1F, 2F, 전체')
 
+    def test_room_names_skip_floor_guard(self):
+        # 호실 이름을 지정한 초안은 층 미지정이어도 되묻지 않고 실행
+        args = {'floor': 'all', 'use': 'all', 'rooms': ['Central Waiting'], 'action': 'off', 'time': '13:00', 'condition': 'unused', 'setpoint': 0}
+        client = FakeClient(msg('tool_use', tool('create_schedule', args)), msg('end_turn', text(answer('초안을 만들었습니다.'))))
+        query.client = client
+        result = query.run('Central Waiting 13시 이후 미사용 시 냉방 OFF', lambda e: None)
+        sent = client.calls[1]['messages'][-1]['content'][0]
+        self.assertFalse(sent.get('is_error'))
+        self.assertEqual((result['draft']['pick'], result['draft']['roomNames'], result['draft']['floor']), ('rooms', ['Central Waiting'], '1F'))
+
     def test_floor_scope_words_and_memory_allow_all(self):
         self.assertTrue(query.floor_given('현재 재실 0곳인 곳은 꺼줘', None))
         self.assertTrue(query.floor_given('15:30', {'turns': [{'q': '전체 층 사무실 꺼줘'}, {'q': '지금'}]}))
         self.assertTrue(query.floor_given('15:30', {'draft': {'floor': 'all'}}))
+        self.assertFalse(query.floor_given('사무실 꺼줘', {'draft': {'floor': 'all', 'rooms': ['회의실 A', 'Lounge']}}))
         self.assertFalse(query.floor_given('사무실 꺼줘', {'turns': [{'q': '전체 현황'}, {'q': '1층'}, {'q': '회의실'}]}))
 
     def test_operations_draft_reaches_done_event_without_writes(self):

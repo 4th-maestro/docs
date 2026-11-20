@@ -4,6 +4,7 @@
 - 결정(DECISIONS_TABLE, 키 buildingId / decisionId): 제안·자동 조치·알림 기록, ttl 30일
   - decisionId: "<YYYYMMDDTHHMM>-<8자리 hex>"(시각순 정렬, URL 안전)
   - kind: idle(빈 방 운전) · setpoint(과냉·과열 설정, 규칙 기반 설정온도 조정) · anomaly(설정온도 미도달)
+          · power(평소 같은 요일·시각 대비 전력 이상: unusual_hours, power_high)
   - status: pending(제안, 응답 대기) · applied(자동 조치) · accepted(제안 수락) · rejected(거절) · reverted(자동 조치 되돌림)
             · expired(응답 없이 만료) · skipped(Jev가 재실로 판단, 조치 없음) · alert(이상 알림)
 - 스케줄: SchedulesTable(maestro 스택)에 schedules.py POST와 같은 형식으로 저장, sourceText 앞머리 "자동 운영"으로 사람이 만든 스케줄과 구분
@@ -216,6 +217,16 @@ def setpoint_applied_message(room, ev):
     mode = MODE_LABEL.get(ev['mode'], ev['mode'])
     return (f"{room['floor']} {room['name']}: {mode} 설정온도를 {_num(ev['setpoint'])}℃에서 {_num(ev['target'])}℃로 바꿨어요"
             f"(하루 약 {_num(ev['savingKwhDay'])}kWh 절감). 필요하면 되돌릴 수 있어요.")
+
+
+def power_message(room, ev):
+    where = f"{room['floor']} {room['name']}"
+    when = f"{ev['weekday']}요일 {ev['hour']}시"
+    if ev['rule'] == 'unusual_hours':
+        return (f"{where}: 최근 {ev['weeks']}주 {when}에는 꺼져 있던 방인데 재실 0명으로 켜져 있어요({_num(ev['powerKw'])}kW). "
+                '켜 둔 채 나갔는지 확인해 주세요.')
+    return (f"{where}: 최근 {ev['weeks']}주 {when} 평균 {_num(ev['onAvgKw'])}kW보다 {_num(ev['excessKw'])}kW 많이 쓰고 있어요"
+            f"(지금 {_num(ev['powerKw'])}kW, 재실은 평소 수준). 설비 점검이 필요할 수 있어요.")
 
 
 def anomaly_message(room, st):

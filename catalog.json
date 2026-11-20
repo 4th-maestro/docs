@@ -489,6 +489,12 @@
       "type": "explanation"
     },
     {
+      "path": "docs/human/explanation/troubleshooting/2026-11-21(AI 호실 이름 지정 제어 불가).md",
+      "title": "AI 호실 이름 지정 제어 불가",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
       "path": "docs/human/explanation/troubleshooting/2026-11-21(PDF 등록 건물 목록 누락).md",
       "title": "PDF 등록 건물 목록 누락",
       "audience": "human",

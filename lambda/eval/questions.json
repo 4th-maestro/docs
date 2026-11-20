@@ -45,5 +45,8 @@
   {"id": "o05", "text": "방금 자동으로 끈 거 되돌려", "tool": "operations_action", "args": {"action": "undo", "scope": "latest"}},
   {"id": "o06", "text": "자동 운영 켜 줘", "tool": null, "noTools": true, "note": "도구 없이 관리자 화면 스위치 안내"},
   {"id": "o07", "text": "자동 운영 켜져 있어?", "tool": "list_operations", "args": {}},
-  {"id": "o08", "text": "1층 제안 전부 거절해 줘", "tool": "operations_action", "args": {"action": "reject", "floor": "1F", "scope": "all"}}
+  {"id": "o08", "text": "1층 제안 전부 거절해 줘", "tool": "operations_action", "args": {"action": "reject", "floor": "1F", "scope": "all"}},
+  {"id": "u01", "text": "이 시간에 평소 잘 안 쓰는 방 어디야?", "tool": "usage_frequency", "args": {"focus": "rooms", "order": "asc", "weekday": "today", "hour": -1}},
+  {"id": "u02", "text": "회의실은 금요일에 보통 언제 많이 써?", "tool": "usage_frequency", "args": {"focus": "hours", "use": "회의실", "weekday": "금"}},
+  {"id": "u03", "text": "1층에서 월요일 오후 3시에 자주 쓰는 방 알려줘", "tool": "usage_frequency", "args": {"focus": "rooms", "order": "desc", "floor": "1F", "weekday": "월", "hour": 15}}
 ]

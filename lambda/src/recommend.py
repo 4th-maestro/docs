@@ -8,6 +8,7 @@
 - 초안 시각 00:00: 스케줄은 매일 지정 시각 이후 적용되므로 하루 전체(아침 8시대 운전, 주말 포함)에 적용
 - 절감량: 초안을 시뮬레이터에 적용한 전후 전력 차이를 초안 시각부터 24시까지 1시간 간격으로 합산(1일 기준, 가상)
 - 규칙 판정에 저장된 스케줄을 적용: 추천을 저장하면 다음 조회부터 해당 추천이 빠짐
+- 사용 빈도(frequency, usage.py): 최근 4주 같은 요일·같은 시각의 사용률·빈 채 운전률. 근거 문장(reason) 끝에 덧붙임
 """
 import datetime as dt
 import json
@@ -16,6 +17,7 @@ import functools
 import buildings
 import common
 import sim
+import usage
 
 COOL_MIN, HEAT_MAX = 26, 20
 AFTER_HOURS_DAYS = 2
@@ -42,11 +44,13 @@ def recommend(rooms, t, schedules):
         if not hit:
             continue
         rule, title, reason, draft = hit
+        freq = usage.at(room, t, schedules)
         draft['estimatedSavingKwh'] = saving(room, t, schedules, draft)
         if draft['estimatedSavingKwh'] > 0:
             items.append({
                 'id': f"{rule}-{room['id']}", 'roomId': room['id'], 'roomName': room['name'], 'idu': room['idu'],
-                'floor': room['floor'], 'use': room['use'], 'rule': rule, 'title': title, 'reason': reason,
+                'floor': room['floor'], 'use': room['use'], 'rule': rule, 'title': title, 'reason': f'{reason} {usage.sentence(freq)}.',
+                'frequency': freq,
                 'savingKwhDay': draft['estimatedSavingKwh'], 'draft': draft,
             })
     return sorted(items, key=lambda i: -i['savingKwhDay'])

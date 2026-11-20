@@ -1,6 +1,6 @@
-# infra/ops — ③ 자동 운영 + ⑤ 규칙 기반 설정온도 제안 + 사람 승인
+# infra/ops — ③ 자동 운영 + ④ 전력 이상 감지 + ⑤ 규칙 기반 설정온도 제안 + 사람 승인
 
-5분마다 빈 방 운전·과냉·과열 설정·이상 호실을 찾아 (빈 방은 Jev로) 판단하고, **건물별 자동 운영 스위치**에 따라 바로 끄거나(ON) 운영자에게 제안합니다(OFF). 별도 스택 **`maestro-ops`**로 배포하고, API는 `maestro` 스택의 기존 HTTP API에 경로만 추가합니다. 웹은 같은 API 주소와 같은 로그인 토큰을 씁니다.
+5분마다 빈 방 운전·과냉·과열 설정·이상(설정온도 미도달, 평소 대비 전력 이상) 호실을 찾아 (빈 방은 Jev로) 판단하고, **건물별 자동 운영 스위치**에 따라 바로 끄거나(ON) 운영자에게 제안합니다(OFF). 별도 스택 **`maestro-ops`**로 배포하고, API는 `maestro` 스택의 기존 HTTP API에 경로만 추가합니다. 웹은 같은 API 주소와 같은 로그인 토큰을 씁니다.
 
 | 파일 | 내용 |
 |---|---|
@@ -8,7 +8,7 @@
 | `functions/auto_operator.py` | 5분 판단: 후보 → Jev(빈 방)·규칙(설정온도) → 결정 게이트 → 자동 조치·제안·알림 기록 |
 | `functions/ops_api.py` | 스위치·제안 목록·수락/거절/되돌리기 API |
 | `functions/ops_common.py` | 설정·결정 저장소, 스케줄 저장, 제안 문구 |
-| `tests/test_ops.py` | 오프라인 테스트 35개 |
+| `tests/test_ops.py` | 오프라인 테스트 38개 |
 
 ## 동작
 
@@ -18,6 +18,8 @@
  │        설정온도 = 운전 중이고 빈 방 후보가 아닌 호실의 냉방 26℃ 미만·난방 20℃ 초과 (src/recommend.py 'overset'과 같은 기준)
  │                   → Jev 없이 스위치 ON이면 바로 조정(applied), OFF면 제안(pending) "…바꿀까요?"
  │        이상     = 설정온도 미도달(sim.state anomaly) → Jev 없이 🔴 알림
+ │        전력 이상 = 최근 4주 같은 요일·시각(src/usage.py baseline) 대비 → Jev 없이 🔴 알림
+ │                   unusual_hours: 평소 꺼져 있던 시각에 재실 0명으로 운전 / power_high: 재실은 평소 수준인데 전력 1.3배·+1kW 이상
  ├─ Jev 판단(빈 방): room_empty = empty / occupied / uncertain + 확신도·확률
  │   입력 = 건물·호실, 0·15·30분 전 상태 + 파생 사실(facts: 운영 시간 안팎·종료 후 경과, 빈 채 운전 지속 시간,
  │          오늘 마지막 재실·사용 구간 수, 최근 7일 같은 시각 사용 일수, 빈 채 운전 전력량)
@@ -38,6 +40,13 @@
   - 스케줄: `{action: setpoint, setpoint: 목표, time: "00:00", condition: always}`(recommend 초안과 같음, 매일 하루 전체). 되돌리기는 스케줄 삭제입니다.
   - 근거(`evidence`): `mode`, `setpoint`(현재), `target`, `savingKwhDay`(하루 절감 kWh, 가상), `temp`, `powerKw`, `occupants`, `rule: overset`
   - 상한: 건물당 실행마다 `MAX_SETPOINT_PER_BUILDING`(기본 5)건, 절감량 큰 방부터. Jev 호출 상한과 무관합니다.
+- **전력 이상 감지(④, `kind=power`, `status=alert`)**
+  - 평소 기준값은 `src/usage.py` `baseline`: 최근 4주 같은 요일·같은 시각(HH:30 표본)의 운전 주 수, 운전한 주의 평균 전력·최대 재실입니다. 그날 이전에 만든 스케줄만 적용합니다(`createdAt`). sim은 스케줄을 날짜 구분 없이 매일 적용해서, 그대로 쓰면 오늘 만든 스케줄이 지난주에도 있던 것처럼 계산되기 때문입니다.
+  - `unusual_hours`: 지금 운전 중 + 재실 0명 + 평소 이 시각 운전 주 0회. 켜진 뒤 30분이 지나 빈 방 운전 후보가 되면 끄기 제안이 나가므로 건너뜁니다(알림 → 30분 뒤 끄기 제안 순서).
+  - `power_high`: 평소 운전 주 `POWER_MIN_ON_WEEKS`(기본 2) 이상 + 지금 전력 ≥ 평균 × `POWER_RATIO`(1.3)이고 +`POWER_DIFF_KW`(1.0) 이상 + 재실이 평소 최대 이하. 사람이 더 와서 늘어난 전력은 정상 사용으로 봅니다.
+  - 설정온도 미도달 호실은 기존 알림과 겹쳐서 제외합니다. 근거(`evidence`): `rule`, `powerKw`, `occupants`, `onWeeks`, `onAvgKw`, `onMaxOccupants`, `weekday`, `hour`, `weeks`, (`excessKw`)
+  - simulator 측정(2026-11-16~22, 2시간 간격 44,772표본): `unusual_hours` 0건, `power_high` 17건. 단순 비교(1.5배·+1kW)는 대부분 "사람이 더 온" 정상 사용이라 쓰지 않습니다.
+  - 데모: 저녁에 꺼져 있는 방에 켜기 스케줄을 저장하면 다음 5분 판단에서 `unusual_hours` 알림이 납니다.
 - **중복 방지:** 진행 중(응답 대기·자동 조치·수락)인 호실은 다시 판단하지 않습니다. 거절·되돌림·재실 판단·알림 뒤에는 쿨다운(기본 120분) 동안 다시 판단하지 않습니다.
 - **만료:** 제안은 기본 30분 안에 응답이 없으면 `expired`가 됩니다.
 - **Jev 비용 보호:** 실행당 최대 10건만 호출합니다. 넘는 후보는 다음 실행으로 미룹니다.
@@ -90,6 +99,7 @@
 | `setpoint` / `pending` | 🟡 설정온도 제안 (`message`) | 수락, 거절 |
 | `setpoint` / `applied` · `accepted` | 🟢 설정온도 바꿨음 | 되돌리기 |
 | `anomaly` / `alert` | 🔴 이상 알림 | 없음 |
+| `power` / `alert` | 🔴 전력 이상 알림 | 없음 |
 | `rejected` · `reverted` · `expired` | 처리 기록(흐리게) | 없음 |
 
 ### `PUT /buildings/{id}/operations/settings`

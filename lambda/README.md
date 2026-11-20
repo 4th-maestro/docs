@@ -17,7 +17,7 @@
 | `src/anomalies.py` | `GET /anomalies?building=&floor=` 설정온도 미도달 HVAC 상세, 기대 온도, 원인 후보(규칙 기반 추정) |
 | `src/history.py` | `GET /rooms/history?building=&floor=` 층 전력 시간별 평균(kW)과 사용량(kWh), 오늘 0시~현재와 어제 0~23시 |
 | `src/energy.py` | `GET /energy/compare·trend·heatmap·breakdown` 건물별 전력 사용량 비교, 기간 추이, 요일×시간 평균 kW, 층·용도 구성([설계](../docs/human/explanation/architecture.md) 11절) |
-| `src/tools.py` | LLM 도구 9종(호실 순위, 묶음 합계, 기간 추이, 스케줄 초안, 자동 운영 조회·실행 초안, 사용 빈도, 기준 문서 검색, 쾌적 지표) 정의와 서버 검증(층·용도는 질의 건물 기준), 결과 그래프 정의(`chart`: 막대·선), 문서 근거(`sources`) 생성 |
+| `src/tools.py` | LLM 도구 9종(호실 순위, 묶음 합계, 기간 추이, 스케줄 초안(층·용도 또는 호실 이름 선택), 자동 운영 조회·실행 초안, 사용 빈도, 기준 문서 검색, 쾌적 지표) 정의와 서버 검증(층·용도는 질의 건물 기준), 결과 그래프 정의(`chart`: 막대·선), 문서 근거(`sources`) 생성 |
 | `src/comfort.py` | 불쾌지수(기상청 식)와 단계, PMV·PPD(ISO 7730 반복 계산, 외부 패키지 없음) |
 | `src/plan_ingest.py`, `src/plan_confirm.py` | 도면 변환 작업 API(`/plans/*`, `admin` 그룹 전용): 업로드·시작·인식·상태 조회, 기호 찾기, 보정본 확정과 건물 등록 연결. 규칙은 아래 "도면 변환" 절 |
 | `src/detect.py`, `layers/pillow/` | 실내기·문 기호 인식 Lambda(타일 분할, Serverless Endpoint 호출, NMS는 실내기끼리와 문끼리 따로 적용)와 Pillow 계층 |
@@ -37,6 +37,21 @@
 | `src/customer.py` | 고객사 설정 API(기업 코드 가입, 기업 정보·변경 이력 조회). 기업·구성원·건물 변경 경로는 구성원에게 403. 호실 이름·용도 변경은 `src/admin.py`의 `room` |
 
 `building` 쿼리와 `buildingId` 본문 값이 없으면 `main`이고, 목록에 없는 건물은 400(`알 수 없는 건물: <id>`)입니다. 소속 기업 밖 건물은 403(`이 건물에 접근할 권한이 없습니다.`)이고, WebSocket `ask`는 모델 호출 없이 `error` 이벤트입니다. 중지 기업 구성원은 403(`code: 'COMPANY_SUSPENDED'`)입니다. 소속 규칙은 아래 "기업·회원" 절에 있습니다. 판정 기준과 응답 필드는 [시스템 설계](../docs/human/explanation/architecture.md) 2절, 8절, 9절에 있습니다.
+
+## 챗봇 스케줄 초안 대상 선택
+
+`create_schedule`은 `rooms`(사용자가 말한 호실 이름 배열) 값에 따라 대상 선택 방식을 정합니다. 도면으로 등록한 건물은 호실 용도가 모두 `기타`인 경우가 많으므로 호실 이름 선택이 필요합니다.
+
+| 항목 | 규칙 |
+|---|---|
+| 층·용도 선택 | `rooms`가 빈 배열이면 `floor`·`use` 일치 호실, 초안 `pick: 'group'` |
+| 호실 이름 선택 | `rooms`가 있으면 질의 건물 호실 중 이름 일치 호실(`floor`가 `all`이 아니면 그 층만), `use` 무시, 초안 `pick: 'rooms'`, `use: 'all'` |
+| 이름 비교 | 공백 제거·소문자 변환 후 이름 또는 호실 id 완전 일치 우선(같은 이름 여러 곳이면 전부), 없으면 이름 포함 일치 1곳, 중복 제거 |
+| 이름 확인 실패 | 없거나 포함 일치가 여러 곳이면 `ValueError`(`<층> 호실 이름 확인 필요: <이름>(없거나 여러 곳). 후보: <최대 10곳>`), 모델이 후보로 되묻기 |
+| 초안 `floor` | 이름 선택 호실이 한 층이면 그 층, 여러 층이면 `all` |
+| 층 미지정 검증 | `rooms`가 있으면 `floor: 'all'`이어도 되묻기 검증 제외. 직전 초안이 이름 선택이면 그 초안의 `floor: 'all'`을 전체 범위 근거로 쓰지 않음 |
+| 대화 메모리 | 이름 선택 초안은 `draft.rooms`(최대 10개) 보관, 시각만 바꾸는 후속 요청에서 같은 호실로 재호출 |
+| 저장 | `POST /schedules` 형식 변경 없음(`roomIds` 기준) |
 
 ## 챗봇 자동 운영 연동
 

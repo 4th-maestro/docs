@@ -94,7 +94,9 @@ def make_memory(prev, text, result):
         'conditions': query.get('chips') or prev.get('conditions') or [],
         'targetRoomIds': (result.get('highlight') or [])[:30],
         # 되묻기 턴(초안 없음)은 직전 초안 유지: "15:30" 같은 짧은 답을 초안 수정으로 해석
-        'draft': {k: d[k] for k in ('floor', 'use', 'action', 'time', 'condition', 'setpoint')} | {'targets': len(d['roomIds'])} if d else prev.get('draft'),
+        # 호실 이름 선택 초안은 이름(최대 10개)도 보관: "15:30으로" 같은 수정 요청에서 같은 호실로 재호출
+        'draft': {k: d[k] for k in ('floor', 'use', 'action', 'time', 'condition', 'setpoint')} | {'targets': len(d['roomIds'])}
+                 | ({'rooms': d['roomNames']} if d.get('pick') == 'rooms' else {}) if d else prev.get('draft'),
         'lastSchedule': prev.get('lastSchedule'),
     }
     # 8KB 상한: 대상 호실 → 오래된 턴 순으로 축소

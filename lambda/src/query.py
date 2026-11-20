@@ -39,15 +39,17 @@ _SENTENCE_END = re.compile(r'(?<=[가-힣)\]%][.?!])\s')
 
 # 층 미지정 제어 요청 검증: 범위(전체, 모든 층, 재실 0곳 등)를 말하지 않았는데 전체 층 초안을 요청하면 실행하지 않고 되묻게 함
 # - 프롬프트 지침만으로는 구조화 응답에서 층 추정 초안 발생(7차 평가 q22), 사용자 결정(2026-11-20 층 미지정은 되묻기)을 서버에서 강제
+# - 예외: 호실 이름(rooms)을 지정한 초안은 이름이 범위이므로 검증 제외
 SCOPE = re.compile(r'전체|모든|모두|전\s?층|재실\s?0|재실이?\s?없는')
 FLOOR_ASK = '층을 말하지 않은 제어 요청입니다. 초안을 만들지 말고 층 후보를 들어 되물으십시오.'
 
 
 def floor_given(text, memory):
-    """사용자가 전체 범위를 밝혔는지: 이번 질문, 직전 2턴 질문, 직전 초안(전체 층)"""
+    """사용자가 전체 범위를 밝혔는지: 이번 질문, 직전 2턴 질문, 직전 초안(호실 이름 선택이 아닌 전체 층)"""
     m = memory or {}
     recent = [x.get('q', '') for x in (m.get('turns') or [])[-2:]]
-    return any(SCOPE.search(q) for q in [text, *recent]) or (m.get('draft') or {}).get('floor') == 'all'
+    d = m.get('draft') or {}
+    return any(SCOPE.search(q) for q in [text, *recent]) or (d.get('floor') == 'all' and not d.get('rooms'))
 
 
 def _unescape(raw):
@@ -79,15 +81,17 @@ def system(b, memory=None, t=None):
 - 대상 건물: {b['name']}({b['use']}, {kind}). 다른 건물은 조회할 수 없다.
 - 현재 시각: {t:%Y-%m-%d}({'월화수목금토일'[t.weekday()]}) {t:%H:%M}. '지금', '현재', '바로'나 시각을 말하지 않은 제어 요청은 이 시각을 time으로 쓰고 답변에 적용 시각을 밝힌다. '3시 반', '오후 6시'처럼 말한 시각은 HH:MM으로 바꿔 쓰고, 사용자에게 시각 형식을 요구하지 않는다.
 - 층 목록: {', '.join(buildings.floors(b['id']))}. 용도 목록: {', '.join(uses)}.
-- 호실 지표 순위는 query_spaces, 층·용도별 합계·비교는 aggregate_spaces, 기간 전력 추이·이전 기간 비교는 energy_trend, 켜기·끄기·설정온도 요청은 create_schedule, 불쾌지수·PMV·쾌적도는 comfort_index, 냉난방 기준 온도·규정·쾌적 지표 정의 질문은 search_documents 도구로 처리한다. 도구 결과에 없는 수치는 만들지 않는다. 문서의 규정을 인용할 때는 문서명과 시행일을 함께 쓰고, 문서에 없는 기준은 만들지 않는다.
+- 호실 지표 순위는 query_spaces, 층·용도별 합계·비교는 aggregate_spaces, 기간 전력 추이·이전 기간 비교는 energy_trend, 켜기·끄기·설정온도 요청은 create_schedule, 불쾌지수·PMV·쾌적도는 comfort_index, 평소 사용 빈도·자주 쓰는 시간대·잘 안 쓰는 방 같은 사용 패턴은 usage_frequency, 냉난방 기준 온도·규정·쾌적 지표 정의 질문은 search_documents 도구로 처리한다. 도구 결과에 없는 수치는 만들지 않는다. 문서의 규정을 인용할 때는 문서명과 시행일을 함께 쓰고, 문서에 없는 기준은 만들지 않는다.
 - 자동 운영 제안·자동 조치·이상 알림과 ON/OFF 상태 질문은 list_operations로 조회한다. 제안 수락·거절·되돌리기는 operations_action으로 초안만 만들며 실행 완료라고 말하지 않는다. 자동 운영 초안은 층·용도 미지정 시 all, '방금'은 scope=latest, '전부'는 scope=all이다.
 - 자동 운영 ON/OFF 변경 요청에는 도구를 호출하지 말고 화면의 자동 운영 스위치(판매사·고객사 관리자만 변경)를 안내한다.
+- 사용 빈도는 '최근 4주 같은 요일 19시대에 4번 중 1번 사용'처럼 주 수로 쓰고, 지금 재실(query_spaces)과 섞지 않는다. 평소 패턴은 가상 데이터 기준임을 짧게 밝힌다.
 - 자동 운영 근거는 facts·jev만 인용하고 확률은 '빈 방일 가능성 95%'처럼 쓴다. 오늘 자동으로 끈 방은 done에서 applied·accepted만 세고 rejected·reverted·expired는 끈 건수에 넣지 않는다. statusCounts는 전체 일치 항목 수, todayStatusCounts는 오늘(KST) 상태별 건수, items는 제한된 목록이다. 오늘 끈 건수는 todayStatusCounts의 applied·accepted 합을 사용한다. '오늘'의 처리 내역은 decidedAt을 KST로 바꾼 날짜로 판단하고, decidedAt이 없는 기존 항목만 createdAt을 사용한다. 최근 24시간 수를 오늘 건수로 단정하지 않는다.
 - 화면이 도구 결과로 그래프와 표를 자동으로 그린다. 답변에 수치 목록을 길게 나열하지 말고 핵심 수치 1~2개와 해석만 쓴다. 사용자가 표를 원하면 view=table, 그 외에는 view=auto로 호출한다.
-- 대상 층이나 용도가 불분명하거나 이 건물에 없으면 도구를 쓰지 말고 후보를 들어 되묻는다. 시각과 달리 제어 요청의 층은 추정하지 않는다. 층을 말하지 않은 제어 요청('전체', '모든 층', '재실 0곳인 곳'처럼 범위를 밝힌 경우 제외)은 초안을 만들지 말고 층을 되묻는다. 되물을 때는 판단 이유나 지침을 쓰지 말고 질문 1문장과 후보만 쓴다.
+- 대상 층이나 용도가 불분명하거나 이 건물에 없으면 도구를 쓰지 말고 후보를 들어 되묻는다. 시각과 달리 제어 요청의 층은 추정하지 않는다. 층을 말하지 않은 제어 요청('전체', '모든 층', '재실 0곳인 곳'처럼 범위를 밝힌 경우와 호실 이름을 말한 경우 제외)은 초안을 만들지 말고 층을 되묻는다. 되물을 때는 판단 이유나 지침을 쓰지 말고 질문 1문장과 후보만 쓴다.
+- '회의실 A', '101호'처럼 호실 이름을 말한 제어 요청은 create_schedule의 rooms에 말한 이름을 그대로 넣고, floor는 말한 층(없으면 all), use는 all로 호출한다. 도구가 호실 이름을 찾지 못했다고 하면 오류의 후보 이름을 들어 되묻는다. 층·용도로 고를 때 rooms는 빈 배열이다.
 - 스케줄 저장 방법과 실제 설비 미제어 안내는 화면의 초안 카드가 표시하므로 답변에 쓰지 않는다. 실제 설비 제어는 하지 않는다.
 - 답변은 JSON 3칸(conclusion, detail, action)으로 쓰고 칸마다 한국어 1문장이다. conclusion은 결론과 핵심 수치 1~2개, detail은 근거나 해석, action은 낭비를 줄일 다음 조치 1개다. 되묻기는 conclusion에 질문, detail에 후보를 쓰고 action은 비운다. 인사와 사용 안내는 action을 비운다. 호실 이름은 2개까지만 쓰고 나머지는 '외 N곳'으로 줄인다(전체 목록은 화면 그래프와 표가 표시). 다음 조치에 이유 문장을 덧붙이지 않는다.""" + (
-        f"\n- 이전 대화 메모리(JSON): {json.dumps(memory, ensure_ascii=False)}\n  turns는 최근 대화(오래된 순, 질문 q와 답변 a 앞부분)다. 사용자가 '그중', '방금 것', '아까 그 층'처럼 앞 대화를 가리키면 이 메모리로 해석한다. 직전 답변이 되물은 경우 사용자의 짧은 답(시각, 층, 용도)은 그 되묻기의 답이므로 처음 요청과 합쳐 처리한다. draft가 있으면 '15:30', '2층으로'처럼 짧은 답은 그 초안의 해당 값만 바꿔 create_schedule을 다시 호출한다. 메모리로 정할 수 없으면 되묻는다."
+        f"\n- 이전 대화 메모리(JSON): {json.dumps(memory, ensure_ascii=False)}\n  turns는 최근 대화(오래된 순, 질문 q와 답변 a 앞부분)다. 사용자가 '그중', '방금 것', '아까 그 층'처럼 앞 대화를 가리키면 이 메모리로 해석한다. 직전 답변이 되물은 경우 사용자의 짧은 답(시각, 층, 용도)은 그 되묻기의 답이므로 처음 요청과 합쳐 처리한다. draft가 있으면 '15:30', '2층으로'처럼 짧은 답은 그 초안의 해당 값만 바꿔 create_schedule을 다시 호출한다(draft.rooms가 있으면 같은 rooms 유지). 메모리로 정할 수 없으면 되묻는다."
         if memory else '')
 
 
@@ -199,7 +203,7 @@ def run(text, emit, bid=None, memory=None):
         for block in res.content:
             if block.type != 'tool_use':
                 continue
-            if block.name == 'create_schedule' and block.input.get('floor') == 'all' and not floor_given(text, memory):
+            if block.name == 'create_schedule' and block.input.get('floor') == 'all' and not any(str(n).strip() for n in block.input.get('rooms') or []) and not floor_given(text, memory):
                 results.append({'type': 'tool_result', 'tool_use_id': block.id, 'content': FLOOR_ASK, 'is_error': True})
                 asked_floor = True
                 continue

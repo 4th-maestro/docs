@@ -9,3 +9,4 @@ samconfig.toml
 # infra/sim 이미지 빌드용 트윈 복사본(prepare.sh)
 infra/sim/twin/
 .venv/
+infra/sim/node_modules/

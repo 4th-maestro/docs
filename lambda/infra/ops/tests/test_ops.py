@@ -23,6 +23,7 @@ import ops_common as oc  # noqa: E402
 import recommend  # noqa: E402
 import sim  # noqa: E402
 import tenant  # noqa: E402
+import usage  # noqa: E402
 
 T = dt.datetime(2026, 11, 20, 19, 0, tzinfo=sim.KST)  # 운영 시간 뒤: 빈 방 운전 후보가 생기는 시각
 EMPTY = lambda s: {'choice': 'empty', 'confidence': 0.95, 'probabilities': {'empty': 0.97, 'occupied': 0.01, 'uncertain': 0.02}}  # noqa: E731
@@ -423,6 +424,84 @@ class SetpointTest(unittest.TestCase):
         ApiTest.call(self, s, event('POST', bid=d['buildingId'], decisionId=d['decisionId'], action='reject'))
         later, _, _ = self.run_once(s, t=T + dt.timedelta(minutes=40))  # 만료 뒤에도 거절 쿨다운(120분) 동안 다시 제안 안 함
         self.assertNotIn(d['roomId'], {x['roomId'] for x in later if x['kind'] == 'setpoint'})
+
+
+class PowerTest(unittest.TestCase):
+    """④ 전력 이상(kind=power): 최근 4주 같은 요일·시각(usage.baseline) 대비, Jev 없이 알림"""
+    T_DAY = dt.datetime(2026, 11, 20, 14, 10, tzinfo=sim.KST)    # 금요일 14:10(운영 시간)
+    T_NIGHT = dt.datetime(2026, 11, 20, 22, 10, tzinfo=sim.KST)  # 금요일 22:10(운영 시간 뒤)
+
+    def setUp(self):
+        usage._day.cache_clear()
+
+    def st(self, power=2.5, occ=3, on=True, anomaly=None):
+        return {'onOff': on, 'occupants': occ, 'powerKw': power, 'anomaly': anomaly}
+
+    def check(self, st, base, idle=False):
+        b = {'weekday': '금', 'hour': 14, 'weeks': 4, **base}
+        with mock.patch.object(usage, 'baseline', lambda *a, **k: b):
+            return op.power_anomaly(buildings.rooms('main')[0], st, self.T_DAY, [], idle)
+
+    def test_rules(self):
+        usual = {'onWeeks': 3, 'onAvgKw': 1.0, 'onMaxOccupants': 5}
+        ev = self.check(self.st(2.5, 3), usual)
+        self.assertEqual((ev['rule'], ev['excessKw']), ('power_high', 1.5))
+        self.assertIsNone(self.check(self.st(2.5, 6), usual))                                  # 사람이 더 와서 늘어난 전력은 정상
+        self.assertIsNone(self.check(self.st(1.2, 3), usual))                                  # 1.3배 미만
+        self.assertIsNone(self.check(self.st(1.4, 3), {**usual, 'onAvgKw': 0.5}))              # 차이 1kW 미만
+        self.assertIsNone(self.check(self.st(2.5, 3), {**usual, 'onWeeks': 1}))                # 평소 운전 주 부족
+        self.assertIsNone(self.check(self.st(2.5, 3, anomaly='setpoint_unreached'), usual))    # 미도달 알림과 중복 안 함
+        self.assertIsNone(self.check(self.st(0, 0, on=False), usual))
+        never = {'onWeeks': 0, 'onAvgKw': None, 'onMaxOccupants': 0}
+        self.assertEqual(self.check(self.st(2.0, 0), never)['rule'], 'unusual_hours')
+        self.assertIsNone(self.check(self.st(2.0, 0), never, idle=True))                       # 30분 넘으면 끄기 제안으로
+        self.assertIsNone(self.check(self.st(2.0, 2), never))                                  # 사람이 있으면 사용 중
+
+    def night_room(self):
+        # 평소 금요일 22시에 꺼져 있는 호실
+        return next(r for r in buildings.rooms('main') if not sim.state(r, self.T_NIGHT, [])['onOff']
+                    and usage.baseline(r, self.T_NIGHT, [])['onWeeks'] == 0)
+
+    def run_once(self, store, t, schedules):
+        with store.patch():
+            return op.run(t, schedules, ask=EMPTY)
+
+    def test_unusual_hours_from_new_schedule(self):
+        room = self.night_room()
+        sched = {'id': 's-on', 'buildingId': 'main', 'roomIds': [room['id']], 'action': 'on', 'time': '22:00', 'condition': 'always',
+                 'createdAt': self.T_NIGHT.replace(hour=21).isoformat()}
+        out, counts, _ = self.run_once(Store(), self.T_NIGHT, [sched])
+        alerts = [d for d in out if d['kind'] == 'power' and d['roomId'] == room['id']]
+        self.assertEqual(len(alerts), 1)
+        a = alerts[0]
+        self.assertEqual((a['status'], a['evidence']['rule'], a['evidence']['onWeeks']), ('alert', 'unusual_hours', 0))
+        self.assertIn('꺼져 있던 방인데', a['message'])
+        self.assertGreaterEqual(counts['power'], 1)
+        # 같은 스케줄이 4주 전부터 있었다면 평소 운전이라 알림 없음
+        old = {**sched, 'createdAt': '2026-09-01T00:00:00+09:00'}
+        usage._day.cache_clear()
+        out, _, _ = self.run_once(Store(), self.T_NIGHT, [old])
+        self.assertFalse([d for d in out if d['kind'] == 'power' and d['roomId'] == room['id']])
+        # 30분 뒤에는 빈 방 운전 후보(끄기 제안)로 넘어가고 전력 알림은 쿨다운
+        s = Store()
+        self.run_once(s, self.T_NIGHT, [sched])
+        later, _, _ = self.run_once(s, self.T_NIGHT + dt.timedelta(minutes=30), [sched])
+        self.assertIn(room['id'], {d['roomId'] for d in later if d['kind'] == 'idle'})
+        self.assertNotIn(room['id'], {d['roomId'] for d in later if d['kind'] == 'power'})
+
+    def test_power_high_in_run_and_cooldown(self):
+        s = Store()
+        first, _, _ = self.run_once(s, self.T_DAY, [])
+        high = [d for d in first if d['kind'] == 'power']
+        self.assertGreater(len(high), 0)
+        for d in high:
+            ev = d['evidence']
+            self.assertEqual(ev['rule'], 'power_high')
+            self.assertGreaterEqual(ev['powerKw'], ev['onAvgKw'] * 1.3)
+            self.assertLessEqual(ev['occupants'], ev['onMaxOccupants'])
+            self.assertIn('설비 점검', d['message'])
+        second, _, _ = self.run_once(s, self.T_DAY + dt.timedelta(minutes=5), [])
+        self.assertFalse({d['roomId'] for d in high} & {d['roomId'] for d in second if d['kind'] == 'power'})
 
 
 if __name__ == '__main__':
