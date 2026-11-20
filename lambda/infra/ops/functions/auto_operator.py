@@ -2,6 +2,11 @@
 
 - 후보(빈 방 운전, kind=idle): 지금·15분 전·30분 전 모두 재실 0명으로 운전(src/recommend.py 'idle' 규칙과 같은 기준, src/sim.py로 계산)
 - 후보(이상, kind=anomaly): 지금 설정온도 미도달(sim.state anomaly). Jev 없이 알림(status=alert)
+- 후보(설정온도, kind=setpoint, ⑤ 규칙 기반 제어): 운전 중이고 빈 방 후보가 아닌 호실의 과냉·과열 설정
+  - 기준: src/recommend.py 'overset'과 같음(냉방 COOL_MIN 26℃ 미만, 난방 HEAT_MAX 20℃ 초과 → 그 값으로 조정)
+    recommend.recommend()는 호실당 1건이라 업무 외 운전(after_hours)이 먼저 잡히면 설정 추천이 빠지므로 기준값만 가져와 직접 판정
+  - 절감량: recommend.saving()과 같은 계산(00:00 초안을 적용한 하루 전력 차이, 가상). 0이면 제안 안 함
+  - Jev 없이 결정: 스위치 ON → 설정온도 스케줄 저장, applied / OFF → pending 제안. 건물당 실행마다 MAX_SETPOINT_PER_BUILDING(기본 5)건, 절감량 큰 방부터
 - Jev 판단(빈 방): room_empty = empty / occupied / uncertain + 확신도·선택지별 확률. 키·호출 실패 시 판단 없음으로 제안(폴백)
   - 입력: 건물·호실 정보, 0·15·30분 전 상태, 파생 사실(facts: 운영 시간 안팎·종료 후 경과, 빈 채 운전 지속 시간,
     오늘 마지막 재실·사용 구간 수, 최근 7일 같은 시각 사용 일수, 빈 채 운전 전력량). 판단 문구 없이 사실만
@@ -176,6 +181,26 @@ def gate(answer, auto_apply, conf_min, empty_min):
     return 'pending'
 
 
+def setpoint_candidate(room, st, t, schedules):
+    """과냉·과열 설정 근거 또는 None(recommend.py 'overset' 기준·절감량 계산 재사용)"""
+    import recommend
+    if not st['onOff']:
+        return None
+    sp = st['setpoint']
+    if st['mode'] == 'cooling' and sp < recommend.COOL_MIN:
+        target = recommend.COOL_MIN
+    elif st['mode'] == 'heating' and sp > recommend.HEAT_MAX:
+        target = recommend.HEAT_MAX
+    else:
+        return None
+    # 저장할 스케줄과 같은 초안으로 절감량 계산(recommend.saving: 초안 시각~24시 전력 차이)
+    saving = recommend.saving(room, t, schedules, oc.setpoint_schedule('', room['id'], target, t, ''))
+    if saving <= 0:
+        return None
+    return {'mode': st['mode'], 'setpoint': sp, 'target': target, 'savingKwhDay': saving,
+            'temp': st['temp'], 'powerKw': st['powerKw'], 'occupants': st['occupants'], 'rule': 'overset'}
+
+
 def _base(bid, room, t, ttl):
     return {'buildingId': bid, 'roomId': room['id'], 'roomName': room['name'], 'floor': room['floor'], 'use': room['use'],
             'createdAt': t.isoformat(), 'ttl': ttl}
@@ -214,9 +239,10 @@ def run(t, schedules, ask=None, write=True):
     ttl_min = oc.env_int('SUGGESTION_TTL_MIN', 30)
     cooldown = oc.env_int('COOLDOWN_MIN', 120)
     max_jev = oc.env_int('MAX_JEV_PER_RUN', 10)
+    max_sp = oc.env_int('MAX_SETPOINT_PER_BUILDING', 5)
     since = t - dt.timedelta(minutes=max(cooldown, ttl_min) + 5)
     ttl = int((t + dt.timedelta(days=oc.HISTORY_DAYS)).timestamp())
-    out, counts = [], {'pending': 0, 'applied': 0, 'skipped': 0, 'alert': 0, 'expired': 0, 'deferred': 0}
+    out, counts = [], {'pending': 0, 'applied': 0, 'skipped': 0, 'alert': 0, 'expired': 0, 'deferred': 0, 'setpoint': 0}
     buildings.forget()
     # 1) 건물별 후보 수집: 이상은 바로 알림, 빈 방 운전은 Jev 판단 대기열(빈 채 운전 전력량 큰 방부터)
     queues, ctx = {}, {}
@@ -230,6 +256,7 @@ def run(t, schedules, ask=None, write=True):
                 counts['expired'] += 1
         blocked = oc.blocked_rooms(recent, t, cooldown)
         ctx[bid] = (b, settings)
+        setpoints = []
         for room in buildings.rooms(bid):
             if room.get('active') is False:
                 continue
@@ -240,9 +267,32 @@ def run(t, schedules, ask=None, write=True):
                             'message': oc.anomaly_message(room, st),
                             'evidence': {k: st[k] for k in ('temp', 'setpoint', 'mode', 'onOff', 'anomaly')}})
                 counts['alert'] += 1
-            if ('idle', rid) in blocked or not is_idle(room, t, schedules):
+            if is_idle(room, t, schedules):
+                # 빈 방 운전은 끄기가 우선(recommend.py와 같은 순서): 설정온도 후보로 보지 않음
+                if ('idle', rid) not in blocked:
+                    queues.setdefault(bid, []).append((room, st, jev_state(b, room, t, schedules)))
                 continue
-            queues.setdefault(bid, []).append((room, st, jev_state(b, room, t, schedules)))
+            if ('setpoint', rid) not in blocked:
+                ev = setpoint_candidate(room, st, t, schedules)
+                if ev:
+                    setpoints.append((room, ev))
+        # 설정온도 제안: Jev 없이 규칙으로 결정, 건물당 절감량 큰 방부터 상한까지
+        setpoints.sort(key=lambda c: (-c[1]['savingKwhDay'], c[0]['id']))
+        for room, ev in setpoints[:max_sp]:
+            status = 'applied' if settings['autoApply'] else 'pending'
+            item = {**_base(bid, room, t, ttl), 'decisionId': oc.new_decision_id(t), 'kind': 'setpoint', 'status': status,
+                    'autoApply': settings['autoApply'], 'evidence': ev}
+            if status == 'applied':
+                sched = oc.setpoint_schedule(bid, room['id'], ev['target'], t,
+                                             f"{room['floor']} {room['name']} 설정온도 {ev['setpoint']:g}→{ev['target']:g}℃")
+                if write:
+                    oc.save_schedule(sched)
+                item.update(scheduleId=sched['id'], message=oc.setpoint_applied_message(room, ev), decidedAt=t.isoformat(), decidedBy=oc.SOURCE)
+            else:
+                item.update(message=oc.setpoint_message(room, ev), expiresAt=(t + dt.timedelta(minutes=ttl_min)).isoformat())
+            out.append(item)
+            counts[status] += 1
+            counts['setpoint'] += 1
     for q in queues.values():
         q.sort(key=lambda c: (-c[2]['facts']['idleEnergyKwh'], c[0]['id']))
     # 2) Jev 호출 상한을 건물별로 한 건씩 돌아가며 배분, 시작 건물은 실행마다(5분 단위) 바뀜

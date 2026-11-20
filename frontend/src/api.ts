@@ -70,6 +70,8 @@ export const getBuildings = () => (HAS_API ? call<Portfolio>('/buildings') : moc
 // 건물 목록 변경(판매사 건물 추가·수정·삭제·연결): 상단 건물 선택 목록 다시 조회
 export const BUILDINGS_CHANGED = 'maestro:buildings'
 export const buildingsChanged = () => window.dispatchEvent(new Event(BUILDINGS_CHANGED))
+// 건물 등록: 같은 이벤트에 새 건물 id 전달(목록 반영 전에도 그 건물 대시보드 표시)
+export const buildingCreated = (id: string) => window.dispatchEvent(new CustomEvent(BUILDINGS_CHANGED, { detail: id }))
 // 트윈 building.json(관리자 또는 소속 기업 구성원), 없으면 404
 export const getTwin = (id: string) => call<unknown>(`/buildings/${encodeURIComponent(id)}/twin`)
 

@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ArrowLeft, FileBox, ImageIcon, Info } from 'lucide-react'
-import { buildingsChanged, createBuilding, getCompany, getTwin, putTwin, type BuildingInput, type CompanyDetail } from '../api'
+import { buildingCreated, buildingsChanged, createBuilding, getCompany, getTwin, putTwin, type BuildingInput, type CompanyDetail } from '../api'
 import BuildingEditor from '../BuildingEditor'
 import PlanIngest from '../ingest/PlanIngest'
 import type { Plan } from '../floor-edit'
-import type { AdminSub } from '../shell/route'
+import { href, type AdminSub } from '../shell/route'
 import { SkRows, SkWrap } from '../skeleton/Skeleton'
 import { editablePlan, onBuildingRendered, pipelineSrc, postTheme } from '../twin'
 import { newBuildingId, toServer, twinDefaults, type Twin } from './convert'
@@ -102,7 +102,9 @@ function ImageStep({ company, building, name, back, file }: { company: string; b
     const data = toServer(twin!, id)
     if (!data.rooms.length) throw new Error(NO_ROOMS)
     await createBuilding(company, { id, ...(body as BuildingInfo), ...data })
-    done()
+    // 등록 후 새 건물의 운영 대시보드로 이동(2026-11-21)
+    buildingCreated(id)
+    location.hash = href(id)
   }
   async function replace() {
     setBusy(true); setError('')

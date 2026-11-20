@@ -3,7 +3,7 @@
 - 설정(OPS_SETTINGS_TABLE, 키 buildingId): {autoApply(bool, 기본 False), updatedAt, updatedBy}
 - 결정(DECISIONS_TABLE, 키 buildingId / decisionId): 제안·자동 조치·알림 기록, ttl 30일
   - decisionId: "<YYYYMMDDTHHMM>-<8자리 hex>"(시각순 정렬, URL 안전)
-  - kind: idle(빈 방 운전) · anomaly(설정온도 미도달)
+  - kind: idle(빈 방 운전) · setpoint(과냉·과열 설정, 규칙 기반 설정온도 조정) · anomaly(설정온도 미도달)
   - status: pending(제안, 응답 대기) · applied(자동 조치) · accepted(제안 수락) · rejected(거절) · reverted(자동 조치 되돌림)
             · expired(응답 없이 만료) · skipped(Jev가 재실로 판단, 조치 없음) · alert(이상 알림)
 - 스케줄: SchedulesTable(maestro 스택)에 schedules.py POST와 같은 형식으로 저장, sourceText 앞머리 "자동 운영"으로 사람이 만든 스케줄과 구분
@@ -155,6 +155,21 @@ def off_schedule(bid, room_id, t, reason):
     }
 
 
+def setpoint_schedule(bid, room_id, target, t, reason):
+    """설정온도 조정 스케줄(schedules.py POST 형식). recommend.py 'overset' 초안과 같이 00:00·always: 매일 하루 전체 적용"""
+    return {
+        'id': str(uuid.uuid4()), 'buildingId': bid, 'roomIds': [room_id], 'action': 'setpoint', 'setpoint': float(target),
+        'time': '00:00', 'condition': 'always', 'createdAt': t.isoformat(), 'sourceText': f'{SOURCE}: {reason}'[:500],
+    }
+
+
+def decision_schedule(d, t, reason):
+    """결정 종류에 맞는 스케줄: setpoint는 근거의 목표 설정온도, 그 외(idle)는 끄기"""
+    if d.get('kind') == 'setpoint':
+        return setpoint_schedule(d['buildingId'], d['roomId'], d['evidence']['target'], t, reason)
+    return off_schedule(d['buildingId'], d['roomId'], t, reason)
+
+
 def save_schedule(item):
     import common
     common.put_schedule(item)
@@ -181,6 +196,26 @@ def idle_message(room, label, power_kw):
 
 def applied_message(room, label):
     return f"{room['floor']} {room['name']}: {label} 재실 0명이라 냉난방을 껐어요. 필요하면 되돌릴 수 있어요."
+
+
+MODE_LABEL = {'cooling': '냉방', 'heating': '난방'}
+
+
+def _num(v):
+    return f'{v:g}'
+
+
+def setpoint_message(room, ev):
+    mode, sp, target = MODE_LABEL.get(ev['mode'], ev['mode']), ev['setpoint'], ev['target']
+    side = '낮아요' if ev['mode'] == 'cooling' else '높아요'
+    return (f"{room['floor']} {room['name']}: {mode} 설정온도 {_num(sp)}℃는 권장 기준({_num(target)}℃)보다 {side}. "
+            f"{_num(target)}℃로 바꾸면 하루 약 {_num(ev['savingKwhDay'])}kWh 줄어요. 바꿀까요?")
+
+
+def setpoint_applied_message(room, ev):
+    mode = MODE_LABEL.get(ev['mode'], ev['mode'])
+    return (f"{room['floor']} {room['name']}: {mode} 설정온도를 {_num(ev['setpoint'])}℃에서 {_num(ev['target'])}℃로 바꿨어요"
+            f"(하루 약 {_num(ev['savingKwhDay'])}kWh 절감). 필요하면 되돌릴 수 있어요.")
 
 
 def anomaly_message(room, st):

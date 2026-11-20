@@ -5,7 +5,7 @@
 - PUT  /buildings/{id}/operations/settings  body {autoApply: bool}
     → 자동 운영 스위치. 판매사 admin·고객사 manager만
 - POST /buildings/{id}/operations/decisions/{decisionId}/{action}   action: accept · reject · undo
-    - accept: pending 제안 수락 → 끄기 스케줄 저장(simulator 다음 계산부터 반영) → accepted
+    - accept: pending 제안 수락 → 스케줄 저장(idle은 끄기, setpoint는 근거의 목표 설정온도. simulator 다음 계산부터 반영) → accepted
     - reject: pending 제안 거절 → rejected(쿨다운 동안 같은 호실 제안 안 함)
     - undo:   자동 조치(applied)·수락(accepted) 되돌림 → 저장한 스케줄 삭제 → reverted
     - 고객사 operator 포함 건물 접근 권한이 있는 구성원 모두
@@ -95,7 +95,7 @@ def act(bid, did, action, ctx, t):
             if not oc.update_status(bid, did, 'rejected', t, ctx['sub']):
                 return common.resp(409, {'error': '이미 처리된 제안입니다.'})
             return common.resp(200, {**d, 'status': 'rejected'})
-        sched = oc.off_schedule(bid, d['roomId'], t, f"{d['floor']} {d['roomName']} 제안 수락")
+        sched = oc.decision_schedule(d, t, f"{d['floor']} {d['roomName']} 제안 수락")
         if not oc.update_status(bid, did, 'accepted', t, ctx['sub'], {'scheduleId': sched['id']}):
             return common.resp(409, {'error': '이미 처리된 제안입니다.'})
         oc.save_schedule(sched)

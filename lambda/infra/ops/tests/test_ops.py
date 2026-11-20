@@ -20,6 +20,7 @@ import auto_operator as op  # noqa: E402
 import buildings  # noqa: E402
 import ops_api  # noqa: E402
 import ops_common as oc  # noqa: E402
+import recommend  # noqa: E402
 import sim  # noqa: E402
 import tenant  # noqa: E402
 
@@ -60,7 +61,8 @@ class Store:
         )
 
     def by_status(self, status, kind='idle'):
-        return [d for d in self.decisions.values() if d['status'] == status and d['kind'] == kind]
+        """kind=None이면 모든 종류"""
+        return [d for d in self.decisions.values() if d['status'] == status and kind in (None, d['kind'])]
 
 
 class GateTest(unittest.TestCase):
@@ -131,7 +133,7 @@ class OperatorTest(unittest.TestCase):
         s = Store()
         _, counts, calls = self.run_once(s, env={'MAX_JEV_PER_RUN': '2'})
         self.assertEqual(calls, 2)
-        self.assertEqual(counts['pending'], 2)
+        self.assertEqual(len(s.by_status('pending')), 2)  # 빈 방 제안만(설정온도 제안은 Jev 상한과 무관)
         self.assertGreater(counts['deferred'], 0)
 
     def test_no_duplicate_next_run(self):
@@ -154,7 +156,7 @@ class OperatorTest(unittest.TestCase):
         s = Store(auto=True)
         _, counts, _ = self.run_once(s, ask=lambda st: {'choice': 'occupied', 'confidence': 0.95})
         self.assertGreater(counts['skipped'], 0)
-        self.assertEqual(counts['applied'] + counts['pending'], 0)
+        self.assertEqual(len(s.by_status('applied')) + len(s.by_status('pending')), 0)
 
     def test_jev_state_has_no_judgement(self):
         room = buildings.rooms('main')[0]
@@ -238,8 +240,10 @@ class FactsTest(unittest.TestCase):
         self.assertLessEqual(f['usedAtThisTimeLast7Days'], 7)
 
     def test_never_occupied_room(self):
-        room = dict(buildings.rooms('main')[0], use='기타')  # sim은 '기타' 용도를 항상 0명으로 계산
-        f = op.usage_facts(room, T, [])
+        # sim은 #61부터 '기타' 용도에도 가상 재실을 주므로 재실 0명을 직접 고정
+        room = buildings.rooms('main')[0]
+        with mock.patch.object(sim, 'occupants', lambda r, t: 0):
+            f = op.usage_facts(room, T, [])
         self.assertEqual((f['lastOccupiedAt'], f['minutesSinceLastOccupied'], f['occupiedSlotsToday']), (None, None, 0))
 
 
@@ -266,7 +270,7 @@ class ApiTest(unittest.TestCase):
         code, body = self.call(s, event('GET'))
         self.assertEqual(code, 200)
         self.assertFalse(body['settings']['autoApply'])
-        self.assertEqual(body['pendingCount'], len([d for d in s.by_status('pending') if d['buildingId'] == 'main']))
+        self.assertEqual(body['pendingCount'], len([d for d in s.by_status('pending', kind=None) if d['buildingId'] == 'main']))
         self.assertNotIn('ttl', body['decisions'][0])
 
     def test_switch_roles(self):
@@ -319,6 +323,106 @@ class ApiTest(unittest.TestCase):
         with s.patch(), mock.patch.object(tenant, 'require_building', mock.Mock(side_effect=tenant.Forbidden())):
             r = ops_api.handler(event('GET'), None)
         self.assertEqual(r['statusCode'], 403)
+
+
+class SetpointTest(unittest.TestCase):
+    """⑤ 규칙 기반 설정온도 제안(kind=setpoint): recommend.py 'overset' 기준, Jev 없이 결정"""
+
+    def run_once(self, store, t=T, env=None, ask=EMPTY):
+        with store.patch(), mock.patch.dict(os.environ, env or {}):
+            return op.run(t, [], ask=ask)
+
+    def sp(self, store, status):
+        return store.by_status(status, kind='setpoint')
+
+    def test_candidate_rule(self):
+        room = buildings.rooms('main')[0]
+        st = lambda mode, sp, on=True: {'mode': mode, 'setpoint': sp, 'onOff': on, 'temp': 23.0, 'powerKw': 1.0, 'occupants': 2}  # noqa: E731
+        with mock.patch.object(recommend, 'saving', lambda *a: 2.5):
+            c = op.setpoint_candidate(room, st('cooling', 22), T, [])
+            self.assertEqual((c['target'], c['savingKwhDay'], c['rule']), (recommend.COOL_MIN, 2.5, 'overset'))
+            self.assertEqual(op.setpoint_candidate(room, st('heating', 24), T, [])['target'], recommend.HEAT_MAX)
+            self.assertIsNone(op.setpoint_candidate(room, st('cooling', recommend.COOL_MIN), T, []))  # 기준 이상은 정상
+            self.assertIsNone(op.setpoint_candidate(room, st('heating', recommend.HEAT_MAX), T, []))
+            self.assertIsNone(op.setpoint_candidate(room, st('heating', 24, on=False), T, []))      # 꺼진 방은 제안 안 함
+        with mock.patch.object(recommend, 'saving', lambda *a: 0.0):
+            self.assertIsNone(op.setpoint_candidate(room, st('heating', 24), T, []))                # 절감 0이면 제안 안 함
+
+    def test_switch_off_makes_pending(self):
+        s = Store(auto=False)
+        _, counts, _ = self.run_once(s)
+        p = self.sp(s, 'pending')
+        self.assertGreater(len(p), 0)
+        self.assertEqual(counts['setpoint'], len(p))
+        self.assertEqual(s.schedules, {})
+        d = p[0]
+        self.assertEqual(d['evidence']['target'], recommend.HEAT_MAX)  # 11월은 난방
+        self.assertGreater(d['evidence']['setpoint'], recommend.HEAT_MAX)
+        self.assertGreater(d['evidence']['savingKwhDay'], 0)
+        self.assertNotIn('jev', d)
+        self.assertIn('바꿀까요?', d['message'])
+        self.assertEqual(d['expiresAt'], (T + dt.timedelta(minutes=30)).isoformat())
+
+    def test_matches_recommend_and_skips_idle(self):
+        s = Store()
+        out, _, _ = self.run_once(s)
+        for d in (x for x in out if x['kind'] == 'setpoint'):
+            room = buildings.BY_ROOM[d['roomId']]
+            st = sim.state(room, T, [])
+            self.assertTrue(st['onOff'])
+            self.assertGreater(st['setpoint'], recommend.HEAT_MAX)
+            self.assertFalse(op.is_idle(room, T, []))  # 빈 방 운전 호실은 끄기 우선
+
+    def test_switch_on_applies_setpoint_schedule(self):
+        s = Store(auto=True)
+        self.run_once(s)
+        a = self.sp(s, 'applied')[0]
+        sched = s.schedules[a['scheduleId']]
+        self.assertEqual((sched['action'], sched['setpoint'], sched['time'], sched['condition'], sched['roomIds']),
+                         ('setpoint', float(a['evidence']['target']), '00:00', 'always', [a['roomId']]))
+        self.assertTrue(sched['sourceText'].startswith('자동 운영'))
+        self.assertIn('바꿨어요', a['message'])
+        self.assertEqual(sim.state(buildings.BY_ROOM[a['roomId']], T, [sched])['setpoint'], a['evidence']['target'])
+
+    def test_cap_per_building_keeps_largest_saving(self):
+        full, capped = Store(), Store()
+        self.run_once(full, env={'MAX_SETPOINT_PER_BUILDING': '100'})
+        self.run_once(capped, env={'MAX_SETPOINT_PER_BUILDING': '1'})
+        by_b = {}
+        for d in self.sp(full, 'pending'):
+            by_b.setdefault(d['buildingId'], []).append(d['evidence']['savingKwhDay'])
+        got = {d['buildingId']: d['evidence']['savingKwhDay'] for d in self.sp(capped, 'pending')}
+        self.assertEqual(len(got), len(self.sp(capped, 'pending')))  # 건물당 1건
+        self.assertEqual(got, {b: max(v) for b, v in by_b.items()})
+
+    def test_no_duplicate_and_independent_of_jev(self):
+        s = Store()
+        first, _, _ = self.run_once(s, env={'MAX_JEV_PER_RUN': '0'})  # Jev 호출 0건이어도 설정온도 제안은 생김
+        self.assertGreater(len(self.sp(s, 'pending')), 0)
+        second, _, _ = self.run_once(s, t=T + dt.timedelta(minutes=5))
+        rooms = lambda out: {d['roomId'] for d in out if d['kind'] == 'setpoint'}  # noqa: E731
+        self.assertFalse(rooms(first) & rooms(second))
+
+    def test_api_accept_and_undo(self):
+        s = Store()
+        self.run_once(s)
+        d = self.sp(s, 'pending')[0]
+        call = ApiTest.call
+        code, body = call(self, s, event('POST', bid=d['buildingId'], decisionId=d['decisionId'], action='accept'))
+        self.assertEqual((code, body['status']), (200, 'accepted'))
+        sched = s.schedules[body['scheduleId']]
+        self.assertEqual((sched['action'], sched['setpoint']), ('setpoint', float(d['evidence']['target'])))
+        code, body = call(self, s, event('POST', bid=d['buildingId'], decisionId=d['decisionId'], action='undo'))
+        self.assertEqual((code, body['status']), (200, 'reverted'))
+        self.assertEqual(s.schedules, {})
+
+    def test_reject_cooldown(self):
+        s = Store()
+        self.run_once(s)
+        d = self.sp(s, 'pending')[0]
+        ApiTest.call(self, s, event('POST', bid=d['buildingId'], decisionId=d['decisionId'], action='reject'))
+        later, _, _ = self.run_once(s, t=T + dt.timedelta(minutes=40))  # 만료 뒤에도 거절 쿨다운(120분) 동안 다시 제안 안 함
+        self.assertNotIn(d['roomId'], {x['roomId'] for x in later if x['kind'] == 'setpoint'})
 
 
 if __name__ == '__main__':

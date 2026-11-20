@@ -147,16 +147,23 @@ function Shell({ themeButton, dark }: { themeButton: React.ReactNode; dark: bool
   const known = buildings.find((b) => b.id === route.building)
   // 판매사 건물 추가·수정·삭제·연결 → 목록 다시 조회
   const { reload } = list
+  // 방금 등록한 건물: 목록에 나타날 때까지 "목록에 없습니다" 대신 대시보드 표시(등록 직후 이동, 2026-11-21)
+  const [pending, setPending] = useState<string | null>(null)
+  if (pending && known?.id === pending) setPending(null)
   // 건물 등록·수정·삭제 후: 바로 한 번, 4초 뒤 한 번 더 조회(서버 실행 환경이 변경 표시를 확인하는 간격 3초)
   useEffect(() => {
     let id = 0
-    const on = () => { reload(); clearTimeout(id); id = window.setTimeout(reload, 4000) }
+    const on = (e: Event) => {
+      const created = e instanceof CustomEvent ? e.detail : null
+      if (typeof created === 'string') setPending(created)
+      reload(); clearTimeout(id); id = window.setTimeout(reload, 4000)
+    }
     window.addEventListener(BUILDINGS_CHANGED, on)
     return () => { window.removeEventListener(BUILDINGS_CHANGED, on); clearTimeout(id) }
   }, [reload])
 
-  // 목록 도착 전에는 주소의 건물을 그대로 표시, 목록에 없는 건물만 안내
-  if (route.building && (!list.data || known)) {
+  // 목록 도착 전과 방금 등록한 건물은 주소의 건물을 그대로 표시, 목록에 없는 건물만 안내
+  if (route.building && (!list.data || known || route.building === pending)) {
     // 건물 변경 시 key로 다시 마운트: 층, 상태, 대화, 초안, 선택 호실, 패널 값 초기화
     return <Dashboard key={route.building} building={route.building} info={known} tab={route.tab} buildings={buildings} themeButton={themeButton} dark={dark} />
   }
