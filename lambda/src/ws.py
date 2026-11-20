@@ -1,7 +1,7 @@
 """WebSocket API: $connect, $disconnect, ask 라우트(AI 질의 단계 이벤트 실시간 전송)
 
 - 요청: {action: 'ask', requestId, text, buildingId}, 응답 이벤트는 모두 같은 requestId를 붙여 해당 연결에만 전송
-- buildingId: 없으면 main, 알 수 없으면 모델 호출 없이 error 이벤트
+- buildingId: 없으면 main, 알 수 없거나 소속 기업 밖 건물이면 모델 호출 없이 error 이벤트
 - 연결 종료(GoneException): 남은 모델 호출 없이 조용히 종료해 비용 차단
 - shortcut: $connect 인증 없음(POST /query와 같은 공개 수준), 외부 공개 전 API 키·Cognito 인가 추가
 """
@@ -13,6 +13,7 @@ import boto3
 import chat
 import common
 import query
+import tenant
 
 
 def handler(event, context):
@@ -33,7 +34,12 @@ def handler(event, context):
         elif not b:
             emit({'type': 'error', 'message': '알 수 없는 건물입니다. 건물을 다시 선택하십시오.'})
         else:
-            query.converse(text, emit, b['id'], chat.user(event))
+            try:
+                tenant.require_building(event, b['id'])
+            except tenant.Forbidden as e:
+                emit({'type': 'error', 'message': str(e)})
+            else:
+                query.converse(text, emit, b['id'], chat.user(event))
     except api.exceptions.GoneException:
         pass
     except Exception:

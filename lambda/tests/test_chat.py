@@ -68,7 +68,9 @@ class AuthTest(unittest.TestCase):
         t = token({'iss': self.iss, 'client_id': 'client', 'token_use': 'access', 'sub': 's1'})
         self.assertEqual(auth.verify(t), 's1')
         out = auth.handler({'queryStringParameters': {'token': t}, 'methodArn': 'arn:x'}, None)
-        self.assertEqual(out['context'], {'sub': 's1'})
+        self.assertEqual(out['context'], {'sub': 's1', 'groups': ''})
+        t = token({'iss': self.iss, 'client_id': 'client', 'token_use': 'access', 'sub': 's2', 'cognito:groups': ['admin']})
+        self.assertEqual(auth.handler({'queryStringParameters': {'token': t}, 'methodArn': 'arn:x'}, None)['context'], {'sub': 's2', 'groups': 'admin'})
         with self.assertRaises(Exception):
             auth.handler({'queryStringParameters': {}, 'methodArn': 'arn:x'}, None)
 

@@ -88,10 +88,34 @@ export async function cancelSchedule(id: string): Promise<{ id: string; mock?: b
   return call<{ id: string }>(`/schedules/${encodeURIComponent(id)}`, { method: 'DELETE' })
 }
 
-// 사용자 관리(관리자 그룹 전용, lambda/src/admin.py): 목업 대체 없음, 실패는 화면에 오류 표시
-export type AllowEntry = { entry: string; note?: string; addedAt?: string }
+// 로그인 사용자 소속(GET /me): role이 null이면 소속 기업 없음. 판매사 관리자는 admin
+export type Role = 'admin' | 'manager' | 'operator'
+export type Me = { email: string; role: Role | null; company: { id: string; name: string } | null }
+export const getMe = () => call<Me>('/me')
+
+// 판매사 기업·사용자 관리(관리자 그룹 전용, lambda admin API): 목업 대체 없음, 실패는 화면에 오류 표시
+export type Company = {
+  id: string; name: string; contactName: string; contactEmail: string; phone: string; address: string
+  status: 'active' | 'suspended'; code: string; codeExpiresAt: string; createdAt: string
+}
+export type CompanyRow = Company & { buildingCount: number; memberCount: number }
+export type CompanyInput = Partial<Pick<Company, 'name' | 'contactName' | 'contactEmail' | 'phone' | 'address' | 'status'>>
+export type CompanyDetail = {
+  company: Company
+  buildings: { id: string; name: string; use: string; floors: string[]; roomCount: number }[]
+  members: { sub: string; email: string; role: Role; joinedAt: string }[]
+}
+export type AdminBuilding = { id: string; name: string; companyId: string | null; companyName: string | null }
 export type UserRow = { email: string; status: string; enabled: boolean; admin: boolean; createdAt: string }
-export const listAllow = () => call<{ entries: AllowEntry[] }>('/admin/allow')
-export const addAllow = (entry: string, note: string) => call<AllowEntry>('/admin/allow', { method: 'POST', body: JSON.stringify({ entry, note }) })
-export const removeAllow = (entry: string) => call<{ entry: string }>(`/admin/allow/${encodeURIComponent(entry)}`, { method: 'DELETE' })
+const json = (method: string, body?: object): RequestInit => ({ method, body: body && JSON.stringify(body) })
+const co = (id: string) => `/admin/companies/${encodeURIComponent(id)}`
+export const listCompanies = () => call<{ companies: CompanyRow[] }>('/admin/companies')
+export const createCompany = (body: CompanyInput & { codeDays: number }) => call<{ company: Company }>('/admin/companies', json('POST', body))
+export const getCompany = (id: string) => call<CompanyDetail>(co(id))
+export const updateCompany = (id: string, body: CompanyInput) => call<{ company: Company }>(co(id), json('PATCH', body))
+export const deleteCompany = (id: string) => call<{ deleted: boolean }>(co(id), json('DELETE'))
+export const renewCode = (id: string, days: number) => call<{ company: Company }>(`${co(id)}/code`, json('POST', { days }))
+export const listAdminBuildings = () => call<{ buildings: AdminBuilding[] }>('/admin/buildings')
+export const assignBuilding = (buildingId: string, companyId: string | null) =>
+  call<{ buildingId: string; companyId: string | null }>(`/admin/buildings/${encodeURIComponent(buildingId)}/company`, json('PUT', { companyId }))
 export const listUsers = () => call<{ users: UserRow[] }>('/admin/users')

@@ -1,5 +1,5 @@
 // Cognito 로그인(USER_PASSWORD_AUTH, 라이브러리 없이 cognito-idp HTTPS 직접 호출)
-// - 계정: 허용 목록(이메일·@도메인) 이메일만 자체 가입, 이메일 인증 코드 확인 후 사용. CLI 발급 계정은 첫 로그인에 비밀번호 변경
+// - 계정: 판매사가 발급한 기업 코드로 자체 가입, 이메일 인증 코드 확인 후 사용. CLI 발급 계정은 첫 로그인에 비밀번호 변경
 // - 비밀번호 재설정: 인증된 이메일로 코드 발송(ForgotPassword → ConfirmForgotPassword)
 // - 토큰: 액세스 토큰을 API·WebSocket에 사용, 만료 60초 전 갱신 토큰으로 재발급
 // - 보관: localStorage(하루 종일 사용, 새로고침 후 유지)
@@ -76,8 +76,9 @@ export async function completeNewPassword(email: string, newPassword: string, se
   keep(r.AuthenticationResult)
 }
 
-export async function signUp(email: string, password: string) {
-  await idp('SignUp', { ClientId: CLIENT_ID, Username: email, Password: password, UserAttributes: [{ Name: 'email', Value: email }] })
+// 기업 코드: 가입 전 검사(PreSignUp)가 ClientMetadata로 받아 존재·만료·기업 상태 확인
+export async function signUp(email: string, password: string, companyCode: string) {
+  await idp('SignUp', { ClientId: CLIENT_ID, Username: email, Password: password, UserAttributes: [{ Name: 'email', Value: email }], ClientMetadata: { companyCode } })
 }
 
 export async function confirmSignUp(email: string, code: string) {
@@ -140,7 +141,9 @@ export const isAdmin = () => ((idClaims()['cognito:groups'] as string[] | undefi
 export function authMessage(e: unknown): string {
   const code = e instanceof AuthError ? e.code : ''
   if (code === 'NotAuthorizedException' || code === 'UserNotFoundException') return '이메일 또는 비밀번호가 맞지 않습니다.'
-  if (code === 'UserLambdaValidationException' && e instanceof AuthError && e.message.includes('NOT_ALLOWED')) return '가입이 허용되지 않은 이메일입니다. 관리자에게 허용 목록 등록을 요청하십시오.'
+  // 가입 전 검사 거부: Cognito가 'PreSignUp failed with error ...'로 감싼 메시지
+  if (code === 'UserLambdaValidationException' && e instanceof AuthError && e.message.includes('기업 코드가 올바르지 않거나 만료')) return '기업 코드가 올바르지 않거나 만료되었습니다. 판매사에 새 기업 코드를 요청하십시오.'
+  if (code === 'UserLambdaValidationException') return '가입 정보를 확인하지 못했습니다. 잠시 후 다시 시도하십시오.'
   if (code === 'UsernameExistsException') return '이미 가입한 이메일입니다. 로그인하거나 비밀번호를 재설정하십시오.'
   if (code === 'CodeMismatchException') return '인증 코드가 맞지 않습니다. 메일의 6자리 숫자를 다시 확인하십시오.'
   if (code === 'ExpiredCodeException') return '인증 코드가 만료되었습니다. 코드를 다시 받으십시오.'

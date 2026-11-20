@@ -129,7 +129,7 @@ class DeleteTest(unittest.TestCase):
         sid = '3f1c2a9e-8b7d-4c6e-9f00-1234567890ab'
         with patch.object(schedules.common, 'delete_schedule', return_value=False):
             self.assertEqual(self.call(sid)['statusCode'], 404)
-        with patch.object(schedules.common, 'delete_schedule', return_value=True):
+        with patch.object(schedules.common, 'list_schedules', return_value=[{'id': sid}]), patch.object(schedules.common, 'delete_schedule', return_value=True):
             self.assertEqual(self.call(sid)['statusCode'], 200)
 
 

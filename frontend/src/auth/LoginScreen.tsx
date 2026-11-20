@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
-import { Check, Circle, Eye, EyeOff } from 'lucide-react'
+import { Check, Circle, Eye, EyeOff, LogOut } from 'lucide-react'
 import logo from '../../assets/ege.svg'
-import { authMessage, completeNewPassword, confirmForgotPassword, confirmSignUp, forgotPassword, resendCode, signIn, signUp, AuthError } from './cognito'
+import { authMessage, completeNewPassword, confirmForgotPassword, confirmSignUp, forgotPassword, resendCode, signIn, signOut, signUp, AuthError } from './cognito'
 import './login.css'
 
 // 비밀번호 조건: Cognito 사용자 풀 정책과 같은 값(lambda/template.yaml UserPool)
@@ -12,13 +12,19 @@ const RULES = [
   { label: '숫자 포함', ok: (p: string) => /\d/.test(p) },
 ]
 const strong = (p: string) => RULES.every((r) => r.ok(p))
+// 기업 코드: 판매사 발급 EGE-XXXX-XXXX(영문 대문자·숫자). 입력은 대문자로 바꾸고 영문·숫자만 남긴 뒤 하이픈 자리 채움
+const CODE = /^EGE-[A-Z0-9]{4}-[A-Z0-9]{4}$/
+function formatCode(v: string) {
+  const s = v.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 11)
+  return [s.slice(0, 3), s.slice(3, 7), s.slice(7)].filter(Boolean).join('-')
+}
 
 type Mode = 'login' | 'signup' | 'confirm' | 'forgot' | 'reset' | 'newPassword'
 const TITLE: Record<Mode, string> = {
   login: '로그인', signup: '회원가입', confirm: '이메일 인증', forgot: '비밀번호 재설정', reset: '새 비밀번호 설정', newPassword: '새 비밀번호 설정',
 }
 
-// 로그인 화면: 로그인, 회원가입(허용 목록 이메일), 이메일 인증, 비밀번호 재설정, 첫 로그인 비밀번호 변경
+// 로그인 화면: 로그인, 회원가입(기업 코드), 이메일 인증, 비밀번호 재설정, 첫 로그인 비밀번호 변경
 // - 입력 중 조건 표시(넉터 가이드라인 13 실시간 검증), 비밀번호 보기 버튼
 // - 인증 코드 확인·재설정 후 같은 비밀번호로 바로 로그인
 export default function LoginScreen({ onDone }: { onDone: () => void }) {
@@ -27,6 +33,7 @@ export default function LoginScreen({ onDone }: { onDone: () => void }) {
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [code, setCode] = useState('')
+  const [company, setCompany] = useState('')
   const [session, setSession] = useState('')
   const [show, setShow] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -36,7 +43,7 @@ export default function LoginScreen({ onDone }: { onDone: () => void }) {
   const newPw = mode === 'signup' || mode === 'reset' || mode === 'newPassword'
   const pwOk = strong(password) && password === confirm
   const ready = {
-    login: !!mail && !!password, signup: !!mail && pwOk, confirm: /^\d{6}$/.test(code), forgot: !!mail,
+    login: !!mail && !!password, signup: !!mail && pwOk && CODE.test(company), confirm: /^\d{6}$/.test(code), forgot: !!mail,
     reset: /^\d{6}$/.test(code) && pwOk, newPassword: pwOk,
   }[mode]
 
@@ -56,7 +63,7 @@ export default function LoginScreen({ onDone }: { onDone: () => void }) {
     setBusy(true); setError('')
     try {
       if (mode === 'login') await login()
-      else if (mode === 'signup') { await signUp(mail, password); go('confirm', `${mail}로 6자리 인증 코드를 보냈습니다. 메일이 없으면 스팸함을 확인하십시오.`) }
+      else if (mode === 'signup') { await signUp(mail, password, company); go('confirm', `${mail}로 6자리 인증 코드를 보냈습니다. 메일이 없으면 스팸함을 확인하십시오.`) }
       else if (mode === 'confirm') { await confirmSignUp(mail, code); if (password) await login(); else go('login', '이메일 인증이 끝났습니다. 로그인하십시오.') }
       else if (mode === 'forgot') { await forgotPassword(mail); setPassword(''); setConfirm(''); go('reset', `${mail}로 6자리 재설정 코드를 보냈습니다. 가입하지 않은 이메일이면 메일이 오지 않습니다.`) }
       else if (mode === 'reset') { await confirmForgotPassword(mail, code, password); await login() }
@@ -110,6 +117,8 @@ export default function LoginScreen({ onDone }: { onDone: () => void }) {
             <button type="button" className="lg-link" onClick={resend}>코드 다시 받기</button>
           </>
         )}
+        {mode === 'signup' &&
+          field('lg-company', '기업 코드', <input id="lg-company" value={company} onChange={(e) => setCompany(formatCode(e.target.value))} placeholder="EGE-XXXX-XXXX" autoComplete="off" autoCapitalize="characters" spellCheck={false} maxLength={13} />)}
         {mode === 'login' && field('lg-password', '비밀번호', <><input id="lg-password" type={show ? 'text' : 'password'} autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />{eye}</>)}
         {newPw && (
           <>
@@ -140,8 +149,23 @@ export default function LoginScreen({ onDone }: { onDone: () => void }) {
             <button type="button" className="lg-link" onClick={() => go('login')}>로그인 화면으로</button>
           )}
         </div>
-        {mode === 'signup' && <p className="lg-note">관리자가 허용 목록에 등록한 이메일(또는 도메인)만 가입할 수 있습니다.</p>}
+        {mode === 'signup' && <p className="lg-note">기업 코드는 판매사가 발급합니다. 코드가 없으면 판매사에 요청하십시오.</p>}
       </form>
+    </main>
+  )
+}
+
+// 소속 기업 없음: 로그인했지만 GET /me의 역할이 없는 계정(판매사 관리자 제외). 건물 화면 대신 표시
+export function NoCompany({ email }: { email: string }) {
+  return (
+    <main className="lg">
+      <div className="lg-card">
+        <div className="lg-brand"><img src={logo} alt="에게" /><span>에너지게이트</span></div>
+        <h1>소속 기업 없음</h1>
+        <p className="lg-to">{email}</p>
+        <p className="lg-help">소속 기업이 없어 건물을 표시할 수 없습니다. 판매사에 기업 코드를 요청하십시오.</p>
+        <button className="primary lg-submit lg-icon-btn" type="button" onClick={signOut}><LogOut size={18} aria-hidden />로그아웃</button>
+      </div>
     </main>
   )
 }

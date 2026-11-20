@@ -4,6 +4,7 @@
 - 경로 분기: routeKey의 경로(예: GET /rooms/status) 앞부분으로 기존 모듈 handler 호출, 모듈 코드는 그대로 유지
 - 제외: AI 질의(query.py, anthropic SDK 초기화 3.9초)와 WebSocket·인증 트리거는 별도 함수
 - 초기화: boto3를 모듈 로드 때 import, Lambda 초기화 단계는 메모리와 무관하게 CPU를 최대로 사용
+- 소속 검사: 각 모듈이 tenant.require_building으로 확인, 거부(tenant.Forbidden)는 여기서 403으로 변환
 """
 import boto3  # noqa: F401  초기화 단계 미리 로드
 
@@ -18,6 +19,7 @@ import portfolio
 import recommend
 import schedules
 import status
+import tenant
 
 ROUTES = [
     ('/rooms/status', status.handler),
@@ -29,6 +31,7 @@ ROUTES = [
     ('/chat', chat.handler),
     ('/energy', energy.handler),
     ('/admin', admin.handler),
+    ('/me', tenant.me),
 ]
 
 
@@ -44,4 +47,7 @@ def handler(event, context):
     fn = route(event.get('routeKey', '').split(' ', 1)[-1])
     if not fn:
         return common.resp(404, {'error': '없는 경로입니다.'})
-    return fn(event, context)
+    try:
+        return fn(event, context)
+    except tenant.Forbidden as e:
+        return common.resp(403, {'error': str(e)})

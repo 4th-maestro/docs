@@ -15,6 +15,7 @@ import buildings
 import chat
 import common
 import sim
+import tenant
 import tools
 
 # bedrock-runtime + global 추론 프로필: bedrock-mantle은 Sonnet 5.5 ID를 404로 거부(2026-11-20)
@@ -108,6 +109,10 @@ def handler(event, context):
         return common.resp(400, {'error': 'text는 1~500자'})
     if not b:
         return common.resp(400, {'error': f"알 수 없는 건물: {req.get('buildingId')}"})
+    try:
+        tenant.require_building(event, b['id'])
+    except tenant.Forbidden as e:
+        return common.resp(403, {'error': str(e)})
     return common.resp(200, converse(text, lambda e: None, b['id'], chat.user(event)))
 
 

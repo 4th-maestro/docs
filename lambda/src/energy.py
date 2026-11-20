@@ -4,6 +4,7 @@
 - 표본 오차: 5분 간격 12회 평균 대비 건물 일 합계 최대 0.82%, 건물 시간 값 최대 5.3%(3일 × 건물 4개, architecture.md 11절)
 - 스케줄: 시각을 HH:30 표본으로 판정하므로 시간 중간에 시작하는 스케줄은 해당 시간 전체에 반영되거나 빠짐(호실당 하루 최대 1시간)
 - 캐시: 지난 날짜의 (건물, 날짜, 적용 스케줄)별 층·용도 시간별 kWh를 모듈 메모리에 보관, 오늘은 요청마다 계산
+- 소속: compare는 호출자 소속 건물만 비교, 나머지는 building 소속 검사(tenant.py)
 - 전기요금: 일반용(갑)I 고압A 선택I 전력량요금 연평균 + 기후환경요금 + 연료비조정요금(docs/human/explanation/research/electricity-tariff.md)
 """
 import calendar
@@ -14,6 +15,7 @@ import json
 import buildings
 import common
 import sim
+import tenant
 
 # 전기요금 단가(원/kWh)
 # - 전력량요금 연평균 120.2: 여름 142.6 × 3개월, 봄·가을 98.6 × 5개월, 겨울 130.3 × 4개월(2023-05-16 요금표, 2026-11 동결 확인)
@@ -135,12 +137,15 @@ def _same_point(bid, same, schedules, now):
     return total + (_upto(_hourly(bid, partial, schedules, now), now) if partial else 0)
 
 
-def compare(q, now):
+def compare(q, now, allowed=None):
+    # allowed: 비교 대상 건물 id 집합(None은 전체)
     period = _period(q, ('day', 'month'))
     schedules = common.list_schedules()
     cur, _, same = _span(period, now)
     items = []
     for b in buildings.LIST:
+        if allowed is not None and b['id'] not in allowed:
+            continue
         kwh = round(sum(sum(_hourly(b['id'], d, schedules, now)) for d in cur), 1)
         area = buildings.summary(b)['areaM2']
         items.append({
@@ -214,9 +219,13 @@ def handler(event, context):
     fn = ROUTES.get(event.get('routeKey', '').rsplit(' ', 1)[-1])
     if not fn:
         return common.resp(404, {'error': '없는 경로입니다.'})
-    now = sim.now()
+    now, q = sim.now(), event.get('queryStringParameters') or {}
     try:
-        body = fn(event.get('queryStringParameters') or {}, now)
+        if fn is compare:
+            body = compare(q, now, tenant.allowed_buildings(tenant.caller(event)))
+        else:
+            tenant.require_building(event, _building(q))
+            body = fn(q, now)
     except ValueError as e:  # 잘못된 building, period, weeks
         return common.resp(400, {'error': str(e)})
     return common.resp(200, {'generatedAt': now.isoformat(), 'virtual': True, **body})

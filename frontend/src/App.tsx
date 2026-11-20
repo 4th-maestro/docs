@@ -4,9 +4,10 @@ import AdminPage from './admin/AdminPage'
 import ChatPanel, { type ChatMsg } from './ai/ChatPanel'
 import type { AskResult } from './ai/types'
 import { useAsk } from './ai/useAsk'
-import { clearChat, getBuildings, getChat, getStatus, saveSchedule } from './api'
-import LoginScreen from './auth/LoginScreen'
-import { onAuthChange, signedIn } from './auth/cognito'
+import { clearChat, getBuildings, getChat, getMe, getStatus, saveSchedule, type Me } from './api'
+import LoginScreen, { NoCompany } from './auth/LoginScreen'
+import { AUTH_ON, isAdmin, onAuthChange, signedIn } from './auth/cognito'
+import { MeContext } from './auth/me'
 import BuildingCompare from './energy/BuildingCompare'
 import EnergyPage from './energy/EnergyPage'
 import { SCALES } from './heat'
@@ -59,13 +60,23 @@ export default function App() {
   // 로그인 상태: 로그아웃·토큰 갱신 실패 시 로그인 화면으로 전환
   const [authed, setAuthed] = useState(signedIn)
   useEffect(() => onAuthChange(() => setAuthed(signedIn())), [])
+  // 소속 확인: 로그인 후 GET /me 1회, 로그아웃하면 초기화
+  // - 조회 실패(API 없음·오류)는 확인을 생략하고 건물 화면 유지(목업 동작 보존)
+  const [me, setMe] = useState<Me | null>(null)
+  useEffect(() => {
+    if (!authed || !AUTH_ON) return
+    let alive = true
+    getMe().then((m) => { if (alive) setMe(m) }, () => undefined)
+    return () => { alive = false; setMe(null) }
+  }, [authed])
   if (!authed) return <LoginScreen onDone={() => setAuthed(true)} />
+  if (me && !me.role && !isAdmin()) return <NoCompany email={me.email} />
   const themeButton = (
     <button className="icon" onClick={() => { const t = theme === 'dark' ? 'light' : 'dark'; setTheme(t); saveTheme(t) }} aria-label={theme === 'dark' ? '밝은 화면으로 전환' : '어두운 화면으로 전환'}>
       {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
     </button>
   )
-  return <Shell themeButton={themeButton} dark={theme === 'dark'} />
+  return <MeContext value={me}><Shell themeButton={themeButton} dark={theme === 'dark'} /></MeContext>
 }
 
 function Shell({ themeButton, dark }: { themeButton: React.ReactNode; dark: boolean }) {
@@ -99,7 +110,7 @@ function Shell({ themeButton, dark }: { themeButton: React.ReactNode; dark: bool
   if (route.admin) {
     return (
       <Layout building={null} tab="ops" buildings={buildings} tools={themeButton} admin>
-        <div className="page"><AdminPage /></div>
+        <div className="page"><AdminPage company={route.company} /></div>
       </Layout>
     )
   }

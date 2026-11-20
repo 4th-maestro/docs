@@ -3,6 +3,7 @@ import json
 import os
 
 import buildings
+import tenant
 
 TABLE_NAME = os.environ.get('SCHEDULES_TABLE')
 
@@ -25,8 +26,10 @@ def body(event):
 
 
 def building(event):
-    """GET 쿼리 building의 건물. 없으면 main, 알 수 없으면 ValueError(호출 측에서 400)"""
-    return buildings.get((event.get('queryStringParameters') or {}).get('building'))
+    """GET 쿼리 building의 건물. 없으면 main, 알 수 없으면 ValueError(호출 측에서 400), 소속 밖이면 tenant.Forbidden(403)"""
+    b = buildings.get((event.get('queryStringParameters') or {}).get('building'))
+    tenant.require_building(event, b['id'])
+    return b
 
 
 def bad_building(e):

@@ -12,6 +12,7 @@ from decimal import Decimal
 
 import buildings
 import common
+import tenant
 
 TABLE = os.environ.get('CHAT_TABLE')
 HISTORY_DAYS = 90
@@ -132,6 +133,7 @@ def handler(event, context):
         buildings.get(bid)
     except ValueError as e:
         return common.resp(400, {'error': str(e)})
+    tenant.require_building(event, bid)
     if event['requestContext']['http']['method'] == 'DELETE':
         return common.resp(200, {'deleted': clear(sub, bid)})
     return common.resp(200, {'building': bid, 'messages': history(sub, bid), 'memory': get_memory(sub, bid)})

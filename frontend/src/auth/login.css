@@ -27,3 +27,4 @@
 .lg-field + .lg-link { align-self: flex-start; }
 .lg-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 @media (max-width: 743px) { .lg-card { padding: 24px 20px; } }
+.lg-icon-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }

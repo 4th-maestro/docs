@@ -8,6 +8,7 @@ import os
 
 import buildings
 import common
+import tenant
 
 _s3 = None
 
@@ -25,6 +26,7 @@ def handler(event, context):
         b = buildings.get((event.get('pathParameters') or {}).get('id'))
     except ValueError as e:
         return common.bad_building(e)
+    tenant.require_building(event, b['id'])
     bucket = os.environ.get('PLANS_BUCKET')
     if not bucket:
         return common.resp(404, {'error': '도면 저장소가 설정되지 않았습니다.'})

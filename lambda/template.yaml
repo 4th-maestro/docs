@@ -33,6 +33,11 @@ Globals:
         CHAT_TABLE: !Ref ChatTable
         BUILDINGS_TABLE: !Sub '${TwinPrefix}-Buildings'
         ROOMS_TABLE: !Sub '${TwinPrefix}-Rooms'
+        # 기업·구성원·건물 소속·변경 이력(tenant.py). MEMBERS_TABLE이 있으면 소속 검사 활성
+        COMPANIES_TABLE: !Ref CompaniesTable
+        MEMBERS_TABLE: !Ref MembersTable
+        OWNERS_TABLE: !Ref BuildingOwnersTable
+        AUDIT_TABLE: !Ref AuditTable
 
 Resources:
   Api:
@@ -40,7 +45,7 @@ Resources:
     Properties:
       CorsConfiguration:
         AllowOrigins: [!Ref AllowedOrigin]
-        AllowMethods: [GET, POST, DELETE]
+        AllowMethods: [GET, POST, PUT, PATCH, DELETE]
         AllowHeaders: [content-type, authorization]
       # 모든 경로 로그인 필수: Cognito 액세스 토큰(Authorization: Bearer), CORS 사전 요청은 제외
       Auth:
@@ -66,13 +71,54 @@ Resources:
       KeySchema: [{AttributeName: pk, KeyType: HASH}, {AttributeName: sk, KeyType: RANGE}]
       TimeToLiveSpecification: {AttributeName: ttl, Enabled: true}
 
-  # 가입 허용 목록: 개별 이메일 또는 @도메인(allow.py), 관리자 화면에서 관리
+  # 가입 허용 목록(이전 가입 방식): 사용하는 코드 없음, 기존 항목 보존용으로 유지
+  # - 삭제 예정: 기업 코드 가입 운영 확인 후 제거
   AllowTable:
     Type: AWS::Serverless::SimpleTable
     Properties:
       PrimaryKey: {Name: entry, Type: String}
 
-  # 운영자 계정: 허용 목록 이메일만 자체 가입(가입 전 검사), 이메일 인증 코드, 비밀번호 재설정은 인증된 이메일
+  # 기업(판매사가 등록): 기업 코드 가입 확인용 보조 인덱스 code-index
+  CompaniesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions: [{AttributeName: companyId, AttributeType: S}, {AttributeName: code, AttributeType: S}]
+      KeySchema: [{AttributeName: companyId, KeyType: HASH}]
+      GlobalSecondaryIndexes:
+        - {IndexName: code-index, KeySchema: [{AttributeName: code, KeyType: HASH}], Projection: {ProjectionType: ALL}}
+
+  # 구성원(키 Cognito sub): 기업, 역할(manager·operator), 이메일, 가입일
+  # - 가입 대기: 키 pending#<소문자 이메일>, 2일 뒤 ttl로 자동 삭제
+  MembersTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions: [{AttributeName: sub, AttributeType: S}, {AttributeName: companyId, AttributeType: S}]
+      KeySchema: [{AttributeName: sub, KeyType: HASH}]
+      GlobalSecondaryIndexes:
+        - {IndexName: company-index, KeySchema: [{AttributeName: companyId, KeyType: HASH}], Projection: {ProjectionType: ALL}}
+      TimeToLiveSpecification: {AttributeName: ttl, Enabled: true}
+
+  # 건물 소속 기업: 트윈 Buildings 테이블은 적재 스크립트가 항목 전체를 덮어써서 별도 테이블
+  BuildingOwnersTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions: [{AttributeName: buildingId, AttributeType: S}, {AttributeName: companyId, AttributeType: S}]
+      KeySchema: [{AttributeName: buildingId, KeyType: HASH}]
+      GlobalSecondaryIndexes:
+        - {IndexName: company-index, KeySchema: [{AttributeName: companyId, KeyType: HASH}], Projection: {ProjectionType: ALL}}
+
+  # 변경 이력: 기업별, 정렬 키 at = <ISO 시각>#<uuid>, 항목 actor{sub, email, role}, action, target, detail
+  AuditTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions: [{AttributeName: companyId, AttributeType: S}, {AttributeName: at, AttributeType: S}]
+      KeySchema: [{AttributeName: companyId, KeyType: HASH}, {AttributeName: at, KeyType: RANGE}]
+
+  # 운영자 계정: 기업 코드로 자체 가입(가입 전 검사), 이메일 인증 코드 확인 후 구성원 등록(가입 확인 트리거), 비밀번호 재설정은 인증된 이메일
   # - 메일 발송: Cognito 기본 메일(하루 50통, 발신 no-reply@verificationemail.com)
   # - 이름 Maestro 유지: 사용자 풀 이름 변경은 재생성(기존 계정 삭제)
   UserPool:
@@ -91,7 +137,7 @@ Resources:
         EmailSubject: 에게(에너지게이트) 인증 코드
         EmailMessage: '에게(에너지게이트) 인증 코드는 {####}입니다. 화면에 입력하십시오.'
       AccountRecoverySetting: {RecoveryMechanisms: [{Name: verified_email, Priority: 1}]}
-      LambdaConfig: {PreSignUp: !GetAtt PreSignUpFunction.Arn}
+      LambdaConfig: {PreSignUp: !GetAtt PreSignUpFunction.Arn, PostConfirmation: !GetAtt PostConfirmationFunction.Arn}
       Policies:
         PasswordPolicy: {MinimumLength: 10, RequireLowercase: true, RequireNumbers: true, RequireUppercase: false, RequireSymbols: false, TemporaryPasswordValidityDays: 7}
 
@@ -113,22 +159,40 @@ Resources:
     Properties:
       UserPoolId: !Ref UserPool
       GroupName: admin
-      Description: 허용 목록과 가입자 관리
+      Description: 판매사 총관리자(모든 기업·건물 관리)
 
-  # 가입 전 검사: 사용자 풀 → 함수 참조라 함수 쪽 환경 변수에 사용자 풀을 넣지 않음(순환 참조)
+  # 가입 전 검사(signup.py): 기업 코드 확인, 가입 대기 항목 저장
+  # - 사용자 풀 → 함수 참조라 함수 쪽 환경 변수에 사용자 풀을 넣지 않음(순환 참조)
   PreSignUpFunction:
     Type: AWS::Serverless::Function
     Properties:
       Handler: signup.handler
-      Environment:
-        Variables: {ALLOW_TABLE: !Ref AllowTable}
-      Policies: [DynamoDBReadPolicy: {TableName: !Ref AllowTable}]
+      Policies:
+        - DynamoDBReadPolicy: {TableName: !Ref CompaniesTable}
+        - DynamoDBWritePolicy: {TableName: !Ref MembersTable}
 
   PreSignUpPermission:
     Type: AWS::Lambda::Permission
     Properties:
       Action: lambda:InvokeFunction
       FunctionName: !Ref PreSignUpFunction
+      Principal: cognito-idp.amazonaws.com
+      SourceArn: !GetAtt UserPool.Arn
+
+  # 가입 확인 트리거(confirm.py): 이메일 인증 후 가입 대기 항목을 구성원으로 전환, 변경 이력 기록
+  PostConfirmationFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: confirm.handler
+      Policies:
+        - DynamoDBCrudPolicy: {TableName: !Ref MembersTable}
+        - DynamoDBWritePolicy: {TableName: !Ref AuditTable}
+
+  PostConfirmationPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref PostConfirmationFunction
       Principal: cognito-idp.amazonaws.com
       SourceArn: !GetAtt UserPool.Arn
 
@@ -158,7 +222,7 @@ Resources:
 
   # 조회·관리 API 통합 함수(api.py): 화면 1개당 콜드 스타트 1회
   # - 메모리 1769MB(vCPU 1개): 전력 분석 월 비교 첫 호출(로컬 2.0초)과 전체 현황 계산
-  # - 권한: 스케줄·대화·허용 목록 테이블, 사용자 목록 조회(관리자 API, 권한 판정은 admin.py)
+  # - 권한: 스케줄·대화·기업·구성원·건물 소속·변경 이력 테이블, 사용자 목록 조회(관리자 API·이메일 조회, 권한 판정은 tenant.py)
   ApiFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -166,14 +230,17 @@ Resources:
       MemorySize: 1769
       Timeout: 29
       Environment:
-        Variables: {ALLOW_TABLE: !Ref AllowTable, USER_POOL_ID: !Ref UserPool, PLANS_BUCKET: !Ref PlansBucket}
+        Variables: {USER_POOL_ID: !Ref UserPool, PLANS_BUCKET: !Ref PlansBucket}
       Policies:
         - DynamoDBReadPolicy: {TableName: !Sub '${TwinPrefix}-Buildings'}
         - DynamoDBReadPolicy: {TableName: !Sub '${TwinPrefix}-Rooms'}
         - S3ReadPolicy: {BucketName: !Ref PlansBucket}
         - DynamoDBCrudPolicy: {TableName: !Ref SchedulesTable}
         - DynamoDBCrudPolicy: {TableName: !Ref ChatTable}
-        - DynamoDBCrudPolicy: {TableName: !Ref AllowTable}
+        - DynamoDBCrudPolicy: {TableName: !Ref CompaniesTable}
+        - DynamoDBCrudPolicy: {TableName: !Ref MembersTable}
+        - DynamoDBCrudPolicy: {TableName: !Ref BuildingOwnersTable}
+        - DynamoDBCrudPolicy: {TableName: !Ref AuditTable}
         - Statement:
             - Effect: Allow
               Action: [cognito-idp:ListUsers, cognito-idp:ListUsersInGroup]
@@ -194,10 +261,16 @@ Resources:
         Trend: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /energy/trend, Method: GET}}
         Heatmap: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /energy/heatmap, Method: GET}}
         Breakdown: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /energy/breakdown, Method: GET}}
-        ListAllow: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /admin/allow, Method: GET}}
-        AddAllow: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /admin/allow, Method: POST}}
-        DeleteAllow: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: '/admin/allow/{entry}', Method: DELETE}}
         Users: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /admin/users, Method: GET}}
+        ListCompanies: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /admin/companies, Method: GET}}
+        CreateCompany: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /admin/companies, Method: POST}}
+        GetCompany: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: '/admin/companies/{id}', Method: GET}}
+        UpdateCompany: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: '/admin/companies/{id}', Method: PATCH}}
+        DeleteCompany: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: '/admin/companies/{id}', Method: DELETE}}
+        CompanyCode: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: '/admin/companies/{id}/code', Method: POST}}
+        AdminBuildings: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /admin/buildings, Method: GET}}
+        AssignBuilding: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: '/admin/buildings/{id}/company', Method: PUT}}
+        Me: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /me, Method: GET}}
 
   QueryFunction:
     Type: AWS::Serverless::Function
@@ -211,6 +284,8 @@ Resources:
         - DynamoDBReadPolicy: {TableName: !Sub '${TwinPrefix}-Rooms'}
         - DynamoDBReadPolicy: {TableName: !Ref SchedulesTable}
         - DynamoDBCrudPolicy: {TableName: !Ref ChatTable}
+        - DynamoDBReadPolicy: {TableName: !Ref MembersTable}
+        - DynamoDBReadPolicy: {TableName: !Ref BuildingOwnersTable}
         - Statement:
             - Effect: Allow
               # 응답 스트리밍(messages.stream)은 InvokeModelWithResponseStream 권한 필요
@@ -292,6 +367,8 @@ Resources:
         - DynamoDBReadPolicy: {TableName: !Sub '${TwinPrefix}-Rooms'}
         - DynamoDBReadPolicy: {TableName: !Ref SchedulesTable}
         - DynamoDBCrudPolicy: {TableName: !Ref ChatTable}
+        - DynamoDBReadPolicy: {TableName: !Ref MembersTable}
+        - DynamoDBReadPolicy: {TableName: !Ref BuildingOwnersTable}
         - Statement:
             - Effect: Allow
               Action: [bedrock:InvokeModel, bedrock:InvokeModelWithResponseStream]
