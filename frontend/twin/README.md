@@ -435,7 +435,7 @@ node tools/run-scenario.mjs data/ --live 실시간.json --room 3F-6307 --room-sp
 
 대시보드에 넣으면 **운전 시뮬레이션** 패널은 트윈 안이 아니라 대시보드 시뮬레이션 탭의 패널에 나옵니다(트윈이 계산하고 결과를 `{source:'twin', type:'sim'}`로 보냄).
 
-대시보드에 넣은 상태(`body.hosted`)에서 트윈은 3D 렌더링과 호실 선택만 합니다(2026-11-20). 상단 바(역할, 데이터 흐름, 설비 연결, 지표, 데이터), 층 칩, 지표 칩, 우측 조치 패널, 범례, 호실 보기 도구를 숨깁니다. 대시보드가 `{source:'maestro', type:'ui', action}`(`persona:<역할>`, `flow`, `pipes`, `back`, `rv:<vol|slice|hum|air>`)으로 숨긴 버튼을 대신 누르고, 트윈은 1초마다 바뀐 경우에만 `{source:'twin', type:'twinUi', ui, kpis, actions}`를 보냅니다. 데이터 파일을 바꾸는 **데이터** 버튼은 관리 기능이라 대시보드에 옮기지 않았습니다.
+대시보드에 넣은 상태(`body.hosted`)에서 트윈은 3D 렌더링과 호실 선택만 합니다(2026-11-20). 상단 바(역할, 데이터 흐름, 설비 연결, 지표, 데이터), 층 칩, 지표 칩, 우측 조치 패널, 범례, 호실 보기 도구를 숨깁니다. 대시보드가 `{source:'maestro', type:'ui', action}`(`persona:<역할>`, `flow`, `pipes`, `back`, `rv:<vol|slice|hum|air>`)으로 숨긴 버튼을 대신 누르고, 트윈은 1초마다 바뀐 경우에만 `{source:'twin', type:'twinUi', ui, kpis, actions}`를 보냅니다. 데이터 파일을 바꾸는 **데이터** 버튼은 관리 기능이라 대시보드에 옮기지 않았습니다. 시뮬레이션 역할(`body.p-sim`)에서는 우측 시뮬레이션 패널(`#actions`)도 숨기고, 대시보드가 보낸 `simRun` 메시지로 계산해 결과를 `sim` 메시지로 보냅니다(2026-11-21).
 
 정적 데이터를 바꾸는 방법은 두 가지입니다.
 

@@ -157,7 +157,9 @@
 .sim-two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: end; }
 .sim-base { margin: 0; font-size: 14px; color: var(--muted); }
 .sim-f .primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
-.sim-msg, .sim-note { margin: 0; font-size: 13px; color: var(--muted); }
+.sim-msg, .sim-note { margin: 0; font-size: 14px; color: var(--muted); }
+.sim-msg.err { display: flex; align-items: flex-start; gap: 6px; color: var(--error); }
+.sim-msg.err svg { flex: none; margin-top: 2px; }
 .sim-t { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 14px; }
 .sim-t th, .sim-t td { padding: 6px 4px; border-bottom: 1px solid var(--hairline); text-align: right; font-variant-numeric: tabular-nums; }
 .sim-t th:first-child, .sim-t thead th { text-align: left; font-weight: 500; color: var(--muted); }

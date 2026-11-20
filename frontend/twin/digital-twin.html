@@ -416,6 +416,8 @@
   /* 앱 임베드 역할 요약(2026-11-20): 건물 보기 오른쪽 위 플로팅 카드(요약만). 층·호실 보기와 좁은 화면(480px 이하)은 숨김(앱 상단 지표에 같은 값) */
   body.hosted #actions{display:flex !important;top:12px;right:12px;bottom:auto;width:min(300px,calc(100% - 24px));max-height:none;overflow:visible}
   body.hosted.v-floor #actions, body.hosted.v-room #actions, body.hosted.diving #actions{display:none !important}
+  /* 대시보드 시뮬레이션 탭: 조건 입력·결과는 대시보드 운전 시뮬레이션 카드가 표시, 트윈 안 시뮬레이션 패널 숨김(계산은 simRun 메시지로 그대로 수행) */
+  body.hosted.p-sim #actions{display:none !important}
   body.hosted #actions .hd{cursor:default;padding-right:16px}
   body.hosted #actions .hd::after{display:none}
   body.hosted #actions .hero{margin:12px}
@@ -2850,6 +2852,7 @@ $('#actions').addEventListener('click', e => { if (!document.body.classList.cont
 $('#actions').addEventListener('pointerover', e => { const it = e.target.closest('[data-room]'); if (it && state.view === 'floor') highlight([it.dataset.room], 2.5); });
 function setPersona(pk, quiet){
   if (!PERSONA[pk]) return; state.persona = pk;
+  document.body.classList.toggle('p-sim', pk === 'sim');
   document.querySelectorAll('#persona button').forEach(b => b.setAttribute('aria-selected', b.dataset.p === pk));
   $('#kpis').innerHTML = ''; renderKpis(); renderActions.last = null; renderActions();
   if (!quiet) setMetric(PERSONA[pk].metric);

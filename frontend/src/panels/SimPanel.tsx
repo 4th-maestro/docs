@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ChevronDown, LocateFixed, Play } from 'lucide-react'
+import { AlertTriangle, ChevronDown, LocateFixed, Play } from 'lucide-react'
 import { onTwinSim, sendTwin, type SimForm, type SimState } from '../twin'
 import './panels.css'
 
@@ -12,6 +12,7 @@ import './panels.css'
 const f1 = (v: number | null | undefined) => (v == null || !isFinite(v) ? '–' : v.toLocaleString('ko-KR', { maximumFractionDigits: 1 }))
 const won = (v: number) => (Math.abs(v) >= 10000 ? `₩${f1(v / 10000)}만` : `₩${Math.round(v).toLocaleString('ko-KR')}`)
 const sign = (v: number) => (v > 0 ? '+' : '') + f1(v)
+const simErr = (m: string) => m.startsWith('오류') || m.startsWith('⚠')
 type Row = [string, number | null | undefined, number | null | undefined, string]
 
 function Table({ head, rows }: { head: [string, string]; rows: Row[] }) {
@@ -81,12 +82,15 @@ export default function SimPanel({ frame, onLocate }: { frame: () => HTMLIFrameE
                     </select>
                   </label>
                 </div>
-                {s.hasLive && <label className="sim-chk"><input type="checkbox" checked={form.useLive} onChange={(e) => set('useLive', e.target.checked)} />오늘 실측 기준(기준 = 오늘 실제 운전)</label>}
+                {s.hasLive && <label className="sim-chk"><input type="checkbox" checked={form.useLive} onChange={(e) => set('useLive', e.target.checked)} />오늘 실측 기준(대시보드 재실, 실제 운전, 기상 예보, 실측 전력 보정)</label>}
               </>
             )}
-            <p className="sim-base">기준: {now ? <b>현재 설정 유지 시 예측</b> : form.useLive && s.hasLive ? <b>오늘 실제 운전</b> : <b>기존 운전 {s.base.coolSetpoint}°C · {s.base.hours.join('~')}</b>}</p>
+            <p className="sim-base">기준: {now ? <b>현재 설정 유지 시 예측</b> : form.useLive && s.hasLive ? <><b>오늘 실제 운전</b>(방마다 켠 시간과 설정온도 기록, 지금 이후는 재실 예상)</> : <b>기존 운전 {s.base.coolSetpoint}°C · {s.base.hours.join('~')}</b>}</p>
             <button className="primary" type="submit" disabled={s.busy}><Play size={16} aria-hidden />{s.busy ? '계산 중…' : 'EnergyPlus로 계산'}</button>
-            {s.msg && (s.busy || s.msg.startsWith('⚠')) && <p className="sim-msg" role="status">{s.msg}</p>}
+            {/* 계산 중 안내와 트윈 계산 오류('오류:', '⚠'로 시작): 트윈 안 시뮬레이션 패널을 숨겨 오류는 이 카드에만 표시 */}
+            {s.msg && (s.busy || simErr(s.msg)) && (
+              <p className={simErr(s.msg) ? 'sim-msg err' : 'sim-msg'} role={simErr(s.msg) ? 'alert' : 'status'}>{simErr(s.msg) && <AlertTriangle size={16} aria-hidden />}{s.msg.replace(/^⚠\s*/, '')}</p>
+            )}
           </form>
 
           {R ? (
