@@ -2,6 +2,7 @@
 
 - 재실·운전·설정온도는 같은 호실·같은 시간대면 같은 값(해시 기반)이라 저장소 없이 재현 가능
 - 실내온도·습도·전력은 5초 구간마다 범위 안에서 변동(실시간 수신 목업): 온도 ±0.3℃, 습도 ±1.5%, 전력 ±8%
+- 재실: 회의실·사무실·진료실·대기·휴게는 용도별 규칙, 그 밖의 용도(판매사 등록 건물의 미분류 호실 포함)는 운영 시간 가운데일수록 사용 확률이 높은 공통 규칙
 - 재실 1명당 실내온도 +0.08℃: ROBOD 분석 0.07~0.09℃/명(docs/human/explanation/research/occupancy-thermal-evidence.md)
 - 낭비 패턴(빈 공간 운전, 과냉·과열 설정)과 고장(설정온도 미도달)을 일부 호실에 주입해 추천·이상 감지 검증에 사용
 """
@@ -50,7 +51,9 @@ def occupants(room, t):
         return 0 if _u(*key, 'resv') > 0.6 else 1 + int(_u(*key, 'n') * 3)
     if use == '대기·휴게':
         return int(area / 5 * _u(*key, 'n'))
-    return 0
+    # 그 밖의 용도(기타, 트윈 파이프라인 자동 공간 등 미분류): 사용 확률은 운영 시작·끝 35%, 가운데 70%, 인원은 10㎡당 1명 기준(최소 1명)
+    p = 0.35 + 0.35 * math.sin(math.pi * (t.hour + 0.5 - h0) / (h1 - h0))
+    return 0 if _u(*key, 'resv') > p else max(1, round(area / 10 * (0.5 + 0.5 * _u(*key, 'n'))))
 
 
 def _scheduled(room, t, occ, schedules):

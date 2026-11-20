@@ -777,7 +777,9 @@ const NB = BD_FLOORS.filter(BELOW).length;          // 지하층 수
 //   open: 지붕 정원·데크처럼 외피 없는 층 · green: 바닥을 잔디·정원 색으로
 const LOOPS = fp => !fp?.length ? null : Array.isArray(fp[0]?.[0]) ? (fp.filter(l => l?.length >= 3).length ? fp.filter(l => l?.length >= 3) : null) : fp.length >= 3 ? [fp] : null;
 const inFoot = (x, y, ls) => ls.some(l => inPoly(x, y, l));
-const FLOORS = BD_FLOORS.map((f, fi) => ({ id:f.id, index:fi, below:BELOW(f), plan:null, hasVoid:!!f.atrium, footprint:LOOPS(f.footprint), shellFootprint:LOOPS(f.shellFootprint), top:LOOPS(f.topFootprint), open:!!f.open, green:!!f.green, note:f.note || null,
+// 2026-11-21 이전 파이프라인이 저장한 자동 추정 공간 안내는 표시하지 않음(사용자 요청)
+const AUTO_NOTE = /^사진에서 자동으로 추정한 공간입니다/;
+const FLOORS = BD_FLOORS.map((f, fi) => ({ id:f.id, index:fi, below:BELOW(f), plan:null, hasVoid:!!f.atrium, footprint:LOOPS(f.footprint), shellFootprint:LOOPS(f.shellFootprint), top:LOOPS(f.topFootprint), open:!!f.open, green:!!f.green, note:AUTO_NOTE.test(f.note || '') ? null : f.note || null,
   openings:f.openWalls || [], partitions:f.partitions || [], doors:Array.isArray(f.doors) ? f.doors : null,
   rooms:f.rooms.map(r => ({ id:r.id, floorId:f.id, floorIndex:fi, name:r.name, num:r.number || null, type:r.type || 'room', poly:r.holes?.length ? Object.assign([...r.polygon], { holes:r.holes }) : r.polygon,
     kind:r.use || (r.type === 'room' || !r.type ? 'office' : 'none'), cap:r.capacity || 0, finish:r.finish || null, zoneOf:r.zoneOf || null, zoneBasis:r.zoneBasis || null,

@@ -50,6 +50,19 @@ class BuildingsTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             buildings.get('nope')
 
+    def test_unclassified_room_varies_in_hours(self):
+        # 미분류 호실(기타): 운영 시간 안에는 시간대별로 사용·비사용이 섞이고, 운영 시간 밖은 0명
+        rooms = [{'id': f'x.{i}', 'use': '기타', 'areaM2': 20, 'hours': (9, 18)} for i in range(40)]
+        day = T.replace(hour=0, minute=0)
+        noon = [sim.occupants(r, day.replace(hour=13)) for r in rooms]
+        self.assertTrue(0 < sum(o > 0 for o in noon) < len(rooms))
+        self.assertTrue(all(o in (0, 1, 2) for o in noon))
+        self.assertEqual(sum(sim.occupants(r, day.replace(hour=20)) for r in rooms), 0)
+        # 가운데 시간대 사용 확률이 시작 시간대보다 높음(40호실 × 평일 5일)
+        days = [day + dt.timedelta(days=d) for d in range(7) if (day + dt.timedelta(days=d)).weekday() < 5]
+        used = lambda h: sum(sim.occupants(r, d.replace(hour=h)) > 0 for r in rooms for d in days)
+        self.assertGreater(used(13), used(9))
+
     def test_weekend_building_has_weekend_occupants(self):
         import buildings
         sat = T + dt.timedelta(days=3)

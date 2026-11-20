@@ -1,102 +1,120 @@
 {
  "schema": "twin.rc5-calibration/v1",
  "building": "PNU-ENG6",
- "generatedAt": "2026-11-20T10:41:29.942Z",
+ "generatedAt": "2026-11-20T15:45:46.987Z",
  "engine": "5R1C (ISO 13790) vs EnergyPlus 24.2",
- "criteria": "ASHRAE Guideline 14 시간 단위: CV(RMSE) ≤ 30%, NMBE ±10% (노션 3차 초안 제안값과 같음) · 보정일 3일과 검증일 2일은 서로 다른 날·날씨",
+ "criteria": "ASHRAE Guideline 14 시간 단위: CV(RMSE) ≤ 30%, NMBE ±10% (노션 3차 초안 제안값과 같음) · 실제 부산 기상(EPW 대청동 TMYx 2011-2025) 평일 보정 7일·검증 7일, 서로 다른 주",
  "response": "설정 변경 반응 = 운전 중 전 실 2시간 +2°C일 때 하루 전력 변화, 오차 ±25% 이내를 목표로 둠(우리 기준)",
  "params": "k = { cap 열용량, env 외피·창 열손실, solar 일사 취득, couple 질량–표면 결합 } 배율 · factor = 전력 배율(잠열·COP 차이)",
  "modes": {
   "heat": {
    "k": {
-    "cap": 1.5,
+    "cap": 1,
     "env": 1,
     "solar": 1,
     "couple": 0.4
    },
-   "factor": 1.306,
+   "factor": 1.405,
    "calib": {
     "days": [
-     "2026-11-20",
-     "2026-12-03",
-     "2027-01-14"
+     "2026-01-05",
+     "2026-01-06",
+     "2026-01-07",
+     "2026-01-08",
+     "2026-01-09",
+     "2026-01-12",
+     "2026-01-13"
     ],
-    "hours": 33,
-    "epDeltaKwh": 66.743,
-    "rcDeltaKwh": 62.696,
-    "responseErrPct": -6.064,
-    "epKwh": 507.882,
-    "rcKwh": 507.882,
-    "cvrmsePct": 23.152,
-    "nmbePct": 0,
-    "tempRmseC": 0.492
+    "hours": 77,
+    "epDeltaKwh": 160.481,
+    "rcDeltaKwh": 157.717,
+    "responseErrPct": -1.723,
+    "epKwh": 650.63,
+    "rcKwh": 650.63,
+    "cvrmsePct": 37.702,
+    "nmbePct": -0.001,
+    "tempRmseC": 0.902
    },
    "valid": {
     "days": [
-     "2026-12-15",
-     "2027-02-10"
+     "2026-01-19",
+     "2026-01-20",
+     "2026-01-21",
+     "2026-01-22",
+     "2026-01-23",
+     "2026-01-26",
+     "2026-01-27"
     ],
-    "hours": 22,
-    "epDeltaKwh": 54.092,
-    "rcDeltaKwh": 45.108,
-    "responseErrPct": -16.608,
-    "epKwh": 377.943,
-    "rcKwh": 379.036,
-    "cvrmsePct": 25.602,
-    "nmbePct": -0.303,
-    "tempRmseC": 0.51
+    "hours": 77,
+    "epDeltaKwh": 197.537,
+    "rcDeltaKwh": 183.649,
+    "responseErrPct": -7.03,
+    "epKwh": 1654.463,
+    "rcKwh": 1652.907,
+    "cvrmsePct": 25.168,
+    "nmbePct": 0.095,
+    "tempRmseC": 0.766
    },
    "pass": true,
    "responsePass": true,
    "seconds": {
-    "energyplus": 0.112,
-    "rc5": 0.016
+    "energyplus": 4.909,
+    "rc5": 0.015
    }
   },
   "cool": {
    "k": {
     "cap": 0.5,
-    "env": 0.85,
-    "solar": 0.5,
+    "env": 0.7,
+    "solar": 1,
     "couple": 1
    },
-   "factor": 1.342,
+   "factor": 1.251,
    "calib": {
     "days": [
+     "2026-07-14",
+     "2026-07-15",
+     "2026-07-16",
+     "2026-07-17",
      "2026-07-20",
-     "2026-08-20",
-     "2026-06-25"
+     "2026-07-21",
+     "2026-07-22"
     ],
-    "hours": 36,
-    "epDeltaKwh": -54.655,
-    "rcDeltaKwh": -54.679,
-    "responseErrPct": -0.044,
-    "epKwh": 1599.88,
-    "rcKwh": 1599.88,
-    "cvrmsePct": 5.664,
+    "hours": 84,
+    "epDeltaKwh": -111.298,
+    "rcDeltaKwh": -111.195,
+    "responseErrPct": 0.092,
+    "epKwh": 3064.406,
+    "rcKwh": 3064.406,
+    "cvrmsePct": 13.371,
     "nmbePct": 0,
-    "tempRmseC": 0.054
+    "tempRmseC": 0.025
    },
    "valid": {
     "days": [
-     "2026-08-12",
-     "2026-09-04"
+     "2026-07-27",
+     "2026-07-28",
+     "2026-07-29",
+     "2026-07-30",
+     "2026-07-31",
+     "2026-08-03",
+     "2026-08-04"
     ],
-    "hours": 24,
-    "epDeltaKwh": -40.248,
-    "rcDeltaKwh": -40.979,
-    "responseErrPct": -1.815,
-    "epKwh": 1207.133,
-    "rcKwh": 1173.553,
-    "cvrmsePct": 7.061,
-    "nmbePct": 2.903,
-    "tempRmseC": 0.079
+    "hours": 84,
+    "epDeltaKwh": -148.156,
+    "rcDeltaKwh": -121.944,
+    "responseErrPct": 17.692,
+    "epKwh": 5374.55,
+    "rcKwh": 5588.61,
+    "cvrmsePct": 12.239,
+    "nmbePct": -4.031,
+    "tempRmseC": 0.143
    },
    "pass": true,
    "responsePass": true,
    "seconds": {
-    "energyplus": 0.04,
-    "rc5": 0.036
+    "energyplus": 2.079,
+    "rc5": 0.013
    }
   }
  }

@@ -24,7 +24,7 @@
 | `kb/` | Knowledge Base 원본 문서(규정·쾌적 지표)와 `.md.metadata.json`(문서명, 원문 주소, 시행일, 원문 확인일). 근거는 [KB 문서 원문 확인](../docs/human/explanation/research/kb-sources.md) |
 | `tools/kb_sync.sh` | `kb/`를 KB 원본 버킷에 동기화하고 수집 작업 실행 후 완료 대기 |
 | `src/buildings.py`, `src/buildings.json` | 건물·호실 조회. 배포 환경은 `maestro-twin` 스택의 Buildings·Rooms 테이블(60초 캐시, 3초마다 변경 표시 확인), 로컬·테스트는 `buildings.json`·`rooms.json` |
-| `src/sim.py`, `src/rooms.json` | 가상 HVAC 상태 생성, 본관 호실 137개(공개 IFC 의원 건물) |
+| `src/sim.py`, `src/rooms.json` | 가상 HVAC 상태 생성, 본관 호실 137개(공개 IFC 의원 건물). 재실은 회의실, 사무실, 진료실, 대기·휴게 용도별 규칙. 그 밖의 용도(판매사 등록 건물의 미분류 호실 `기타` 포함)는 운영 시작·끝 35%, 가운데 70% 확률로 사용, 10㎡당 1명 기준 |
 | `tools/demo_status.py` | Frontend 데모 상태 생성(`frontend/public/demo/<건물>.json`, `index.json`) |
 | `tools/build_floorplans.py` | 건물별 3D 도면 생성(`frontend/public/floorplans/<건물>.json`) |
 | `ingest/` | 도면 변환 컨테이너 Lambda(IFC, DXF·DWG, PDF를 `twin.building/v1` 초안으로 변환, YOLO 인식 결과 병합). handler 계약, 빌드, 테스트는 `ingest/README.md` |

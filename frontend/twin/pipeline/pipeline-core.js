@@ -858,9 +858,8 @@ export function assemble(recipe, floorResults){
     if (f.footprint) out.footprint = f.footprint;
     for (const k of ['shellFootprint', 'topFootprint', 'open', 'green', 'below']) if (f[k] != null) out[k] = f[k];
     if (f.note) out.note = f.note;
-    else if (f.autoSpaces) out.note = fr.rooms.some(room => room.type === 'room')
-      ? '사진에서 자동으로 추정한 공간입니다. 호실·설비 정보는 확인이 필요합니다.'
-      : '닫힌 공간을 인식하지 못해 층 윤곽만 표시합니다.';
+    // 자동 추정 공간은 안내 없이 표시(2026-11-21 사용자 요청), 공간을 못 찾은 층만 윤곽 안내
+    else if (f.autoSpaces && !fr.rooms.some(room => room.type === 'room')) out.note = '닫힌 공간을 인식하지 못해 층 윤곽만 표시합니다.';
     return out;
   });
   // 중정·엘리베이터는 건물 전체에 하나: 층마다 찾은 사각형의 좌표별 중앙값 (한 층 사진이 기울어도 흔들리지 않음)
