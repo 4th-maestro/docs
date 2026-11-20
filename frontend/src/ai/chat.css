@@ -32,6 +32,13 @@
 .msg-rooms li button { width: 100%; min-height: 40px; display: flex; align-items: center; gap: 6px; padding: 0 4px; border: 0; border-radius: var(--r-sm); background: none; color: var(--ink); font-size: 15px; text-align: left; }
 .msg-rooms li button:hover { background: var(--surface-soft); }
 .msg-rooms li svg { color: var(--danger); flex: none; }
+.msg-sources { border-top: 1px solid var(--hairline); padding-top: 10px; }
+.msg-sources h3 { margin: 0; }
+.msg-sources ul { list-style: none; margin: 0; padding: 0; }
+/* 누름 영역 44px 이상, 긴 문서명은 줄바꿈(말줄임 없음) */
+.msg-sources a, .msg-sources .src-title { min-height: 44px; display: flex; align-items: center; gap: 6px; color: var(--ink); text-underline-offset: 3px; word-break: keep-all; overflow-wrap: anywhere; }
+.msg-sources a svg { flex: none; color: var(--muted); }
+.msg-sources li p { margin-bottom: 6px; font-size: 14px; color: var(--muted); }
 .msg-rooms .num { margin-left: auto; font-weight: 600; font-variant-numeric: tabular-nums; }
 
 .chat-input { display: flex; align-items: flex-end; gap: 8px; padding: 12px 12px 4px 16px; border-top: 1px solid var(--hairline); background: var(--canvas); }

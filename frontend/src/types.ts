@@ -64,6 +64,9 @@ export type BarChart = { kind: 'bar'; title: string; unit: string; items: { id?:
 export type LineChart = { kind: 'line'; title: string; unit: string; labels: string[]; series: { name: string; role: 'current' | 'previous'; values: (number | null)[] }[]; prefer?: 'table'; note?: string }
 export type Chart = BarChart | LineChart
 
-export type QueryResult = { answer: string; highlight: string[]; draft: Draft | null; charts?: Chart[]; mock?: boolean }
+// AI 답변 근거 문서(lambda 응답 sources): date는 시행일 또는 기준일, checked는 원문 확인일(YYYY-MM-DD)
+export type Source = { title: string; url: string; date: string; checked?: string }
+
+export type QueryResult = { answer: string; highlight: string[]; draft: Draft | null; charts?: Chart[]; sources?: Source[]; mock?: boolean }
 
 export type Mode = 'temp' | 'powerKw' | 'humidity' | 'anomaly'

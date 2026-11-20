@@ -149,13 +149,37 @@ class RunTest(unittest.TestCase):
         self.assertEqual(tools.chips('create_schedule', {**args, 'action': 'setpoint', 'setpoint': 24.0, 'condition': 'always'}), ['2F', '회의실', '13:00 이후', '설정온도 24℃'])
 
 
+class SourcesTest(unittest.TestCase):
+    def setUp(self):
+        self.orig = tools._retrieve
+        doc = {'content': {'text': '냉방온도는 평균 28℃ 이상으로 유지한다.'},
+               'metadata': {'title': '공공기관 에너지이용 합리화 추진에 관한 규정', 'url': 'https://www.law.go.kr/x', 'effective_date': '2025-01-01', 'checked_date': '2026-11-20'}}
+        tools._retrieve = lambda q: [doc, doc]
+
+    def tearDown(self):
+        tools._retrieve = self.orig
+
+    def test_search_sources_deduplicated_into_result(self):
+        query.client = FakeClient(msg('tool_use', tool('search_documents', {'query': '공공기관 냉방 기준 온도'})),
+                                  msg('end_turn', text('공공기관 냉방 기준은 평균 28℃ 이상입니다.')))
+        result = query.run('공공기관 냉방 기준 온도는?', lambda e: None)
+        self.assertEqual(result['sources'], [{'title': '공공기관 에너지이용 합리화 추진에 관한 규정', 'url': 'https://www.law.go.kr/x',
+                                              'date': '2025-01-01', 'checked': '2026-11-20'}])
+        self.assertEqual(tools.chips('search_documents', {'query': '공공기관 냉방 기준 온도'}), ['기준 문서 검색', '공공기관 냉방 기준 온도'])
+
+    def test_missing_kb_is_tool_error(self):
+        tools._retrieve = self.orig
+        with self.assertRaisesRegex(ValueError, 'KB_ID'):
+            tools.run('search_documents', {'query': '냉방 기준'}, None, [])
+
+
 class HttpTest(unittest.TestCase):
     def test_contract_unchanged(self):
         query.client = FakeClient(msg('tool_use', tool('query_spaces', QUERY)), msg('end_turn', text(ANSWER_JSON)))
         res = query.handler({'body': json.dumps({'text': '1층 전력 높은 곳'})}, None)
         self.assertEqual(res['statusCode'], 200)
         body = json.loads(res['body'])
-        self.assertEqual(set(body), {'answer', 'highlight', 'draft', 'steps', 'charts'})
+        self.assertEqual(set(body), {'answer', 'highlight', 'draft', 'steps', 'charts', 'sources'})
         self.assertEqual(body['answer'], ANSWER)
 
     def test_rejects_empty_and_long_text(self):

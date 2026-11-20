@@ -23,6 +23,9 @@
 | PDF 보고서 원본 | `docs/reports/<날짜-주제>/report.md` |
 | 웹 대시보드 코드 | `frontend/`(실행·배포는 `frontend/README.md`) |
 | Lambda·AWS 리소스 코드 | `lambda/`(테스트·배포는 `lambda/README.md`) |
+| AI 도우미 KB 문서(규정·쾌적 기준) | `lambda/kb/`(근거는 `docs/human/explanation/research/kb-sources.md`, 반영은 `lambda/tools/kb_sync.sh`) |
+| 도면 실내기 기호 검출 학습(SageMaker) | `ml/`(실행은 `ml/README.md`) |
+| HVAC 제어 방식 비교(규칙 기반, JEV, DDPG, EnergyPlus) | `ml/hvac_control/`(실행은 `ml/hvac_control/README.md`) |
 | 3D 트윈 임베드 규약 | `docs/human/reference/twin-embed.md` |
 
 문서는 작업에 필요한 것부터 읽는 것이 원칙입니다. 기존 사용자 변경과 병합 충돌은 보존할 대상입니다.
@@ -108,6 +111,16 @@ UI를 바꾸는 작업은 `DESIGN.md` "운영자 화면 기준"(40~50대 운영�
 - 에이전트마다 별도 git worktree와 브랜치를 사용하십시오. 사용자 작업 사본은 수정하지 마십시오.
 - 개발 서버·로컬 DB·시뮬레이터 같은 공유 자원은 주 작업자만 사용하십시오. 에이전트의 확인 범위는 타입 검사와 단위 테스트입니다.
 - 에이전트의 작업 범위는 브랜치 푸시입니다. 머지와 화면 확인은 주 작업자가 수행하십시오.
+
+## SageMaker Endpoint 비용 관리
+
+SageMaker 실시간 Endpoint는 호출이 없어도 켜 둔 시간만큼 요금이 발생합니다. 상시 비용을 막기 위해 다음 규칙을 따르십시오(2026-11-20 사용자 지시).
+
+1. Endpoint는 모델을 실제로 실행해야 할 때만 생성하십시오. 시연, 평가, 도면 변환처럼 사용 시점이 정해진 작업이 대상입니다.
+2. 모델 사용이 끝나면 즉시 `aws sagemaker delete-endpoint`로 Endpoint를 삭제하십시오. 모델(`Model`)과 Endpoint 설정(`EndpointConfig`)은 요금이 없으므로 재생성용으로 유지합니다.
+3. Step Functions 같은 자동 흐름에서 Endpoint를 쓰면 같은 흐름 안에 생성, 호출, 삭제 단계를 모두 포함하십시오. 실패 경로에도 삭제 단계를 넣으십시오.
+4. 작업을 마치기 전에 `aws sagemaker list-endpoints --profile maestro`로 남은 Endpoint가 없는지 확인하고, 결과를 완료 보고에 적으십시오.
+5. 상시 Endpoint가 필요하다고 판단되면 생성 전에 사용자에게 예상 시간당 요금과 함께 확인하십시오.
 
 ## 커밋 메시지와 PR
 

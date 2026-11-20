@@ -10,6 +10,7 @@
 > - 2026-11-20 배포: 웹 https://d2y0m857hv27mz.cloudfront.net, WebSocket 질의 첫 단계 4.7초·완료 11.8초(콜드 스타트 1건), REST 질의 3.8~8.5초(2건), 운영 패널 API 4종 응답 확인
 > - 2026-11-20 배포 반영: 운영 패널 API 4종, 여러 건물(4곳, 호실 533개, `building` 쿼리, `GET /buildings`), 전력 분석 API 4종(`/energy/*`), 로그인(Cognito, 전체 API·WebSocket 인증), AI 대화 기록·메모리(`/chat`)
 > - 화면 틀: 상단바(로고, 건물 토글, 운영·전력 분석 탭), 왼쪽 사이드바(전체 현황, 층 3F→1F), 오른쪽 AI 운영 도우미(채팅형)
+> - 팀 완성안(2026-11-20)은 프런트엔드, 백엔드, AI 서비스, 3D 모델 생성, 모델 학습 5개 영역. 구성 요소 16개의 구현 상태는 12절
 >
 > **다음 작업**: 질의 테스트 문장 30개 작성(미정)
 
@@ -44,7 +45,7 @@ LLM 호출과 도구 실행은 query Lambda가 담당합니다. 모든 HTTP API�
 | 데이터 | DynamoDB(스케줄), 건물·호실은 `maestro-twin` 스택 Buildings·Rooms 테이블(실행 환경별 60초 캐시), 도면은 S3 도면 버킷(`GET /buildings/{id}/plan`) | 판매사·고객사 구조에서 건물·도면을 화면으로 추가·수정(2026-11-20 1단계) |
 | 자연어 질의 | Bedrock Claude Sonnet 5.5(`global.anthropic.claude-sonnet-5-5`, bedrock-runtime global 추론 프로필) | 사용자 지정 상한, 템플릿에서 Haiku 5.5로만 하향 가능. Mantle은 Sonnet 5.5 미제공([장애 기록](troubleshooting/2026-11-20%28Bedrock%20Sonnet%205.5%20%EB%AA%A8%EB%8D%B8%20ID%20404%29.md)) |
 | 정의·배포 | AWS SAM(`lambda/template.yaml`) | 리소스 1개 파일 관리 |
-| RAG(다음 단계) | Bedrock Knowledge Bases | 벡터 저장소 비용 점검 후 결정 |
+| RAG | Bedrock Knowledge Bases, S3 Vectors, Titan Text Embeddings V2 | 규정·쾌적 기준 문서 7건, 사용량 과금([기술 선택 기록](decisions/2026-11-20%28%EA%B7%9C%EC%A0%95%20%EB%AC%B8%EC%84%9C%20RAG%20%EB%B2%A1%ED%84%B0%20%EC%A0%80%EC%9E%A5%EC%86%8C%29.md)) |
 
 주: 결정 경위는 [AWS 아키텍처와 기술 스택](decisions/2026-11-20%28AWS%20%EC%95%84%ED%82%A4%ED%85%8D%EC%B2%98%EC%99%80%20%EA%B8%B0%EC%88%A0%20%EC%8A%A4%ED%83%9D%29.md).
 
@@ -95,6 +96,7 @@ LLM 호출과 도구 실행은 query Lambda가 담당합니다. 모든 HTTP API�
 | IFC | 공간 형상의 최저 높이 삼각형을 합쳐 바닥 다각형 생성 | 의원 건물에서 호실 269개, 약 10초 |
 | DXF | 벽·호실 레이어와 닫힌 폴리라인 | 미실험 |
 | PDF | 벽·호실 인식 모델(CubiCasa5K 사전학습) 후 교정 | 미실험 |
+| 도면 실내기 기호 | YOLO 기호 검출(합성 데이터와 실제 도면 라벨 학습) 후 유형별 LG 모델 표(`ml/hvac_types.json`) 조회 | v1 실제 도면 mAP50 0.006, v2 재학습 준비(12-2절) |
 | 층·호실 표 | 호실 번호, 용도(회의실 등)를 다각형과 이름으로 연결 | 미실험 |
 
 3D는 바닥 다각형을 층고만큼 돌출해 glTF로 만듭니다. 층고 정보가 없으면 3.6m를 기본값으로 씁니다.
@@ -133,11 +135,13 @@ LLM 호출과 도구 실행은 query Lambda가 담당합니다. 모든 HTTP API�
 | `aggregate_spaces` | 층, 용도, 묶음(층·용도), 지표(전력 합계·운전 대수·이상 건수·평균 온도), 표시 방식 | 묶음별 합계·평균, 묶음 막대 | 구현(2026-11-20) |
 | `energy_trend` | 기간(일·주·월), 표시 방식 | 건물 전력 사용량 추이와 이전 기간 비교, 증감률(`changePct`, 이전 기간 같은 시점 대비 %), 선 그래프(`GET /energy/trend` 계산 재사용) | 구현(2026-11-20) |
 | `create_schedule` | 층, 용도, 동작(off·on·setpoint), 시각, 조건(unused·always), 설정온도 | 초안, 적용 전후 시간별 전력 선 그래프, 예상 절감량(그래프와 같은 계산) | 구현 |
+| `search_documents` | 검색 문장 | Knowledge Base 상위 4개 발췌(문서명, 시행일, 원문 주소), 답변 근거 목록(`sources`) | 구현(2026-11-20) |
+| `comfort_index` | 층, 용도, 정렬, 개수, 표시 방식 | 호실별 불쾌지수(기상청 식)·단계, PMV·PPD(ISO 7730, 가정값 함께 반환), 불쾌지수 막대 | 구현(2026-11-20) |
 | `recommend` | 층 또는 건물, 기간 | 낭비 순위와 개선안 반환 | 다음 단계(규칙은 `GET /recommendations`로 구현, LLM 도구 미연결) |
 
 주: 증감률처럼 계산이 필요한 값은 도구가 계산해 결과에 넣고, LLM은 그 값을 그대로 씁니다. 스케줄 저장 방법과 설비 미제어 안내는 답변 대신 화면의 초안 카드에 고정 표시합니다(답변 3문장 규칙, [도구 선택 평가](research/ai-tool-eval.md) 5절).
 
-주: AI 답변 그래프는 도구가 결과 데이터로 만든 정의(`charts`: 막대 또는 선)를 응답에 붙여 화면이 그립니다. 숫자는 항상 도구 결과에서 가져오고, LLM은 표시 방식(`view`: auto, chart, table)만 제안합니다. 말풍선 안 작은 그래프와 표 전환, 크게 보기 창으로 표시합니다.
+주: AI 답변 그래프는 도구가 결과 데이터로 만든 정의(`charts`: 막대 또는 선)를 응답에 붙여 화면이 그립니다. 숫자는 항상 도구 결과에서 가져오고, LLM은 표시 방식(`view`: auto, chart, table)만 제안합니다. 말풍선 안 작은 그래프와 표 전환, 크게 보기 창으로 표시합니다. 문서 검색 결과는 `sources`(문서명, 원문 주소, 시행일, 원문 확인일)로 붙어 그래프 아래 근거 목록으로 표시합니다.
 
 주: 답변은 구조화 응답(`output_config.format`, 결론·근거·조치 3칸)으로 받고 칸마다 첫 문장만 표시해 3문장 이하를 보장합니다. 스트리밍 중에는 서버가 부분 JSON에서 칸 텍스트만 화면에 보냅니다([AI 답변 구조화 응답](decisions/2026-11-20%28AI%20%EB%8B%B5%EB%B3%80%20%EA%B5%AC%EC%A1%B0%ED%99%94%20%EC%9D%91%EB%8B%B5%29.md)).
 
@@ -186,11 +190,11 @@ Frontend는 `VITE_WS_URL`이 있으면 WebSocket API의 `ask` 라우트로 질�
 | 규칙 | 판정 조건(기본값) | 근거 |
 |---|---|---|
 | 빈 공간 운전 | 예약·재실 없음 상태 30분 이상 운전 | 비재실 시간 운전 낭비(PNNL 2008) |
-| 과냉·과열 설정 | 냉방 설정 26℃ 미만, 난방 설정 20℃ 초과 | 정부 권고 26℃, 공공기관 냉방 28℃ 이상(보도) |
+| 과냉·과열 설정 | 냉방 설정 26℃ 미만, 난방 설정 20℃ 초과 | 냉난방온도 제한 냉방 26℃ 이상·난방 20℃ 이하(시행규칙 제31조의2), 공공기관 냉방 평균 28℃ 이상·난방 18℃ 이하(고시 제14조) |
 | 업무 외 운전 | 운영 시간 밖 운전 주 2회 이상 | 과제 예시(13시 이후 미사용 회의실) |
 | 설정온도 미도달(확장) | 운전 1시간 후 실내·설정온도 차 3℃ 이상 | 고장 탐지 모듈로 전달 |
 
-주: 기준값은 운영자가 바꿀 수 있습니다. 공공기관 기준 원문 조문은 확인하지 않았습니다.
+주: 기준값은 운영자가 바꿀 수 있습니다. 조문 원문은 [KB 수록 자료 조사](research/kb-sources.md) 2~3절에서 2026-11-20 확인했습니다.
 
 **8-2. 규칙 3종은 `GET /recommendations`(`lambda/src/recommend.py`)로 구현했고, 추천 1건마다 바로 저장할 수 있는 스케줄 초안을 포함합니다.**
 
@@ -242,6 +246,7 @@ frontend/          React 대시보드(heat.ts 색 척도, twin.ts 임베드 연�
 lambda/src/        Lambda 코드(status, query, schedules, recommend, anomalies, history, portfolio, tools, sim, buildings.json, rooms.json)
 lambda/tests/      가상 데이터·도구 검증 테스트
 lambda/template.yaml  AWS SAM 템플릿(API, Lambda, DynamoDB, S3, CloudFront)
+ml/                도면 실내기 기호 검출 학습(synth.py 합성, train.py 학습, sagemaker.sh CLI 실행), hvac_control/ 제어 비교
 docs/              문서(현재 구조 유지)
 ```
 
@@ -295,10 +300,43 @@ docs/              문서(현재 구조 유지)
 
 주: 모든 패널에 데이터 기준 시각, 범례·단위, 표로 보기, 마우스·키보드 툴팁이 있습니다. API 호출이 실패하면 `src/energy/mock.ts` 목업으로 대체하고 `목업`을 표시합니다. 히트맵 색은 0kW 무채색과 순차 파랑 5단계이며 `primary`는 사용하지 않습니다.
 
+## 12. 목표 구조: 2026-11-20 완성안, 5개 영역
+
+**12-1. 팀 완성안은 프런트엔드, 백엔드, AI 서비스, 3D 모델 생성, 모델 학습(오프라인) 5개 영역으로 구성됩니다.**
+
+완성안은 2026-11-20 사용자가 공유한 구조도 기준입니다. 2절 표 2.1은 현재 배포 구성입니다. 이 절의 표는 완성안 대비 상태를 기록합니다. 구조도 이미지 파일은 저장소에 아직 없습니다.
+
+**표 12.1 완성안 구성 요소와 현재 상태(2026-11-20 기준)**
+
+| 영역 | 구성 요소 | 역할 | 상태 |
+|---|---|---|---|
+| 프런트엔드 | Cognito | 로그인 | 구현됨 |
+| 프런트엔드 | CloudFront, S3 | React·Three.js 정적 웹, 3D 모델 | 웹 구현됨. 3D는 도면 JSON(`public/floorplans/`), glb 미구현 |
+| 백엔드 | API Gateway | REST, WebSocket | 구현됨(REST 대신 HTTP API) |
+| 백엔드 | Lambda | 백엔드 로직 | 구현됨 |
+| 백엔드 | DynamoDB | 설비 상태·이력 | 일부 구현(스케줄, 대화). 상태는 요청 시 계산(6절) |
+| 백엔드 | EventBridge | 1분 실내 온도·전력 계산, 5분 빈 방·이상 판단 후 제어 | 계획 |
+| 백엔드 | CloudWatch | 모니터링 | Lambda 기본 로그만 사용. 경보·대시보드 없음 |
+| 백엔드 | S3 | 도면, 3D 모델 | 계획 |
+| AI 서비스 | Bedrock Agent(Claude) | 챗봇 질의, 도구 호출 | 현재는 query Lambda가 Bedrock 도구 호출을 직접 수행(7절) |
+| AI 서비스 | Bedrock Knowledge Base, S3, S3 Vectors | 규정·쾌적 기준 문서 RAG, 답변 근거 목록 | 구현(FR-18). query Lambda가 Retrieve API로 조회(7절) |
+| AI 서비스 | Jev(TypeSafe AI) 판단 API(외부) | 빈 방·이상 판단 | 규칙 기반과 비교 실험 중(`ml/hvac_control/`) |
+| AI 서비스 | SageMaker Endpoint | DRL 최적 제어 추천 | 계획. 현재 추천은 규칙 3종(8절) |
+| 3D 모델 생성 | Step Functions | 도면 변환 워크플로 | 계획 |
+| 3D 모델 생성 | SageMaker Endpoint | 도면 인식 | 계획. 학습 모델은 12-2 |
+| 3D 모델 생성 | Lambda(컨테이너) | IFC·glb 생성 | 계획. IFC 추출은 실험 스크립트만 존재(4절) |
+| 모델 학습 | S3, Processing, Training, Model Registry | 학습 데이터, 전처리, 학습, 모델 등록 후 Endpoint 배포 | 도면 인식 구현 중(12-2). DRL, EnergyPlus 보정은 계획 |
+
+**12-2. 도면 인식 학습은 실내기 기호 검출부터 구현했으며, 코드는 `ml/`입니다.**
+
+CubiCasa5K 평면도에 실내기 기호 6종(단순 선 기호와 국내 CAD 기호)을 합성한 데이터와 나라장터 실제 설계도면 라벨로 YOLO를 미세조정합니다. 합성 기호만 학습한 v1은 실제 도면 mAP50 0.006이었습니다. 학습은 SageMaker Processing(합성)과 Training(학습)으로 실행하고, 학습 결과는 Model Registry에 승인 대기 상태로 등록합니다. 도면 인식 Endpoint는 3D 변환 워크플로를 만들 때 배포합니다. 선택 근거와 결과는 [도면 실내기 기호 검출 모델](decisions/2026-11-20%28%EB%8F%84%EB%A9%B4%20%EC%8B%A4%EB%82%B4%EA%B8%B0%20%EA%B8%B0%ED%98%B8%20%EA%B2%80%EC%B6%9C%20%EB%AA%A8%EB%8D%B8%29.md) 기록에 있습니다.
+
 ## 다음 작업
 
 | 작업 | 기한 | 담당 |
 |---|---|---|
+| 완성안 구조도 이미지를 `img/`에 추가하고 12절에 연결 | 미정 | 사용자 |
+| 도면 인식 Endpoint 배포와 Step Functions 3D 변환 워크플로 구현 | 미정 | 미정 |
 | LLM 도구 정의 초안과 질의 테스트 문장 30개 작성 | 미정 | 미정 |
 | 가상 데이터 생성 규칙의 계수(정격 용량, 부하율) 확정 | 미정 | 미정 |
 | 추천 LLM 도구(`recommend`)를 `GET /recommendations` 규칙과 연결 | 미정 | 미정 |

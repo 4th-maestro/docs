@@ -1,0 +1,65 @@
+{
+  "controller": "jev",
+  "season": "heating",
+  "start": "2026-01-12",
+  "days": 7,
+  "steps": 672,
+  "energy_kwh": 144.21,
+  "peak_kw": 7.45,
+  "occupied_zone_h": 125.0,
+  "discomfort_zone_h": 86.25,
+  "discomfort_degree_h": 305.77,
+  "zones": {
+    "SPACE1-1": {
+      "occupied_h": 45.0,
+      "discomfort_h": 40.25,
+      "discomfort_degree_h": 228.02,
+      "cold_h": 0.0,
+      "hot_h": 40.25
+    },
+    "SPACE2-1": {
+      "occupied_h": 8.5,
+      "discomfort_h": 8.0,
+      "discomfort_degree_h": 38.97,
+      "cold_h": 0.0,
+      "hot_h": 8.0
+    },
+    "SPACE3-1": {
+      "occupied_h": 11.5,
+      "discomfort_h": 3.0,
+      "discomfort_degree_h": 1.47,
+      "cold_h": 0.0,
+      "hot_h": 3.0
+    },
+    "SPACE4-1": {
+      "occupied_h": 10.0,
+      "discomfort_h": 10.0,
+      "discomfort_degree_h": 16.33,
+      "cold_h": 0.0,
+      "hot_h": 10.0
+    },
+    "SPACE5-1": {
+      "occupied_h": 50.0,
+      "discomfort_h": 25.0,
+      "discomfort_degree_h": 20.98,
+      "cold_h": 0.0,
+      "hot_h": 25.0
+    }
+  },
+  "energy_kwh_occupied": 54.36,
+  "energy_kwh_vacant": 89.85,
+  "cold_zone_h": 0.0,
+  "hot_zone_h": 86.25,
+  "discomfort_pct": 69.0,
+  "jev": {
+    "calls": 672,
+    "errors": 0,
+    "fallback_steps": 0,
+    "invalid_choices": 0,
+    "input_tokens": 3429541,
+    "sec": 192.7,
+    "model": "jev-latest",
+    "confidence_mean": 0.609,
+    "confidence_below_0_8": 2861
+  }
+}

@@ -79,3 +79,13 @@ class ToolsTest(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class ComfortToolTest(unittest.TestCase):
+    def test_comfort_index_sorted_with_assumptions(self):
+        out, view = tools.run('comfort_index', {'floor': 'all', 'use': 'all', 'order': 'desc', 'limit': 5}, T, [])
+        dis = [r['di'] for r in out['rooms']]
+        self.assertEqual(dis, sorted(dis, reverse=True))
+        self.assertEqual(len(view['highlight']), 5)
+        self.assertIn('1.0clo', out['assumptions'])
+        self.assertTrue({'di', 'diStage', 'pmv', 'ppd'} <= set(out['rooms'][0]))

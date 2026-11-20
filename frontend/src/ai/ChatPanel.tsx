@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { LucideIcon } from 'lucide-react'
-import { AlertTriangle, ArrowUp, Check, Info, MessageSquareText, Trash2 } from 'lucide-react'
-import type { Chart, Draft, Room } from '../types'
+import { AlertTriangle, ArrowUp, Check, ExternalLink, Info, MessageSquareText, Trash2 } from 'lucide-react'
+import type { Chart, Draft, Room, Source } from '../types'
 import ChartView, { ChartModal } from './ChartView'
 import { ThinkingBadge, ThinkingPanel } from './ThinkingPanel'
 import type { AskState, Step } from './types'
@@ -24,6 +24,8 @@ export type ChatMsg = {
   fresh?: boolean
   // 도구 결과 그래프(서버 생성), 말풍선 안 표시와 크게 보기
   charts?: Chart[]
+  // 근거 문서(서버 생성), 그래프 아래 목록 표시
+  sources?: Source[]
 }
 
 const ACTION = { off: '운전 OFF', on: '운전 ON', setpoint: '설정온도 변경' }
@@ -131,6 +133,7 @@ function Assistant({ m, rooms, busy, onSave, onClose, onFocus, onSelect, onExpan
   const byId = new Map(rooms.map((r) => [r.id, r]))
   const targets = (m.highlight ?? []).map((id) => byId.get(id)).filter((r): r is Room => !!r)
   const d = m.draft
+  const sources = m.sources ?? []
   return (
     <div className={`msg ai${m.note ? ' note' : ''}${m.fresh ? ' rise-in' : ''}`}>
       {m.mock && <span className="tag">목업 응답</span>}
@@ -142,6 +145,25 @@ function Assistant({ m, rooms, busy, onSave, onClose, onFocus, onSelect, onExpan
       )}
       <p className="msg-text">{m.note && <span className="pop-in"><Check size={16} aria-hidden /></span>}{m.text}</p>
       {m.charts?.map((c, i) => <ChartView key={`${m.id}-${i}`} chart={c} onExpand={() => onExpand(c)} />)}
+      {sources.length > 0 && (
+        <div className="msg-sources">
+          <h3>근거</h3>
+          <ul>
+            {sources.map((s, i) => (
+              <li key={i}>
+                {/* 서버 값이라 http(s) 주소만 링크, 그 외는 문서명만 표시 */}
+                {/^https?:\/\//i.test(s.url) ? (
+                  <a href={s.url} target="_blank" rel="noopener noreferrer">
+                    <span>{s.title}{s.date ? `(${s.date})` : ''}</span>
+                    <ExternalLink size={16} aria-hidden />
+                  </a>
+                ) : <span className="src-title">{s.title}{s.date ? `(${s.date})` : ''}</span>}
+                {s.checked && <p>원문 확인일 {s.checked}</p>}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       {d && m.draftState === 'pending' && (
         <div className="draft fade-in">
           <h3>스케줄 초안</h3>

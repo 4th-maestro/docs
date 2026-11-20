@@ -65,6 +65,10 @@ const METRICS: [RegExp, keyof Room, string, string][] = [
 ]
 
 export async function mockAsk(text: string, building: string): Promise<QueryResult & { mock: true }> {
+  if (/기준|규정/.test(text)) return {
+    answer: '이 답변은 근거 문서 표시를 보여 주는 가상 예시입니다.', highlight: [], draft: null, mock: true,
+    sources: [{ title: '공공기관 에너지이용 합리화 추진에 관한 규정', url: 'https://www.law.go.kr', date: '2025-01-01', checked: '2026-11-20' }],
+  }
   const all = (await demoStatus(building)).rooms
   const fl = text.match(/(\d+)\s*(층|F)/i)
   const floor = fl ? `${fl[1]}F` : 'all'
