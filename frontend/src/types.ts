@@ -59,6 +59,11 @@ export type Draft = {
   estimatedSavingKwh: number
 }
 
-export type QueryResult = { answer: string; highlight: string[]; draft: Draft | null; mock?: boolean }
+// AI 답변 그래프(lambda/src/tools.py chart와 같은 형식): 숫자는 서버 도구 결과
+export type BarChart = { kind: 'bar'; title: string; unit: string; items: { id?: string; label: string; sub?: string; value: number }[]; prefer?: 'table'; note?: string }
+export type LineChart = { kind: 'line'; title: string; unit: string; labels: string[]; series: { name: string; role: 'current' | 'previous'; values: (number | null)[] }[]; prefer?: 'table'; note?: string }
+export type Chart = BarChart | LineChart
+
+export type QueryResult = { answer: string; highlight: string[]; draft: Draft | null; charts?: Chart[]; mock?: boolean }
 
 export type Mode = 'temp' | 'powerKw' | 'humidity' | 'anomaly'

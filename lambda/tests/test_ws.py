@@ -132,7 +132,7 @@ class HttpTest(unittest.TestCase):
         res = query.handler({'body': json.dumps({'text': '1층 전력 높은 곳'})}, None)
         self.assertEqual(res['statusCode'], 200)
         body = json.loads(res['body'])
-        self.assertEqual(set(body), {'answer', 'highlight', 'draft', 'steps'})
+        self.assertEqual(set(body), {'answer', 'highlight', 'draft', 'steps', 'charts'})
         self.assertEqual(body['answer'], ANSWER)
 
     def test_rejects_empty_and_long_text(self):

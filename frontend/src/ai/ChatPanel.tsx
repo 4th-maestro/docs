@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import { AlertTriangle, ArrowUp, Check, MessageSquareText, Trash2 } from 'lucide-react'
-import type { Draft, Room } from '../types'
+import type { Chart, Draft, Room } from '../types'
+import ChartView, { ChartModal } from './ChartView'
 import { ThinkingBadge, ThinkingPanel } from './ThinkingPanel'
 import type { AskState, Step } from './types'
 import './chat.css'
@@ -21,6 +22,8 @@ export type ChatMsg = {
   note?: boolean
   // 화면에서 방금 추가한 메시지: 아래에서 올라오며 등장
   fresh?: boolean
+  // 도구 결과 그래프(서버 생성), 말풍선 안 표시와 크게 보기
+  charts?: Chart[]
 }
 
 const ACTION = { off: '운전 OFF', on: '운전 ON', setpoint: '설정온도 변경' }
@@ -47,6 +50,7 @@ type Props = {
 export default function ChatPanel({ ai, messages, rooms, suggestions, busy, history, onSend, onClear, onSave, onClose, onFocus, onSelect }: Props) {
   const [text, setText] = useState('')
   const [confirmClear, setConfirmClear] = useState(false)
+  const [big, setBig] = useState<Chart | null>(null)
   const log = useRef<HTMLDivElement>(null)
   const input = useRef<HTMLTextAreaElement>(null)
   const running = ai.status === 'running'
@@ -95,7 +99,7 @@ export default function ChatPanel({ ai, messages, rooms, suggestions, busy, hist
         )}
         {messages.map((m) => (m.role === 'user'
           ? <div key={m.id} className={m.fresh ? 'msg me rise-in' : 'msg me'}><p>{m.text}</p></div>
-          : <Assistant key={m.id} m={m} rooms={rooms} busy={busy} onSave={onSave} onClose={onClose} onFocus={onFocus} onSelect={onSelect} />))}
+          : <Assistant key={m.id} m={m} rooms={rooms} busy={busy} onSave={onSave} onClose={onClose} onFocus={onFocus} onSelect={onSelect} onExpand={setBig} />))}
         {live && (
           <div className="msg ai">
             <ThinkingPanel state={ai} />
@@ -117,12 +121,13 @@ export default function ChatPanel({ ai, messages, rooms, suggestions, busy, hist
         />
         <button className="orb" type="submit" disabled={running || !text.trim()} aria-label="질문 보내기"><ArrowUp size={20} /></button>
       </form>
+      {big && <ChartModal chart={big} onClose={() => setBig(null)} />}
       <p className="chat-hint">AI 해석은 틀릴 수 있습니다. 제어 요청은 확인 후에만 저장됩니다.{history === 'local' ? ' 대화 기록은 이 화면에만 남습니다.' : ''}</p>
     </section>
   )
 }
 
-function Assistant({ m, rooms, busy, onSave, onClose, onFocus, onSelect }: { m: ChatMsg; rooms: Room[]; busy: boolean } & Pick<Props, 'onSave' | 'onClose' | 'onFocus' | 'onSelect'>) {
+function Assistant({ m, rooms, busy, onSave, onClose, onFocus, onSelect, onExpand }: { m: ChatMsg; rooms: Room[]; busy: boolean; onExpand: (c: Chart) => void } & Pick<Props, 'onSave' | 'onClose' | 'onFocus' | 'onSelect'>) {
   const byId = new Map(rooms.map((r) => [r.id, r]))
   const targets = (m.highlight ?? []).map((id) => byId.get(id)).filter((r): r is Room => !!r)
   const d = m.draft
@@ -136,6 +141,7 @@ function Assistant({ m, rooms, busy, onSave, onClose, onFocus, onSelect }: { m: 
         </details>
       )}
       <p className="msg-text">{m.note && <span className="pop-in"><Check size={16} aria-hidden /></span>}{m.text}</p>
+      {m.charts?.map((c, i) => <ChartView key={`${m.id}-${i}`} chart={c} onExpand={() => onExpand(c)} />)}
       {d && m.draftState === 'pending' && (
         <div className="draft fade-in">
           <h3>스케줄 초안</h3>

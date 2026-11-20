@@ -68,6 +68,7 @@ export async function mockAsk(text: string, building: string): Promise<QueryResu
     return {
       answer: `${where} 중 ${label} ${asc ? '하위' : '상위'} ${top.length}곳은 ${list}입니다.${idle ? ` 이 중 ${idle}곳은 재실 없이 운전 중이므로 OFF 스케줄을 검토하십시오.` : ''}`,
       highlight: top.map((r) => r.id), draft: null, mock: true,
+      charts: [{ kind: 'bar', title: `${where} ${label} ${asc ? '낮은' : '높은'} 순 ${top.length}곳`, unit, items: top.map((r) => ({ id: r.id, label: r.name, sub: `${r.floor}, ${r.use}`, value: r[key] as number })) }],
     }
   }
 

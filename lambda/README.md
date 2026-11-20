@@ -15,7 +15,7 @@
 | `src/anomalies.py` | `GET /anomalies?building=&floor=` 설정온도 미도달 HVAC 상세, 기대 온도, 원인 후보(규칙 기반 추정) |
 | `src/history.py` | `GET /rooms/history?building=&floor=` 층 전력 시간별 평균(kW)과 사용량(kWh), 오늘 0시~현재와 어제 0~23시 |
 | `src/energy.py` | `GET /energy/compare·trend·heatmap·breakdown` 건물별 전력 사용량 비교, 기간 추이, 요일×시간 평균 kW, 층·용도 구성([설계](../docs/human/explanation/architecture.md) 11절) |
-| `src/tools.py` | LLM 도구 정의와 서버 검증(층·용도는 질의 건물 기준) |
+| `src/tools.py` | LLM 도구 4종(호실 순위, 묶음 합계, 기간 추이, 스케줄 초안) 정의와 서버 검증(층·용도는 질의 건물 기준), 결과 그래프 정의(`chart`: 막대·선) 생성 |
 | `src/buildings.py`, `src/buildings.json` | 건물 4곳(본관 공개 IFC, 가상 3곳), 건물별 호실과 운영 프로필 |
 | `src/sim.py`, `src/rooms.json` | 가상 HVAC 상태 생성, 본관 호실 137개(공개 IFC 의원 건물) |
 | `tools/demo_status.py` | Frontend 데모 상태 생성(`frontend/public/demo/<건물>.json`, `index.json`) |

@@ -155,7 +155,7 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
     const r = ai.result
     if (r) {
       setMessages((ms) => [...ms.map((m) => (m.draftState === 'pending' ? { ...m, draftState: 'closed' as const } : m)),
-        { id: uid(), fresh: true, role: 'assistant', text: r.answer, steps: r.steps, highlight: r.highlight, draft: r.draft, draftState: r.draft ? 'pending' : undefined, mock: r.mock }])
+        { id: uid(), fresh: true, role: 'assistant', text: r.answer, steps: r.steps, highlight: r.highlight, draft: r.draft, draftState: r.draft ? 'pending' : undefined, mock: r.mock, charts: r.charts }])
       setFocus(r.highlight.length ? r.highlight : NO_IDS)
       if (r.draft && floors.includes(r.draft.floor)) setFloor(r.draft.floor)
     }

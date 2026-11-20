@@ -3,9 +3,9 @@ import { mockAnomalies, mockBuildings, mockCancelSchedule, mockHistory, mockReco
 import type { Anomalies, History, Recommendations, Schedules } from './panels/types'
 import { AUTH_ON, getAccessToken, signOut } from './auth/cognito'
 import type { Step } from './ai/types'
-import type { Draft, Portfolio, QueryResult, Status } from './types'
+import type { Chart, Draft, Portfolio, QueryResult, Status } from './types'
 
-export type ChatRecord = { sk: string; role: 'user' | 'assistant'; text: string; steps?: Step[]; highlight?: string[]; draft?: Draft | null }
+export type ChatRecord = { sk: string; role: 'user' | 'assistant'; text: string; steps?: Step[]; highlight?: string[]; draft?: Draft | null; charts?: Chart[] }
 
 const BASE = import.meta.env.VITE_API_BASE_URL as string | undefined
 

@@ -33,7 +33,8 @@ def system(b, memory=None):
     return f"""너는 건물 운영 디지털트윈의 운영 도우미다. 사용자는 건물 운영자다.
 - 대상 건물: {b['name']}({b['use']}, {kind}). 다른 건물은 조회할 수 없다.
 - 층 목록: {', '.join(buildings.floors(b['id']))}. 용도 목록: {', '.join(uses)}.
-- 지표·상태 질문은 query_spaces, 켜기·끄기·설정온도 요청은 create_schedule 도구로 처리한다. 도구 결과에 없는 수치는 만들지 않는다.
+- 호실 지표 순위는 query_spaces, 층·용도별 합계·비교는 aggregate_spaces, 기간 전력 추이·이전 기간 비교는 energy_trend, 켜기·끄기·설정온도 요청은 create_schedule 도구로 처리한다. 도구 결과에 없는 수치는 만들지 않는다.
+- 화면이 도구 결과로 그래프와 표를 자동으로 그린다. 답변에 수치 목록을 길게 나열하지 말고 핵심 수치 1~2개와 해석만 쓴다. 사용자가 표를 원하면 view=table, 그 외에는 view=auto로 호출한다.
 - 대상 층이나 용도가 불분명하거나 이 건물에 없으면 도구를 쓰지 말고 후보를 들어 되묻는다.
 - 스케줄은 초안이며 운영자가 화면에서 확인해야 저장된다고 안내한다. 실제 설비 제어는 하지 않는다.
 - 답변은 한국어 3문장 이내로 쓰고, 마지막 문장에서 낭비를 줄일 다음 조치 1개를 제안한다.""" + (
@@ -73,7 +74,7 @@ def converse(text, emit, bid, sub):
         return result  # 로그인 정보 없음(로컬 테스트): 기록·메모리 저장 생략
     try:
         chat.append(sub, bid, [{'role': 'user', 'text': text},
-                               {'role': 'assistant', 'text': result['answer'], 'steps': result['steps'], 'highlight': result['highlight'], 'draft': result['draft']}])
+                               {'role': 'assistant', 'text': result['answer'], 'steps': result['steps'], 'highlight': result['highlight'], 'draft': result['draft'], 'charts': result.get('charts', [])}])
         chat.put_memory(sub, bid, chat.make_memory(mem, text, result))
     except Exception:
         logging.exception('대화 기록 저장 실패')
@@ -84,7 +85,7 @@ def run(text, emit, bid=None, memory=None):
     """질의 처리 후 {answer, highlight, draft, steps} 반환. emit 예외(연결 종료)는 그대로 전파해 모델 호출 중단"""
     b = buildings.get(bid)
     prompt, t, schedules = system(b, memory), sim.now(), common.list_schedules()
-    messages, ui = [{'role': 'user', 'content': text}], {'highlight': [], 'draft': None}
+    messages, ui = [{'role': 'user', 'content': text}], {'highlight': [], 'draft': None, 'charts': []}
     trace, started, t0 = {}, {}, time.monotonic()
 
     def step(sid, status, **extra):
@@ -142,6 +143,8 @@ def run(text, emit, bid=None, memory=None):
                 out, view = tools.run(block.name, block.input, t, schedules, b['id'])
                 ui['highlight'] = view.get('highlight', ui['highlight'])
                 ui['draft'] = view.get('draft', ui['draft'])
+                if view.get('chart'):
+                    ui['charts'].append(view['chart'])
                 found.update(view.get('highlight', []))
                 results.append({'type': 'tool_result', 'tool_use_id': block.id, 'content': json.dumps(out, ensure_ascii=False)})
             except (ValueError, KeyError, TypeError) as e:
