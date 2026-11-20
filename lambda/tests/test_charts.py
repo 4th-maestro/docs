@@ -40,6 +40,8 @@ class ChartTest(unittest.TestCase):
         self.assertEqual((c['kind'], len(c['labels'])), ('line', 24))
         self.assertEqual([s['role'] for s in c['series']], ['previous', 'current'])
         self.assertEqual(sum(v for v in c['series'][1]['values'] if v is not None), sum(p['kwh'] for p in out['current']))
+        self.assertEqual(out['changePct'], round((out['currentTotal'] - out['previousSamePoint']) / out['previousSamePoint'] * 100, 1))
+        self.assertIn(f"{out['changePct']:+}%", c['note'])
 
     def test_schedule_effect_and_saving_consistent(self):
         args = {'floor': '1F', 'use': 'all', 'action': 'off', 'time': '13:00', 'condition': 'always', 'setpoint': 0}

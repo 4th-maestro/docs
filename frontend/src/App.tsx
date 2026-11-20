@@ -192,7 +192,7 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
   function showDraft(d: Draft) {
     reset(); setSeen(null)
     setMessages((ms) => [...ms.map((m) => (m.draftState === 'pending' ? { ...m, draftState: 'closed' as const } : m)),
-      { id: uid(), fresh: true, role: 'assistant', text: `최적 제어 추천에서 만든 초안입니다. ${d.roomNames[0]}${d.roomIds.length > 1 ? ` 외 ${d.roomIds.length - 1}곳` : ''}이 대상입니다. 확인 후 저장하십시오.`, draft: d, draftState: 'pending', highlight: d.roomIds }])
+      { id: uid(), fresh: true, role: 'assistant', text: `최적 제어 추천에서 만든 초안입니다. ${d.roomNames[0]}${d.roomIds.length > 1 ? ` 외 ${d.roomIds.length - 1}곳` : ''}이 대상입니다.`, draft: d, draftState: 'pending', highlight: d.roomIds }])
     setFocus(d.roomIds)
   }
 

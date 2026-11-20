@@ -42,6 +42,11 @@ JEV_QUESTIONS = {
 }
 
 
+def sentences(text):
+    # 시스템 프롬프트 규칙(3문장 이내) 검사: 한글·닫는 괄호 뒤 마침표만 문장 끝("Conf. Room" 같은 영문 약어 제외)
+    return len([s for s in re.split(r'(?<=[가-힣)][.?!])\s+', text.strip()) if s])
+
+
 def match(expected, calls):
     # 정답 비교: 도구 이름과 정답에 적힌 인자 키만 비교(나머지 인자는 자유)
     if expected['tool'] is None:
@@ -117,7 +122,7 @@ def main():
         ok, why = match(q, calls)
         row = {'id': q['id'], 'text': q['text'], 'expected': q.get('tool'), 'calls': list(calls), 'ok': ok, 'why': why,
                'answer': res.get('answer', ''), 'charts': len(res.get('charts') or []), 'sec': round(time.monotonic() - t0, 1)}
-        row['sentences'] = len(re.split(r'(?<=[.?!])\s+', row['answer'].strip()))  # 시스템 프롬프트 규칙: 3문장 이내
+        row['sentences'] = sentences(row['answer'])
         try:
             row['jev'] = jev({'question': q['text'], 'tool_calls': row['calls'], 'answer': row['answer']})
         except Exception as e:
@@ -125,7 +130,7 @@ def main():
         rows.append(row)
         print(f"{q['id']} {'O' if ok else 'X'} {why:28} {row['sec']:5}s  {q['text']}", flush=True)
     passed = sum(r['ok'] for r in rows)
-    review = [r['id'] for r in rows if isinstance(r.get('jev'), dict) and any(isinstance(v, dict) and (v.get('confidence') or 0) < REVIEW_BELOW for v in r['jev'].values())]
+    review = [r['id'] for r in rows if isinstance(r.get('jev'), dict) and any(r['jev'].get(k, {}).get('confidence', 1) < REVIEW_BELOW for k in JEV_QUESTIONS)]
     summary = {'at': dt.datetime.now().isoformat(timespec='seconds'), 'model': query.MODEL, 'building': a.building, 'total': len(rows), 'passed': passed,
                'tokens': usage, 'over3Sentences': [r['id'] for r in rows if r['sentences'] > 3], 'jevReview': review}
     pathlib.Path(a.out).write_text(json.dumps({'summary': summary, 'rows': rows}, ensure_ascii=False, indent=1))

@@ -24,10 +24,7 @@
   ],
   "over3Sentences": [
    "q02",
-   "q03",
    "q04",
-   "q05",
-   "q06",
    "q07",
    "q08",
    "q09",
@@ -305,7 +302,7 @@
      }
     }
    },
-   "sentences": 7
+   "sentences": 3
   },
   {
    "id": "q04",
@@ -543,7 +540,7 @@
      }
     }
    },
-   "sentences": 5
+   "sentences": 3
   },
   {
    "id": "q06",
@@ -682,7 +679,7 @@
      }
     }
    },
-   "sentences": 4
+   "sentences": 3
   },
   {
    "id": "q07",
@@ -749,7 +746,7 @@
      }
     }
    },
-   "sentences": 6
+   "sentences": 4
   },
   {
    "id": "q08",
@@ -2323,7 +2320,7 @@
      }
     }
    },
-   "sentences": 7
+   "sentences": 4
   },
   {
    "id": "q21",

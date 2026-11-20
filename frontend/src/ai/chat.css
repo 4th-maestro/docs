@@ -40,3 +40,5 @@
 .chat-hint { margin: 0; padding: 4px 16px 12px; font-size: 14px; color: var(--muted); background: var(--canvas); }
 .chat-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 @media (max-width: 1127px) { .chat { height: 70vh; min-height: 520px; } }
+.draft-note { display: flex; align-items: flex-start; gap: 6px; margin: 0 0 12px; font-size: 15px; line-height: 1.5; color: var(--body); word-break: keep-all; }
+.draft-note svg { flex: none; margin-top: 3px; color: var(--muted); }

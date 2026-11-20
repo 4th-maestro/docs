@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { LucideIcon } from 'lucide-react'
-import { AlertTriangle, ArrowUp, Check, MessageSquareText, Trash2 } from 'lucide-react'
+import { AlertTriangle, ArrowUp, Check, Info, MessageSquareText, Trash2 } from 'lucide-react'
 import type { Chart, Draft, Room } from '../types'
 import ChartView, { ChartModal } from './ChartView'
 import { ThinkingBadge, ThinkingPanel } from './ThinkingPanel'
@@ -151,6 +151,8 @@ function Assistant({ m, rooms, busy, onSave, onClose, onFocus, onSelect, onExpan
             <dt>동작</dt><dd>{ACTION[d.action]}{d.setpoint ? ` ${d.setpoint}℃` : ''}</dd>
             <dt>예상 절감</dt><dd>{d.estimatedSavingKwh}kWh/일(가상)</dd>
           </dl>
+          {/* 저장 안내는 AI 답변 대신 카드에 고정 표시(답변 3문장 규칙, 2026-11-20 평가) */}
+          <p className="draft-note"><Info size={16} aria-hidden />아직 저장되지 않았습니다. 스케줄 생성을 누르면 저장되고, 실제 설비는 제어하지 않습니다.</p>
           <div className="btns">
             <button className="secondary" onClick={() => onClose(m)} disabled={busy}>취소</button>
             <button className="primary" onClick={() => onSave(m)} disabled={busy}>스케줄 생성</button>

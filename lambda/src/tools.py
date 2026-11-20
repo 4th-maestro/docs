@@ -63,7 +63,7 @@ TOOLS = [
     },
     {
         'name': 'energy_trend',
-        'description': '건물 전체 전력 사용량(kWh)의 기간 추이를 이전 기간과 비교한다. "오늘 전력 추이", "어제보다 많이 썼나", "이번 주 사용량" 같은 질문에 사용한다.',
+        'description': '건물 전체 전력 사용량(kWh)의 기간 추이를 이전 기간과 비교한다. "오늘 전력 추이", "어제보다 많이 썼나", "이번 주 사용량" 같은 질문에 사용한다. 증감률은 결과의 changePct(이전 기간 같은 시점 대비, %)를 그대로 쓴다.',
         'strict': True,
         'input_schema': {
             'type': 'object', 'additionalProperties': False,
@@ -213,11 +213,12 @@ def _trend(args, t, bid, view):
     n = max(len(d['current']), len(d['previous']))
     labels = [(d['previous'] if len(d['previous']) >= len(d['current']) else d['current'])[i]['label'] for i in range(n)]
     pad = lambda pts: [p['kwh'] for p in pts] + [None] * (n - len(pts))  # noqa: E731  아직 오지 않은 시간·날짜는 빈 값
+    pct = round((d['totalKwh'] - d['prevSameKwh']) / d['prevSameKwh'] * 100, 1) if d['prevSameKwh'] else None  # LLM 계산 오류 방지
     chart = _prefer(view, {
         'kind': 'line', 'title': f"{buildings.get(bid)['name']} {cur_name} 전력 사용량({unit_label}, {prev_name} 비교)", 'unit': 'kWh', 'labels': labels,
         'series': [{'name': prev_name, 'role': 'previous', 'values': pad(d['previous'])}, {'name': cur_name, 'role': 'current', 'values': pad(d['current'])}],
-        'note': f"{cur_name} {d['totalKwh']}kWh, {prev_name} 같은 시점 {d['prevSameKwh']}kWh",
+        'note': f"{cur_name} {d['totalKwh']}kWh, {prev_name} 같은 시점 {d['prevSameKwh']}kWh" + (f"({pct:+}%)" if pct is not None else ''),
     })
-    out = {'period': args['period'], 'unit': 'kWh', 'currentTotal': d['totalKwh'], 'previousSamePoint': d['prevSameKwh'], 'previousTotal': d['prevTotalKwh'],
+    out = {'period': args['period'], 'unit': 'kWh', 'currentTotal': d['totalKwh'], 'previousSamePoint': d['prevSameKwh'], 'changePct': pct, 'previousTotal': d['prevTotalKwh'],
            'current': d['current'], 'previous': d['previous']}
     return out, {'chart': chart}
