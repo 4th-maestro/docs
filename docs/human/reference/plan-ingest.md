@@ -176,7 +176,7 @@
 
 ## 6. 구현 분담과 남은 일
 
-**6-1. 파서, API, 화면은 2026-11-20 main에 반영해 배포했고, 인식 Endpoint는 2026-11-21 v7 모델로 교체했습니다.**
+**6-1. 파서, API, 화면은 2026-11-20 main에 반영해 배포했고, 인식 Endpoint는 2026-11-21 v9 모델로 교체했습니다.**
 
 배포 직후 IngestFunction이 ifcopenshell import에 실패해 x86_64로 바꿨습니다([장애 기록](../explanation/troubleshooting/2026-11-20%28%EB%8F%84%EB%A9%B4%20%EB%B3%80%ED%99%98%20%EC%BB%A8%ED%85%8C%EC%9D%B4%EB%84%88%20ifcopenshell%20GLIBC%20%EB%B6%88%EC%9D%BC%EC%B9%98%29.md)). 재배포 후 상태 머신을 직접 실행해 Parse, Detect, Merge, SaveDraft가 모두 성공했습니다.
 
@@ -186,7 +186,7 @@
 | 작업 API, Step Functions, 인식 호출 Lambda | Lambda `src/plan_ingest.py`, `src/detect.py`, `statemachine/`(#36) | 테스트 통과, `sam validate --lint` 통과 |
 | 업로드, 2D 실내기 매핑, 3D 유형별 형상 | Frontend `src/ingest/`, 판매사 건물 추가의 도면 파일 단계(#27) | 데모 모드 화면 확인(1440px, 390px, 밝은·어두운 화면) |
 | 트윈 층 평면도 유형별 기호와 범례 | Frontend `twin/pipeline/idu-shapes.js`, `twin/digital-twin.html`(#45) | 1440px 밝은·어두운 화면 확인, 390px 미확인 |
-| 인식 Endpoint | `ml/serve/`, `hvac-symbol-detector-sls`(v7) | 타일당 1.0초, ultralytics와 결과 일치 |
+| 인식 Endpoint | `ml/serve/`, `hvac-symbol-detector-sls`(v9) | 타일당 1.0초, ultralytics와 결과 일치 |
 
 **6-2. 실제 설비도면 PDF(춘천초 14쪽)를 배포한 상태 머신에 넣어 222초에 초안을 만들었고, 4방향 카세트 재현율은 0.93입니다.**
 

@@ -231,6 +231,34 @@ def draw_kr(d, k, box, side, ink, w):
     W, H = x1 - x0, y1 - y0
     cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
     m = min(W, H)
+    # 기호 모양 변형(v9): 상자 좌표로 고정 선택(같은 시드면 같은 결과). 학습용 건물(고려대 세종, 파주)에서 확인한 모양
+    #   4방향 0: 굵은 테두리와 가운데 채움(v7), 1: 겹테두리 안 세로 빗금(도시바형), 2: 채움 없는 겹테두리(파주형)
+    #   1방향 0: 한쪽 채운 띠(v7), 1: 테두리 안 짧은 변 방향 루버 선(파주형)
+    var = int(x0 * 7 + y0 * 13) % 3
+    if k == 0 and var:
+        d.rectangle(box, outline=ink, width=max(1, round(m * 0.03)))
+        i = m * 0.1
+        d.rounded_rectangle((x0 + i, y0 + i, x1 - i, y1 - i), radius=m * 0.05, outline=ink, width=max(1, round(m * 0.04)))
+        j = m * 0.2
+        d.rectangle((x0 + j, y0 + j, x1 - j, y1 - j), outline=ink, width=max(1, round(m * 0.03)))
+        if var == 1:
+            n = 9
+            for t in range(1, n):
+                x = x0 + j + (W - 2 * j) * t / n
+                line(d, [(x, y0 + j), (x, y1 - j)], ink, max(1, round(m * 0.015)))
+            d.ellipse((cx - m * 0.03, cy - m * 0.03, cx + m * 0.03, cy + m * 0.03), fill=ink)
+        return
+    if k == 1 and var == 1:
+        d.rectangle(box, outline=ink, width=max(1, round(m * 0.08)))
+        n = max(4, round(max(W, H) / m * 3))
+        for t in range(1, n):
+            if W >= H:
+                x = x0 + W * t / n
+                line(d, [(x, y0 + H * 0.15), (x, y1 - H * 0.15)], ink, max(1, round(m * 0.05)))
+            else:
+                y = y0 + H * t / n
+                line(d, [(x0 + W * 0.15, y), (x1 - W * 0.15, y)], ink, max(1, round(m * 0.05)))
+        return
     # 실제 도면의 2방향·스탠드형은 테두리가 기호 폭의 약 13%, 4방향은 약 10%로 굵음
     d.rectangle(box, outline=ink, width=max(2, round(m * (0.13 if k in (4, 5) else 0.1 if k == 0 else 0.07))))
     if k == 0:

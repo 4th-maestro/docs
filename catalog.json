@@ -333,6 +333,12 @@
       "type": "explanation"
     },
     {
+      "path": "docs/human/explanation/research/2026-11-21(실내기 도면 실제 라벨 건물 수집).md",
+      "title": "실내기 도면 실제 라벨 건물 수집",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
       "path": "docs/human/explanation/research/README.md",
       "title": "외부 조사 기록",
       "audience": "human",

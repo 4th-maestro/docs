@@ -57,10 +57,12 @@ def main():
                 if split == 'test' and pg.get('dup'):
                     continue
                 subprocess.run(['pdftoppm', '-r', str(lab['dpi']), '-png', '-f', no, '-l', no, '-singlefile', pdf, f'{tmp}/p'], check=True)
-                im = Image.open(f'{tmp}/p.png').convert('RGB').crop(pg['area'])
+                im = Image.open(f'{tmp}/p.png').convert('RGB')
+                area = pg.get('area') or [0, 0, im.width, im.height]  # area가 없으면 쪽 전체
+                im = im.crop(area)
                 f = PX / (lab['dpi'] / 0.0254 / pg['scale'])  # 도면 축척 1/scale을 1m당 PX로 변환
                 im = im.resize((round(im.width * f), round(im.height * f)), Image.LANCZOS)
-                ax, ay = pg['area'][:2]
+                ax, ay = area[:2]
                 boxes = [(CLASSES.index(c), (x0 - ax) * f, (y0 - ay) * f, (x1 - ax) * f, (y1 - ay) * f) for x0, y0, x1, y1, c in pg['boxes']]
                 for (x, y), rows in tiles(im, boxes):
                     t = im.crop((x, y, x + TILE, y + TILE))

@@ -52,6 +52,7 @@ ml/sagemaker.sh logs <작업 이름> --follow
 
 - 학습 인스턴스는 `INSTANCE` 환경 변수로 바꾸십시오. 기본값은 `ml.g6.xlarge`(L4 24GB, 서울 리전 시간당 $1.385, 2026-11-20 조회)입니다. 이 인스턴스에서는 GPU 사용률 83~98%, vCPU 4개 사용률 약 93%로 모두 포화되었습니다. `INSTANCE=ml.g6e.4xlarge`(L40S, vCPU 16개, 시간당 $4.62)에서는 학습 속도가 3 it/s에서 8.8 it/s로 올랐습니다. 로컬 Apple M4 Pro(MPS, 메모리 24GB)는 같은 설정(1024px, 배치 16)에서 반복 1회에 80~88초로 g6e.4xlarge보다 약 700배 느려 로컬 학습은 쓰지 않습니다(2026-11-20 측정).
 - 합성 데이터 버전은 `DATASET` 환경 변수로 구분하십시오. 기본값은 `hvac-yolo`(v1, 단순 선 기호 5종)이고, 국내 CAD 기호 6종은 `DATASET=hvac-yolo-v2`입니다. `data`와 `train`에 같은 값을 주십시오.
+- 2026-11-21부터 실제 도면 타일은 `REAL=s3://<버킷>/data/hvac-real-v2/ REAL_REPEAT=5`입니다. 학습용 4개 건물은 `train`, 평가 전용 3개 건물(춘천초, 송도, 천안)은 `test`이며, 건물 단위로 나눠 같은 건물을 학습과 평가에 함께 쓰지 않습니다(`python ml/real_tiles.py OUT --split train 라벨.json=도면.pdf ...`). 추가 평가 건물(사하중, 근화초, 충북국제교육원)은 `ml/eval_pdf.py`로만 평가합니다.
 - 실제 도면 타일을 섞으려면 `REAL=s3://<버킷>/data/hvac-real/`을 지정하십시오. 학습 타일은 `REAL_REPEAT`(기본 20)회 반복해 넣고, `images/test` 타일은 별도로 채점해 `test_metrics.json`의 `real`에 저장합니다.
 - 결과는 `s3://<버킷>/models/<작업 이름>/output/model.tar.gz`입니다. 압축 안의 `hvac/weights/best.pt`가 가중치이고, `test_metrics.json`이 테스트 지표입니다.
 - Endpoint 교체 여부는 `python ml/eval_pdf.py --model best.pt --pdf <춘천초 설비도면 PDF>`로 판단하십시오. 운영 경로와 같은 렌더링(pypdfium2, 1m당 80px), 타일, 병합으로 라벨과 대수 기준 정밀도와 재현율을 계산합니다. `test_metrics.json`의 `real.mAP50`은 클래스 평균이라 대수가 많은 4방향의 하락을 놓칩니다(기술 선택 기록 14절). 2026-11-21 기준 v4는 정밀도 0.538, 재현율 0.757, v7은 0.660, 0.946으로 운영 측정값과 같습니다.
