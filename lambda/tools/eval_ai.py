@@ -1,7 +1,7 @@
 """AI 운영 도우미 평가: 도구 선택 정답 비교 + JEV 답변 판단(선택)
 
 - 실행: AWS_PROFILE=maestro python tools/eval_ai.py [--building main] [--out eval/results.json] (lambda 폴더, anthropic 설치 필요)
-- 도구 선택: eval/questions.json의 정답 도구·인자(일부 키)와 실제 첫 도구 호출을 비교. tool=null은 도구 호출 없음이 정답
+- 도구 선택: eval/questions.json의 정답 도구·인자(일부 키)와 실제 첫 도구 호출을 비교. tool=null(되묻기·안내)은 스케줄 초안을 만들지 않으면 정답(조회 호출 허용, 2026-11-20 결정)
 - 다중 턴: turns 목록을 대화 메모리(chat.make_memory)로 이어 실행하고 마지막 턴의 도구 호출을 비교
 - JEV 판단: 환경 변수 TYPESAFE_API_KEY가 있으면 답변마다 3개 항목 판단, 확신도 0.8 미만은 사람 검토 목록
   - TypeSafe 직접 호출 POST https://api.typesafe.ai/v1/systemone, 모델 기본 jev-latest(JEV_MODEL로 변경), docs.typesafe.ai/api 기준
@@ -52,7 +52,8 @@ def sentences(text):
 def match(expected, calls):
     # 정답 비교: 도구 이름과 정답에 적힌 인자 키만 비교(나머지 인자는 자유)
     if expected['tool'] is None:
-        return not calls, '도구 호출 없음' if not calls else f"불필요한 호출 {calls[0]['name']}"
+        made = [c for c in calls if c['name'] == 'create_schedule']
+        return not made, '초안 없음' + (f"(조회 {len(calls)}회)" if calls else '') if not made else '불필요한 초안 생성'
     if not calls:
         return False, '도구 호출 없음'
     first = calls[0]
