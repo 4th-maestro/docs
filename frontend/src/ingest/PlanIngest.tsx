@@ -5,7 +5,7 @@ import type { Plan } from '../floor-edit'
 import { onBuildingRendered, pipelineSrc } from '../twin'
 import { ACCEPT, API_ON, convertFiles, detect, kindOf, pageFiles, saveTwin, type Convert, type Job, type Page } from './api'
 import { detectingSrc, onDetectRequest, sendPlans } from './bridge'
-import { applyDetections, asPlan, pendingDetections, reviewUnits } from './units'
+import { applyDetections, asPlan, pendingDetections, reviewDoors, reviewUnits } from './units'
 import './ingest.css'
 
 // 도면 업로드 → 2D 실내기 매핑 → 확정 저장(판매사 건물 화면에서 사용). 규약: docs/human/reference/plan-ingest.md
@@ -85,8 +85,8 @@ export default function PlanIngest({ buildingId, onDone, onConfirm, convert }: {
 
   async function confirm(plan: Plan) {
     if (saving.current) return
-    const n = reviewUnits(plan).length, d = pendingDetections(plan)
-    if ((n || d) && !window.confirm(`확인 필요 실내기 ${n}대${d ? `, 위치를 맞추지 않은 인식 결과 ${d}개` : ''}가 남아 있습니다. 이대로 저장할까요?`)) return
+    const n = reviewUnits(plan).length, k = reviewDoors(plan).length, d = pendingDetections(plan)
+    if ((n || k || d) && !window.confirm(`확인 필요 실내기 ${n}대${k ? `, 확인 필요 문 ${k}개` : ''}${d ? `, 위치를 맞추지 않은 인식 결과 ${d}개` : ''}가 남아 있습니다. 이대로 저장할까요?`)) return
     if (onConfirm) { onConfirm(plan); return }
     saving.current = true
     setError('')

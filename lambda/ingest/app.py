@@ -111,13 +111,13 @@ def _cad(job, building, files, paths, pages, tmp):
     if not cads:
         raise ValueError('DXF·DWG 파일이 없습니다.')
     for i, p in enumerate(cads, 1):
-        rooms, units, ln, w = cad.parse(cad.dwg_to_dxf(p, tmp) if p.suffix.lower() == '.dwg' else p)
+        rooms, units, doors, ln, w = cad.parse(cad.dwg_to_dxf(p, tmp) if p.suffix.lower() == '.dwg' else p)
         warnings += w
         fid = common.floor_hint(p.stem) or f'{i}F'
         if any(f['id'] == fid for f in floors):
             warnings.append(f'{p.name}: 층 {fid}이 겹쳐 P{i}로 지정')
             fid = f'P{i}'
-        floors.append({'id': fid, 'level': common.level(fid, i), 'rooms': rooms, 'units': units})
+        floors.append({'id': fid, 'level': common.level(fid, i), 'rooms': rooms, 'units': units, 'doors': doors})
         lines.append(ln)
     draft, M = common.build(job, building, 'cad', files, floors, warnings)
     detect = []

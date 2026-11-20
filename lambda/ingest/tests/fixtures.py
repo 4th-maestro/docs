@@ -15,7 +15,7 @@ from PIL import Image
 
 
 def make_ifc(path, units=True):
-    """층 1개, 호실 2개(10×5m, 5×5m), 4방향 카세트 1대, 별칭 없는 스탠드형·벽걸이형 각 1대, 급기 디퓨저 1개"""
+    """층 1개, 호실 2개(10×5m, 5×5m), 문 1개, 4방향 카세트 1대, 별칭 없는 스탠드형·벽걸이형 각 1대, 급기 디퓨저 1개"""
     f = ifcopenshell.api.project.create_file(version='IFC4')
     proj = ifcopenshell.api.root.create_entity(f, ifc_class='IfcProject', name='P')
     ifcopenshell.api.unit.assign_unit(f, length={'is_metric': True, 'raw': 'METRE'})
@@ -45,6 +45,14 @@ def make_ifc(path, units=True):
         sp.LongName = long
         ifcopenshell.api.aggregate.assign_object(f, relating_object=st, products=[sp])
         solid(sp, *box, 0, 3)
+    # 두 호실 사이 벽(x=10)의 폭 0.9m 문. 배치 원점은 문틀 모서리(10, 2), 배치 x축은 +y 방향입니다.
+    door = ifcopenshell.api.root.create_entity(f, ifc_class='IfcDoor', name='D1')
+    door.OverallWidth, door.OverallHeight = 0.9, 2.1
+    ifcopenshell.api.spatial.assign_container(f, relating_structure=st, products=[door])
+    ifcopenshell.api.geometry.edit_object_placement(
+        f, product=door, matrix=np.array([[0.0, -1, 0, 10], [1, 0, 0, 2], [0, 0, 1, 0], [0, 0, 0, 1]]))
+    prof = sb.polyline([(0.0, -0.05), (0.9, -0.05), (0.9, 0.05), (0.0, 0.05)], closed=True)
+    ifcopenshell.api.geometry.assign_representation(f, product=door, representation=sb.get_representation(body, [sb.extrude(prof, 2.1)]))
     for cls, name, box in (('IfcUnitaryEquipment', '4WAY CASSETTE', (4.5, 2, 5.5, 3, 2.6, 0.3)),
                            ('IfcUnitaryEquipment', 'IDU-02', (13, 4.5, 13.6, 4.9, 0, 1.8)),
                            ('IfcUnitaryEquipment', 'IDU-03', (1, 4.75, 2, 5, 2, 0.3)),
@@ -56,13 +64,26 @@ def make_ifc(path, units=True):
 
 
 def make_dxf(path, with_unit=True):
-    """mm 단위 12×6m 건물을 내벽으로 나눈 호실 2개, 실 이름 문자, 벽걸이 블록 AC_WALL_MOUNT, 속성 TYPE·MODEL 블록 IDU"""
+    """mm 단위 12×6m 건물을 내벽으로 나눈 호실 2개, 실 이름 문자, 벽걸이 블록 AC_WALL_MOUNT, 속성 TYPE·MODEL 블록 IDU
+
+    문 2개: 외벽 0.9m 틈의 문 블록 DOOR_900(경첩 (2000, 0)), 내벽 1m 틈의 문 호(경첩 (6000, 2000)).
+    문이 아닌 호 2개: 반지름 0.3m 호, 벽에서 떨어진 반지름 0.8m 호.
+    """
     doc = ezdxf.new(units=4)
     msp = doc.modelspace()
     doc.layers.add('A-WALL')
-    for a, b in (((0, 0), (12000, 0)), ((12000, 0), (12000, 6000)), ((12000, 6000), (0, 6000)), ((0, 6000), (0, 0)),
-                 ((6000, 0), (6000, 2000)), ((6000, 3000), (6000, 6000))):  # 내벽에 1m 문 개구부
+    doc.layers.add('A-DOOR')
+    for a, b in (((0, 0), (2000, 0)), ((2900, 0), (12000, 0)), ((12000, 0), (12000, 6000)), ((12000, 6000), (0, 6000)),
+                 ((0, 6000), (0, 0)), ((6000, 0), (6000, 2000)), ((6000, 3000), (6000, 6000))):  # 외벽 0.9m, 내벽 1m 문 개구부
         msp.add_line(a, b, dxfattribs={'layer': 'A-WALL'})
+    door = doc.blocks.new('DOOR_900')
+    door.add_arc((0, 0), 900, 0, 90)
+    door.add_line((0, 0), (0, 900))
+    msp.add_blockref('DOOR_900', (2000, 0))
+    msp.add_arc((6000, 2000), 1000, 90, 180, dxfattribs={'layer': 'A-DOOR'})
+    msp.add_line((6000, 2000), (5000, 2000), dxfattribs={'layer': 'A-DOOR'})
+    msp.add_arc((3000, 4000), 300, 0, 90, dxfattribs={'layer': 'A-FURN'})
+    msp.add_arc((3000, 4000), 800, 0, 90, dxfattribs={'layer': 'A-FURN'})
     msp.add_text('회의실', dxfattribs={'insert': (2000, 3000), 'height': 300})
     msp.add_text('201', dxfattribs={'insert': (2000, 2500), 'height': 300})
     msp.add_text('복도', dxfattribs={'insert': (9000, 3000), 'height': 300})

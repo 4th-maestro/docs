@@ -1,5 +1,5 @@
 // 변환 자가 점검: node src/admin/convert.check.mjs (Node 22.18 이상, .ts 타입 제거 실행)
-// - 접두어 중복 방지(재변환 결과 동일), twin·rooms·plan 호실 id 일치, 호실 참조 갱신
+// - 접두어 중복 방지(재변환 결과 동일), twin·rooms·plan 호실 id 일치, 호실 참조 갱신, 층 문(doors) 보존
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { newBuildingId, toServer } from './convert.ts'
@@ -23,4 +23,8 @@ for (const file of ['building.json', 'busan-station/building.json']) {
   assert.ok(plan.every((id) => ids.has(id)), `${file}: plan id가 twin에 없음`)
   console.log(`${file}: 호실 ${once.rooms.length}개, 층 ${Object.keys(once.plan.floors).length}개`)
 }
+
+const door = { id: 'DOOR-1F-edit-1', a: [2, 4], b: [2.9, 4], hinge: 'a', side: 1, source: 'manual' }
+const src = read('building.json')
+assert.deepEqual(toServer({ ...src, floors: src.floors.map((f, i) => (i ? f : { ...f, doors: [door] })) }, bid).twin.floors[0].doors, [door], '문 보존')
 console.log('convert 자가 점검 통과')

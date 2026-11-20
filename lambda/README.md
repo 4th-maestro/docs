@@ -18,7 +18,7 @@
 | `src/tools.py` | LLM 도구 6종(호실 순위, 묶음 합계, 기간 추이, 스케줄 초안, 기준 문서 검색, 쾌적 지표) 정의와 서버 검증(층·용도는 질의 건물 기준), 결과 그래프 정의(`chart`: 막대·선), 문서 근거(`sources`) 생성 |
 | `src/comfort.py` | 불쾌지수(기상청 식)와 단계, PMV·PPD(ISO 7730 반복 계산, 외부 패키지 없음) |
 | `src/plan_ingest.py`, `src/plan_confirm.py` | 도면 변환 작업 API(`/plans/*`, `admin` 그룹 전용): 업로드·시작·인식·상태 조회, 보정본 확정과 건물 등록 연결. 규칙은 아래 "도면 변환" 절 |
-| `src/detect.py`, `layers/pillow/` | 실내기 기호 인식 Lambda(타일 분할, Serverless Endpoint 호출, NMS)와 Pillow 계층 |
+| `src/detect.py`, `layers/pillow/` | 실내기·문 기호 인식 Lambda(타일 분할, Serverless Endpoint 호출, NMS는 실내기끼리와 문끼리 따로 적용)와 Pillow 계층 |
 | `statemachine/plan.asl.json` | 도면 변환 상태 머신(JSONata): Parse, Detect, Merge, SaveDraft, 실패 기록 |
 | `ingest/` | 도면 파서 컨테이너 Lambda(`Dockerfile`, `app.handler`), 브랜치 `feat/plan-parsers` |
 | `kb/` | Knowledge Base 원본 문서(규정·쾌적 지표)와 `.md.metadata.json`(문서명, 원문 주소, 시행일, 원문 확인일). 근거는 [KB 문서 원문 확인](../docs/human/explanation/research/kb-sources.md) |

@@ -95,6 +95,15 @@ class IfcTest(unittest.TestCase):
         self.assertEqual(units['wall_mounted']['room'], '1F-101')
         self.assertEqual(d['meta']['ingest']['kind'], 'ifc')
 
+    def test_door(self):
+        make_ifc(TMP / 'door.ifc')
+        _, d = run(upload(TMP / 'door.ifc'), 'ifc', ['door.ifc'])
+        door, = d['floors'][0]['doors']
+        # 배치 원점(10, 2)이 문틀 모서리여도 형상 범위 중심으로 맞춤. y 반전: 원본 y 2.0~2.9 → 평면 y 3.0~2.1
+        self.assertEqual(door, {'id': 'D-1F-01', 'a': [10.0, 3.0], 'b': [10.0, 2.1], 'hinge': 'a', 'side': 1,
+                                'source': 'ifc', 'conf': 1, 'review': False, 'ref': door['ref']})
+        self.assertEqual(len(door['ref']), 22)  # IFC GlobalId
+
     def test_drawing_for_floor_without_units(self):
         make_ifc(TMP / 'b.ifc', units=False)
         Image.new('L', (400, 300), 255).save(TMP / '1층_설비.png')
@@ -117,6 +126,49 @@ class CadTest(unittest.TestCase):
         self.assertEqual(units['wall_mounted']['room'], '2F-201')
         self.assertEqual(units['wall_mounted']['pos'], [3.0, 0.2])
         self.assertEqual((units['cassette_4way']['room'], units['cassette_4way']['model']), ('2F-r02', 'ARNU15GTRB4'))
+
+    def test_doors_from_block_and_arc(self):
+        make_dxf(TMP / '4층.dxf')
+        _, d = run(upload(TMP / '4층.dxf'), 'cad', ['4층.dxf'])
+        block, arc = d['floors'][0]['doors']  # 반지름 0.3m 호와 벽에서 떨어진 호 제외
+        # 문짝 끝(원본 (2, 0.9) → 평면 (2, 5.1))이 a→b(+x) 기준 화면 위쪽(왼쪽, 법선 (0, -1))이므로 side 1
+        self.assertEqual({k: block[k] for k in ('a', 'b', 'hinge', 'side', 'source', 'conf', 'review')},
+                         {'a': [2.0, 6.0], 'b': [2.9, 6.0], 'hinge': 'a', 'side': 1, 'source': 'cad', 'conf': 1, 'review': False})
+        # 문짝 끝 평면 (5, 4)는 a→b(-y) 기준 법선 (-1, 0) 쪽이므로 side 1
+        self.assertEqual({k: arc[k] for k in ('a', 'b', 'side', 'conf', 'review')},
+                         {'a': [6.0, 4.0], 'b': [6.0, 3.0], 'side': 1, 'conf': 0.6, 'review': False})
+        self.assertEqual(len(d['idus']), 2)  # 문 블록은 실내기 판정 제외
+        self.assertEqual(len(d['floors'][0]['rooms']), 2)
+
+    def test_door_name(self):
+        hits = {n: bool(cad.DOOR_NAME.search(n)) for n in ('DOOR_900', 'A-DOOR', 'DR1', 'SD_DR', '방화문', 'OUTDOOR_UNIT', 'DRAIN', '창문', '문자')}
+        self.assertEqual(hits, {'DOOR_900': True, 'A-DOOR': True, 'DR1': True, 'SD_DR': True, '방화문': True,
+                                'OUTDOOR_UNIT': False, 'DRAIN': False, '창문': False, '문자': False})
+
+    def test_door_detections_become_doors_not_units(self):
+        make_dxf(TMP / 'door.dxf', with_unit=False)
+        s3 = upload(TMP / 'door.dxf')
+        out, _ = run(s3, 'cad', ['door.dxf'])
+        # 평면 (x, y)는 화소 ((x + 1)·80, (y + 1)·80)
+        dets = {'1F': [{'cls': 'cassette_4way', 'conf': 0.9, 'box': [300, 220, 340, 260]},
+                       {'cls': 'door', 'conf': 0.8, 'box': [800, 80, 872, 152]},     # 위 외벽 x 9.0~9.9, 호는 아래쪽
+                       {'cls': 'door', 'conf': 0.9, 'box': [480, 320, 560, 400]},    # 내벽 CAD 문 호와 같은 위치
+                       {'cls': 'door', 'conf': 0.9, 'box': [224, 224, 256, 256]}]}   # 벽에서 먼 0.4m 상자
+        ev = {'op': 'merge', 'jobId': 'j', 'bucket': 'bk', 'draftKey': out['draftKey'], 'detections': dets}
+        res = app.handler(ev, None)
+        self.assertEqual(app.handler(ev, None), res)  # 다시 병합해도 중복 없음
+        self.assertEqual(res, {'draftKey': 'jobs/j/draft.json', 'units': 1, 'review': 0})
+        d = json.loads(s3.objects[out['draftKey']])
+        self.assertEqual([u['cls'] for u in d['idus']], ['cassette_4way'])
+        doors = d['floors'][0]['doors']
+        self.assertEqual([x['source'] for x in doors], ['cad', 'cad', 'yolo', 'yolo'])
+        top, far = doors[2:]
+        self.assertEqual(sorted([top['a'], top['b']]), [[9.0, 0.0], [9.9, 0.0]])
+        # 상자 중심(y 0.45)이 변 아래쪽: a→b가 +x면 화면 오른쪽(-1), -x면 왼쪽(1)
+        self.assertEqual(top['side'], 1 if top['a'][0] > top['b'][0] else -1)
+        self.assertEqual({k: top[k] for k in ('id', 'hinge', 'conf', 'review', 'ref')},
+                         {'id': 'D-1F-Y02', 'hinge': 'a', 'conf': 0.8, 'review': False, 'ref': 'det-2'})
+        self.assertEqual((far['ref'], far['review'], far['a'], far['b']), ('det-4', True, [1.8, 2.0], [2.2, 2.0]))
 
     def test_render_when_no_block_matches_then_merge(self):
         make_dxf(TMP / 'plan.dxf', with_unit=False)
@@ -149,7 +201,7 @@ class CadTest(unittest.TestCase):
         msp.add_lwpolyline([(-5000, -5000), (17000, -5000), (17000, 11000), (-5000, 11000)], close=True)  # 도면 틀
         msp.add_line((-2000, 0), (-2000, 6000), dxfattribs={'layer': 'DIM'})
         doc.saveas(TMP / 'frame.dxf')
-        rooms, _, _, warnings = cad.parse(TMP / 'frame.dxf')
+        rooms, _, _, _, warnings = cad.parse(TMP / 'frame.dxf')
         self.assertEqual(sorted(r['poly'].bounds for r in rooms), [(0, 0, 6, 6), (6, 0, 12, 6)])
         self.assertIn('벽 레이어 없음', warnings[0])
 
@@ -180,12 +232,15 @@ class PdfTest(unittest.TestCase):
         self.assertEqual(d['floors'][0]['background']['px'], [4753, 3359])  # A4 가로, 1/200, 1m당 80px
         self.assertTrue(any('축척 문자 없음' in w for w in out['warnings']))
         res = app.handler({'op': 'merge', 'jobId': 'j', 'bucket': 'bk', 'draftKey': out['draftKey'],
-                           'detections': {'2F': [{'cls': 'cassette_4way', 'conf': 0.8, 'box': [1, 2, 3, 4]}]}}, None)
-        self.assertEqual(res['units'], 1)
+                           'detections': {'2F': [{'cls': 'cassette_4way', 'conf': 0.8, 'box': [1, 2, 3, 4]},
+                                                 {'cls': 'door', 'conf': 0.7, 'box': [10, 10, 90, 90]}]}}, None)
+        self.assertEqual(res['units'], 1)  # 문 인식 결과는 실내기 수에서 제외
         self.assertEqual(res['review'], 1)  # 위치를 맞추지 않은 인식 결과는 확인 필요
         d = json.loads(s3.objects[out['draftKey']])
-        self.assertEqual(d['floors'][0]['detections'], [{'cls': 'cassette_4way', 'conf': 0.8, 'box': [1, 2, 3, 4]}])
+        self.assertEqual(d['floors'][0]['detections'], [{'cls': 'cassette_4way', 'conf': 0.8, 'box': [1, 2, 3, 4]},
+                                                        {'cls': 'door', 'conf': 0.7, 'box': [10, 10, 90, 90]}])
         self.assertEqual(d['idus'], [])
+        self.assertNotIn('doors', d['floors'][0])
 
 
 class RuleTest(unittest.TestCase):
@@ -203,6 +258,13 @@ class RuleTest(unittest.TestCase):
         self.assertEqual(common.classify('AC_WM'), 'wall_mounted')
         self.assertEqual(common.classify('1WAY'), 'cassette_1way')
         self.assertIsNone(common.classify('Supply Diffuser'))
+
+    def test_door_box_clamped_to_edge(self):
+        # 모서리 근처 상자: 중심 투영(x 0.3)에서 폭 0.9m 구간이 변 시작점 밖으로 나가지 않도록 변 안으로 옮김
+        rooms = [{'polygon': [[0, 0], [10, 0], [10, 10], [0, 10]]}]
+        a, b, side, hit, w = common.door_from_box(rooms, [1, 0, 0, 0, 1, 0], [-0.15, 0, 0.75, 0.4])
+        self.assertEqual(([round(v, 6) for v in a], [round(v, 6) for v in b], hit, round(w, 6)), ([0, 0], [0.9, 0], True, 0.9))
+        self.assertEqual(side, -1)  # 상자 중심이 a→b(+x) 기준 화면 아래쪽(오른쪽)
 
     def test_unknown_op(self):
         with self.assertRaises(ValueError):

@@ -15,6 +15,10 @@
 .odu-line { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 4 3; vector-effect: non-scaling-stroke; }
 .odu-line.on { stroke: var(--ink); stroke-width: 2; stroke-dasharray: none; }
 .unit-bg { pointer-events: none; }
+/* 문: 벽 선을 끊는 개구부(방 바탕색), 문짝 선과 1/4 호(ink) */
+.door-mark path { fill: none; stroke: var(--ink); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+.door-gap { stroke: var(--surface-strong); stroke-width: 4; vector-effect: non-scaling-stroke; }
+.door-actions { grid-template-columns: repeat(auto-fit, minmax(176px, 1fr)); }
 .align-pt circle { stroke: var(--canvas); stroke-width: 2; vector-effect: non-scaling-stroke; }
 .align-pt.image circle { fill: var(--caution); }
 .align-pt.plan circle { fill: var(--ink); }

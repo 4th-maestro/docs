@@ -30,11 +30,12 @@
 | `src/panels/` | 운영 패널 4종: 최적 제어 추천, 이상 감지, 오늘 스케줄(세로 시간표: 시작 시각부터 그날 끝까지 칸, 지금 선, 칸 선택 시 상세와 취소, 층 선택 버튼으로 층별 보기), 전력 추이(전력·요금 카드 안 오늘·어제 SVG 추이선). 60초마다 다시 조회 |
 | `src/energy/` | 에너지 분석: `BuildingCompare`(건물별 kWh·1㎡당·전기요금 막대), `EnergyPage`(일·주·월 추이, 사용 구성 흐름도, 최근 4주 요일×시간 히트맵). API 실패 시 `mock.ts` 목업([설계](../docs/human/explanation/architecture.md) 11절) |
 | `src/panels/mock.ts` | 운영 패널·전체 현황 목업: 데모 상태 기반 추천·이상 감지·전력 곡선, 건물별 브라우저 메모리 스케줄 저장소 |
-| `src/BuildingEditor.tsx` | 평면도 편집: 방 이름, 벽 설치, 벽 삭제, 벽 이동, 칸막이, 실내기(`src/ingest/UnitTool.tsx`), 위치 맞춤, 실행 취소 |
+| `src/BuildingEditor.tsx` | 평면도 편집: 방 이름, 벽 설치, 벽 삭제, 벽 이동, 칸막이, 실내기(`src/ingest/UnitTool.tsx`), 문(`src/ingest/DoorTool.tsx`), 위치 맞춤, 실행 취소 |
 | `src/ingest/PlanIngest.tsx` | 도면 업로드, 2D 실내기 매핑, 확정 저장 진입 컴포넌트(판매사 건물 화면에서 사용). 입력 IFC, DXF, DWG, PDF, PNG, JPG |
 | `src/ingest/api.ts` | 도면 변환 API(작업 생성, S3 업로드, 시작, 3초 상태 조회), 기호 인식, 확정 저장 어댑터 `saveTwin` |
 | `src/ingest/UnitTool.tsx` | 실내기 도구(유형 6종 추가, 끌어서 이동, 삭제, 유형 변경, 확인 필요 목록)와 도면 위치 맞춤(기준점 2쌍) |
-| `src/ingest/units.ts` | 기준점 2쌍 유사 변환, 인식 결과 → 실내기, 호실 배정. 유형표 `hvac-types.json`은 `../ml/hvac_types.json` 복사본 |
+| `src/ingest/DoorTool.tsx` | 문 도구(`floors[].doors`): 모든 도구에서 문 기호 표시, 벽 가까이 눌러 폭 0.9m 문 추가, 끌어서 가까운 호실 변으로 이동, 경첩 뒤집기, 열림 방향 뒤집기, 확인 완료, 삭제, 문 확인 필요 목록 |
+| `src/ingest/units.ts` | 기준점 2쌍 유사 변환, 인식 결과 → 실내기와 문, 문 구간 벽 맞춤(`snapDoor`), 호실 배정. 유형표 `hvac-types.json`은 `../ml/hvac_types.json` 복사본 |
 | `public/demo/<건물>.json` | 건물별 데모 상태와 건물 id 목록 `index.json`(`python3 tools/demo_status.py`를 `lambda` 폴더에서 실행해 생성) |
 | `public/floorplans/<건물>.json` | 건물별 3D 도면, API를 쓸 수 없을 때의 대체 파일. `python3 tools/build_floorplans.py`를 `lambda` 폴더에서 실행해 `public/floorplan.json`에서 생성. 운영 도면은 도면 버킷(`lambda/tools/upload_plans.py`) |
 
@@ -111,7 +112,10 @@ npm run dev
 | PNG, JPG | 고른 파일을 트윈 파이프라인에 넣음(`plans` 메시지) | 파이프라인 결과 |
 
 - 파이프라인은 보정 평면도마다 기호 인식을 요청하고(`detectRequest`), 대시보드가 `POST /plans/detect`로 처리합니다. 메시지 목록은 [twin/README.md](twin/README.md) "호스트 연동 메시지"에 있습니다.
-- 2D 매핑 화면은 평면도 편집의 **실내기**와 **위치 맞춤** 도구입니다. 위치 맞춤은 도면 이미지 점 2개와 평면 점 2개로 회전, 축척, 이동을 구하고, 위치를 맞추지 않은 인식 결과(`floors[].detections`)를 실내기로 바꿉니다.
+- 2D 매핑 화면은 평면도 편집의 **실내기**, **문**, **위치 맞춤** 도구입니다. 위치 맞춤은 도면 이미지 점 2개와 평면 점 2개로 회전, 축척, 이동을 구하고, 위치를 맞추지 않은 인식 결과(`floors[].detections`)를 실내기와 문으로 바꿉니다.
+- 인식 결과 중 `cls: door`는 실내기로 바꾸지 않습니다. 상자 중심에서 가장 가까운 호실 변(거리가 상자 긴 변 이하) 위에 폭이 상자 긴 변인 구간을 두고, 열리는 쪽은 상자 중심 쪽, 경첩은 `a`입니다. 맞는 변이 없거나 폭이 0.6~2.0m 밖이면 확인 필요입니다.
+- 문 기호는 경첩에서 문짝 선과 열리는 쪽 1/4 호입니다. `side: 1`은 `a`→`b` 기준 화면 왼쪽(평면 y 아래쪽)입니다. 확인 필요 문은 주황 점선 사각형과 "문 확인 필요 N개" 목록으로 표시합니다. 벽을 옮기거나 방을 나눠도 문 위치는 바뀌지 않으므로 문 도구로 다시 맞추십시오.
+- 3D 트윈(`twin/digital-twin.html`)은 `doors`가 있는 층에서 호실마다 임의로 만들던 문 대신 이 문을 평면도와 호실 3D 보기에 그립니다. 호실 문은 호실 다각형 변 위(중심 거리 0.3m 이내, 같은 방향)에 놓인 문입니다. 3D 벽은 자르지 않고 문 판을 벽 위에 겹쳐 그립니다.
 - 확정 저장은 `saveTwin(buildingId, twin, convert)`입니다. 호출 쪽이 변환 함수(`src/admin/convert.ts`)를 넘기면 `PUT /buildings/{id}/twin` `{twin, rooms, plan}`, 없으면 이 브라우저에만 저장합니다(데모).
 - `VITE_API_BASE_URL`이 없으면 IFC, CAD, PDF 변환과 기호 인식은 동작하지 않고, PNG, JPG만 파이프라인으로 처리합니다.
 
@@ -119,12 +123,12 @@ npm run dev
 
 ```bash
 npm run lint && npm run build
-node src/admin/convert.check.mjs   # building.json 변환 자가 점검(접두어 중복 방지, twin·rooms·plan id 일치)
+node src/admin/convert.check.mjs   # building.json 변환 자가 점검(접두어 중복 방지, twin·rooms·plan id 일치, 문 보존)
 ```
 
 화면을 바꾸면 1440px와 390px 너비에서 버튼 높이·너비와 라벨 잘림을 확인하십시오.
 
-실내기 매핑 계산은 `node src/ingest/units.check.mjs`로 자가 점검합니다(Node 23.6 이상, 기준점 변환, 호실 배정, 인식 결과 변환, 인식용 보정 해상도, 실외기 연결, 빈 호실 추정).
+실내기 매핑 계산은 `node src/ingest/units.check.mjs`로 자가 점검합니다(Node 23.6 이상, 기준점 변환, 호실 배정, 인식 결과 변환, 문 인식 결과 변환과 벽 맞춤, 인식용 보정 해상도, 실외기 연결, 빈 호실 추정).
 
 ## 배포
 

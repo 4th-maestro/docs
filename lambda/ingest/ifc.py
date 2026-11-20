@@ -1,4 +1,5 @@
-"""IFC 파서: 층(IfcBuildingStorey), 호실(IfcSpace 바닥 다각형), 실내기(IfcUnitaryEquipment, 별칭 일치 객체)"""
+"""IFC 파서: 층(IfcBuildingStorey), 호실(IfcSpace 바닥 다각형), 실내기(IfcUnitaryEquipment, 별칭 일치 객체), 문(IfcDoor)"""
+import math
 import statistics
 
 import ifcopenshell
@@ -55,6 +56,36 @@ def _by_size(x0, y0, x1, y1, z0, z1, floor_z, rooms):
     return 'wall_mounted' if wall <= 0.2 and min(x1 - x0, y1 - y0) <= 0.35 else 'unknown'
 
 
+def _door(el, k):
+    """IfcDoor를 배치 x축 방향 문 구간으로 바꿉니다. (문, 바닥 z) 또는 None을 돌려줍니다.
+
+    폭은 OverallWidth, 없으면 형상의 x축 범위입니다. 중심은 형상의 x축 범위 중심입니다.
+    배치 원점이 문 중심(Revit)인 파일과 문틀 모서리(IfcDoorStandardCase)인 파일을 함께 맞추기 위함입니다.
+    형상이 없으면 배치 원점을 중심으로 씁니다. 경첩·열림 방향은 읽지 않고 hinge a, side 1로 둡니다(plan-ingest.md 3-4).
+    """
+    if el.ObjectPlacement is None:
+        return None
+    m = up.get_local_placement(el.ObjectPlacement)
+    ox, oy, oz = (float(v) * k for v in m[:3, 3])
+    n = math.hypot(m[0][0], m[1][0])
+    if n < 1e-6:  # x축이 수직인 배치는 평면 방향을 정할 수 없습니다.
+        return None
+    dx, dy = m[0][0] / n, m[1][0] / n
+    try:
+        pts, _ = _verts(el)
+        ts = [(x - ox) * dx + (y - oy) * dy for x, y, _ in pts]
+        t0, t1, oz = min(ts), max(ts), min(p[2] for p in pts)
+    except Exception:
+        t0 = t1 = 0
+    w = (el.OverallWidth or 0) * k or t1 - t0
+    if w <= 0:
+        return None
+    t = (t0 + t1) / 2
+    a = (ox + dx * (t - w / 2), oy + dy * (t - w / 2))
+    b = (ox + dx * (t + w / 2), oy + dy * (t + w / 2))
+    return {'a': a, 'b': b, 'hinge': 'a', 'side': 1, 'source': 'ifc', 'conf': 1, 'review': False, 'ref': el.GlobalId}, oz
+
+
 def parse(paths):
     """IFC 파일 목록을 읽어 (층 목록, 경고, 건물 이름, 층고)를 돌려줍니다. 좌표는 m, y 위쪽 원본 좌표입니다."""
     groups, warnings, name, models = {}, [], None, []
@@ -68,7 +99,7 @@ def parse(paths):
             continue
         # 건축·설비 IFC를 함께 올리면 같은 높이 층이 파일마다 있으므로 높이(0.1m 단위)로 묶습니다.
         for s, e in storeys:
-            groups.setdefault(round(e, 1), {'names': [], 'elev': e, 'rooms': [], 'units': []})['names'].append(s.Name or '')
+            groups.setdefault(round(e, 1), {'names': [], 'elev': e, 'rooms': [], 'units': [], 'doors': []})['names'].append(s.Name or '')
         models.append((path, f, storeys))
     # 실내기 치수 판정에 호실 경계가 필요하므로 모든 파일의 호실을 먼저 읽습니다.
     for path, f, storeys in models:
@@ -114,6 +145,11 @@ def parse(paths):
                                'source': 'ifc', 'basis': basis})
         if skipped:
             warnings.append(f'{path.name}: 형상이 없는 실내기 후보 {skipped}개 제외')
+        k = uu.calculate_unit_scale(f)
+        for el in f.by_type('IfcDoor'):
+            door = _door(el, k)
+            if door:
+                groups[round(elev[_storey(el, door[1], storeys)], 1)]['doors'].append(door[0])
     kept = [g for _, g in sorted(groups.items()) if g['rooms'] or g['units']]
     empty = [n for g in groups.values() if not (g['rooms'] or g['units']) for n in g['names']]
     if empty:
@@ -124,6 +160,7 @@ def parse(paths):
         ground = next((i for i, g in enumerate(kept) if g['elev'] >= -0.5), len(kept))
         hints = [f'{i - ground + 1}F' if i >= ground else f'B{ground - i}F' for i in range(len(kept))]
     diffs = [b['elev'] - a['elev'] for a, b in zip(kept, kept[1:])]
-    floors = [{'id': h, 'level': level(h, i + 1), 'elevation': g['elev'], 'rooms': g['rooms'], 'units': g['units']}
+    floors = [{'id': h, 'level': level(h, i + 1), 'elevation': g['elev'], 'rooms': g['rooms'], 'units': g['units'],
+               'doors': g['doors']}
               for i, (h, g) in enumerate(zip(hints, kept))]
     return floors, warnings, name, statistics.median(diffs) if diffs else None

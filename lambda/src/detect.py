@@ -2,7 +2,7 @@
 
 - 입력: {floor, imageKey, pxPerM, toPlan}(파싱 결과 detect 항목), 이미지는 도면 버킷(PLANS_BUCKET)
 - 처리: 축척을 알면 1m당 80px로 크기 조정 → 1,400px 타일(1,000px 간격) → 타일마다 Serverless Endpoint(DETECT_ENDPOINT) 호출
-  → 타일 좌표를 페이지 좌표로 이동 → NMS(IoU 0.5) → 원본 이미지 픽셀로 환산
+  → 타일 좌표를 페이지 좌표로 이동 → NMS(IoU 0.5, 문과 실내기 따로) → 원본 이미지 픽셀로 환산
 - 출력: {floor, detections: [{cls, conf, box: [u0, v0, u1, v1]}], model}
 - Pillow: 계층(layers/pillow)으로 제공. 좌표 계산 함수는 Pillow 없이 테스트하도록 handler 안에서 import
 """
@@ -45,12 +45,13 @@ def iou(a, b):
 
 def nms(dets, thr=IOU):
     """신뢰도 높은 순으로 남기고, 남긴 상자와 IoU가 thr를 넘는 상자 제거
-    - 유형 구분 없음: 같은 위치의 기호는 실내기 1대이므로 타일마다 유형이 다르게 나와도 1개만 남김
+    - 실내기 유형 구분 없음: 같은 위치의 기호는 실내기 1대이므로 타일마다 유형이 다르게 나와도 1개만 남김
+    - 문(door)은 문끼리만 비교: 문 옆 벽걸이형·스탠드형 상자가 문 상자와 겹쳐도 남김
     - shortcut: 타일 경계에서 잘린 기호의 부분 상자는 IoU 0.5 이하이면 중복으로 남음, 중복이 잦으면 타일 안쪽 경계에 닿은 상자 제외 추가
     """
     keep = []
     for d in sorted(dets, key=lambda d: -d['conf']):
-        if all(iou(d['box'], k['box']) <= thr for k in keep):
+        if all(iou(d['box'], k['box']) <= thr for k in keep if (k['cls'] == 'door') == (d['cls'] == 'door')):
             keep.append(d)
     return keep
 

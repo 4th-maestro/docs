@@ -778,7 +778,7 @@ const NB = BD_FLOORS.filter(BELOW).length;          // 지하층 수
 const LOOPS = fp => !fp?.length ? null : Array.isArray(fp[0]?.[0]) ? (fp.filter(l => l?.length >= 3).length ? fp.filter(l => l?.length >= 3) : null) : fp.length >= 3 ? [fp] : null;
 const inFoot = (x, y, ls) => ls.some(l => inPoly(x, y, l));
 const FLOORS = BD_FLOORS.map((f, fi) => ({ id:f.id, index:fi, below:BELOW(f), plan:null, hasVoid:!!f.atrium, footprint:LOOPS(f.footprint), shellFootprint:LOOPS(f.shellFootprint), top:LOOPS(f.topFootprint), open:!!f.open, green:!!f.green, note:f.note || null,
-  openings:f.openWalls || [], partitions:f.partitions || [],
+  openings:f.openWalls || [], partitions:f.partitions || [], doors:Array.isArray(f.doors) ? f.doors : null,
   rooms:f.rooms.map(r => ({ id:r.id, floorId:f.id, floorIndex:fi, name:r.name, num:r.number || null, type:r.type || 'room', poly:r.holes?.length ? Object.assign([...r.polygon], { holes:r.holes }) : r.polygon,
     kind:r.use || (r.type === 'room' || !r.type ? 'office' : 'none'), cap:r.capacity || 0, finish:r.finish || null, zoneOf:r.zoneOf || null, zoneBasis:r.zoneBasis || null,
     acs:(IDU_BY_ROOM[r.id] || []).map(a => ({ id:a.id, addr:a.ctrlAddr, x:a.pos[0], y:a.pos[1], model:a.model || '실내기', type:a.type || '', cool:a.coolKw || 7.2, rated:a.ratedKw || 2.2, odu:a.odu,
@@ -893,10 +893,31 @@ function drawPlan(f){
       g.beginPath(); g.moveTo(X(ax0), Y(ay0)); g.lineTo(X(ax1), Y(ay1)); g.stroke();
     });
   }
-  // doors: on the first edge that touches a corridor
+  // 문 기호: 벽 틈(복도 바닥색), 경첩 (hx, hy)에서 문짝 방향 (lx, ly)로 선, 반대 끝(ux, uy 방향)에서 문짝 끝까지 1/4 호
+  const doorSym = (hx, hy, ux, uy, lx, ly, dw) => {
+    g.strokeStyle = '#eeece6'; g.lineWidth = .2 * S;
+    g.beginPath(); g.moveTo(X(hx), Y(hy)); g.lineTo(X(hx + ux*dw), Y(hy + uy*dw)); g.stroke();
+    g.strokeStyle = '#333'; g.lineWidth = 1.6;
+    g.beginPath(); g.moveTo(X(hx), Y(hy)); g.lineTo(X(hx + lx*dw), Y(hy + ly*dw)); g.stroke();
+    const a1 = Math.atan2(uy, ux), a2 = Math.atan2(ly, lx), dlt = ((a2 - a1 + 3*Math.PI) % (2*Math.PI)) - Math.PI;
+    g.lineWidth = 1; g.beginPath(); g.arc(X(hx), Y(hy), dw*S, a1, a2, dlt < 0); g.stroke();
+  };
+  // doors: floors[].doors(plan-ingest.md 3절, side 1 = a→b 기준 화면 왼쪽)가 있으면 그 문, 없으면 호실마다 복도에 닿은 첫 변에 문 1개
+  // 호실 문(r.doors, 첫 문 r.door)은 호실 다각형 변 위(중심 거리 .3m 이내, 같은 방향)에 놓인 문
+  if (f.doors) {
+    const ds = f.doors.flatMap(d => {
+      const w = Math.hypot(d?.b?.[0] - d?.a?.[0], d?.b?.[1] - d?.a?.[1]); if (!(w > .05)) return [];   // 형식이 다른 문은 건너뜀
+      const ux = (d.b[0] - d.a[0])/w, uy = (d.b[1] - d.a[1])/w, s = d.side === -1 ? -1 : 1, [h, e] = d.hinge === 'b' ? [d.b, d.a] : [d.a, d.b];
+      doorSym(h[0], h[1], (e[0] - h[0])/w, (e[1] - h[1])/w, uy*s, -ux*s, w);
+      return [{ x:(d.a[0] + d.b[0])/2, y:(d.a[1] + d.b[1])/2, ux, uy, nx:uy, ny:-ux, w }];
+    });
+    const onEdge = (d, [x0, y0], [x1, y1]) => { const ex = x1 - x0, ey = y1 - y0, el = Math.hypot(ex, ey) || 1, t = clamp(((d.x - x0)*ex + (d.y - y0)*ey) / (el*el), 0, 1);
+      return Math.hypot(d.x - x0 - ex*t, d.y - y0 - ey*t) < .3 && Math.abs(d.ux*ey - d.uy*ex) / el < .1; };
+    for (const r of f.rooms) { r.doors = ds.filter(d => r.poly.some((p, i) => onEdge(d, p, r.poly[(i+1) % r.poly.length]))); r.door = r.doors[0] || null; }
+  }
   const corridors = f.rooms.filter(r => r.type === 'corridor');
   for (const r of f.rooms) {
-    if (r.type === 'corridor') continue;
+    if (r.type === 'corridor' || f.doors) continue;
     for (let i = 0; i < r.poly.length && !r.door; i++) {
       const [x0, y0] = r.poly[i], [x1, y1] = r.poly[(i+1) % r.poly.length], len = Math.hypot(x1 - x0, y1 - y0);
       const ux = (x1 - x0)/len, uy = (y1 - y0)/len, nx = uy, ny = -ux;
@@ -906,11 +927,7 @@ function drawPlan(f){
       const tHit = [.12, .5, .88].find(t => corridors.some(c => inPoly(x0 + ux*len*t + nx*.3, y0 + uy*len*t + ny*.3, c.poly)));
       if (tHit == null) continue;
       const s0 = clamp(len * tHit - dw/2, .3, len - dw - .3), hx = x0 + ux*s0, hy = y0 + uy*s0;
-      g.fillStyle = '#eeece6'; g.fillRect(Math.min(X(hx), X(hx + ux*dw)) - (uy ? .1*S : 0), Math.min(Y(hy), Y(hy + uy*dw)) - (ux ? .1*S : 0), Math.abs(ux)*dw*S + (uy ? .2*S : 0), Math.abs(uy)*dw*S + (ux ? .2*S : 0));
-      g.strokeStyle = '#333'; g.lineWidth = 1.6;
-      g.beginPath(); g.moveTo(X(hx), Y(hy)); g.lineTo(X(hx - nx*dw), Y(hy - ny*dw)); g.stroke();
-      const a1 = Math.atan2(uy, ux), a2 = Math.atan2(-ny, -nx), dlt = ((a2 - a1 + 3*Math.PI) % (2*Math.PI)) - Math.PI;
-      g.lineWidth = 1; g.beginPath(); g.arc(X(hx), Y(hy), dw*S, a1, a2, dlt < 0); g.stroke();
+      doorSym(hx, hy, ux, uy, -nx, -ny, dw);
       r.door = { x:hx + ux*dw/2, y:hy + uy*dw/2, ux, uy, nx, ny, w:dw };
     }
   }
@@ -1848,9 +1865,9 @@ function buildRoom(r, held = false){
   const wallMat = new THREE.MeshStandardMaterial({ color:r.finish?.wall || 0xa9bacb, transparent:true, opacity:r.finish?.wall ? .22 : .13, depthWrite:false, side:THREE.DoubleSide });
   const winMat = new THREE.MeshStandardMaterial({ color:0x9fd4ff, emissive:0x5aa9e6, emissiveIntensity:.35, transparent:true, opacity:.35, depthWrite:false, side:THREE.DoubleSide });
   const blindMat = new THREE.MeshStandardMaterial({ color:0xf1efe8, roughness:.9, transparent:true, opacity:.35, depthWrite:false, side:THREE.DoubleSide });
-  if (r.door) {
-    const dm = new THREE.Mesh(new THREE.BoxGeometry(r.door.w, 2.1, .06), new THREE.MeshStandardMaterial({ color:0x7d8896, roughness:.5, metalness:.3 }));
-    dm.position.copy(toWorld(r.door.x, r.door.y, 1.05)); dm.rotation.y = -Math.atan2(r.door.uy, r.door.ux); root.add(dm);
+  for (const dr of r.doors || (r.door ? [r.door] : [])) {
+    const dm = new THREE.Mesh(new THREE.BoxGeometry(dr.w, 2.1, .06), new THREE.MeshStandardMaterial({ color:0x7d8896, roughness:.5, metalness:.3 }));
+    dm.position.copy(toWorld(dr.x, dr.y, 1.05)); dm.rotation.y = -Math.atan2(dr.uy, dr.ux); root.add(dm);
   }
   const outline = [];
   const addWall = ([x0,y0], [x1,y1], exterior = false) => {

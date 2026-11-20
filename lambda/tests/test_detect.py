@@ -45,6 +45,10 @@ class NmsTest(unittest.TestCase):
         dets = [det([0, 0, 10, 10], 0.6), det([1, 0, 11, 10], 0.9, 'wall_mounted'), det([100, 100, 110, 110], 0.3)]
         self.assertEqual(detect.nms(dets), [dets[1], dets[2]])
 
+    def test_nms_separates_doors_from_units(self):
+        unit, door, door2 = det([0, 0, 10, 10], 0.6, 'wall_mounted'), det([1, 0, 11, 10], 0.9, 'door'), det([2, 0, 12, 10], 0.7, 'door')
+        self.assertEqual(detect.nms([unit, door, door2]), [door, unit])
+
     def test_nms_threshold(self):
         # IoU 정확히 0.5는 남김(0.5 초과만 제거)
         a, b = det([0, 0, 30, 10], 0.9), det([10, 0, 40, 10], 0.8)

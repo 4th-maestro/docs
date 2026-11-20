@@ -20,10 +20,11 @@ export function UnitSymbol({ cls }: { cls: string }) {
 }
 export const UnitIcon = ({ cls }: { cls: string }) => <svg className="sym-icon" viewBox="-1.4 -1.4 2.8 2.8" aria-hidden><UnitSymbol cls={cls} /></svg>
 
-// 범례: 유형 6종, 확인 필요, 선택, 좌표 단위
+// 범례: 유형 6종, 문(경첩에서 문짝 선, 열리는 쪽 1/4 호), 확인 필요, 선택, 좌표 단위
 export function UnitLegend() {
-  return <ul className="unit-legend" aria-label="실내기 범례">
+  return <ul className="unit-legend" aria-label="평면도 범례">
     {TYPES.map(t => <li key={t.class}><UnitIcon cls={t.class} />{t.name}</li>)}
+    <li><svg className="sym-icon door-mark" viewBox="-1.4 -1.4 2.8 2.8" aria-hidden><path d="M-1.4 1H-1M1 1H1.4M-1 1V-1M1 1A2 2 0 0 0 -1 -1" /></svg>문</li>
     <li><svg className="sym-icon" viewBox="-1.4 -1.4 2.8 2.8" aria-hidden><rect className="sym-review" x="-1.2" y="-1.2" width="2.4" height="2.4" rx=".2" /></svg>확인 필요</li>
     <li><svg className="sym-icon" viewBox="-1.4 -1.4 2.8 2.8" aria-hidden><rect className="sym-selected" x="-1.2" y="-1.2" width="2.4" height="2.4" rx=".2" /></svg>선택</li>
     <li>좌표 단위 m</li>

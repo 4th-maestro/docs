@@ -1,5 +1,5 @@
 import HVAC from './hvac-types.json' with { type: 'json' }
-import { distance, edges, inRoom, projection, type Affine, type Detection, type IndoorUnit, type OutdoorUnit, type Plan, type PlanFloor, type PlanRoom, type Point } from '../floor-edit.ts'
+import { distance, edges, inRoom, projection, type Affine, type Detection, type Door, type IndoorUnit, type OutdoorUnit, type Plan, type PlanFloor, type PlanRoom, type Point } from '../floor-edit.ts'
 
 // 실내기 매핑 계산(화면과 무관한 순수 함수). 규약: docs/human/reference/plan-ingest.md 3절
 // 유형표 hvac-types.json은 _maestro/ml/hvac_types.json의 복사본이며 원본은 ml 폴더입니다.
@@ -48,10 +48,11 @@ export function assignRoom(p: Point, rooms: PlanRoom[]): { room: PlanRoom; insid
   return best && { room: best, inside: false }
 }
 
-// 인식 결과(도면 이미지 픽셀 상자) → 실내기. 신뢰도 0.5 미만, unknown, 호실 밖이면 review
+// 인식 결과(도면 이미지 픽셀 상자) → 실내기. 신뢰도 0.5 미만, unknown, 호실 밖이면 review. 문(cls door)은 제외
 export function detectionsToUnits(floor: PlanFloor, m: Affine, detections: Detection[] = floor.detections ?? []): IndoorUnit[] {
   const scale = Math.hypot(m[0], m[3])
   return detections.flatMap((d, i) => {
+    if (d.cls === 'door') return []
     const [u0, v0, u1, v1] = d.box
     const pos = toPlan(m, [(u0 + u1) / 2, (v0 + v1) / 2])
     const hit = assignRoom(pos, floor.rooms)
@@ -62,7 +63,40 @@ export function detectionsToUnits(floor: PlanFloor, m: Affine, detections: Detec
   })
 }
 
-// 초안 정리: 위치를 맞춘 층(background.toPlan 있음)의 인식 결과를 실내기로 바꾸고 detections를 비움
+// 문 구간: 점 p에서 가장 가까운 호실 변(거리 max 이하)에 폭 w 구간을 둠. 맞는 변이 없으면 null
+// - 변이 폭보다 길면 구간이 변 안에 들어가게 밀고, a→b가 dir과 반대면 a, b를 바꿔 기존 경첩, 열림 방향을 유지
+export function snapDoor(rooms: PlanRoom[], p: Point, w: number, max: number, dir?: Point): { a: Point; b: Point } | null {
+  // 공유 벽처럼 거리가 같은 변은 먼저 나온 변(1e-6m 차이까지 같은 거리로 봄)
+  let edge: [Point, Point] | null = null, gap = max + 2e-6
+  for (const r of rooms) for (const [a, b] of edges(r.polygon)) {
+    const d = distance(p, projection(p, a, b))
+    if (d < gap - 1e-6 && distance(a, b) > 1e-6) { gap = d; edge = [a, b] }
+  }
+  if (!edge) return null
+  const [s, e] = edge, len = distance(s, e), ux = (e[0] - s[0]) / len, uy = (e[1] - s[1]) / len
+  const t = len < w ? len / 2 : Math.min(len - w / 2, Math.max(w / 2, (p[0] - s[0]) * ux + (p[1] - s[1]) * uy))
+  const at = (k: number): Point => [r2(s[0] + ux * k), r2(s[1] + uy * k)]
+  const [a, b] = [at(t - w / 2), at(t + w / 2)]
+  return dir && dir[0] * ux + dir[1] * uy < 0 ? { a: b, b: a } : { a, b }
+}
+
+// 인식 결과 중 문(cls door) → 문. 상자 중심에서 가장 가까운 호실 변(거리 ≤ 상자 긴 변)에 폭 = 긴 변 구간을 두고, 열림 쪽은 상자 중심 쪽
+// 맞는 변이 없으면 상자 긴 축 위 구간. 맞는 변이 없거나 폭이 0.6~2.0m 밖이거나 신뢰도 0.5 미만이면 review(Lambda common.door_from_box와 같음). 경첩은 상자로 알 수 없어 a
+export function detectionsToDoors(floor: PlanFloor, m: Affine, detections: Detection[] = floor.detections ?? []): Door[] {
+  const scale = Math.hypot(m[0], m[3])
+  return detections.flatMap((d, i): Door[] => {
+    if (d.cls !== 'door') return []
+    const [u0, v0, u1, v1] = d.box, uc = (u0 + u1) / 2, vc = (v0 + v1) / 2, wide = Math.abs(u1 - u0) >= Math.abs(v1 - v0)
+    const w = Math.max(Math.abs(u1 - u0), Math.abs(v1 - v0)) * scale, c = toPlan(m, [uc, vc])
+    const seg = snapDoor(floor.rooms, c, w, w)
+    const { a, b } = seg ?? { a: toPlan(m, wide ? [u0, vc] : [uc, v0]).map(r2) as Point, b: toPlan(m, wide ? [u1, vc] : [uc, v1]).map(r2) as Point }
+    const cross = (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])
+    return [{ id: `DOOR-${floor.id}-yolo-${i + 1}`, a, b, hinge: 'a', side: cross > 1e-9 ? -1 : 1, source: 'yolo', conf: r2(d.conf),
+      review: !seg || w < .6 || w > 2 || d.conf < .5, ref: `det-${i + 1}` }]
+  })
+}
+
+// 초안 정리: 위치를 맞춘 층(background.toPlan 있음)의 인식 결과를 실내기와 문(cls door)으로 바꾸고 detections를 비움
 // - 인식 결과가 1개 이상인 층은 파이프라인의 면적 추정 실내기(source estimate)를 뺌
 // - 호실이 없는 실내기(파서 결과의 floor만 있음)는 그 층에서 호실을 배정하고, 실 밖이면 review
 // - cls만 있는 실내기는 유형 이름, LG 예시 모델, 매뉴얼을 채움(원본 모델명은 유지)
@@ -78,7 +112,7 @@ export function applyDetections(plan: Plan): Plan {
     if (!m || !f.detections?.length) return f
     const ids = new Set(f.rooms.map(r => r.id))
     idus = [...idus.filter(u => !(ids.has(u.room) && u.source === 'estimate')), ...detectionsToUnits(f, m)]
-    return { ...f, detections: [] }
+    return { ...f, detections: [], doors: [...(f.doors ?? []), ...detectionsToDoors(f, m)] }
   })
   return { ...plan, floors, idus: idus.map(u => (u.cls && !u.type ? { ...u, ...typeFields(u.cls), ...(u.model ? { model: u.model } : {}), ...(u.manual ? { manual: u.manual } : {}) } : u)) }
 }
@@ -116,6 +150,7 @@ export function asPlan(data: unknown): Plan {
   return { ...(plan as Plan), idus: plan.idus ?? [] }
 }
 
-// 운영자 확인이 필요한 실내기와 위치를 맞추지 않은 인식 결과 수
+// 운영자 확인이 필요한 실내기, 문과 위치를 맞추지 않은 인식 결과 수
 export const reviewUnits = (plan: Plan) => plan.idus.filter(u => u.review)
+export const reviewDoors = (plan: Plan) => plan.floors.flatMap(f => (f.doors ?? []).filter(d => d.review))
 export const pendingDetections = (plan: Plan) => plan.floors.reduce((n, f) => n + (f.detections?.length ?? 0), 0)

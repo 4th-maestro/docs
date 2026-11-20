@@ -3,9 +3,10 @@ import { alignWallPoint, area, contains, distance, edges, floorBoundary, inRoom,
 import './building-editor.css'
 import { UnitLegend } from './ingest/UnitSymbol'
 import { useUnitTool } from './ingest/UnitTool'
+import { useDoorTool } from './ingest/DoorTool'
 import { connectOdus, ODU_MARGIN } from './ingest/units'
 
-type Tool = 'select' | 'wall' | 'erase' | 'move' | 'cut' | 'partition' | 'unit' | 'align'
+type Tool = 'select' | 'wall' | 'erase' | 'move' | 'cut' | 'partition' | 'unit' | 'door' | 'align'
 const TOOLS: { id: Tool; label: string; hint: string }[] = [
   { id: 'select', label: '방 선택', hint: '평면도에서 방을 클릭하면 이름을 수정할 수 있습니다.' },
   { id: 'wall', label: '벽 설치', hint: '벽에서 시작해 끝점을 찍으세요. 반대쪽 벽에 닿으면 방을 나눕니다. 점선이 뜨면 수직·수평으로 맞춰집니다.' },
@@ -14,6 +15,7 @@ const TOOLS: { id: Tool; label: string; hint: string }[] = [
   { id: 'cut', label: '부분 삭제', hint: '같은 벽의 시작점과 끝점을 찍어 그 구간만 엽니다.' },
   { id: 'partition', label: '부분 생성', hint: '두 점으로 칸막이를 만듭니다. 점선이 뜨면 수직·수평으로 맞춰지고, 열린 벽선 위를 찍으면 벽을 복원합니다.' },
   { id: 'unit', label: '실내기', hint: '추가할 유형을 고른 뒤 방 안을 누르십시오. 실내기를 누르면 선택되고, 끌어서 옮길 수 있습니다.' },
+  { id: 'door', label: '문', hint: '벽 가까이를 누르면 폭 0.9 m 문을 추가합니다. 문을 누르면 선택되고, 끌어서 가까운 벽으로 옮길 수 있습니다.' },
   { id: 'align', label: '위치 맞춤', hint: '도면 이미지의 기준점 2개를 누른 뒤, 평면도에서 같은 위치 2개를 누르십시오.' },
 ]
 const pathOf = (room: PlanRoom) => [room.polygon, ...(room.holes ?? [])].map(loop => 'M' + loop.map(p => p.join(',')).join('L') + 'Z').join(' ')
@@ -66,9 +68,10 @@ export default function BuildingEditor({ initial, floor, onSave, onCancel, draft
     setSelected(r?.id ?? '')
     setName(r?.name ?? '')
   }
-  const unitTool = useUnitTool({ model, commit, level, current, tool, scale, backgrounds, say: setMessage,
-    onFloor: id => { setLevel(id); choose(); resetCursor() }, onTool: setTool })
-  const resetCursor = () => { setStart(null); setWallStart(null); setCursor(null); setMessage(''); unitTool.reset() }
+  const onFloor = (id: string) => { setLevel(id); choose(); resetCursor() }
+  const unitTool = useUnitTool({ model, commit, level, current, tool, scale, backgrounds, say: setMessage, onFloor, onTool: setTool })
+  const doorTool = useDoorTool({ model, commit, level, current, tool, tolerance: wallTolerance, say: setMessage, onFloor, onTool: setTool })
+  const resetCursor = () => { setStart(null); setWallStart(null); setCursor(null); setMessage(''); unitTool.reset(); doorTool.reset() }
 
   useEffect(() => {
     const esc = (event: KeyboardEvent) => { if (event.key === 'Escape') { setStart(null); setWallStart(null) } }
@@ -240,6 +243,7 @@ export default function BuildingEditor({ initial, floor, onSave, onCancel, draft
     setMessage('')
     if (tool === 'select') { choose(findRoom(p)); return }
     if (tool === 'unit' || tool === 'align') { event.currentTarget.setPointerCapture(event.pointerId); unitTool.down(p); return }
+    if (tool === 'door') { event.currentTarget.setPointerCapture(event.pointerId); doorTool.down(p); return }
     if (tool !== 'wall') { editWall(p); return }
     if (!start) {
       const boundary = (room && nearest(p,room)) || nearest(p)
@@ -349,8 +353,9 @@ export default function BuildingEditor({ initial, floor, onSave, onCancel, draft
           </div>
           <p className="muted">{TOOLS.find(t => t.id === tool)?.hint}</p>
           {unitTool.panel}
+          {doorTool.panel}
           <svg ref={svg} aria-label={level+' 평면도'} className={'edit-plan '+tool} viewBox={[-1-oduMargin,-1,w+2+2*oduMargin,d+2].join(' ')}
-            onPointerDown={click} onPointerMove={e => { const p = pointAt(e); setCursor(p); if (p) unitTool.move(p) }} onPointerUp={unitTool.up} onPointerLeave={() => setCursor(null)}>
+            onPointerDown={click} onPointerMove={e => { const p = pointAt(e); setCursor(p); if (p) { unitTool.move(p); doorTool.move(p) } }} onPointerUp={() => { unitTool.up(); doorTool.up() }} onPointerLeave={() => setCursor(null)}>
             {outer.map((polygon, i) => <polygon key={i} points={polygon.map(p => p.join(',')).join(' ')} className="edit-outline" />)}
             {current.rooms.map(r => {
               const [x,y] = r.polygon.reduce<Point>((p,q) => [p[0]+q[0]/r.polygon.length,p[1]+q[1]/r.polygon.length],[0,0])
@@ -364,6 +369,7 @@ export default function BuildingEditor({ initial, floor, onSave, onCancel, draft
             {start && <circle className="edit-anchor" cx={start.point[0]} cy={start.point[1]} r={scale*.007} />}
             {start && preview && <line className="edit-preview" x1={start.point[0]} y1={start.point[1]} x2={preview[0]} y2={preview[1]} />}
             {partitions.map(({a,b},i) => <line key={i} className="edit-partition" x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]} />)}
+            {doorTool.marks}
             {unitTool.marks}
             {aligned?.axis === 'vertical' && <line className="edit-alignment-guide" x1={aligned.point[0]} x2={aligned.point[0]} y1={0} y2={d} />}
             {aligned?.axis === 'horizontal' && <line className="edit-alignment-guide" x1={0} x2={w} y1={aligned.point[1]} y2={aligned.point[1]} />}

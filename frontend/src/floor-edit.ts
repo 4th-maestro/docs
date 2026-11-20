@@ -12,7 +12,9 @@ export type Opening = Segment & { rooms: string[] }
 export type Affine = [number, number, number, number, number, number]
 export type Detection = { cls: string; conf: number; box: [number, number, number, number] }
 export type PlanBackground = { key?: string; px: [number, number]; toPlan: Affine | null }
-export type PlanFloor = { id: string; rooms: PlanRoom[]; footprint?: Point[] | Point[][]; atrium?: boolean; openWalls?: Opening[]; partitions?: Segment[]; elevation?: number; background?: PlanBackground; detections?: Detection[] }
+// 문: a, b는 벽 위 개구부 양 끝(m), hinge는 경첩 쪽 끝, side는 열리는 쪽(a→b 기준 화면 왼쪽 1, 오른쪽 -1, 평면 y는 아래쪽)
+export type Door = { id: string; a: Point; b: Point; hinge: 'a' | 'b'; side: 1 | -1; source: 'ifc' | 'cad' | 'yolo' | 'manual'; conf?: number; review?: boolean; ref?: string }
+export type PlanFloor = { id: string; rooms: PlanRoom[]; footprint?: Point[] | Point[][]; atrium?: boolean; openWalls?: Opening[]; partitions?: Segment[]; elevation?: number; background?: PlanBackground; detections?: Detection[]; doors?: Door[] }
 export type IndoorUnit = { id: string; room: string; pos: Point; model?: string; type?: string; coolKw?: number; ratedKw?: number; source?: string; basis?: string
   cls?: string; manual?: string; conf?: number; review?: boolean; rot?: number; size?: [number, number]; ref?: string; floor?: string; odu?: string }
 // 실외기: serves 연결 층, mark 2D 매핑 화면의 기호 위치(평면 m), pos 3D 옥상 배치 위치(트윈, 없으면 자동 배치)

@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { distance, inRoom, type Affine, type IndoorUnit, type Plan, type PlanFloor, type Point } from '../floor-edit'
-import { clsOf, connectOdus, detectionsToUnits, fromPlan, oduFloor, similarity, toPlan, TYPES, typeFields } from './units'
+import { clsOf, connectOdus, detectionsToDoors, detectionsToUnits, fromPlan, oduFloor, similarity, snapDoor, toPlan, TYPES, typeFields } from './units'
 import { UnitIcon, UnitSymbol } from './UnitSymbol'
 import './ingest.css'
 
@@ -8,7 +8,7 @@ import './ingest.css'
 // - 실내기: 유형 6종 추가, 선택 후 끌어서 이동, 삭제, 유형 변경, 방향 회전, 확인 필요(review) 목록
 // - 실외기: 층별 기호(평면 좌우 여백), 실내기 연결선, 끌어서 이동, 실내기를 고른 뒤 실외기를 눌러 연결 변경, 추가, 삭제
 // - 빈 호실 추정: 실내기가 없는 실에 면적 추정 실내기(40㎡당 1대)를 넣고 실외기에 연결
-// - 위치 맞춤: 도면 이미지 점 2개 → 평면 점 2개로 회전, 축척, 이동(toPlan)을 구하고 위치를 맞추지 않은 인식 결과를 실내기로 변환
+// - 위치 맞춤: 도면 이미지 점 2개 → 평면 점 2개로 회전, 축척, 이동(toPlan)을 구하고 위치를 맞추지 않은 인식 결과를 실내기와 문(cls door)으로 변환
 // - 모든 변경은 BuildingEditor의 commit(실행 취소 기록)으로 반영
 const SOURCE: Record<string, string> = { ifc: 'IFC 객체', cad: 'CAD 블록', yolo: '도면 인식', manual: '직접 추가', estimate: '면적 추정', plan: '도면 표기', photo: '사진 대수', model: '위치 예측' }
 const r2 = (v: number) => Math.round(v * 100) / 100
@@ -132,10 +132,16 @@ export function useUnitTool({ model, commit, level, current, tool, scale, backgr
     setPts([])
     const m = similarity(next.slice(0, 2), next.slice(2))
     if (!m) { say('기준점 2개를 서로 떨어진 위치에 찍으십시오.'); return }
-    const floor: PlanFloor = { ...current, background: { ...bg, toPlan: m }, detections: [] }
-    const added = detectionsToUnits(current, m)
-    // 이미 맞춘 층을 다시 맞추면 이 층의 인식 실내기도 같은 이미지 위치로 옮김
+    // 이미 맞춘 층을 다시 맞추면 이 층의 인식 실내기, 인식 문도 같은 이미지 위치로 옮김(문은 가장 가까운 변에 다시 맞춤)
     const old = bg.toPlan
+    const doors = (current.doors ?? []).map(d => {
+      if (!old || d.source !== 'yolo') return d
+      const [a, b] = [d.a, d.b].map(q => toPlan(m, fromPlan(old, q)).map(r2) as Point), w = distance(a, b)
+      return { ...d, ...(snapDoor(current.rooms, [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2], w, w, [b[0] - a[0], b[1] - a[1]]) ?? { a, b, review: true }) }
+    })
+    const newDoors = detectionsToDoors(current, m)
+    const floor: PlanFloor = { ...current, background: { ...bg, toPlan: m }, detections: [], doors: [...doors, ...newDoors] }
+    const added = detectionsToUnits(current, m)
     const moved = model.idus.map(u => {
       if (!old || u.source !== 'yolo' || !current.rooms.some(r => r.id === u.room)) return u
       const pos = toPlan(m, fromPlan(old, u.pos)), room = roomAt(pos)
@@ -145,7 +151,7 @@ export function useUnitTool({ model, commit, level, current, tool, scale, backgr
     const { autoUnits } = await import('./auto-units')
     const r = autoUnits({ ...model, floors: model.floors.map(f => (f.id === level ? floor : f)), idus: [...moved, ...added] }, [level])
     commit(r.plan)
-    say(`도면 위치를 맞췄습니다.${added.length ? ` 인식 결과 ${added.length}대를 실내기로 바꿨습니다.` : ''}${r.added ? ` 빈 호실에 추정 실내기 ${r.added}대를 넣었습니다.` : ''}`)
+    say(`도면 위치를 맞췄습니다.${added.length ? ` 인식 결과 ${added.length}대를 실내기로 바꿨습니다.` : ''}${newDoors.length ? ` 인식한 문 ${newDoors.length}개를 넣었습니다.` : ''}${r.added ? ` 빈 호실에 추정 실내기 ${r.added}대를 넣었습니다.` : ''}`)
   }
 
   const review = model.idus.filter(u => u.review)
