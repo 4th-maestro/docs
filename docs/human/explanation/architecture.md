@@ -162,6 +162,17 @@ Frontend는 `VITE_WS_URL`이 있으면 WebSocket API의 `ask` 라우트로 질�
 
 주: 단계 순서는 요청 해석(understand), 데이터 조회(query), 결과 검토(review), 답변 작성(answer). 도구 없이 되묻는 경우 understand 다음 answer. query의 chips는 도구 인자를 한국어로 바꾼 조건(예: `2F`, `회의실`, `13:00 이후`), 완료 detail은 결과 호실 수. 도구 호출 앞 텍스트는 답변에서 제외. 원본은 `lambda/src/query.py`, `lambda/src/ws.py`.
 
+**7-3. AI 답변 품질 평가는 운영 질의 경로 밖의 개발용 스크립트로 수행하며, 외부 판단 모델(JEV)은 운영 경로에 연결하지 않습니다.**
+
+| 구분 | 운영 질의 | 품질 평가 |
+|---|---|---|
+| 실행 위치 | AWS(WebSocket API → ws Lambda → Bedrock) | 개발자 PC(`lambda/tools/eval_ai.py`) |
+| 질의 처리 | `query.converse`(기록·메모리 저장 포함) | 같은 `query.run`을 직접 호출(기록·메모리 저장 없음) |
+| 판단 | 없음 | 도구 선택은 정답 비교(`lambda/eval/questions.json`), 답변 글은 TypeSafe JEV 선택형 판단 |
+| 외부 전송 | 없음(AWS 안에서 완료) | 평가 질문, 도구 결과, 답변을 TypeSafe API로 전송 |
+
+주: 평가 결과와 근거는 [AI 운영 도우미 도구 선택 평가](research/ai-tool-eval.md), JEV 선택 근거는 [판단 특화 모델 JEV 조사](research/judge-model-jev.md).
+
 ## 8. 최적 제어 추천: 규칙 3종과 전후 비교
 
 **8-1. 추천 엔진은 규칙으로 낭비 구간을 찾고, 개선안을 시뮬레이터에 적용한 전후 전력량 차이로 효과를 표시합니다.**

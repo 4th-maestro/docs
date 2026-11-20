@@ -9,11 +9,11 @@
 > | 항목 | 내용 | 확인 수준 |
 > |---|---|---|
 > | 반환 형식 | 선택지 1개 + 선택지별 확률(최대 확률을 확신도로 사용) | 2차 자료(Arize, Langfuse, 논문) |
-> | 모델 이름 | `jev-latest`, 고정 버전 `jev-1.13.0` | 2차 자료(Arize, MLflow) |
+> | 모델 이름 | `jev-latest`(=`jev-1.14.0`), `jev-1.13.0` | 원문(docs.typesafe.ai) |
 > | 반복 실행 변동 | 같은 300문항 2회 실행에서 판단 최대 1.33% 변경 | 논문 초록·본문(미검증 사전 공개) |
-> | 가격 | 입력 100만 토큰당 0.042달러, 출력 무료 | 2차 자료(Arize 표 1건, 공식 가격표 미확인) |
+> | 가격 | 입력 100만 토큰당 0.042달러, 출력 무료 | 원문(docs.typesafe.ai) |
 >
-> **다음 작업**: 도구 선택 정답 비교 평가 세트 30문항 작성(미정)
+> **다음 작업**: 키 설정 후 30문항 JEV 판단 실행([도구 선택 평가](ai-tool-eval.md))
 
 AI 운영 도우미가 새 도구(묶음 합계, 기간 추이)를 질문에 맞게 선택하는지 평가할 방법을 정하기 위해 조사했습니다.
 
@@ -48,9 +48,26 @@ AI 운영 도우미가 새 도구(묶음 합계, 기간 추이)를 질문에 맞
 
 주: JEV는 AWS 밖의 외부 API입니다. 시연 데이터는 가상 데이터라 개인정보는 없지만, 사용 시 API 키 발급과 외부 전송이 필요합니다. AWS 안에서 끝내려면 Bedrock Haiku 5.5 판정이 대안입니다.
 
-## 4. 호출 형식: 중개 서비스 문서 기준
+## 4. 호출 형식: TypeSafe 직접 호출
 
-**4-1. 요청은 `{model, state, questions}`, 선택형 응답은 `choice`, `confidence`, `probabilities`이며, 세 중개 서비스 문서의 필드 이름이 같습니다.**
+**4-1. 직접 호출은 `POST https://api.typesafe.ai/v1/systemone`이며, 인증은 `Authorization: Bearer` API 키입니다.**
+
+| 항목 | 내용 | 출처 |
+|---|---|---|
+| 모델 | `jev-1.14.0`(현재, 2026-10-14부터), `jev-1.13.0`, 별칭 `jev-latest`(=1.14.0) | [모델 목록](https://docs.typesafe.ai/models) |
+| 요청 | `{model, state, questions}`, 선택형은 `type: "choice"`, `criteria`(1~255개), `instructions`(선택) | [API 참조](https://docs.typesafe.ai/api) |
+| 응답 | `{model, answers, usage}`, 선택형 응답은 `choice`, `confidence`, `probabilities` | [API 참조](https://docs.typesafe.ai/api) |
+| 한도 | 요청 전체 64K 토큰, state와 질문 1개 32K 토큰, 질문 개수 제한 없음, 요청 본문 32MiB | [모델 목록](https://docs.typesafe.ai/models), [오류](https://docs.typesafe.ai/api/errors.md) |
+| 가격 | 입력 100만 토큰당 0.042달러, 출력 무료(1.14, 1.13 동일) | [모델 목록](https://docs.typesafe.ai/models) |
+| 키 | `https://console.typesafe.ai/keys` 발급, 환경 변수 `TYPESAFE_API_KEY` 권장 | [빠른 시작](https://docs.typesafe.ai/introduction/quickstart) |
+
+주: 사용자는 2026-11-20 TypeSafe에서 선불 충전 키를 발급했습니다. 평가 스크립트 `lambda/tools/eval_ai.py`는 `TYPESAFE_API_KEY`가 있으면 직접 호출합니다.
+
+## 5. 중개 서비스 경로: 참고
+
+
+
+**5-1. 요청은 `{model, state, questions}`, 선택형 응답은 `choice`, `confidence`, `probabilities`이며, 세 중개 서비스 문서의 필드 이름이 같습니다.**
 
 | 이용 경로 | 주소 | 모델 이름 | 출처 |
 |---|---|---|---|
@@ -62,12 +79,11 @@ AI 운영 도우미가 새 도구(묶음 합계, 기간 추이)를 질문에 맞
 - 선택형 질문: `type: "choice"`, `instructions`, `criteria`(선택지별 적용 기준). 선택지는 1~255개입니다(AIML API).
 - 응답: `answers.<질문>.choice`(선택), `confidence`(0~1), `probabilities`(합계 1).
 - 문맥 한도는 문서마다 다릅니다(DigitalOcean 요청 전체 64K·state와 가장 긴 질문 32K, Cloudflare 32,000, AIML API 262,144 토큰).
-- 평가 스크립트 `lambda/tools/eval_ai.py`는 주소, 키, 모델 이름을 환경 변수(`JEV_URL`, `JEV_KEY`, `JEV_MODEL`)로 받습니다.
 
-## 5. 확인하지 못한 항목
+## 6. 확인하지 못한 항목
 
-- TypeSafe 직접 호출 주소와 인증 방식은 어느 문서에도 없어 확인하지 못했습니다(`https://docs.typesafe.ai/models` 링크는 미확인).
-- 가격은 Arize 블로그 표 1건의 값이며 공식 가격표와 대조하지 않았습니다.
+- 조직별 요청 한도(초당 토큰·요청 수)는 문서에 없고 콘솔에서만 확인할 수 있습니다.
+- 실제 호출 응답은 키 설정 전이라 확인하지 못했습니다.
 
 ## 관련 자료
 

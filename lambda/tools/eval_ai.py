@@ -2,8 +2,8 @@
 
 - 실행: AWS_PROFILE=maestro python tools/eval_ai.py [--building main] [--out eval/results.json] (lambda 폴더, anthropic 설치 필요)
 - 도구 선택: eval/questions.json의 정답 도구·인자(일부 키)와 실제 첫 도구 호출을 비교. tool=null은 도구 호출 없음이 정답
-- JEV 판단: 환경 변수 JEV_URL, JEV_KEY, JEV_MODEL이 모두 있으면 답변마다 3개 항목 판단, 확신도 0.8 미만은 사람 검토 목록
-  - 요청 형식 {model, state, questions}(DigitalOcean·AIML API 문서 기준), JEV_STYLE=cloudflare면 state·questions를 input 아래에 둠
+- JEV 판단: 환경 변수 TYPESAFE_API_KEY가 있으면 답변마다 3개 항목 판단, 확신도 0.8 미만은 사람 검토 목록
+  - TypeSafe 직접 호출 POST https://api.typesafe.ai/v1/systemone, 모델 기본 jev-latest(JEV_MODEL로 변경), docs.typesafe.ai/api 기준
 - 실제 Bedrock(Sonnet 5.5) 호출 비용 발생: 질문당 모델 호출 1~3회, 사용 토큰을 결과에 기록
 """
 import argparse
@@ -21,6 +21,7 @@ import query  # noqa: E402
 import tools  # noqa: E402
 
 REVIEW_BELOW = 0.8
+JEV_URL = 'https://api.typesafe.ai/v1/systemone'
 JEV_QUESTIONS = {
     'numbers': {
         'type': 'choice',
@@ -54,16 +55,14 @@ def match(expected, calls):
 
 
 def jev(state):
-    url, key, model = (os.environ.get(k) for k in ('JEV_URL', 'JEV_KEY', 'JEV_MODEL'))
-    if not (url and key and model):
+    key = os.environ.get('TYPESAFE_API_KEY')
+    if not key:
         return None
-    body = {'state': state, 'questions': JEV_QUESTIONS}
-    body = {'model': model, 'input': body} if os.environ.get('JEV_STYLE') == 'cloudflare' else {'model': model, **body}
-    req = urllib.request.Request(url, json.dumps(body, ensure_ascii=False).encode(), {'Authorization': f'Bearer {key}', 'Content-Type': 'application/json'})
+    body = {'model': os.environ.get('JEV_MODEL', 'jev-latest'), 'state': state, 'questions': JEV_QUESTIONS}
+    req = urllib.request.Request(JEV_URL, json.dumps(body, ensure_ascii=False).encode(), {'Authorization': f'Bearer {key}', 'Content-Type': 'application/json'})
     with urllib.request.urlopen(req, timeout=30) as r:
         data = json.loads(r.read())
-    answers = (data.get('result') or data).get('answers', {})
-    return {k: {'choice': a.get('choice'), 'confidence': a.get('confidence')} for k, a in answers.items()}
+    return {'model': data.get('model'), **{k: {'choice': a.get('choice'), 'confidence': a.get('confidence')} for k, a in data.get('answers', {}).items()}}
 
 
 def main():
