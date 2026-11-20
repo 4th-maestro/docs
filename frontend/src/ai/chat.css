@@ -20,7 +20,7 @@
 .msg.ai { align-self: flex-start; display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; border: 1px solid var(--hairline); border-radius: 14px 14px 14px 4px; background: var(--canvas); color: var(--ink); }
 .msg.ai.note { border-color: var(--ok); }
 .msg.ai .tag { align-self: flex-start; margin: 0; }
-.msg-text { display: block; }
+.msg-text { display: block; word-break: keep-all; }  /* 한글 단어 중간 줄바꿈 방지. AI 답변 3칸(결론, 근거, 조치)의 줄바꿈은 .msg p의 pre-wrap으로 유지 */
 .msg.note .msg-text { display: flex; gap: 6px; color: var(--ok); font-weight: 600; }
 .msg-steps summary { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; font-size: 14px; font-weight: 600; color: var(--muted); cursor: pointer; }
 .msg-steps[open] summary { margin-bottom: 8px; }

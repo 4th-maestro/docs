@@ -1,0 +1,746 @@
+{
+ "schema": "twin.simulation/v1",
+ "engine": "EnergyPlus 24.2",
+ "building": "KORAIL-BUSAN",
+ "weather": "설계일(부산 근사값)",
+ "rooms": {
+  "1F-맞이방-1": {
+   "zone": "Z1F_001",
+   "peakCoolKw": 10.093,
+   "peakAt": "08/05  18:00:00",
+   "installedKw": 63,
+   "ratio": 6.242,
+   "verdict": "과대 설치",
+   "maxTempC": 26.128
+  },
+  "1F-맞이방-2": {
+   "zone": "Z1F_002",
+   "peakCoolKw": 9.22,
+   "peakAt": "08/05  18:00:00",
+   "installedKw": 45,
+   "ratio": 4.881,
+   "verdict": "과대 설치",
+   "maxTempC": 26.117
+  },
+  "1F-맞이방-3": {
+   "zone": "Z1F_003",
+   "peakCoolKw": 20.596,
+   "peakAt": "08/05  10:00:00",
+   "installedKw": 63,
+   "ratio": 3.059,
+   "verdict": "과대 설치",
+   "maxTempC": 26.598
+  },
+  "1F-맞이방-4": {
+   "zone": "Z1F_004",
+   "peakCoolKw": 4.161,
+   "peakAt": "08/05  13:00:00",
+   "installedKw": 27,
+   "ratio": 6.489,
+   "verdict": "과대 설치",
+   "maxTempC": 26.916
+  },
+  "1F-맞이방-5": {
+   "zone": "Z1F_005",
+   "peakCoolKw": 33.424,
+   "peakAt": "08/05  10:00:00",
+   "installedKw": 27,
+   "ratio": 0.808,
+   "verdict": "용량 부족",
+   "maxTempC": 27.492
+  },
+  "1F-맞이방-6": {
+   "zone": "Z1F_006",
+   "peakCoolKw": 12.752,
+   "peakAt": "08/05  18:00:00",
+   "installedKw": 72,
+   "ratio": 5.646,
+   "verdict": "과대 설치",
+   "maxTempC": 26.507
+  },
+  "1F-맞이방-7": {
+   "zone": "Z1F_007",
+   "peakCoolKw": 18.553,
+   "peakAt": "08/05  09:00:00",
+   "installedKw": 72,
+   "ratio": 3.881,
+   "verdict": "과대 설치",
+   "maxTempC": 26.772
+  },
+  "1F-맞이방-8": {
+   "zone": "Z1F_008",
+   "peakCoolKw": 1.322,
+   "peakAt": "08/05  18:00:00",
+   "installedKw": 18,
+   "ratio": 13.614,
+   "verdict": "과대 설치",
+   "maxTempC": 26.114
+  },
+  "1F-108": {
+   "zone": "Z1F_009",
+   "peakCoolKw": 6.303,
+   "peakAt": "08/05  14:00:00",
+   "installedKw": 13,
+   "ratio": 2.063,
+   "verdict": "과대 설치",
+   "maxTempC": 27.319
+  },
+  "1F-104": {
+   "zone": "Z1F_010",
+   "peakCoolKw": 8.032,
+   "peakAt": "08/05  18:00:00",
+   "installedKw": 22,
+   "ratio": 2.739,
+   "verdict": "과대 설치",
+   "maxTempC": 27.538
+  },
+  "1F-103": {
+   "zone": "Z1F_011",
+   "peakCoolKw": 9.188,
+   "peakAt": "08/05  18:00:00",
+   "installedKw": 22,
+   "ratio": 2.394,
+   "verdict": "과대 설치",
+   "maxTempC": 28.344
+  },
+  "1F-101": {
+   "zone": "Z1F_012",
+   "peakCoolKw": 1.842,
+   "peakAt": "08/05  08:00:00",
+   "installedKw": 18,
+   "ratio": 9.775,
+   "verdict": "과대 설치",
+   "maxTempC": 26.633
+  },
+  "1F-105": {
+   "zone": "Z1F_013",
+   "peakCoolKw": 2.468,
+   "peakAt": "08/05  14:00:00",
+   "installedKw": 5.6,
+   "ratio": 2.269,
+   "verdict": "과대 설치",
+   "maxTempC": 27.121
+  },
+  "1F-102": {
+   "zone": "Z1F_014",
+   "peakCoolKw": 1.713,
+   "peakAt": "08/05  08:00:00",
+   "installedKw": 5.6,
+   "ratio": 3.27,
+   "verdict": "과대 설치",
+   "maxTempC": 26.737
+  },
+  "1F-106": {
+   "zone": "Z1F_015",
+   "peakCoolKw": 8.177,
+   "peakAt": "08/05  12:00:00",
+   "installedKw": 26,
+   "ratio": 3.18,
+   "verdict": "과대 설치",
+   "maxTempC": 27.285
+  },
+  "1F-107": {
+   "zone": "Z1F_016",
+   "peakCoolKw": 3.241,
+   "peakAt": "08/05  08:00:00",
+   "installedKw": 5.6,
+   "ratio": 1.728,
+   "verdict": "적정",
+   "maxTempC": 26.781
+  },
+  "1F-109": {
+   "zone": "Z1F_017",
+   "peakCoolKw": 5.478,
+   "peakAt": "08/05  12:00:00",
+   "installedKw": 13,
+   "ratio": 2.373,
+   "verdict": "과대 설치",
+   "maxTempC": 27.34
+  },
+  "1F-110": {
+   "zone": "Z1F_018",
+   "peakCoolKw": 7.625,
+   "peakAt": "08/05  12:00:00",
+   "installedKw": 13,
+   "ratio": 1.705,
+   "verdict": "적정",
+   "maxTempC": 27.888
+  },
+  "1F-111": {
+   "zone": "Z1F_019",
+   "peakCoolKw": 5.422,
+   "peakAt": "08/05  12:00:00",
+   "installedKw": 5.6,
+   "ratio": 1.033,
+   "verdict": "적정",
+   "maxTempC": 27.748
+  },
+  "1F-112": {
+   "zone": "Z1F_020",
+   "peakCoolKw": 4.285,
+   "peakAt": "08/05  12:00:00",
+   "installedKw": 5.6,
+   "ratio": 1.307,
+   "verdict": "적정",
+   "maxTempC": 27.608
+  },
+  "1F-113": {
+   "zone": "Z1F_021",
+   "peakCoolKw": 7.002,
+   "peakAt": "08/05  12:00:00",
+   "installedKw": 5.6,
+   "ratio": 0.8,
+   "verdict": "용량 부족",
+   "maxTempC": 27.971
+  },
+  "1F-114": {
+   "zone": "Z1F_022",
+   "peakCoolKw": 7.742,
+   "peakAt": "08/05  12:00:00",
+   "installedKw": 13,
+   "ratio": 1.679,
+   "verdict": "적정",
+   "maxTempC": 28.054
+  },
+  "1F-115": {
+   "zone": "Z1F_023",
+   "peakCoolKw": 12.272,
+   "peakAt": "08/05  10:00:00",
+   "installedKw": 26,
+   "ratio": 2.119,
+   "verdict": "과대 설치",
+   "maxTempC": 28.058
+  },
+  "1F-116": {
+   "zone": "Z1F_024",
+   "peakCoolKw": 8.458,
+   "peakAt": "08/05  10:00:00",
+   "installedKw": 22,
+   "ratio": 2.601,
+   "verdict": "과대 설치",
+   "maxTempC": 27.768
+  },
+  "2F-대합실-1": {
+   "zone": "Z2F_001",
+   "peakCoolKw": 5.945,
+   "peakAt": "08/05  06:00:00",
+   "installedKw": 63,
+   "ratio": 10.597,
+   "verdict": "과대 설치",
+   "maxTempC": 27.75
+  },
+  "2F-대합실-2": {
+   "zone": "Z2F_002",
+   "peakCoolKw": 25.555,
+   "peakAt": "08/05  06:00:00",
+   "installedKw": 72,
+   "ratio": 2.817,
+   "verdict": "과대 설치",
+   "maxTempC": 28.569
+  },
+  "2F-대합실-3": {
+   "zone": "Z2F_003",
+   "peakCoolKw": 27.037,
+   "peakAt": "08/05  06:00:00",
+   "installedKw": 72,
+   "ratio": 2.663,
+   "verdict": "과대 설치",
+   "maxTempC": 28.725
+  },
+  "2F-대합실-4": {
+   "zone": "Z2F_004",
+   "peakCoolKw": 22.709,
+   "peakAt": "08/05  06:00:00",
+   "installedKw": 72,
+   "ratio": 3.171,
+   "verdict": "과대 설치",
+   "maxTempC": 28.669
+  },
+  "2F-대합실-5": {
+   "zone": "Z2F_005",
+   "peakCoolKw": 11.249,
+   "peakAt": "08/05  06:00:00",
+   "installedKw": 18,
+   "ratio": 1.6,
+   "verdict": "적정",
+   "maxTempC": 27.964
+  },
+  "2F-대합실-6": {
+   "zone": "Z2F_006",
+   "peakCoolKw": 8.408,
+   "peakAt": "08/05  10:00:00",
+   "installedKw": 45,
+   "ratio": 5.352,
+   "verdict": "과대 설치",
+   "maxTempC": 29.537
+  },
+  "2F-대합실-7": {
+   "zone": "Z2F_007",
+   "peakCoolKw": 16.608,
+   "peakAt": "08/05  06:00:00",
+   "installedKw": 72,
+   "ratio": 4.335,
+   "verdict": "과대 설치",
+   "maxTempC": 28.041
+  },
+  "2F-대합실-8": {
+   "zone": "Z2F_008",
+   "peakCoolKw": 38.945,
+   "peakAt": "08/05  10:00:00",
+   "installedKw": 63,
+   "ratio": 1.618,
+   "verdict": "적정",
+   "maxTempC": 29.595
+  },
+  "2F-대합실-9": {
+   "zone": "Z2F_009",
+   "peakCoolKw": 24.148,
+   "peakAt": "08/05  06:00:00",
+   "installedKw": 72,
+   "ratio": 2.982,
+   "verdict": "과대 설치",
+   "maxTempC": 28.835
+  },
+  "2F-대합실-10": {
+   "zone": "Z2F_010",
+   "peakCoolKw": 16.412,
+   "peakAt": "08/05  06:00:00",
+   "installedKw": 63,
+   "ratio": 3.839,
+   "verdict": "과대 설치",
+   "maxTempC": 28.634
+  },
+  "2F-대합실-11": {
+   "zone": "Z2F_011",
+   "peakCoolKw": 10.185,
+   "peakAt": "08/05  06:00:00",
+   "installedKw": 63,
+   "ratio": 6.186,
+   "verdict": "과대 설치",
+   "maxTempC": 27.677
+  },
+  "2F-대합실-12": {
+   "zone": "Z2F_012",
+   "peakCoolKw": 16.139,
+   "peakAt": "08/05  06:00:00",
+   "installedKw": 72,
+   "ratio": 4.461,
+   "verdict": "과대 설치",
+   "maxTempC": 28.618
+  },
+  "2F-대합실-13": {
+   "zone": "Z2F_013",
+   "peakCoolKw": 25.456,
+   "peakAt": "08/05  10:00:00",
+   "installedKw": 63,
+   "ratio": 2.475,
+   "verdict": "과대 설치",
+   "maxTempC": 29.378
+  },
+  "2F-대합실-14": {
+   "zone": "Z2F_014",
+   "peakCoolKw": 11.309,
+   "peakAt": "08/05  06:00:00",
+   "installedKw": 72,
+   "ratio": 6.367,
+   "verdict": "과대 설치",
+   "maxTempC": 28.149
+  },
+  "2F-대합실-15": {
+   "zone": "Z2F_015",
+   "peakCoolKw": 17.116,
+   "peakAt": "08/05  06:00:00",
+   "installedKw": 72,
+   "ratio": 4.207,
+   "verdict": "과대 설치",
+   "maxTempC": 28.491
+  },
+  "2F-대합실-16": {
+   "zone": "Z2F_016",
+   "peakCoolKw": 35.21,
+   "peakAt": "08/05  18:00:00",
+   "installedKw": 45,
+   "ratio": 1.278,
+   "verdict": "적정",
+   "maxTempC": 29.994
+  },
+  "2F-대합실-17": {
+   "zone": "Z2F_017",
+   "peakCoolKw": 4.466,
+   "peakAt": "08/05  06:00:00",
+   "installedKw": 18,
+   "ratio": 4.031,
+   "verdict": "과대 설치",
+   "maxTempC": 27.959
+  },
+  "2F-대합실-18": {
+   "zone": "Z2F_018",
+   "peakCoolKw": 32.649,
+   "peakAt": "08/05  10:00:00",
+   "installedKw": 54,
+   "ratio": 1.654,
+   "verdict": "적정",
+   "maxTempC": 29.556
+  },
+  "2F-대합실-19": {
+   "zone": "Z2F_019",
+   "peakCoolKw": 24.012,
+   "peakAt": "08/05  09:00:00",
+   "installedKw": 36,
+   "ratio": 1.499,
+   "verdict": "적정",
+   "maxTempC": 29.198
+  },
+  "2F-대합실-20": {
+   "zone": "Z2F_020",
+   "peakCoolKw": 2.087,
+   "peakAt": "08/05  06:00:00",
+   "installedKw": 45,
+   "ratio": 21.562,
+   "verdict": "과대 설치",
+   "maxTempC": 28.13
+  },
+  "2F-211": {
+   "zone": "Z2F_021",
+   "peakCoolKw": 1.425,
+   "peakAt": "08/05  15:00:00",
+   "installedKw": 5.6,
+   "ratio": 3.93,
+   "verdict": "과대 설치",
+   "maxTempC": 28.198
+  },
+  "2F-212": {
+   "zone": "Z2F_022",
+   "peakCoolKw": 1.122,
+   "peakAt": "08/05  20:00:00",
+   "installedKw": 2.8,
+   "ratio": 2.496,
+   "verdict": "과대 설치",
+   "maxTempC": 28.606
+  },
+  "2F-213": {
+   "zone": "Z2F_023",
+   "peakCoolKw": 2.381,
+   "peakAt": "08/05  14:00:00",
+   "installedKw": 5.6,
+   "ratio": 2.352,
+   "verdict": "과대 설치",
+   "maxTempC": 28.7
+  },
+  "2F-203": {
+   "zone": "Z2F_024",
+   "peakCoolKw": 1.808,
+   "peakAt": "08/05  20:00:00",
+   "installedKw": 2.8,
+   "ratio": 1.549,
+   "verdict": "적정",
+   "maxTempC": 29.221
+  },
+  "2F-역무실": {
+   "zone": "Z2F_025",
+   "peakCoolKw": 2.309,
+   "peakAt": "08/05  15:00:00",
+   "installedKw": 9,
+   "ratio": 3.898,
+   "verdict": "과대 설치",
+   "maxTempC": 27.776
+  },
+  "2F-202": {
+   "zone": "Z2F_026",
+   "peakCoolKw": 1.166,
+   "peakAt": "08/05  20:00:00",
+   "installedKw": 2.8,
+   "ratio": 2.401,
+   "verdict": "과대 설치",
+   "maxTempC": 28.869
+  },
+  "2F-214": {
+   "zone": "Z2F_027",
+   "peakCoolKw": 2.283,
+   "peakAt": "08/05  17:00:00",
+   "installedKw": 5.6,
+   "ratio": 2.453,
+   "verdict": "과대 설치",
+   "maxTempC": 28.907
+  },
+  "2F-매표": {
+   "zone": "Z2F_028",
+   "peakCoolKw": 4.252,
+   "peakAt": "08/05  17:00:00",
+   "installedKw": 14.4,
+   "ratio": 3.386,
+   "verdict": "과대 설치",
+   "maxTempC": 28.261
+  },
+  "2F-225": {
+   "zone": "Z2F_029",
+   "peakCoolKw": 3.249,
+   "peakAt": "08/05  20:00:00",
+   "installedKw": 5.6,
+   "ratio": 1.724,
+   "verdict": "적정",
+   "maxTempC": 29.38
+  },
+  "2F-224": {
+   "zone": "Z2F_030",
+   "peakCoolKw": 2.327,
+   "peakAt": "08/05  20:00:00",
+   "installedKw": 2.8,
+   "ratio": 1.203,
+   "verdict": "적정",
+   "maxTempC": 29.532
+  },
+  "2F-219": {
+   "zone": "Z2F_031",
+   "peakCoolKw": 0.588,
+   "peakAt": "08/05  17:00:00",
+   "installedKw": 2.8,
+   "ratio": 4.763,
+   "verdict": "과대 설치",
+   "maxTempC": 28.093
+  },
+  "2F-201": {
+   "zone": "Z2F_032",
+   "peakCoolKw": 3.861,
+   "peakAt": "08/05  18:00:00",
+   "installedKw": 5.6,
+   "ratio": 1.45,
+   "verdict": "적정",
+   "maxTempC": 30.912
+  },
+  "2F-204": {
+   "zone": "Z2F_033",
+   "peakCoolKw": 1.764,
+   "peakAt": "08/05  17:00:00",
+   "installedKw": 5.6,
+   "ratio": 3.174,
+   "verdict": "과대 설치",
+   "maxTempC": 28.638
+  },
+  "2F-205": {
+   "zone": "Z2F_034",
+   "peakCoolKw": 1.435,
+   "peakAt": "08/05  20:00:00",
+   "installedKw": 2.8,
+   "ratio": 1.952,
+   "verdict": "적정",
+   "maxTempC": 28.501
+  },
+  "2F-206": {
+   "zone": "Z2F_035",
+   "peakCoolKw": 1.983,
+   "peakAt": "08/05  14:00:00",
+   "installedKw": 2.8,
+   "ratio": 1.412,
+   "verdict": "적정",
+   "maxTempC": 29.095
+  },
+  "2F-207": {
+   "zone": "Z2F_036",
+   "peakCoolKw": 7.235,
+   "peakAt": "08/05  12:00:00",
+   "installedKw": 5.6,
+   "ratio": 0.774,
+   "verdict": "용량 부족",
+   "maxTempC": 30.731
+  },
+  "2F-208": {
+   "zone": "Z2F_037",
+   "peakCoolKw": 2.146,
+   "peakAt": "08/05  15:00:00",
+   "installedKw": 5.6,
+   "ratio": 2.61,
+   "verdict": "과대 설치",
+   "maxTempC": 28.397
+  },
+  "2F-209": {
+   "zone": "Z2F_038",
+   "peakCoolKw": 7.85,
+   "peakAt": "08/05  12:00:00",
+   "installedKw": 5.6,
+   "ratio": 0.713,
+   "verdict": "용량 부족",
+   "maxTempC": 30.942
+  },
+  "2F-210": {
+   "zone": "Z2F_039",
+   "peakCoolKw": 8.386,
+   "peakAt": "08/05  10:00:00",
+   "installedKw": 13,
+   "ratio": 1.55,
+   "verdict": "적정",
+   "maxTempC": 30.884
+  },
+  "2F-215": {
+   "zone": "Z2F_040",
+   "peakCoolKw": 2.805,
+   "peakAt": "08/05  14:00:00",
+   "installedKw": 5.6,
+   "ratio": 1.997,
+   "verdict": "적정",
+   "maxTempC": 29.222
+  },
+  "2F-216": {
+   "zone": "Z2F_041",
+   "peakCoolKw": 2.739,
+   "peakAt": "08/05  14:00:00",
+   "installedKw": 5.6,
+   "ratio": 2.045,
+   "verdict": "과대 설치",
+   "maxTempC": 29.224
+  },
+  "2F-217": {
+   "zone": "Z2F_042",
+   "peakCoolKw": 0.999,
+   "peakAt": "08/05  17:00:00",
+   "installedKw": 3.6,
+   "ratio": 3.605,
+   "verdict": "과대 설치",
+   "maxTempC": 28.025
+  },
+  "2F-218": {
+   "zone": "Z2F_043",
+   "peakCoolKw": 0.786,
+   "peakAt": "08/05  18:00:00",
+   "installedKw": 2.8,
+   "ratio": 3.563,
+   "verdict": "과대 설치",
+   "maxTempC": 28.177
+  },
+  "2F-220": {
+   "zone": "Z2F_044",
+   "peakCoolKw": 3.466,
+   "peakAt": "08/05  14:00:00",
+   "installedKw": 5.6,
+   "ratio": 1.616,
+   "verdict": "적정",
+   "maxTempC": 29.859
+  },
+  "2F-221": {
+   "zone": "Z2F_045",
+   "peakCoolKw": 3.914,
+   "peakAt": "08/05  14:00:00",
+   "installedKw": 5.6,
+   "ratio": 1.431,
+   "verdict": "적정",
+   "maxTempC": 30.007
+  },
+  "2F-222": {
+   "zone": "Z2F_046",
+   "peakCoolKw": 3.132,
+   "peakAt": "08/05  14:00:00",
+   "installedKw": 5.6,
+   "ratio": 1.788,
+   "verdict": "적정",
+   "maxTempC": 29.478
+  },
+  "2F-223": {
+   "zone": "Z2F_047",
+   "peakCoolKw": 4.762,
+   "peakAt": "08/05  14:00:00",
+   "installedKw": 4,
+   "ratio": 0.84,
+   "verdict": "용량 부족",
+   "maxTempC": 30.031
+  },
+  "2F-226": {
+   "zone": "Z2F_048",
+   "peakCoolKw": 4.715,
+   "peakAt": "08/05  12:00:00",
+   "installedKw": 5.6,
+   "ratio": 1.188,
+   "verdict": "적정",
+   "maxTempC": 30.343
+  },
+  "2F-철도경찰": {
+   "zone": "Z2F_049",
+   "peakCoolKw": 14.276,
+   "peakAt": "08/05  10:00:00",
+   "installedKw": 11.2,
+   "ratio": 0.785,
+   "verdict": "용량 부족",
+   "maxTempC": 30.477
+  },
+  "2F-227": {
+   "zone": "Z2F_050",
+   "peakCoolKw": 3.442,
+   "peakAt": "08/05  14:00:00",
+   "installedKw": 5.6,
+   "ratio": 1.627,
+   "verdict": "적정",
+   "maxTempC": 29.261
+  },
+  "2F-228": {
+   "zone": "Z2F_051",
+   "peakCoolKw": 1.792,
+   "peakAt": "08/05  17:00:00",
+   "installedKw": 3.6,
+   "ratio": 2.009,
+   "verdict": "과대 설치",
+   "maxTempC": 28.659
+  },
+  "2F-229": {
+   "zone": "Z2F_052",
+   "peakCoolKw": 4.737,
+   "peakAt": "08/05  20:00:00",
+   "installedKw": 5.6,
+   "ratio": 1.182,
+   "verdict": "적정",
+   "maxTempC": 29.556
+  },
+  "2F-230": {
+   "zone": "Z2F_053",
+   "peakCoolKw": 2.803,
+   "peakAt": "08/05  14:00:00",
+   "installedKw": 5.6,
+   "ratio": 1.998,
+   "verdict": "적정",
+   "maxTempC": 29.096
+  },
+  "2F-231": {
+   "zone": "Z2F_054",
+   "peakCoolKw": 3.359,
+   "peakAt": "08/05  20:00:00",
+   "installedKw": 2.8,
+   "ratio": 0.834,
+   "verdict": "용량 부족",
+   "maxTempC": 28.72
+  },
+  "3F-301": {
+   "zone": "Z3F_001",
+   "peakCoolKw": 50.772,
+   "peakAt": "08/05  12:00:00",
+   "installedKw": 91,
+   "ratio": 1.792,
+   "verdict": "적정",
+   "maxTempC": 32.354
+  },
+  "3F-302": {
+   "zone": "Z3F_002",
+   "peakCoolKw": 22.307,
+   "peakAt": "08/05  10:00:00",
+   "installedKw": 52,
+   "ratio": 2.331,
+   "verdict": "과대 설치",
+   "maxTempC": 31.438
+  },
+  "3F-303": {
+   "zone": "Z3F_003",
+   "peakCoolKw": 4.183,
+   "peakAt": "08/05  20:00:00",
+   "installedKw": 5.6,
+   "ratio": 1.339,
+   "verdict": "적정",
+   "maxTempC": 29.656
+  },
+  "3F-304": {
+   "zone": "Z3F_004",
+   "peakCoolKw": 11.886,
+   "peakAt": "08/05  18:00:00",
+   "installedKw": 26,
+   "ratio": 2.188,
+   "verdict": "과대 설치",
+   "maxTempC": 32.376
+  }
+ }
+}

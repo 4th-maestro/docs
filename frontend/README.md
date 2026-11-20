@@ -47,6 +47,25 @@ npm run dev
 
 `VITE_API_BASE_URL`이 비어 있거나 Lambda 호출이 실패하면 목업으로 대체합니다. 운영 패널도 같은 방식으로 대체합니다. 목업 응답이면 패널 제목 옆에 `목업`을 표시합니다. 스케줄 취소는 서버 스케줄의 요청이 실패하면 목업으로 대체하지 않고 오류를 표시합니다. `VITE_WS_URL`이 비어 있거나 WebSocket 연결이 첫 이벤트 전에 실패하면 AI 질의는 `POST /query`로 처리하고, 응답을 받을 때까지 "분석 중" 단계 1개만 표시합니다. 상태는 `public/demo/<건물>.json`, 전체 현황은 같은 파일에서 계산한 값, 질의는 예시 문장 형태만 해석하는 정규식, 스케줄은 서버에 기록하지 않는 임시 저장입니다. 상태는 5초마다 다시 조회하며, 온도·습도·전력은 Lambda와 목업 모두 범위 안에서 변동합니다(실시간 목업: 온도 ±0.3℃, 습도 ±1.5%, 전력 ±8%).
 
+## 3D 디지털 트윈 (`twin/`)
+
+도면 사진 → 3D 건물 → 실시간 상태(대시보드 데이터·와이파이 재실) → EnergyPlus 운전 시뮬레이션까지 하는 트윈입니다. 빌드 없는 HTML·JS이고, 자세한 설명은 [twin/README.md](twin/README.md)에 있습니다.
+
+| 할 일 | 방법 |
+|---|---|
+| 트윈만 보기 | `npm run dev` → http://localhost:5173/twin/digital-twin.html?building=eng6 (부산역: `?building=busan-station`) — 실시간 값은 대시보드가 보낼 때만 그림 |
+| 운영 탭 3D 자리에 넣기 | `.env`에 `VITE_TWIN_URL=/twin/digital-twin.html` |
+| 운전 시뮬레이션 계산 | [EnergyPlus 24.2](https://energyplus.net/downloads) 설치 후 다른 터미널에서 `npm run twin:sim` (개발 서버가 `/api/sim`을 8766으로 넘김). 없으면 저장된 결과(`scenario.json`)만 보임 |
+| 도면 → building.json 다시 만들기 | `npm run twin:pipeline -- twin/source/eng6/recipe.json twin/data/building.json` 또는 `/twin/pipeline.html` |
+| 건물 목록·데모 데이터 다시 만들기 | `npm run twin:demo` (트윈 `twin/data/buildings.json`의 건물 → `public/demo/<id>.json`, `index.json`, `src/energy/buildings.json`) |
+
+- **값은 대시보드 한 곳에서만 만듭니다.** 트윈은 대시보드가 보낸 호실 상태(`postState`의 `data`)를 그대로 그려서 웹과 같은 값을 보입니다. 데모 값은 트윈 도면에서 만든 `public/demo/<id>.json`에 목업(`src/mock.ts`)이 ±변동을 준 것입니다.
+- **건물 목록은 트윈을 따릅니다**: 6공학관(`eng6`), 부산역 역사(`busan-station`). 호실 id·실내기 id도 트윈 `building.json`과 같습니다.
+- **건물 추가하기**(상단 건물 선택 맨 아래): 트윈 파이프라인이 열리고, 도면 이미지를 넣고 **트윈에서 렌더링**을 누르면 그때부터 그 건물 데이터를 만듭니다(`src/custom.ts`, 이 브라우저에만 저장).
+- 운영 탭 오른쪽 맨 위 **운전 시뮬레이션** 패널(`src/panels/SimPanel.tsx`)은 트윈 안에 있던 것을 옮긴 것입니다. 계산은 트윈이 하고 결과만 받습니다.
+- 트윈에서 방을 고르면 `{source:'twin', type:'roomSelected', roomId}`를 보냅니다(`src/twin.ts`가 받음). 방 설정온도를 바꾸면 `{source:'twin', type:'control'}`을 보내고 대시보드가 반영합니다.
+- `npm run build`는 트윈을 `dist/twin/`으로 복사합니다(EnergyPlus 결과 `twin/sim/`은 제외).
+
 ## 확인
 
 ```bash

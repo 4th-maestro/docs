@@ -1,17 +1,24 @@
 import { kstNow } from '../mock'
 import type { Breakdown, Compare, Heatmap, Period, Point, Trend } from './api'
+import PROFILES from './buildings.json'
+import { customProfile } from '../custom'
 
 // 에너지 분석 목업(난수 없음, 같은 시각이면 같은 값). API를 쓸 수 없을 때만 사용, 결과에는 mock 표시
 // - 시간 전력: 운영 시간은 면적 1㎡당 0.06kW × 85~100%, 운영 전후(시작 1시간 전 ~ 종료 3시간 후)는 낭비율만큼, 그 밖은 0
-// shortcut: 건물 id·이름·면적·층·용도·운영 프로필은 lambda/src/buildings.json, 전기요금 단가는 lambda/src/energy.py에서 복제, 건물 목록 API가 생기면 그 응답으로 교체
-const BUILDINGS = [
+// 건물: 기존 4곳(lambda/src/buildings.json 복제) + 트윈이 도면에서 인식한 건물(twin/tools/export-web-demo.mjs가 생성), 전기요금 단가는 lambda/src/energy.py에서 복제
+type B = { id: string; name: string; areaM2: number; floors: string[]; uses: string[]; hours: number[]; weekend: boolean; waste: number }
+// 기존 4곳은 Lambda와 같은 값 유지(2026-11-20 결정: 데모 건물은 기존 4곳 + 트윈 2곳)
+const LEGACY: B[] = [
   { id: 'main', name: '본관', areaM2: 2412.9, floors: ['1F', '2F'], uses: ['사무실', '진료실', '회의실', '대기·휴게', '기타'], hours: [9, 18], weekend: false, waste: 0.12 },
   { id: 'office', name: '업무동', areaM2: 3299.4, floors: ['1F', '2F', '3F'], uses: ['사무실', '회의실', '대기·휴게', '기타'], hours: [8, 19], weekend: false, waste: 0.18 },
   { id: 'edu', name: '교육관', areaM2: 1526.4, floors: ['1F'], uses: ['회의실', '대기·휴게'], hours: [9, 21], weekend: true, waste: 0.08 },
   { id: 'lab', name: '연구동', areaM2: 1773.0, floors: ['1F', '2F'], uses: ['사무실', '회의실', '대기·휴게', '기타'], hours: [7, 22], weekend: true, waste: 0.15 },
-] as const
-type B = (typeof BUILDINGS)[number]
-const USE_SHARE: Record<string, number> = { 사무실: 0.4, 진료실: 0.2, 회의실: 0.2, '대기·휴게': 0.15, 기타: 0.05 }
+]
+const BUILDINGS: B[] = [...LEGACY, ...PROFILES]
+// 기존 4곳의 용도별 비중(Lambda energy.py와 같은 값)
+const LEGACY_SHARE: Record<string, number> = { 사무실: 0.4, 진료실: 0.2, 회의실: 0.2, '대기·휴게': 0.15, 기타: 0.05 }
+// 트윈 건물의 용도별 전력 비중(목록에 없는 용도는 1)
+const USE_SHARE: Record<string, number> = { 연구실: 3, 사무실: 3, 강의실: 2, 실험실: 2, 회의실: 1, '대기·휴게': 2, 식당: 3, 상점: 2, 기타: 0.5 }
 const DAY = 86_400_000
 const WEEKDAYS = '월화수목금토일'
 const r1 = (v: number) => Math.round(v * 10) / 10
@@ -20,8 +27,8 @@ const sum = (xs: number[]) => xs.reduce((s, x) => s + x, 0)
 // 키별 고정 값(0~1)
 const u = (n: number) => { const x = Math.sin(n * 12.9898) * 43758.5453; return x - Math.floor(x) }
 
-function building(id = 'main'): B {
-  const b = BUILDINGS.find((x) => x.id === id)
+function building(id = BUILDINGS[0].id): B {
+  const b = BUILDINGS.find((x) => x.id === id) ?? customProfile(id)
   if (!b) throw new Error(`알 수 없는 건물: ${id}`)
   return b
 }
@@ -116,7 +123,8 @@ export async function mockBreakdown(q: Record<string, string>): Promise<Breakdow
   const period = (q.period ?? 'day') as Period
   const total = sum(periodDays(period).cur.map((d) => dayKwh(b, d)))
   const fw = b.floors.map((_, i) => [1, 0.8, 0.7][i])
-  const uw = b.uses.map((x) => USE_SHARE[x])
+  const share = LEGACY.some((x) => x.id === b.id) ? LEGACY_SHARE : USE_SHARE
+  const uw = b.uses.map((x) => share[x] ?? 1)
   const floors = b.floors.map((floor, i) => {
     const fk = (total * fw[i]) / sum(fw)
     return { floor, kwh: r1(fk), uses: b.uses.map((use, j) => ({ use, kwh: r1((fk * uw[j]) / sum(uw)) })) }

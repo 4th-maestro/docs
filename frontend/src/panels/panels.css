@@ -136,3 +136,28 @@
 .pn-table table { width: 100%; border-collapse: collapse; font-size: 15px; font-variant-numeric: tabular-nums; }
 .pn-table th, .pn-table td { padding: 4px 8px; text-align: right; border-bottom: 1px solid var(--hairline-soft); }
 .pn-table th:first-child, .pn-table td:first-child { text-align: left; }
+
+/* 운전 시뮬레이션(3D 트윈에서 옮긴 패널) */
+.sim-f { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; font-size: 15px; }
+.sim-f label { display: flex; flex-direction: column; gap: 4px; color: var(--muted); font-size: 14px; }
+.sim-f input[type='time'], .sim-f select { height: 40px; padding: 0 8px; border: 1px solid var(--hairline); border-radius: var(--r-sm); background: var(--canvas); color: var(--ink); font-size: 15px; }
+.sim-f .sim-row output { color: var(--ink); font-weight: 700; }
+.sim-f .sim-chk { flex-direction: row; align-items: center; gap: 8px; color: var(--ink); }
+.sim-two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: end; }
+.sim-base { margin: 0; font-size: 14px; color: var(--muted); }
+.sim-f .primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.sim-msg, .sim-note { margin: 0; font-size: 13px; color: var(--muted); }
+.sim-t { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 14px; }
+.sim-t th, .sim-t td { padding: 6px 4px; border-bottom: 1px solid var(--hairline); text-align: right; font-variant-numeric: tabular-nums; }
+.sim-t th:first-child, .sim-t thead th { text-align: left; font-weight: 500; color: var(--muted); }
+.sim-t td.up { color: var(--ok); font-weight: 700; }
+.sim-t td.dn { color: var(--danger); font-weight: 700; }
+.sim-rooms { max-height: 320px; overflow: auto; }
+.sim-rooms p { margin: 2px 0 0; font-size: 13px; }
+.sim-range { color: var(--ink); font-variant-numeric: tabular-nums; }
+.sim-more { margin-top: 12px; border-top: 1px solid var(--hairline); padding-top: 8px; }
+.sim-more > summary { display: flex; align-items: center; gap: 6px; min-height: 40px; cursor: pointer; list-style: none; color: var(--muted); font-size: 14px; font-weight: 600; }
+.sim-more > summary::-webkit-details-marker { display: none; }
+.sim-more > summary svg { transition: transform .2s; }
+.sim-more[open] > summary svg { transform: rotate(180deg); }
+.sim-more .sim-note { margin: 6px 0; }

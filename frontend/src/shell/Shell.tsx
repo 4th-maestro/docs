@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { AlertTriangle, BarChart3, Building2, CheckCircle2, ChevronDown, LayoutDashboard, LogOut, Menu, UserCog, X } from 'lucide-react'
+import { AlertTriangle, BarChart3, Building2, CheckCircle2, ChevronDown, LayoutDashboard, LogOut, Menu, Plus, UserCog, X } from 'lucide-react'
+import { addCustom, buildingsChanged } from '../custom'
 import { AUTH_ON, currentEmail, isAdmin, signOut } from '../auth/cognito'
 import { LEVEL } from '../portfolio/level'
 import type { BuildingCard } from '../types'
@@ -98,6 +99,10 @@ function BuildingToggle({ buildings, current, tab }: { buildings: BuildingCard[]
               </a>
             )
           })}
+          {/* 건물 추가: 도면을 넣고 트윈에서 렌더링하면 그때부터 데이터 생성 */}
+          <button className="bt-add" role="menuitem" onClick={() => { const id = addCustom(); setOpen(false); buildingsChanged(); location.hash = href(id) }}>
+            <Plus size={18} aria-hidden />건물 추가하기
+          </button>
         </div>
       )}
     </div>

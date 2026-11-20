@@ -3,22 +3,114 @@ import type { Mode, Room } from './types'
 
 // 3D 트윈(iframe) 연동 규약: docs/human/reference/twin-embed.md
 export const TWIN_URL = import.meta.env.VITE_TWIN_URL as string | undefined
+// 같은 서버의 /twin/digital-twin.html 같은 상대 주소도 허용
+const twinOrigin = () => new URL(TWIN_URL as string, window.location.href).origin
+// 트윈이 그릴 건물: 건물 id(트윈 data/buildings.json의 id)를 주소에 붙임
+export function twinSrc(building: string) {
+  const u = new URL(TWIN_URL as string, window.location.href)
+  u.searchParams.set('building', building)
+  return u.href
+}
 
-export function postState(frame: HTMLIFrameElement | null, building: string, floor: string, mode: Mode, rooms: Room[], highlight: string[]) {
+// data: 대시보드가 받은(또는 목업이 만든) 건물 전체 호실 상태 그대로. 트윈은 자체 생성 없이 이 값으로 그린다(화면 값 일치)
+export type TwinData = { time: string; outdoorTemp: number; mock: boolean; rooms: Room[] }
+export function postState(frame: HTMLIFrameElement | null, building: string, floor: string, mode: Mode, rooms: Room[], highlight: string[], data: TwinData | null) {
   if (!frame?.contentWindow || !TWIN_URL) return
   frame.contentWindow.postMessage(
     {
       source: 'maestro', type: 'state', building, floor, mode, highlight,
       rooms: rooms.map((r) => ({ id: r.id, color: color(mode, r), label: value(mode, r), onOff: r.onOff, anomaly: r.anomaly })),
+      data,
     },
-    new URL(TWIN_URL).origin,
+    twinOrigin(),
   )
 }
 
 export function onRoomSelected(handler: (roomId: string) => void) {
   const listener = (e: MessageEvent) => {
-    if (!TWIN_URL || e.origin !== new URL(TWIN_URL).origin) return
+    if (!TWIN_URL || e.origin !== twinOrigin()) return
     if (e.data?.source === 'twin' && e.data.type === 'roomSelected') handler(String(e.data.roomId))
+  }
+  window.addEventListener('message', listener)
+  return () => window.removeEventListener('message', listener)
+}
+
+// 트윈에서 층·지표를 바꾸면 대시보드 버튼도 따라가게 (트윈 → {source:'twin', type:'floorSelected'|'modeSelected'})
+// 트윈이 인식한 건물의 층 목록과 층별 요약 (도면에서 5개 층이 나오면 5개)
+export type TwinFloor = { floor: string; on: number; total: number; anomaly: number; powerKw: number }
+export type TwinBuilding = { id: string; name: string; floors: TwinFloor[] }
+
+export function onTwinChange(handlers: { floor?: (floor: string) => void; mode?: (mode: Mode) => void; building?: (b: TwinBuilding) => void }) {
+  const listener = (e: MessageEvent) => {
+    if (!TWIN_URL || e.origin !== twinOrigin() || e.data?.source !== 'twin') return
+    if (e.data.type === 'floorSelected' && handlers.floor) handlers.floor(String(e.data.floor))
+    if (e.data.type === 'building' && handlers.building && Array.isArray(e.data.floors) && e.data.floors.length)
+      handlers.building({ id: String(e.data.id), name: String(e.data.name), floors: e.data.floors as TwinFloor[] })
+    if (e.data.type === 'modeSelected' && handlers.mode && ['temp', 'powerKw', 'humidity', 'anomaly'].includes(e.data.mode)) handlers.mode(e.data.mode as Mode)
+  }
+  window.addEventListener('message', listener)
+  return () => window.removeEventListener('message', listener)
+}
+
+// '건물 추가'로 넣은 건물: 트윈 폴더엔 도면이 없어서 트윈이 요청하면 이 브라우저에 저장된 building.json을 보냄
+export function onNeedBuilding(frame: () => HTMLIFrameElement | null, get: (id: string) => unknown) {
+  const listener = (e: MessageEvent) => {
+    if (!TWIN_URL || e.origin !== twinOrigin() || e.data?.source !== 'twin' || e.data.type !== 'needBuilding') return
+    const id = String(e.data.id)
+    frame()?.contentWindow?.postMessage({ source: 'maestro', type: 'buildingData', id, data: get(id) }, twinOrigin())
+  }
+  window.addEventListener('message', listener)
+  return () => window.removeEventListener('message', listener)
+}
+
+// 트윈 파이프라인(도면 → building.json) 주소와 '트윈에서 렌더링' 결과 수신
+export const pipelineSrc = () => (TWIN_URL ? new URL('pipeline.html', new URL(TWIN_URL, window.location.href)).href : null)
+export function onBuildingRendered(handler: (building: { building?: { name?: string } }) => void) {
+  const listener = (e: MessageEvent) => {
+    if (!TWIN_URL || e.origin !== twinOrigin() || e.data?.source !== 'twin' || e.data.type !== 'buildingRendered' || !e.data.building) return
+    handler(e.data.building)
+  }
+  window.addEventListener('message', listener)
+  return () => window.removeEventListener('message', listener)
+}
+
+// 운전 시뮬레이션(EnergyPlus): 트윈이 계산하고 결과를 보내면 대시보드 패널에 그림 (트윈 안 패널은 작아서 옮김)
+// period: 'now' = 지금부터 durH시간(기준 = 현재 설정 유지 예측), 'range' = 시작·끝 시각 지정(기준 = 오늘 실제 운전 또는 기존 운전)
+export type SimForm = { coolSetpoint: number | string; start: string; end: string; offWhenEmpty: boolean; precoolMin: number | string; useLive: boolean; period: 'now' | 'range'; durH: number | string }
+type WinSide = { kwh: number; won: number; avgT: number | null; maxT: number | null }
+export type SimWindow = { from: number; to: number; hours: number; label: string; clipped: boolean; setpoint: number; base: WinSide; scenario: WinSide; savedKwh: number; savedWon: number; savedPct: number; afterSavedKwh: number }
+type Kpi = { elecKwh: number; costWon: number; tdisKhPerZone: number; ppd: number; uncomfortPct: number; hottest?: { tempC: number; room: string } }
+type Scen = { coolSetpoint: number; hours: string[]; offWhenEmpty?: boolean; precoolMin?: number }
+export type SimRoom = { id: string; name: string; floor: string; maxT: number; avgT: number; baseAvgT?: number; ppd: number; basePpd?: number; kwh: number; baseKwh?: number }
+export type SimState = {
+  form: SimForm; base: Scen; hasLive: boolean; occ: string; busy: boolean; msg: string; scope: string
+  result: null | {
+    window: SimWindow | null; baseName: string
+    live: { date: string; day: string; now: number; weather: { min: number; max: number } } | null; weather: string; days: number; engine: string
+    compare: { savedKwh: number; savedPct: number; savedWon: number; tdisChange: number; ppdChange: number }
+    restOfDay: { fromHour: number; savedKwh: number; savedWon: number } | null
+    calibration: { factor: number; hours: number; measuredKwh: number; cvrmsePct: number | null; cvrmseRawPct: number | null; note: string } | null
+    comfort: { lower: number; upper: number } | null
+    baseline: { kpi: Kpi; scenario: Scen; avgT: number | null }; scenario: { kpi: Kpi; scenario: Scen; avgT: number | null }; rooms: SimRoom[]
+  }
+}
+export function onTwinSim(handler: (s: SimState) => void) {
+  const listener = (e: MessageEvent) => {
+    if (!TWIN_URL || e.origin !== twinOrigin() || e.data?.source !== 'twin' || e.data.type !== 'sim') return
+    handler(e.data as SimState)
+  }
+  window.addEventListener('message', listener)
+  return () => window.removeEventListener('message', listener)
+}
+export function sendTwin(frame: HTMLIFrameElement | null, msg: Record<string, unknown>) {
+  if (TWIN_URL) frame?.contentWindow?.postMessage({ source: 'maestro', ...msg }, twinOrigin())
+}
+
+// 트윈에서 방 설정온도를 바꾸면(방 화면 '이 온도로 적용') 대시보드가 실행 (목업은 기준값에 반영)
+export function onTwinControl(handler: (room: string, setTemp: number) => void) {
+  const listener = (e: MessageEvent) => {
+    if (!TWIN_URL || e.origin !== twinOrigin() || e.data?.source !== 'twin' || e.data.type !== 'control' || typeof e.data.setTemp !== 'number') return
+    handler(String(e.data.room), e.data.setTemp)
   }
   window.addEventListener('message', listener)
   return () => window.removeEventListener('message', listener)

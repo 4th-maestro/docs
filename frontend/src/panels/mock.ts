@@ -95,9 +95,11 @@ async function schedules(building: string) {
   const rooms = (await demoStatus(building)).rooms
   const at = `${kstNow().slice(0, 11)}08:00:00+09:00`
   const ids = (floor: string, use: string) => rooms.filter((r) => r.floor === floor && r.use === use).map((r) => r.id)
+  // 기존 건물은 1층 진료실, 트윈 건물은 3층 강의실(2026-11-20 결정: 데모 건물 6곳)
+  const [f2, u2] = ids('1F', '진료실').length ? ['1F', '진료실'] : ['3F', '강의실']
   const store = [
     { id: `mock-${building}-seed-1`, buildingId: building, roomIds: ids('2F', '회의실'), action: 'off' as const, time: '13:00', condition: 'unused' as const, createdAt: at, sourceText: '2층 13시 이후 미사용 회의실 냉방 OFF' },
-    { id: `mock-${building}-seed-2`, buildingId: building, roomIds: ids('1F', '진료실'), action: 'setpoint' as const, time: '18:00', condition: 'always' as const, setpoint: 20, createdAt: at, sourceText: '1층 진료실 18시 설정온도 20도' },
+    { id: `mock-${building}-seed-2`, buildingId: building, roomIds: ids(f2, u2), action: 'setpoint' as const, time: '18:00', condition: 'always' as const, setpoint: 20, createdAt: at, sourceText: `${f2.replace('F', '층')} ${u2} 18시 설정온도 20도` },
   ].filter((s) => s.roomIds.length)
   stores.set(building, store)
   return store

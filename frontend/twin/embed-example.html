@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Twin Embed Example</title>
+<style>
+  body{margin:0;padding:16px;font:14px system-ui,"Malgun Gothic",sans-serif;background:#f5f6f8;color:#1b2130}
+  h1{font-size:18px;margin:0 0 12px}
+  .wrap{display:grid;grid-template-columns:1fr 280px;gap:16px}
+  iframe{width:100%;height:620px;border:0;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,.12);background:#e9edf3}
+  .ctl{display:flex;flex-direction:column;gap:8px}
+  button{padding:8px 10px;border-radius:8px;border:1px solid #ccd;background:#fff;cursor:pointer;text-align:left}
+  pre{background:#11151c;color:#cfe3ff;padding:10px;border-radius:8px;font-size:11px;height:240px;overflow:auto;margin:0}
+  @media (max-width:800px){.wrap{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<h1>디지털 트윈 임베딩 예시</h1>
+<div class="wrap">
+  <iframe id="twin" src="digital-twin.html" title="건물 디지털 트윈"></iframe>
+  <div class="ctl">
+    <button id="b1">중앙제어기 데이터 보내기: 2F 6203 실내기 에러 CH05 · 흡입 31°C</button>
+    <button id="b2">3F 평면도로 이동</button>
+    <button id="b3">2F 6203 강의실 3D로 이동</button>
+    <button id="b4">지표: 습도</button>
+    <button id="b5">건물 전체로</button>
+    <button id="b6">보는 사람: 시설 관리자</button>
+    <button id="b7">보는 사람: 에너지 총괄</button>
+    <pre id="log"></pre>
+  </div>
+</div>
+<script>
+  const twin = document.getElementById('twin'), log = document.getElementById('log');
+  const send = m => twin.contentWindow.postMessage(m, '*');
+  document.getElementById('b1').onclick = () => send({ type:'twin:update', data:{ schema:'twin.realtime/v1', idus:{ 'IDU-2F-6203-1':{ power:'off', error:'CH05', roomTemp:31, roomHum:80, kw:0 } } } });
+  document.getElementById('b2').onclick = () => send({ type:'twin:navigate', view:'floor', floor:'3F' });
+  document.getElementById('b3').onclick = () => send({ type:'twin:navigate', view:'room', room:'2F-6203' });
+  document.getElementById('b4').onclick = () => send({ type:'twin:metric', metric:'hum' });
+  document.getElementById('b5').onclick = () => send({ type:'twin:navigate', view:'building' });
+  document.getElementById('b6').onclick = () => send({ type:'twin:persona', persona:'facility' });
+  document.getElementById('b7').onclick = () => send({ type:'twin:persona', persona:'owner' });
+  addEventListener('message', e => {
+    if (e.source !== twin.contentWindow) return;
+    const d = e.data, line = d.type === 'twin:ready' ? `${d.type} (${d.floors.length} floors)` : JSON.stringify(d).slice(0, 220);
+    log.textContent = line + '\n' + log.textContent;
+  });
+</script>
+</body>
+</html>

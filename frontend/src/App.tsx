@@ -10,16 +10,20 @@ import { onAuthChange, signedIn } from './auth/cognito'
 import BuildingCompare from './energy/BuildingCompare'
 import EnergyPage from './energy/EnergyPage'
 import { SCALES } from './heat'
-import { summarize } from './mock'
+import { setRoomSetpoint, summarize } from './mock'
 import AnomalyPanel from './panels/AnomalyPanel'
 import PowerTrend from './panels/PowerTrend'
 import RecommendPanel from './panels/RecommendPanel'
 import ScheduleTimeline from './panels/ScheduleTimeline'
+import SimPanel from './panels/SimPanel'
+import ExperimentPanel from './panels/ExperimentPanel'
 import { usePoll } from './panels/usePoll'
 import Portfolio from './portfolio/Portfolio'
 import { FloorList, Layout } from './shell/Shell'
 import { href, parseRoute, type FloorSummary, type Tab } from './shell/route'
-import { TWIN_URL, onRoomSelected, postState } from './twin'
+import { TWIN_URL, onNeedBuilding, onTwinControl, onRoomSelected, onTwinChange, postState, twinSrc, type TwinBuilding, type TwinData } from './twin'
+import AddBuilding from './AddBuilding'
+import { BUILDINGS_CHANGED, customBuilding, customOf, isCustom } from './custom'
 import type { BuildingCard, Draft, Mode, Room, Status } from './types'
 import { SkFloors, SkKpis, SkPlan } from './skeleton/Skeleton'
 import CountUp from './motion/CountUp'
@@ -34,7 +38,7 @@ const MODES: { id: Mode; label: string }[] = [
   { id: 'anomaly', label: '이상 감지' },
 ]
 // 예시 질의 층: 건물의 맨 위층(교육관은 1F만 있음)
-const scheduleExample = (floors: string[]) => `${floors[floors.length - 1].replace('F', '층')} 13시 이후 미사용 회의실 냉방 OFF`
+const scheduleExample = (floors: string[]) => `${floors.at(-1)?.replace('F', '층') ?? '건물 전체'} 13시 이후 미사용 회의실 냉방 OFF`
 const ACTION = { off: '운전 OFF', on: '운전 ON', setpoint: '설정온도 변경' }
 const hhmm = (iso: string) => iso.slice(11, 16)
 // 상태 실시간 연동(목업): 5초 주기 재조회, 값은 Lambda·목업이 범위 안에서 변동. AI 질의만 WebSocket 사용
@@ -75,6 +79,17 @@ function Shell({ themeButton, dark }: { themeButton: React.ReactNode; dark: bool
   const list = usePoll(getBuildings, 'all')
   const buildings = list.data?.buildings ?? []
   const known = buildings.find((b) => b.id === route.building)
+  // 건물 추가·렌더링·취소 → 목록 다시 조회
+  const { reload } = list
+  useEffect(() => { window.addEventListener(BUILDINGS_CHANGED, reload); return () => window.removeEventListener(BUILDINGS_CHANGED, reload) }, [reload])
+  // 추가만 하고 아직 렌더링하지 않은 건물: 도면 넣는 화면(데이터 생성 안 함)
+  if (route.building && isCustom(route.building) && customOf(route.building)?.state === 'pending') {
+    return (
+      <Layout building={null} tab="ops" buildings={buildings} tools={themeButton}>
+        <AddBuilding id={route.building} />
+      </Layout>
+    )
+  }
 
   // 목록 도착 전에는 주소의 건물을 그대로 표시, 목록에 없는 건물만 안내
   if (route.building && (!list.data || known)) {
@@ -103,7 +118,7 @@ type DashboardProps = { building: string; info?: BuildingCard; tab: Tab; buildin
 
 function Dashboard({ building, info, tab, buildings, themeButton, dark }: DashboardProps) {
   const ops = tab === 'ops'
-  const [floor, setFloor] = useState(info?.floors[0] ?? '1F')
+  const [floor, setFloor] = useState('')
   const [mode, setMode] = useState<Mode>('temp')
   const [status, setStatus] = useState<Status | null>(null)
   const [error, setError] = useState('')
@@ -134,6 +149,8 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
   }, [building, ops, reloadKey])
   const load = () => setReloadKey((k) => k + 1)
   useEffect(() => onRoomSelected(setSelected), [])
+  useEffect(() => onNeedBuilding(() => frame.current, customBuilding), [])
+  useEffect(() => onTwinControl((room, sp) => { setRoomSetpoint(building, room, sp); load() }), [building])
 
   // 대화 기록: 서버(로그인 사용자·건물별), 실패하면 이 화면에만 기록
   useEffect(() => {
@@ -146,9 +163,13 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
     return () => { alive = false }
   }, [building])
 
-  const floors = useMemo(() => status?.floors ?? info?.floors ?? [floor], [status, info, floor])
-  // 목록 도착 전 기본값 1F가 이 건물에 없으면 첫 층으로 이동(렌더 중 상태 조정 패턴)
-  if (status && !status.floors.includes(floor)) setFloor(status.floors[0])
+  // 3D 트윈을 넣었으면 층 목록은 트윈이 도면에서 인식한 층을 따름 (도면에 5개 층이면 1F~5F)
+  const [twin, setTwin] = useState<TwinBuilding | null>(null)
+  const floors = useMemo(() => twin?.floors.map((f) => f.floor) ?? status?.floors ?? info?.floors ?? [], [twin, status, info])
+  // 트윈에서 층·지표를 바꾸면 버튼도 따라감 (이 건물에 없는 층이면 무시)
+  useEffect(() => onTwinChange({ mode: setMode, building: setTwin, floor: (f) => { if (!f || floors.includes(f)) { setFloor(f); setSelected(null) } } }), [floors])
+  // 선택된 층이 현재 건물의 층 목록에서 사라지면 건물 보기로 돌아감
+  if (status && floor && !floors.includes(floor)) setFloor('')
   // 새 AI 결과: 대화에 추가, 이전 초안 닫기, 대상 호실 강조, 초안 대상 층으로 이동
   if (ai.result !== seen) {
     setSeen(ai.result)
@@ -162,14 +183,18 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
   }
 
   const all = status?.rooms ?? NO_ROOMS
-  const rooms = useMemo(() => all.filter((r) => r.floor === floor), [all, floor])
+  const rooms = useMemo(() => floor ? all.filter((r) => r.floor === floor) : all, [all, floor])
   const summary = useMemo(() => summarize(rooms), [rooms])
   const floorSummaries: FloorSummary[] = useMemo(() => floors.map((f) => {
+    const t = twin?.floors.find((x) => x.floor === f)
+    if (t) return t
     const rs = all.filter((r) => r.floor === f)
     return { floor: f, total: rs.length, ...summarize(rs) }
-  }), [all, floors])
+  }), [all, floors, twin])
+  const scope = floor || '건물 전체'
   const highlight = focus
-  useEffect(() => postState(frame.current, building, floor, mode, rooms, highlight), [building, floor, mode, rooms, highlight])
+  const twinData: TwinData | null = useMemo(() => status && { time: status.generatedAt, outdoorTemp: status.outdoorTemp, mock: !!status.mock, rooms: status.rooms }, [status])
+  useEffect(() => postState(frame.current, building, floor, mode, rooms, highlight, twinData), [building, floor, mode, rooms, highlight, twinData])
   // 기준 시각이 갱신 주기의 2배를 초과하면 지연 표시(디자인 시스템 6절)
   const stale = status ? loadedAt - new Date(status.generatedAt).getTime() > status.refreshSeconds * 2000 : false
   const room = rooms.find((r) => r.id === selected)
@@ -177,7 +202,7 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
   const suggestions = [
     { icon: Zap, text: '현재 전력 사용량이 높은 공간은?' },
     { icon: CalendarClock, text: example },
-    { icon: Droplets, text: `${floor.replace('F', '층')}에서 습도가 높은 공간 5곳 알려줘` },
+    { icon: Droplets, text: `${floor ? floor.replace('F', '층') : '건물 전체'}에서 습도가 높은 공간 5곳 알려줘` },
   ]
 
   // 패널의 위치 버튼: 3D에서 선택하고 3D 영역을 화면 안으로 이동, 다른 층 호실이면 그 층으로 전환
@@ -257,8 +282,8 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
             {error && <p className="error" role="alert">{error}</p>}
             {!status && <SkKpis />}
             {status && (
-              <section className="kpis" aria-label={`${floor} 요약`}>
-                <Kpi label="운전 중 HVAC" value={summary.on} unit="대" sub={`${floor} 전체 ${rooms.length}대 중`} />
+              <section className="kpis" aria-label={`${scope} 요약`}>
+                <Kpi label="운전 중 HVAC" value={summary.on} unit="대" sub={`${scope} ${rooms.length}대 중`} />
                 <Kpi label="정지" value={summary.off} unit="대" sub="현재 OFF 상태" />
                 <Kpi label="이상 감지" value={summary.anomaly} unit="건" sub="설정온도 미도달" bad={summary.anomaly > 0} />
                 <Kpi label="현재 전력" value={summary.powerKw} unit="kW" sub={`외기 ${status.outdoorTemp}℃, ${hhmm(status.generatedAt)} 기준`} />
@@ -267,9 +292,9 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
 
             <main className="grid">
               <div className="main-col">
-                <section className="card twin" aria-label={`${floor} 3D 도면`}>
+                <section className="card twin" aria-label={`${scope} 3D 도면`}>
                   <div className="twin-head">
-                    <h2>{floor} 3D 도면</h2>
+                    <h2>{scope} 3D 도면</h2>
                     <div className="modes" role="tablist" aria-label="표시 지표">
                       {MODES.map((m) => (
                         <button key={m.id} role="tab" aria-selected={mode === m.id} className={mode === m.id ? 'pill on' : 'pill'} onClick={() => setMode(m.id)}>{m.label}</button>
@@ -277,28 +302,32 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
                     </div>
                   </div>
                   {TWIN_URL ? (
-                    <iframe ref={frame} className="embed" src={TWIN_URL} title="3D 디지털트윈" onLoad={() => postState(frame.current, building, floor, mode, rooms, highlight)} />
-                  ) : (
+                    <iframe ref={frame} className="embed" src={twinSrc(building)} title="3D 디지털트윈" onLoad={() => postState(frame.current, building, floor, mode, rooms, highlight, twinData)} />
+                  ) : floor ? (
                     <Suspense fallback={<div className="embed"><SkPlan /></div>}>
                       <Twin3D building={building} floor={floor} mode={mode} rooms={rooms} highlight={highlight} selectedId={selected} onSelect={setSelected} dark={dark} />
                     </Suspense>
-                  )}
+                  ) : <div className="embed" />}
                   <Legend mode={mode} status={status} />
-                  {room ? <RoomDetail r={room} /> : <p className="muted pick-hint">호실을 누르면 HVAC 상태가 여기에 표시됩니다.</p>}
+                  {room ? <RoomDetail r={room} /> : <p className="muted pick-hint">{floor ? '호실을 누르면 HVAC 상태가 여기에 표시됩니다.' : '층을 선택하면 평면도가 표시됩니다.'}</p>}
                 </section>
-                <PowerTrend building={building} floor={floor} />
-                <ScheduleTimeline building={building} floor={floor} floors={floors} refreshKey={scheduleKey} rooms={all} onLocate={locate} />
+                {floor && <PowerTrend building={building} floor={floor} />}
+                {/* 트윈 건물은 층이 비어 있을 수 있음: 빈 층이면 시간표는 전체 층 보기(2026-11-20 결정) */}
+                <ScheduleTimeline building={building} floor={floor || 'all'} floors={floors} refreshKey={scheduleKey} rooms={all} onLocate={locate} />
               </div>
 
               <aside className="rail">
+                {/* 3D 트윈 안에 있던 운전 시뮬레이션: 임베딩 화면이 작아서 3D 도면 바로 옆 패널로 */}
+                {TWIN_URL && <SimPanel frame={() => frame.current} onLocate={locate} />}
+                {import.meta.env.DEV && building === 'eng6' && <ExperimentPanel />}
                 <ChatPanel
                   ai={ai} messages={messages} rooms={rooms} suggestions={suggestions} busy={busy} history={history}
                   onSend={send} onClear={clear} onSave={save}
                   onClose={(m) => { setMessages((ms) => ms.map((x) => (x.id === m.id ? { ...x, draftState: 'closed' as const } : x))); setFocus(NO_IDS) }}
                   onFocus={setFocus} onSelect={setSelected}
                 />
-                <AnomalyPanel building={building} floor={floor} onLocate={(id) => { setMode('anomaly'); locate(id) }} />
-                <RecommendPanel key={`${floor}-${scheduleKey}`} building={building} floor={floor} onDraft={showDraft} onLocate={locate} />
+                {floor && <AnomalyPanel building={building} floor={floor} onLocate={(id) => { setMode('anomaly'); locate(id) }} />}
+                {floor && <RecommendPanel key={`${floor}-${scheduleKey}`} building={building} floor={floor} onDraft={showDraft} onLocate={locate} />}
               </aside>
             </main>
           </>

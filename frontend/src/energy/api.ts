@@ -20,6 +20,7 @@ const BASE = import.meta.env.VITE_API_BASE_URL as string | undefined
 
 async function call<T>(path: string): Promise<T> {
   if (!BASE) throw new Error('VITE_API_BASE_URL 없음')
+  if (/(^|[?&])building=new-/.test(path.split('?')[1] ?? '')) throw new Error('추가한 건물')   // 이 브라우저에만 있는 건물
   const res = await fetch(`${BASE}${path}`)
   const data = await res.json()
   if (!res.ok) throw new Error(data.error ?? `요청 실패(${res.status})`)

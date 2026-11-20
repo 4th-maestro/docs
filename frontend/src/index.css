@@ -120,3 +120,12 @@ h3 { font-size: 17px; font-weight: 600; margin: 0 0 8px; }
   .kval { font-size: 28px; }
   .room .kv { grid-template-columns: 84px minmax(0, 1fr); }
 }
+
+/* 건물 추가: 트윈 파이프라인을 본문 가득 */
+.add-bd { display: flex; flex-direction: column; gap: 12px; padding: 16px; height: calc(100dvh - 64px); box-sizing: border-box; }
+.add-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.add-head h1 { margin: 0; font-size: 22px; }
+.add-head .ghost { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border: 1px solid var(--hairline); border-radius: var(--r-sm); background: none; color: var(--ink); cursor: pointer; }
+.add-pipe { flex: 1; min-height: 480px; width: 100%; border: 1px solid var(--hairline); border-radius: var(--r-md); background: #0b0f17; }
+.bt-menu .bt-add { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 48px; margin-top: 4px; padding: 8px 12px; border: 1px dashed var(--hairline); border-radius: var(--r-sm); background: none; color: var(--accent, var(--ink)); font-size: 16px; font-weight: 700; cursor: pointer; }
+.bt-menu .bt-add:hover { background: var(--surface-soft); }

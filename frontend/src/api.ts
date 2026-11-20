@@ -1,9 +1,10 @@
-import { demoStatus, kstNow, live, mockAsk, summarize } from './mock'
+import { applyOverrides, demoStatus, kstNow, live, mockAsk, summarize } from './mock'
 import { mockAnomalies, mockBuildings, mockCancelSchedule, mockHistory, mockRecommendations, mockSaveSchedule, mockSchedules } from './panels/mock'
 import type { Anomalies, History, Recommendations, Schedules } from './panels/types'
 import { AUTH_ON, getAccessToken, signOut } from './auth/cognito'
 import type { Step } from './ai/types'
 import type { Chart, Draft, Portfolio, QueryResult, Status } from './types'
+import { withCustom } from './custom'
 
 export type ChatRecord = { sk: string; role: 'user' | 'assistant'; text: string; steps?: Step[]; highlight?: string[]; draft?: Draft | null; charts?: Chart[] }
 
@@ -14,6 +15,8 @@ export class AuthRequired extends Error {}
 
 export async function call<T>(path: string, init?: RequestInit): Promise<T> {
   if (!BASE) throw new Error('VITE_API_BASE_URL 없음')
+  // '건물 추가'로 넣은 건물은 이 브라우저에만 있음 → 서버에 묻지 않고 목업 사용
+  if (/[?&]building=new-/.test(path)) throw new Error('추가한 건물')
   const token = await getAccessToken()
   if (AUTH_ON && !token) { signOut(); throw new AuthRequired('로그인이 필요합니다.') }
   const res = await fetch(`${BASE}${path}`, { ...init, headers: { 'content-type': 'application/json', ...(token ? { authorization: `Bearer ${token}` } : {}) } })
@@ -32,7 +35,7 @@ export async function getStatus(floor: string, building: string): Promise<Status
     return await call<Status>(`/rooms/status${q(building, floor)}`)
   } catch {
     const data = await demoStatus(building)
-    const rooms = live(data.rooms.filter((r) => !floor || r.floor === floor))
+    const rooms = live(applyOverrides(building, data.rooms.filter((r) => !floor || r.floor === floor)))
     return { ...data, generatedAt: kstNow(), rooms, summary: summarize(rooms), mock: true }
   }
 }
@@ -42,7 +45,7 @@ export const getChat = (building: string) =>
   call<{ messages: ChatRecord[] }>(`/chat${q(building)}`).then((r) => ({ ...r, server: true }), () => ({ messages: [] as ChatRecord[], server: false }))
 export const clearChat = (building: string) => call<{ deleted: number }>(`/chat${q(building)}`, { method: 'DELETE' }).catch(() => ({ deleted: 0 }))
 
-export const getBuildings = () => call<Portfolio>('/buildings').catch(() => mockBuildings())
+export const getBuildings = () => call<Portfolio>('/buildings').catch(() => mockBuildings()).then(withCustom)
 
 export async function ask(text: string, building: string): Promise<QueryResult> {
   try {

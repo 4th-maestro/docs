@@ -1,3 +1,4 @@
+import { customStatus, isCustom } from './custom'
 import type { Draft, QueryResult, Room, Status } from './types'
 
 // API를 쓸 수 없을 때 대신 쓰는 목업(건물별 데모 상태 JSON 기반). 결과에는 mock 표시가 붙음
@@ -6,6 +7,8 @@ import type { Draft, QueryResult, Room, Status } from './types'
 // 건물별 public/demo/<id>.json(lambda/tools/demo_status.py 생성), 동시 요청이 한 번만 받도록 Promise 보관
 const cache = new Map<string, Promise<Status>>()
 export function demoStatus(building: string): Promise<Status> {
+  // 추가한 건물: 트윈에서 렌더링한 뒤에만 데이터가 있음
+  if (isCustom(building)) { const s = customStatus(building); return s ? Promise.resolve(s) : Promise.reject(new Error('도면을 넣고 트윈에서 렌더링하면 데이터가 생성됩니다.')) }
   let p = cache.get(building)
   if (!p) {
     p = fetch(`/demo/${encodeURIComponent(building)}.json`).then((r) => r.json() as Promise<Status>).catch(() => {
@@ -32,6 +35,19 @@ export function live(rooms: Room[]): Room[] {
   }))
 }
 
+// 설정온도 변경(3D 트윈의 '이 온도로 적용' 등): 목업 기준값에 덮어써서 다음 조회부터 웹·트윈 모두 반영
+// 실온은 바꾼 만큼 따라가고(80%), 전력은 1℃당 8% 변함(냉방은 올리면 감소, 난방은 올리면 증가)
+const overrides = new Map<string, number>()
+export function setRoomSetpoint(building: string, roomId: string, setpoint: number) { overrides.set(`${building}/${roomId}`, setpoint) }
+export function applyOverrides(building: string, rooms: Room[]): Room[] {
+  return rooms.map((r) => {
+    const sp = overrides.get(`${building}/${r.id}`)
+    if (sp == null || sp === r.setpoint) return r
+    const d = sp - r.setpoint
+    return { ...r, setpoint: sp, temp: Math.round((r.temp + 0.8 * d) * 10) / 10, powerKw: r.onOff ? Math.max(0, Math.round(r.powerKw * (1 + (r.mode === 'cooling' ? -0.08 : 0.08) * d) * 100) / 100) : 0 }
+  })
+}
+
 export function kstNow() {
   return `${new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 19)}+09:00`
 }
@@ -43,7 +59,7 @@ export function summarize(rooms: Room[]) {
   }
 }
 
-const USES: [RegExp, string][] = [[/회의/, '회의실'], [/사무/, '사무실'], [/진료/, '진료실'], [/휴게|대기/, '대기·휴게']]
+const USES: [RegExp, string][] = [[/회의/, '회의실'], [/사무/, '사무실'], [/진료/, '진료실'], [/강의/, '강의실'], [/연구/, '연구실'], [/실험/, '실험실'], [/휴게|대기/, '대기·휴게']]
 const METRICS: [RegExp, keyof Room, string, string][] = [
   [/습도/, 'humidity', '습도', '%'], [/온도/, 'temp', '실내온도', '℃'], [/./, 'powerKw', '전력', 'kW'],
 ]
@@ -66,7 +82,7 @@ export async function mockAsk(text: string, building: string): Promise<QueryResu
     const list = top.map((r) => `${r.name}(${r[key]}${unit})`).join(', ')
     const idle = top.filter((r) => r.onOff && r.occupants === 0).length
     return {
-      answer: `${where} 중 ${label} ${asc ? '하위' : '상위'} ${top.length}곳은 ${list}입니다.${idle ? ` 이 중 ${idle}곳은 재실 없이 운전 중이므로 OFF 스케줄을 검토하십시오.` : ''}`,
+      answer: `${where} 중 ${label} ${asc ? '하위' : '상위'} ${top.length}곳은 ${list}입니다.${idle ? `\n이 중 ${idle}곳은 재실 없이 운전 중이므로 OFF 스케줄을 검토하십시오.` : ''}`,
       highlight: top.map((r) => r.id), draft: null, mock: true,
       charts: [{ kind: 'bar', title: `${where} ${label} ${asc ? '낮은' : '높은'} 순 ${top.length}곳`, unit, items: top.map((r) => ({ id: r.id, label: r.name, sub: `${r.floor}, ${r.use}`, value: r[key] as number })) }],
     }
@@ -85,7 +101,7 @@ export async function mockAsk(text: string, building: string): Promise<QueryResu
   }
   const act = action === 'off' ? '냉난방 OFF' : action === 'on' ? '냉난방 ON' : `설정온도 ${draft.setpoint}℃`
   return {
-    answer: `${where} ${rooms.length}곳에 ${time} 이후${condition === 'unused' ? ' 재실이 없을 때' : ''} ${act} 스케줄 초안을 만들었습니다. 확인 후 저장하십시오.`,
+    answer: `${where} ${rooms.length}곳에 ${time} 이후${condition === 'unused' ? ' 재실이 없을 때' : ''} ${act} 스케줄 초안을 만들었습니다.`,
     highlight: draft.roomIds, draft, mock: true,
   }
 }
