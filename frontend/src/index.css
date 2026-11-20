@@ -82,7 +82,8 @@ h3 { font-size: 17px; font-weight: 600; margin: 0 0 8px; }
 .sw.bad { background: #fdecec; outline: 2px solid var(--danger); margin-right: 6px; }
 
 .rail { display: flex; flex-direction: column; gap: 24px; min-width: 0; }
-.row2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; margin-top: 24px; align-items: start; }
+/* 왼쪽 열: 3D, 전력 추이, 스케줄. 오른쪽 열(AI, 이상 감지, 추천)과 높이 균형 */
+.main-col { display: flex; flex-direction: column; gap: 24px; min-width: 0; }
 .pick { margin: 16px 0 0; }
 .room { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--hairline); }
 .room-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin-bottom: 8px; }
@@ -112,7 +113,11 @@ h3 { font-size: 17px; font-weight: 600; margin: 0 0 8px; }
 
 @media (max-width: 1127px) {
   .grid { grid-template-columns: 1fr; }
-  .row2 { grid-template-columns: 1fr; }
+  /* 한 열 배치: 3D 다음에 AI 응답, 이상 감지, 추천(문제와 조치 먼저), 그다음 전력 추이와 스케줄 */
+  .main-col { display: contents; }
+  .twin { order: 1; }
+  .rail { order: 2; }
+  .main-col > .pn { order: 3; }
   .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 743px) {

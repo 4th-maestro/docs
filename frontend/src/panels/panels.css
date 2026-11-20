@@ -73,7 +73,7 @@
 .pn-dot.next { background: var(--canvas); border: 2px solid var(--ink); }
 .pn-nowline { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; background: var(--today); }
 .pn-ticks { position: relative; height: 22px; font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
-.pn-ticks span { position: absolute; transform: translateX(-50%); }
+.pn-ticks span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
 .pn-ticks span:first-child { transform: none; }
 .pn-ticks span:last-child { transform: translateX(-100%); }
 .pn-legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 14px; color: var(--muted); }

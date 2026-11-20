@@ -4,7 +4,7 @@ Maestro 운영 대시보드(React, Vite, TypeScript)입니다. 디자인 기준�
 
 | 경로 | 내용 |
 |---|---|
-| `src/App.tsx` | 층 탭, 자연어 질의, 히트맵(온도·전력·습도·이상 감지), AI 응답, 스케줄 초안 |
+| `src/App.tsx` | 화면 배치. 왼쪽 열: 3D 트윈, 선택 호실 HVAC 상태, 전력 추이, 오늘 스케줄. 오른쪽 열: AI 응답, 이상 감지, 최적 제어 추천. 한 열 화면은 3D 다음에 오른쪽 열을 먼저 표시. 밝은/어두운 화면 전환 |
 | `src/heat.ts` | 지표별 순차 색 척도 |
 | `src/twin.ts` | 3D 트윈 iframe 연동([규약](../docs/human/reference/twin-embed.md)) |
 | `src/twin3d/Twin3D.tsx` | Three.js 층 3D 트윈: `public/floorplan.json` 호실 다각형, 지표 색, HVAC 운전·이상 표시, 호실 선택, 시점 초기화·위에서 보기 |

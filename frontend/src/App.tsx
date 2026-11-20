@@ -171,6 +171,7 @@ export default function App() {
       )}
 
       <main className="grid">
+        <div className="main-col">
         <section className="card twin">
           <div className="twin-head">
             <div className="modes" role="tablist">
@@ -189,6 +190,9 @@ export default function App() {
           <Legend mode={mode} status={status} />
           {room ? <RoomDetail r={room} /> : <p className="muted pick">호실을 누르면 HVAC 상태가 여기에 표시됩니다.</p>}
         </section>
+        <PowerTrend floor={floor} />
+        <ScheduleTimeline refreshKey={scheduleKey} onLocate={locate} />
+        </div>
 
         <aside className="rail">
           <section className="card">
@@ -225,11 +229,6 @@ export default function App() {
           <RecommendPanel key={`${floor}-${scheduleKey}`} floor={floor} onDraft={showDraft} onLocate={locate} />
         </aside>
       </main>
-
-      <div className="row2">
-        <PowerTrend floor={floor} />
-        <ScheduleTimeline refreshKey={scheduleKey} onLocate={locate} />
-      </div>
     </div>
   )
 }
