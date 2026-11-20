@@ -1,0 +1,38 @@
+{
+  "schema_version": "1.0",
+  "scenario_id": "eng6_cooling_example",
+  "building_id": "PNU-ENG6",
+  "building_revision": "1",
+  "room_ids": [
+    "1F-6107-1"
+  ],
+  "timezone": "Asia/Seoul",
+  "start_time": "2026-08-03T08:15:00+09:00",
+  "end_time": "2026-08-03T09:15:00+09:00",
+  "step_minutes": 15,
+  "random_seed": 0,
+  "weather": {
+    "file": "busan.epw",
+    "date_mapping": "month_day"
+  },
+  "conditions_file": "conditions.csv",
+  "load_profile_id": "test",
+  "load_profile_revision": "1",
+  "initialization_profile_id": "repeat",
+  "comfort": {
+    "occupied_temperature_range_c": [
+      24,
+      26
+    ],
+    "priority": "balanced"
+  },
+  "controller_information": {
+    "schedule_lookahead_minutes": 15,
+    "weather_forecast_enabled": false
+  },
+  "provenance": {
+    "weather": "Provide a local KST EPW for the target site",
+    "occupancy": "Synthetic example",
+    "loads": "Illustrative assumptions"
+  }
+}

@@ -1,0 +1,9 @@
+# EnergyPlus 실행 결과 (계산 서버가 다시 만듦)
+sim/
+# 명령줄 실측 시뮬레이션 결과
+data/**/live-scenario.json
+# 사진·안내도·항공 사진 원본은 저장소에 넣지 않음(2026-11-20 결정, 출처·사용 조건 미확인)
+source/**/*.png
+source/**/*.jpg
+source/**/*.jpeg
+data/**/skyview.png

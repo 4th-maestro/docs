@@ -1,0 +1,131 @@
+/* 토큰: 루트 DESIGN.md(색·폰트·간격·라운드·그림자), 데이터 시각화는 docs/human/reference/design-system.md 6절
+   운영자 화면 기준(DESIGN.md): 본문 16px·행간 1.5, 보조 문구 14px 이상, 본문 대비 4.5:1 이상
+   - page: 넓은 순백 면적의 눈부심 완화용 바탕, 카드만 canvas
+   - primary-fill: 흰 글자 버튼 채움. #ff385c는 흰 글자 대비 3.52:1로 본문 기준 미달이라 #e00b41(4.89:1) 사용
+   - caution: 주의 상태(디자인 시스템 표 1.1), 운영 패널과 전체 현황 공용. 어두운 화면 카드 기준 7.27:1 */
+:root {
+  --page: #f5f5f3; --canvas: #ffffff; --surface-soft: #f7f7f7; --surface-strong: #efefed;
+  --hairline: #dddddd; --hairline-soft: #ebebeb; --border-strong: #c1c1c1;
+  --ink: #222222; --body: #3f3f3f; --muted: #6a6a6a; --on-ink: #ffffff;
+  --primary: #ff385c; --primary-fill: #e00b41; --primary-active: #b8082f;
+  --skeleton: #ebebe8;
+  --error: #c13515; --danger: #b91c1c; --ok: #15803d; --caution: #b45309;
+  --shadow: rgba(0, 0, 0, 0.02) 0 0 0 1px, rgba(0, 0, 0, 0.04) 0 2px 6px 0, rgba(0, 0, 0, 0.1) 0 4px 8px 0;
+  --r-sm: 8px; --r-md: 14px; --r-full: 9999px;
+  font-family: 'SUIT Variable', SUIT, -apple-system, system-ui, sans-serif;
+  font-size: 16px; line-height: 1.5;
+  color: var(--ink); background: var(--page);
+  color-scheme: light;
+}
+/* 어두운 테마: 순백 글자 대신 #e6e6e3(번짐 완화), 대비는 DESIGN.md 운영자 화면 기준 표 */
+:root[data-theme='dark'] {
+  --page: #151618; --canvas: #1f2023; --surface-soft: #26282b; --surface-strong: #2e3034;
+  --hairline: #3a3c40; --hairline-soft: #303236; --border-strong: #5b5e63;
+  --ink: #e6e6e3; --body: #cfcfcb; --muted: #a2a29e; --on-ink: #151618;
+  --skeleton: #2f3135;
+  --error: #f2856d; --danger: #f27272; --ok: #4cc27a; --caution: #e0a060;
+  --shadow: rgba(0, 0, 0, 0.4) 0 0 0 1px, rgba(0, 0, 0, 0.3) 0 4px 8px 0;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); }
+button { font: inherit; color: inherit; cursor: pointer; }
+button:disabled { cursor: not-allowed; }
+h2 { font-size: 21px; font-weight: 700; letter-spacing: -0.18px; line-height: 1.3; margin: 0 0 12px; }
+h3 { font-size: 17px; font-weight: 600; margin: 0 0 8px; }
+.muted { color: var(--muted); font-size: 15px; }
+.small { font-size: 14px; }
+
+.page { max-width: 1280px; margin: 0 auto; padding: 0 24px 64px; }
+.brand { font-size: 22px; font-weight: 700; }
+/* 전체 현황 링크와 건물 선택: 같은 줄이라 높이 48 동일, 현재 화면은 ink 채움(primary는 주 버튼 전용) */
+.meta { display: flex; align-items: center; gap: 8px; margin-left: auto; font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+/* 건물 화면 탭(운영, 전력 분석): 같은 줄 탭 너비 1:1 */
+.live { display: inline-flex; align-items: center; gap: 6px; }
+.live i { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); }
+.live.stale i { background: var(--danger); }
+.meta .stale { color: var(--danger); }
+.icon { color: var(--ink); }
+.icon { width: 44px; height: 44px; border-radius: var(--r-full); border: 0; background: var(--surface-strong); display: grid; place-items: center; }
+
+.orb { width: 48px; height: 48px; border-radius: var(--r-full); border: 0; background: var(--primary-fill); color: #fff; display: grid; place-items: center; flex: none; }
+.orb:active { background: var(--primary-active); }
+/* 비활성: 같은 색의 옅은 톤 대신 별도 색(넉터 가이드라인 47) */
+.orb:disabled { background: var(--surface-strong); color: var(--muted); }
+.pill { height: 44px; padding: 0 18px; border-radius: var(--r-full); border: 1px solid var(--hairline); background: var(--canvas); font-size: 15px; font-weight: 500; }
+.pill.on { border-color: var(--ink); background: var(--ink); color: var(--on-ink); }
+.banner { display: flex; align-items: center; gap: 8px; padding: 12px 16px; margin-bottom: 16px; border-radius: var(--r-sm); border: 1px solid var(--hairline); background: var(--canvas); font-size: 15px; color: var(--body); }
+.kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-bottom: 24px; }
+.kpi { border: 1px solid var(--hairline); border-radius: var(--r-md); padding: 18px 20px; background: var(--canvas); display: flex; flex-direction: column; gap: 4px; }
+.klabel { font-size: 15px; font-weight: 500; color: var(--muted); }
+.kval { font-size: 34px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.2; }
+.kval small { font-size: 17px; font-weight: 500; margin-left: 2px; }
+.kval.bad { color: var(--danger); }
+.ksub { font-size: 14px; color: var(--muted); }
+.suggest { list-style: none; margin: 0; padding: 0; }
+.suggest button { width: 100%; display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 8px 12px; border: 0; border-radius: var(--r-sm); background: none; text-align: left; font-size: 16px; }
+.suggest button:hover { background: var(--surface-soft); }
+.error { text-align: center; color: var(--error); font-size: 15px; }
+
+.grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+.card { border: 1px solid var(--hairline); border-radius: var(--r-md); padding: 24px; background: var(--canvas); }
+.twin-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.twin-head h2 { margin: 0; }
+.modes { display: flex; gap: 8px; flex-wrap: wrap; }
+.embed { width: 100%; height: 560px; border: 0; border-radius: var(--r-sm); background: var(--surface-soft); }
+.legend { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin-top: 12px; font-size: 14px; color: var(--muted); }
+.sw { display: inline-block; width: 22px; height: 12px; border-radius: 2px; margin-right: 2px; vertical-align: -1px; }
+.sw.bad { background: #fdecec; outline: 2px solid var(--danger); margin-right: 6px; }
+
+.rail { display: flex; flex-direction: column; gap: 24px; min-width: 0; }
+/* 왼쪽 열: 3D, 전력 추이, 스케줄. 오른쪽 열(AI, 이상 감지, 추천)과 높이 균형 */
+.main-col { display: flex; flex-direction: column; gap: 24px; min-width: 0; }
+.pick-hint { margin: 16px 0 0; }
+.room { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--hairline); }
+.room-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin-bottom: 8px; }
+.room-head h3 { margin: 0; font-size: 19px; }
+.room .kv { grid-template-columns: repeat(3, 84px minmax(0, 1fr)); }
+.ok { color: var(--ok); font-size: 15px; }
+.tag { display: inline-block; margin-bottom: 8px; padding: 2px 8px; border-radius: var(--r-full); background: var(--surface-strong); font-size: 14px; font-weight: 600; color: var(--muted); }
+.draft { border-top: 1px solid var(--hairline); padding-top: 16px; }
+.draft dl, .kv { display: grid; grid-template-columns: 84px 1fr; gap: 8px 12px; margin: 0 0 8px; font-size: 15px; }
+.draft dt, .kv dt { color: var(--muted); }
+.draft dd, .kv dd { margin: 0; font-weight: 500; }
+.btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 16px; }
+.primary, .secondary { height: 48px; border-radius: var(--r-sm); font-size: 16px; font-weight: 600; }
+.primary { border: 0; background: var(--primary-fill); color: #fff; }
+.primary:active { background: var(--primary-active); }
+.primary:disabled { background: var(--surface-strong); color: var(--muted); }
+.secondary { border: 1px solid var(--ink); background: var(--canvas); color: var(--ink); }
+.bad-line { display: flex; align-items: center; gap: 6px; color: var(--danger); font-size: 14px; }
+
+
+@media (max-width: 1127px) {
+  .grid { grid-template-columns: 1fr; }
+  /* 한 열 배치: 3D 다음에 AI 응답, 이상 감지, 추천(문제와 조치 먼저), 그다음 전력 추이와 스케줄 */
+  .main-col { display: contents; }
+  .twin { order: 1; }
+  .rail { order: 2; }
+  .main-col > .pn { order: 3; }
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* 머리글 2줄: 로고, 건물 선택, 버튼 / 층 탭. 층 탭이 없는 화면은 아래 여백으로 균형 */
+}
+@media (max-width: 743px) {
+  .page { padding: 0 16px 48px; }
+  /* 머리글 3줄: 로고와 버튼 / 전체 현황과 건물 선택 / 층 탭 */
+  .meta { order: 1; }
+  .card { padding: 16px; }
+  .kpis { gap: 8px; }
+  .kpi { padding: 12px 14px; }
+  .kval { font-size: 28px; }
+  .room .kv { grid-template-columns: 84px minmax(0, 1fr); }
+}
+
+/* 건물 추가: 트윈 파이프라인을 본문 가득 */
+.add-bd { display: flex; flex-direction: column; gap: 12px; padding: 16px; height: calc(100dvh - 64px); box-sizing: border-box; }
+.add-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.add-head h1 { margin: 0; font-size: 22px; }
+.add-head .ghost { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border: 1px solid var(--hairline); border-radius: var(--r-sm); background: none; color: var(--ink); cursor: pointer; }
+.add-pipe { flex: 1; min-height: 480px; width: 100%; border: 1px solid var(--hairline); border-radius: var(--r-md); background: #0b0f17; }
+.bt-menu .bt-add { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 48px; margin-top: 4px; padding: 8px 12px; border: 1px dashed var(--hairline); border-radius: var(--r-sm); background: none; color: var(--accent, var(--ink)); font-size: 16px; font-weight: 700; cursor: pointer; }
+.bt-menu .bt-add:hover { background: var(--surface-soft); }

@@ -4,7 +4,7 @@
   "documents": [
     {
       "path": "AGENTS.md",
-      "title": "Maestro 작업 공간 안내",
+      "title": "에게(에너지게이트) 작업 공간 안내",
       "audience": "ai",
       "type": "navigation"
     },
@@ -22,7 +22,7 @@
     },
     {
       "path": "docs/human/README.md",
-      "title": "Maestro 문서 요약",
+      "title": "에게(에너지게이트) 문서 요약",
       "audience": "human",
       "type": "navigation"
     },
@@ -39,6 +39,90 @@
       "type": "explanation"
     },
     {
+      "path": "docs/human/explanation/architecture.md",
+      "title": "시스템 설계: 6단계 처리 흐름과 4계층 구조",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/decisions/2026-11-19(과제 4 범위 반영).md",
+      "title": "과제 4 범위 반영",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/decisions/2026-11-19(해커톤 주제 확정).md",
+      "title": "해커톤 주제 확정",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/decisions/2026-11-20(AI 답변 구조화 응답).md",
+      "title": "AI 답변 구조화 응답",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/decisions/2026-11-20(AI 대화 메모리 10턴 확장).md",
+      "title": "AI 대화 메모리 10턴 확장",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/decisions/2026-11-20(AWS 아키텍처와 기술 스택).md",
+      "title": "AWS 아키텍처와 기술 스택",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/decisions/2026-11-20(HVAC 제어 방식 비교).md",
+      "title": "HVAC 제어 방식 비교: 규칙 기반과 JEV 기반",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/decisions/2026-11-20(공실 OFF 규칙과 JEV 비교).md",
+      "title": "공실 OFF 규칙과 JEV 비교",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/decisions/2026-11-20(규정 문서 RAG 벡터 저장소).md",
+      "title": "규정 문서 RAG 벡터 저장소",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/decisions/2026-11-20(도면 실내기 기호 검출 모델).md",
+      "title": "도면 실내기 기호 검출 모델",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/decisions/2026-11-20(로그인과 AI 대화 메모리).md",
+      "title": "로그인과 AI 대화 메모리",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/decisions/2026-11-20(외부 판단 API JEV 운영 사용).md",
+      "title": "외부 판단 API JEV 운영 사용",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/decisions/2026-11-20(판매사·고객사 회원 구조).md",
+      "title": "판매사·고객사 회원 구조",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/decisions/2026-11-20(허용 목록 회원가입).md",
+      "title": "허용 목록 회원가입",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
       "path": "docs/human/explanation/decisions/README.md",
       "title": "기술 선택 기록",
       "audience": "human",
@@ -47,6 +131,36 @@
     {
       "path": "docs/human/explanation/research/README.md",
       "title": "외부 조사 기록",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/research/ai-tool-eval.md",
+      "title": "AI 운영 도우미 도구 선택 평가",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/research/building-operator-problems-papers.md",
+      "title": "건물 운영자 문제 조사: 논문 자료 목록",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/research/building-operator-problems-sources.md",
+      "title": "건물 운영자 문제 조사: 국내·업계 자료 목록",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/research/building-operator-problems.md",
+      "title": "건물 운영자 문제 전수조사",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/research/ddpg-training-time.md",
+      "title": "DDPG HVAC 제어 학습 시간 추정",
       "audience": "human",
       "type": "explanation"
     },
@@ -63,8 +177,92 @@
       "type": "explanation"
     },
     {
+      "path": "docs/human/explanation/research/electricity-tariff.md",
+      "title": "일반용 전기요금 단가 조사: 에너지 분석 환산 단가 134.2원/kWh",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/research/energyplus-feasibility.md",
+      "title": "EnergyPlus 도입 검토와 Lambda 경량 열모델 비교",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/research/floorplan-hvac-twin-tech.md",
+      "title": "도면 인식·공조 고장 진단 기술 조사",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/research/ifc-sample-feasibility.md",
+      "title": "공개 IFC 샘플 검토와 추출 실험",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/research/judge-model-jev.md",
+      "title": "판단 특화 모델 JEV 조사",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/research/kb-sources.md",
+      "title": "운영 도우미 지식 기반(KB) 수록 자료 조사: 법령·고시 원문 3건 수록, 공공기관 난방 기준 18℃로 정정",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
       "path": "docs/human/explanation/research/korea-space-topics.md",
       "title": "한국 공간 문제와 공공데이터 기반 디지털트윈 주제 6가지",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/research/maintenance-background-market.md",
+      "title": "공조 설비 정비 문제 배경과 시장 조사",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/research/mechanical-room-drawing-datasets.md",
+      "title": "기계실 도면과 공개 도면 데이터셋 비교",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/research/occupancy-thermal-evidence.md",
+      "title": "재실 밀도·사물과 실내온도·체감온도 근거 조사",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/research/ui-references.md",
+      "title": "대시보드 UI 레퍼런스(UIbowl)",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/service-plan.md",
+      "title": "서비스 기획: 도면 기반 건물 운영 디지털트윈",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/troubleshooting/2026-11-20(AI 다중 턴 되묻기 요청 유실).md",
+      "title": "AI 다중 턴 되묻기 요청 유실",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/troubleshooting/2026-11-20(Bedrock Sonnet 5.5 모델 ID 404).md",
+      "title": "Bedrock Sonnet 5.5 모델 ID 404",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/troubleshooting/2026-11-20(새로고침 후 3D 도면 미표시).md",
+      "title": "새로고침 후 3D 도면 미표시",
       "audience": "human",
       "type": "explanation"
     },
@@ -94,13 +292,31 @@
     },
     {
       "path": "docs/human/reference/design-system.md",
-      "title": "Maestro 디자인 시스템",
+      "title": "에게 디자인 시스템",
       "audience": "human",
       "type": "reference"
     },
     {
       "path": "docs/human/reference/document-locations.md",
       "title": "원본 문서 위치",
+      "audience": "human",
+      "type": "reference"
+    },
+    {
+      "path": "docs/human/reference/plan-storage.md",
+      "title": "도면 저장 규약",
+      "audience": "human",
+      "type": "reference"
+    },
+    {
+      "path": "docs/human/reference/requirements.md",
+      "title": "요구사항: 기능 21개, 비기능 8개",
+      "audience": "human",
+      "type": "reference"
+    },
+    {
+      "path": "docs/human/reference/twin-embed.md",
+      "title": "3D 트윈 임베드 규약",
       "audience": "human",
       "type": "reference"
     },
@@ -112,7 +328,7 @@
     },
     {
       "path": "docs/human/tutorials/first-day.md",
-      "title": "Maestro 팀 합류 안내",
+      "title": "에게 팀 합류 안내",
       "audience": "human",
       "type": "tutorials"
     }

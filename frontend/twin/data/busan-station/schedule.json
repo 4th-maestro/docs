@@ -1,0 +1,6 @@
+{
+ "schema": "twin.schedule/v1",
+ "source": "해당 없음 — 강의실이 없는 건물은 용도별 운영 패턴으로 재실을 판단",
+ "term": "-",
+ "classes": []
+}

@@ -1,0 +1,1098 @@
+[
+{
+"id": "0ztdC3L1HAzhbhMHypqbH5",
+"name": "Central Waiting",
+"floor": "1F",
+"use": "대기·휴게",
+"areaM2": 136.8,
+"idu": "IDU-1F-001"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqc0X",
+"name": "Hk Break Room",
+"floor": "1F",
+"use": "대기·휴게",
+"areaM2": 9.0,
+"idu": "IDU-1F-002"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqcYS",
+"name": "Lounge",
+"floor": "1F",
+"use": "대기·휴게",
+"areaM2": 9.5,
+"idu": "IDU-1F-003"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqc9r",
+"name": "Pediatric Waiting",
+"floor": "1F",
+"use": "대기·휴게",
+"areaM2": 11.9,
+"idu": "IDU-1F-004"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqcVI",
+"name": "Reception",
+"floor": "1F",
+"use": "대기·휴게",
+"areaM2": 8.8,
+"idu": "IDU-1F-005"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqcVw",
+"name": "Reception",
+"floor": "1F",
+"use": "대기·휴게",
+"areaM2": 21.5,
+"idu": "IDU-1F-006"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqcBK",
+"name": "Reception",
+"floor": "1F",
+"use": "대기·휴게",
+"areaM2": 8.8,
+"idu": "IDU-1F-007"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqcqj",
+"name": "Waiting",
+"floor": "1F",
+"use": "대기·휴게",
+"areaM2": 11.6,
+"idu": "IDU-1F-008"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqcY9",
+"name": "Waiting / Activity Area",
+"floor": "1F",
+"use": "대기·휴게",
+"areaM2": 178.2,
+"idu": "IDU-1F-009"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqc9P",
+"name": "Admin Work Statn.",
+"floor": "1F",
+"use": "사무실",
+"areaM2": 10.0,
+"idu": "IDU-1F-010"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqc7X",
+"name": "Adp Equip Space",
+"floor": "1F",
+"use": "사무실",
+"areaM2": 10.6,
+"idu": "IDU-1F-011"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqcAi",
+"name": "Appmts",
+"floor": "1F",
+"use": "사무실",
+"areaM2": 11.0,
+"idu": "IDU-1F-012"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqc7q",
+"name": "Biomed Maint. Admin.",
+"floor": "1F",
+"use": "사무실",
+"areaM2": 14.4,
+"idu": "IDU-1F-013"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqc7A",
+"name": "Bmet Work Station",
+"floor": "1F",
+"use": "사무실",
+"areaM2": 46.7,
+"idu": "IDU-1F-014"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqc0P",
+"name": "Chief Aero Med.",
+"floor": "1F",
+"use": "사무실",
+"areaM2": 9.0,
+"idu": "IDU-1F-015"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqc0i",
+"name": "Chief Log Office",
+"floor": "1F",
+"use": "사무실",
+"areaM2": 9.2,
+"idu": "IDU-1F-016"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqc6M",
+"name": "Fac. Mgr. Office",
+"floor": "1F",
+"use": "사무실",
+"areaM2": 8.6,
+"idu": "IDU-1F-017"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqc6L",
+"name": "Hk. Supv. Office",
+"floor": "1F",
+"use": "사무실",
+"areaM2": 9.9,
+"idu": "IDU-1F-018"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqcV1",
+"name": "Lab Office",
+"floor": "1F",
+"use": "사무실",
+"areaM2": 9.4,
+"idu": "IDU-1F-019"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqcZz",
+"name": "Patient Admin. Recept.",
+"floor": "1F",
+"use": "사무실",
+"areaM2": 19.0,
+"idu": "IDU-1F-020"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqc0V",
+"name": "Pes Admin. Office",
+"floor": "1F",
+"use": "사무실",
+"areaM2": 14.6,
+"idu": "IDU-1F-021"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqcAu",
+"name": "Provider Cubicles",
+"floor": "1F",
+"use": "사무실",
+"areaM2": 65.3,
+"idu": "IDU-1F-022"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqc9V",
+"name": "Provider Cubicles",
+"floor": "1F",
+"use": "사무실",
+"areaM2": 65.2,
+"idu": "IDU-1F-023"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqc9G",
+"name": "Records",
+"floor": "1F",
+"use": "사무실",
+"areaM2": 11.0,
+"idu": "IDU-1F-024"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqcZa",
+"name": "Rmo Analyst",
+"floor": "1F",
+"use": "사무실",
+"areaM2": 26.7,
+"idu": "IDU-1F-025"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqcVr",
+"name": "Staff Lounge",
+"floor": "1F",
+"use": "사무실",
+"areaM2": 9.4,
+"idu": "IDU-1F-026"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqc7Q",
+"name": "Staff Lounge",
+"floor": "1F",
+"use": "사무실",
+"areaM2": 13.7,
+"idu": "IDU-1F-027"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqc7L",
+"name": "Super",
+"floor": "1F",
+"use": "사무실",
+"areaM2": 9.1,
+"idu": "IDU-1F-028"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqcY0",
+"name": "Super / Ncoic",
+"floor": "1F",
+"use": "사무실",
+"areaM2": 6.7,
+"idu": "IDU-1F-029"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqcTB",
+"name": "Tech. Work Room",
+"floor": "1F",
+"use": "사무실",
+"areaM2": 23.0,
+"idu": "IDU-1F-030"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqc0h",
+"name": "Tech. Work Station",
+"floor": "1F",
+"use": "사무실",
+"areaM2": 35.9,
+"idu": "IDU-1F-031"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqcYN",
+"name": "Tricare Office",
+"floor": "1F",
+"use": "사무실",
+"areaM2": 8.0,
+"idu": "IDU-1F-032"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqcZZ",
+"name": "Tricare Office",
+"floor": "1F",
+"use": "사무실",
+"areaM2": 8.2,
+"idu": "IDU-1F-033"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqcZj",
+"name": "Tricare Office",
+"floor": "1F",
+"use": "사무실",
+"areaM2": 8.3,
+"idu": "IDU-1F-034"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqcZe",
+"name": "Tricare Office",
+"floor": "1F",
+"use": "사무실",
+"areaM2": 9.3,
+"idu": "IDU-1F-035"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqcZk",
+"name": "Tricare Office",
+"floor": "1F",
+"use": "사무실",
+"areaM2": 8.6,
+"idu": "IDU-1F-036"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqc7i",
+"name": "Work Room",
+"floor": "1F",
+"use": "사무실",
+"areaM2": 18.3,
+"idu": "IDU-1F-037"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqc03",
+"name": "Audio",
+"floor": "1F",
+"use": "진료실",
+"areaM2": 10.4,
+"idu": "IDU-1F-038"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqcVO",
+"name": "Blood Draw",
+"floor": "1F",
+"use": "진료실",
+"areaM2": 8.9,
+"idu": "IDU-1F-039"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqc0Q",
+"name": "Ecg Test",
+"floor": "1F",
+"use": "진료실",
+"areaM2": 9.0,
+"idu": "IDU-1F-040"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqcBR",
+"name": "Fitting / Disp.",
+"floor": "1F",
+"use": "진료실",
+"areaM2": 9.2,
+"idu": "IDU-1F-041"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqcBA",
+"name": "Fundus Camera Room",
+"floor": "1F",
+"use": "진료실",
+"areaM2": 13.8,
+"idu": "IDU-1F-042"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqc0G",
+"name": "Hist. / Intv.",
+"floor": "1F",
+"use": "진료실",
+"areaM2": 7.3,
+"idu": "IDU-1F-043"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqc8k",
+"name": "Immuniz'N Room",
+"floor": "1F",
+"use": "진료실",
+"areaM2": 15.4,
+"idu": "IDU-1F-044"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqcV7",
+"name": "Lab",
+"floor": "1F",
+"use": "진료실",
+"areaM2": 51.2,
+"idu": "IDU-1F-045"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqcB0",
+"name": "Opt. Exam / Off.",
+"floor": "1F",
+"use": "진료실",
+"areaM2": 16.3,
+"idu": "IDU-1F-046"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqcB9",
+"name": "Opt. Exam / Off.",
+"floor": "1F",
+"use": "진료실",
+"areaM2": 17.0,
+"idu": "IDU-1F-047"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqc9B",
+"name": "Pediatric Wts & Msrs",
+"floor": "1F",
+"use": "진료실",
+"areaM2": 10.2,
+"idu": "IDU-1F-048"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqdhw",
+"name": "Pharm. Disp.",
+"floor": "1F",
+"use": "진료실",
+"areaM2": 65.2,
+"idu": "IDU-1F-049"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqcYI",
+"name": "Pharm. Office",
+"floor": "1F",
+"use": "진료실",
+"areaM2": 9.5,
+"idu": "IDU-1F-050"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqc04",
+"name": "Physical Exam",
+"floor": "1F",
+"use": "진료실",
+"areaM2": 55.6,
+"idu": "IDU-1F-051"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqcTs",
+"name": "Radiographic Room",
+"floor": "1F",
+"use": "진료실",
+"areaM2": 28.2,
+"idu": "IDU-1F-052"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqcBf",
+"name": "Scope Wash / Decon.",
+"floor": "1F",
+"use": "진료실",
+"areaM2": 8.3,
+"idu": "IDU-1F-053"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqcBF",
+"name": "Screen Eye Test",
+"floor": "1F",
+"use": "진료실",
+"areaM2": 9.1,
+"idu": "IDU-1F-054"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqcA7",
+"name": "Specimen Coll. Lab",
+"floor": "1F",
+"use": "진료실",
+"areaM2": 9.4,
+"idu": "IDU-1F-055"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqcBg",
+"name": "Trmt Rm. Dirty Proc.",
+"floor": "1F",
+"use": "진료실",
+"areaM2": 13.4,
+"idu": "IDU-1F-056"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqc8a",
+"name": "Trmt Room",
+"floor": "1F",
+"use": "진료실",
+"areaM2": 22.2,
+"idu": "IDU-1F-057"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqcB6",
+"name": "Visual Field",
+"floor": "1F",
+"use": "진료실",
+"areaM2": 10.1,
+"idu": "IDU-1F-058"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqc93",
+"name": "Wts & Meas. Room",
+"floor": "1F",
+"use": "진료실",
+"areaM2": 8.5,
+"idu": "IDU-1F-059"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqc7M",
+"name": "Conf. Library",
+"floor": "1F",
+"use": "회의실",
+"areaM2": 10.8,
+"idu": "IDU-1F-060"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqcAh",
+"name": "Group Is",
+"floor": "1F",
+"use": "회의실",
+"areaM2": 17.9,
+"idu": "IDU-1F-061"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqc9L",
+"name": "Group Is",
+"floor": "1F",
+"use": "회의실",
+"areaM2": 17.9,
+"idu": "IDU-1F-062"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqcAO",
+"name": "Interaction Station",
+"floor": "1F",
+"use": "회의실",
+"areaM2": 11.9,
+"idu": "IDU-1F-063"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqcAK",
+"name": "Interaction Station",
+"floor": "1F",
+"use": "회의실",
+"areaM2": 11.7,
+"idu": "IDU-1F-064"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqc9s",
+"name": "Interaction Station",
+"floor": "1F",
+"use": "회의실",
+"areaM2": 11.9,
+"idu": "IDU-1F-065"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqcBb",
+"name": "Interaction Station",
+"floor": "1F",
+"use": "회의실",
+"areaM2": 10.7,
+"idu": "IDU-1F-066"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqcA2",
+"name": "Interaction Station",
+"floor": "1F",
+"use": "회의실",
+"areaM2": 11.9,
+"idu": "IDU-1F-067"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqc9w",
+"name": "Interaction Station",
+"floor": "1F",
+"use": "회의실",
+"areaM2": 11.9,
+"idu": "IDU-1F-068"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqcAT",
+"name": "Interaction Station",
+"floor": "1F",
+"use": "회의실",
+"areaM2": 11.9,
+"idu": "IDU-1F-069"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqcAJ",
+"name": "Interaction Station",
+"floor": "1F",
+"use": "회의실",
+"areaM2": 11.9,
+"idu": "IDU-1F-070"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqcAU",
+"name": "Interaction Station",
+"floor": "1F",
+"use": "회의실",
+"areaM2": 11.9,
+"idu": "IDU-1F-071"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqc94",
+"name": "Interaction Station",
+"floor": "1F",
+"use": "회의실",
+"areaM2": 11.8,
+"idu": "IDU-1F-072"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqc9m",
+"name": "Interaction Station",
+"floor": "1F",
+"use": "회의실",
+"areaM2": 11.9,
+"idu": "IDU-1F-073"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqc9$",
+"name": "Interaction Station",
+"floor": "1F",
+"use": "회의실",
+"areaM2": 11.9,
+"idu": "IDU-1F-074"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqc6V",
+"name": "Isolation Interaction Station",
+"floor": "1F",
+"use": "회의실",
+"areaM2": 12.5,
+"idu": "IDU-1F-075"
+},
+{
+"id": "0ztdC3L1HAzhbhMHypqc9M",
+"name": "Team Interaction",
+"floor": "1F",
+"use": "회의실",
+"areaM2": 22.6,
+"idu": "IDU-1F-076"
+},
+{
+"id": "0ClPCUC7jCQRnj1dhupMQo",
+"name": "Cl. Utl. / Kitchenet",
+"floor": "2F",
+"use": "기타",
+"areaM2": 8.3,
+"idu": "IDU-2F-077"
+},
+{
+"id": "1gvYwVnFXA491$ELl$CPR0",
+"name": "Library / Classroom",
+"floor": "2F",
+"use": "대기·휴게",
+"areaM2": 26.4,
+"idu": "IDU-2F-078"
+},
+{
+"id": "0ClPCUC7jCQRnj1dhupHs7",
+"name": "Lounge",
+"floor": "2F",
+"use": "대기·휴게",
+"areaM2": 10.3,
+"idu": "IDU-2F-079"
+},
+{
+"id": "0ClPCUC7jCQRnj1dhupMRF",
+"name": "Reception",
+"floor": "2F",
+"use": "대기·휴게",
+"areaM2": 14.2,
+"idu": "IDU-2F-080"
+},
+{
+"id": "0ClPCUC7jCQRnj1dhupHXZ",
+"name": "Sec. Wait",
+"floor": "2F",
+"use": "대기·휴게",
+"areaM2": 15.7,
+"idu": "IDU-2F-081"
+},
+{
+"id": "0ClPCUC7jCQRnj1dhupMQy",
+"name": "Wait / Ergom",
+"floor": "2F",
+"use": "대기·휴게",
+"areaM2": 8.4,
+"idu": "IDU-2F-082"
+},
+{
+"id": "0ClPCUC7jCQRnj1dhupMR0",
+"name": "Waiting",
+"floor": "2F",
+"use": "대기·휴게",
+"areaM2": 9.5,
+"idu": "IDU-2F-083"
+},
+{
+"id": "0ClPCUC7jCQRnj1dhupHXJ",
+"name": "1St Sgt",
+"floor": "2F",
+"use": "사무실",
+"areaM2": 9.9,
+"idu": "IDU-2F-084"
+},
+{
+"id": "0uLn6BSvvEB8kgChiujNI6",
+"name": "Admin",
+"floor": "2F",
+"use": "사무실",
+"areaM2": 31.5,
+"idu": "IDU-2F-085"
+},
+{
+"id": "0ClPCUC7jCQRnj1dhupHXk",
+"name": "Admin Office",
+"floor": "2F",
+"use": "사무실",
+"areaM2": 13.3,
+"idu": "IDU-2F-086"
+},
+{
+"id": "0ClPCUC7jCQRnj1dhupMQa",
+"name": "Bee Tech",
+"floor": "2F",
+"use": "사무실",
+"areaM2": 9.9,
+"idu": "IDU-2F-087"
+},
+{
+"id": "0ClPCUC7jCQRnj1dhupMQP",
+"name": "Bee Tech",
+"floor": "2F",
+"use": "사무실",
+"areaM2": 8.8,
+"idu": "IDU-2F-088"
+},
+{
+"id": "0ClPCUC7jCQRnj1dhupHXa",
+"name": "Cmdr Office",
+"floor": "2F",
+"use": "사무실",
+"areaM2": 14.5,
+"idu": "IDU-2F-089"
+},
+{
+"id": "0ClPCUC7jCQRnj1dhupHZb",
+"name": "Computer Room",
+"floor": "2F",
+"use": "사무실",
+"areaM2": 32.1,
+"idu": "IDU-2F-090"
+},
+{
+"id": "0ClPCUC7jCQRnj1dhupHXt",
+"name": "Copy / File",
+"floor": "2F",
+"use": "사무실",
+"areaM2": 11.2,
+"idu": "IDU-2F-091"
+},
+{
+"id": "0ClPCUC7jCQRnj1dhupHX9",
+"name": "Credentials Mgr",
+"floor": "2F",
+"use": "사무실",
+"areaM2": 8.7,
+"idu": "IDU-2F-092"
+},
+{
+"id": "0uLn6BSvvEB8kgChiujNHz",
+"name": "Dental Surgeon Office",
+"floor": "2F",
+"use": "사무실",
+"areaM2": 14.9,
+"idu": "IDU-2F-093"
+},
+{
+"id": "0ClPCUC7jCQRnj1dhupHXy",
+"name": "Dir. Info Mgr",
+"floor": "2F",
+"use": "사무실",
+"areaM2": 8.7,
+"idu": "IDU-2F-094"
+},
+{
+"id": "0ClPCUC7jCQRnj1dhupHsk",
+"name": "M. Staff Toilet",
+"floor": "2F",
+"use": "사무실",
+"areaM2": 16.5,
+"idu": "IDU-2F-095"
+},
+{
+"id": "0ClPCUC7jCQRnj1dhupMRk",
+"name": "Office",
+"floor": "2F",
+"use": "사무실",
+"areaM2": 8.6,
+"idu": "IDU-2F-096"
+},
+{
+"id": "0ClPCUC7jCQRnj1dhupMQe",
+"name": "Office",
+"floor": "2F",
+"use": "사무실",
+"areaM2": 8.1,
+"idu": "IDU-2F-097"
+},
+{
+"id": "0ClPCUC7jCQRnj1dhupMR9",
+"name": "Office / Exam",
+"floor": "2F",
+"use": "사무실",
+"areaM2": 11.7,
+"idu": "IDU-2F-098"
+},
+{
+"id": "0ClPCUC7jCQRnj1dhupHXU",
+"name": "Ops Squad Cmdr",
+"floor": "2F",
+"use": "사무실",
+"areaM2": 12.7,
+"idu": "IDU-2F-099"
+},
+{
+"id": "0ClPCUC7jCQRnj1dhupMQk",
+"name": "Ph Super",
+"floor": "2F",
+"use": "사무실",
+"areaM2": 8.4,
+"idu": "IDU-2F-100"
+},
+{
+"id": "0ClPCUC7jCQRnj1dhupMQt",
+"name": "Ph Tech",
+"floor": "2F",
+"use": "사무실",
+"areaM2": 8.7,
+"idu": "IDU-2F-101"
+},
+{
+"id": "0ClPCUC7jCQRnj1dhupMQn",
+"name": "Ph Tech",
+"floor": "2F",
+"use": "사무실",
+"areaM2": 8.5,
+"idu": "IDU-2F-102"
+},
+{
+"id": "0ClPCUC7jCQRnj1dhupHXj",
+"name": "Qa / Hrd Director",
+"floor": "2F",
+"use": "사무실",
+"areaM2": 8.3,
+"idu": "IDU-2F-103"
+},
+{
+"id": "0ClPCUC7jCQRnj1dhupHXF",
+"name": "Readiness Ncoic Office",
+"floor": "2F",
+"use": "사무실",
+"areaM2": 10.0,
+"idu": "IDU-2F-104"
+},
+{
+"id": "0ClPCUC7jCQRnj1dhupHXK",
+"name": "Rmo Dir.",
+"floor": "2F",
+"use": "사무실",
+"areaM2": 9.0,
+"idu": "IDU-2F-105"
+},
+{
+"id": "0uLn6BSvvEB8kgChiujNHm",
+"name": "Sec. Office",
+"floor": "2F",
+"use": "사무실",
+"areaM2": 14.8,
+"idu": "IDU-2F-106"
+},
+{
+"id": "0ClPCUC7jCQRnj1dhupHXe",
+"name": "Super",
+"floor": "2F",
+"use": "사무실",
+"areaM2": 8.5,
+"idu": "IDU-2F-107"
+},
+{
+"id": "0uLn6BSvvEB8kgChiujNHp",
+"name": "Super Office",
+"floor": "2F",
+"use": "사무실",
+"areaM2": 10.0,
+"idu": "IDU-2F-108"
+},
+{
+"id": "0ClPCUC7jCQRnj1dhupHXn",
+"name": "Sys. Analyst",
+"floor": "2F",
+"use": "사무실",
+"areaM2": 19.4,
+"idu": "IDU-2F-109"
+},
+{
+"id": "0ClPCUC7jCQRnj1dhupMRK",
+"name": "Tech Office",
+"floor": "2F",
+"use": "사무실",
+"areaM2": 9.2,
+"idu": "IDU-2F-110"
+},
+{
+"id": "0ClPCUC7jCQRnj1dhupMRA",
+"name": "Tech Office",
+"floor": "2F",
+"use": "사무실",
+"areaM2": 9.2,
+"idu": "IDU-2F-111"
+},
+{
+"id": "0ClPCUC7jCQRnj1dhupHXA",
+"name": "Tech. Office",
+"floor": "2F",
+"use": "사무실",
+"areaM2": 82.1,
+"idu": "IDU-2F-112"
+},
+{
+"id": "0ClPCUC7jCQRnj1dhupHsZ",
+"name": "W. Staff Toilet",
+"floor": "2F",
+"use": "사무실",
+"areaM2": 14.3,
+"idu": "IDU-2F-113"
+},
+{
+"id": "0ClPCUC7jCQRnj1dhupHsB",
+"name": "Ceramic Lab",
+"floor": "2F",
+"use": "진료실",
+"areaM2": 10.1,
+"idu": "IDU-2F-114"
+},
+{
+"id": "0ClPCUC7jCQRnj1dhupHso",
+"name": "Consult.",
+"floor": "2F",
+"use": "진료실",
+"areaM2": 31.9,
+"idu": "IDU-2F-115"
+},
+{
+"id": "0uLn6BSvvEB8kgChiujNHe",
+"name": "Dental Waiting",
+"floor": "2F",
+"use": "진료실",
+"areaM2": 31.8,
+"idu": "IDU-2F-116"
+},
+{
+"id": "0uLn6BSvvEB8kgChiujNHh",
+"name": "Dental Waiting",
+"floor": "2F",
+"use": "진료실",
+"areaM2": 7.3,
+"idu": "IDU-2F-117"
+},
+{
+"id": "0uLn6BSvvEB8kgChiujNHI",
+"name": "Developing",
+"floor": "2F",
+"use": "진료실",
+"areaM2": 6.9,
+"idu": "IDU-2F-118"
+},
+{
+"id": "0ClPCUC7jCQRnj1dhupHsV",
+"name": "Dipc Clean",
+"floor": "2F",
+"use": "진료실",
+"areaM2": 13.3,
+"idu": "IDU-2F-119"
+},
+{
+"id": "0ClPCUC7jCQRnj1dhupHsP",
+"name": "Dipc Decon",
+"floor": "2F",
+"use": "진료실",
+"areaM2": 10.2,
+"idu": "IDU-2F-120"
+},
+{
+"id": "0ClPCUC7jCQRnj1dhupHsu",
+"name": "Dtr Support",
+"floor": "2F",
+"use": "진료실",
+"areaM2": 8.1,
+"idu": "IDU-2F-121"
+},
+{
+"id": "0ClPCUC7jCQRnj1dhupHsL",
+"name": "Gen. Dent. Dtr #10",
+"floor": "2F",
+"use": "진료실",
+"areaM2": 11.0,
+"idu": "IDU-2F-122"
+},
+{
+"id": "0uLn6BSvvEB8kgChiujNHX",
+"name": "Gen. Dent. Dtr #4",
+"floor": "2F",
+"use": "진료실",
+"areaM2": 10.8,
+"idu": "IDU-2F-123"
+},
+{
+"id": "0uLn6BSvvEB8kgChiujNHk",
+"name": "Gen. Dent. Dtr #5",
+"floor": "2F",
+"use": "진료실",
+"areaM2": 10.5,
+"idu": "IDU-2F-124"
+},
+{
+"id": "0ClPCUC7jCQRnj1dhupHsn",
+"name": "Gen. Dent. Dtr #6",
+"floor": "2F",
+"use": "진료실",
+"areaM2": 11.0,
+"idu": "IDU-2F-125"
+},
+{
+"id": "0ClPCUC7jCQRnj1dhupHst",
+"name": "Gen. Dent. Dtr #7",
+"floor": "2F",
+"use": "진료실",
+"areaM2": 10.3,
+"idu": "IDU-2F-126"
+},
+{
+"id": "0ClPCUC7jCQRnj1dhupHsj",
+"name": "Gen. Dent. Dtr #8",
+"floor": "2F",
+"use": "진료실",
+"areaM2": 10.9,
+"idu": "IDU-2F-127"
+},
+{
+"id": "0ClPCUC7jCQRnj1dhupHsa",
+"name": "Gen. Dent. Dtr #9",
+"floor": "2F",
+"use": "진료실",
+"areaM2": 10.5,
+"idu": "IDU-2F-128"
+},
+{
+"id": "0uLn6BSvvEB8kgChiujNHw",
+"name": "Oh Dtr #1",
+"floor": "2F",
+"use": "진료실",
+"areaM2": 10.5,
+"idu": "IDU-2F-129"
+},
+{
+"id": "0uLn6BSvvEB8kgChiujNHd",
+"name": "Oh Dtr #2",
+"floor": "2F",
+"use": "진료실",
+"areaM2": 11.1,
+"idu": "IDU-2F-130"
+},
+{
+"id": "0uLn6BSvvEB8kgChiujNHa",
+"name": "Oh Dtr #3",
+"floor": "2F",
+"use": "진료실",
+"areaM2": 11.0,
+"idu": "IDU-2F-131"
+},
+{
+"id": "0ClPCUC7jCQRnj1dhupHsC",
+"name": "Prosth. Lab",
+"floor": "2F",
+"use": "진료실",
+"areaM2": 28.6,
+"idu": "IDU-2F-132"
+},
+{
+"id": "0ClPCUC7jCQRnj1dhupMRT",
+"name": "Psych Test",
+"floor": "2F",
+"use": "진료실",
+"areaM2": 9.2,
+"idu": "IDU-2F-133"
+},
+{
+"id": "0uLn6BSvvEB8kgChiujNHL",
+"name": "X-Ray",
+"floor": "2F",
+"use": "진료실",
+"areaM2": 10.3,
+"idu": "IDU-2F-134"
+},
+{
+"id": "0ClPCUC7jCQRnj1dhupMRO",
+"name": "Conf. / Group Therapy",
+"floor": "2F",
+"use": "회의실",
+"areaM2": 22.6,
+"idu": "IDU-2F-135"
+},
+{
+"id": "0ClPCUC7jCQRnj1dhupHX0",
+"name": "Conf. Room",
+"floor": "2F",
+"use": "회의실",
+"areaM2": 29.4,
+"idu": "IDU-2F-136"
+},
+{
+"id": "0uLn6BSvvEB8kgChiujNGA",
+"name": "Library / Conf. Room",
+"floor": "2F",
+"use": "회의실",
+"areaM2": 24.9,
+"idu": "IDU-2F-137"
+}
+]

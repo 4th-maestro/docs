@@ -1,0 +1,35 @@
+/* 로그인 화면
+   - 토큰: index.css :root(밝은·어두운 화면 공통 변수)
+   - 글자: 입력 17px, 라벨 15px, 보조 14px(DESIGN.md 운영자 화면 기준)
+   - 입력칸 높이 52px, 주 버튼 48px 전체 폭 */
+.lg { min-height: 100vh; display: grid; place-items: center; padding: 24px 16px; background: var(--page); }
+.lg-card { width: 100%; max-width: 420px; display: flex; flex-direction: column; gap: 8px; padding: 32px; border: 1px solid var(--hairline); border-radius: var(--r-md); background: var(--canvas); box-shadow: var(--shadow); }
+.lg-brand { display: flex; align-items: flex-end; gap: 10px; margin-bottom: 12px; }
+.lg-brand img { height: 44px; width: auto; }
+.lg-brand span { font-size: 16px; font-weight: 600; color: var(--muted); padding-bottom: 2px; }
+.lg h1 { font-size: 24px; font-weight: 700; margin: 0 0 8px; }
+.lg-help { margin: 0 0 8px; font-size: 15px; color: var(--body); }
+.lg label { margin-top: 8px; font-size: 15px; font-weight: 600; }
+.lg-field { position: relative; display: flex; }
+.lg-field input { width: 100%; height: 52px; padding: 0 52px 0 16px; border: 1px solid var(--border-strong); border-radius: var(--r-sm); background: var(--canvas); color: var(--ink); font: inherit; font-size: 17px; }
+.lg-field input:focus { outline: 2px solid var(--ink); outline-offset: 1px; }
+.lg-field input[aria-invalid='true'] { border-color: var(--danger); }
+.lg-eye { position: absolute; right: 4px; top: 4px; width: 44px; height: 44px; display: grid; place-items: center; border: 0; border-radius: var(--r-sm); background: none; color: var(--muted); }
+.lg-rules { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 14px; color: var(--muted); }
+.lg-rules li { display: inline-flex; align-items: center; gap: 4px; }
+.lg-rules li.ok { color: var(--ok); }
+.lg-error { margin: 4px 0 0; font-size: 15px; color: var(--error); }
+.lg-submit { width: 100%; margin-top: 16px; }
+.lg-note { margin: 8px 0 0; font-size: 14px; color: var(--muted); }
+.lg-to { margin: 0; font-size: 16px; font-weight: 600; overflow-wrap: anywhere; }
+.lg-links { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin-top: 8px; }
+.lg-link { min-height: 44px; padding: 0 4px; border: 0; background: none; color: var(--ink); font-size: 15px; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+.lg-field + .lg-link { align-self: flex-start; }
+.lg-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+@media (max-width: 743px) { .lg-card { padding: 24px 20px; } }
+.lg-icon-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+/* 소속 기업 없음: 기업 연결 아래 로그아웃 */
+.lg-submit + .lg-submit { margin-top: 8px; }
+/* 서비스 중지 안내: 아이콘 + 글자 */
+.lg-stop { display: flex; align-items: flex-start; gap: 8px; margin: 8px 0 0; font-size: 16px; line-height: 1.5; color: var(--danger); }
+.lg-stop svg { flex: none; margin-top: 2px; }

@@ -1,0 +1,46 @@
+/* AI 답변 그래프(말풍선 안, 크게 보기 창)
+   - 색: --en-cur(이번 기간·막대), --en-prev(이전 기간), energy.css 토큰 재사용. 새 색 없음
+   - 글자: 제목 16px, 값 16px, 축·범례 14px(DESIGN.md 운영자 화면 기준), 숫자는 고정 폭
+   - 막대: 데이터 끝 4px 둥근 모서리, 막대 사이 간격, 값은 막대 오른쪽 글자 */
+.cv { margin: 0; display: flex; flex-direction: column; gap: 10px; padding: 12px; border: 1px solid var(--hairline); border-radius: var(--r-sm); background: var(--canvas); min-width: 0; }
+.cv-head { display: flex; flex-direction: column; gap: 2px; }
+.cv-head b { font-size: 16px; line-height: 1.4; }
+.cv-head span { font-size: 14px; color: var(--muted); }
+.cv-tools { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.cv-tools .en-seg { flex: 1; max-width: 220px; }
+.cv-bars { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.cv-bars li { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1fr) auto; align-items: center; gap: 8px; }
+.cv-label { display: flex; flex-direction: column; min-width: 0; font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cv-label small { font-size: 13px; font-weight: 400; color: var(--muted); overflow: hidden; text-overflow: ellipsis; }
+.cv-track { height: 14px; border-radius: 0 4px 4px 0; background: var(--surface-soft); overflow: hidden; }
+.cv-track i { display: block; height: 100%; min-width: 2px; border-radius: 0 4px 4px 0; background: var(--en-cur); }
+.cv-val { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; min-width: 64px; }
+.cv-val small { font-size: 13px; font-weight: 500; color: var(--muted); margin-left: 2px; }
+.cv-more { font-size: 14px; color: var(--muted); display: block !important; }
+.cv-line { position: relative; min-width: 0; }
+.cv-line svg { display: block; touch-action: pan-y; }
+.cv-line svg:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.cv-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; margin-bottom: 4px; font-size: 14px; color: var(--body); }
+.cv-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.cv-legend .cv-unit { margin-left: auto; color: var(--muted); }
+.cv-grid { stroke: var(--hairline-soft); stroke-width: 1; }
+.cv-axis { fill: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+.cv-cross { stroke: var(--border-strong); stroke-width: 1; }
+.cv-tip { position: absolute; z-index: 2; width: 168px; display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border: 1px solid var(--hairline); border-radius: var(--r-sm); background: var(--canvas); box-shadow: var(--shadow); font-size: 14px; font-variant-numeric: tabular-nums; pointer-events: none; }
+.cv-tip span { display: inline-flex; align-items: center; gap: 6px; }
+.cv-table { max-height: 260px; overflow: auto; }
+.cv-table table { width: 100%; border-collapse: collapse; font-size: 15px; }
+.cv-table th { position: sticky; top: 0; background: var(--canvas); text-align: left; font-size: 14px; font-weight: 600; color: var(--muted); padding: 6px 4px; border-bottom: 1px solid var(--hairline); }
+.cv-table td { padding: 8px 4px; border-bottom: 1px solid var(--hairline-soft); }
+.cv-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.cv.big { border: 0; padding: 0; gap: 14px; }
+.cv.big .cv-head b { font-size: 20px; }
+.cv.big .cv-table { max-height: 50vh; }
+
+/* 크게 보기 창 */
+.cv-modal { width: min(960px, 92vw); max-height: 90vh; padding: 0; border: 0; border-radius: var(--r-md); background: var(--canvas); color: var(--ink); box-shadow: var(--shadow); }
+.cv-modal::backdrop { background: rgba(0, 0, 0, 0.45); }
+.cv-modal[open] { animation: m-fade var(--t-fast) ease-out; }
+.cv-modal-body { position: relative; padding: 24px; }
+.cv-close { position: absolute; right: 16px; top: 16px; }
+.cv.big .cv-head { padding-right: 52px; }

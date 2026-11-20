@@ -1,0 +1,42 @@
+/* 움직임 토큰: 넉터 design-system-motion.md 6절(스프링·시간)을 CSS로 옮김
+   - 누름 180ms, 이동 300ms(되튐 없음), 등장 350ms, 페이드 160ms, 숫자 460ms(useCountUp)
+   - 값이 바뀔 때 1회 실행만 허용. 깜빡임·반짝임·무한 반복 금지(DESIGN.md 운영자 화면 기준), 요청 중 회전 아이콘과 로딩 중 스켈레톤 맥동만 예외
+   - 동작 줄이기 설정이면 전부 끔 */
+:root {
+  --ease-press: cubic-bezier(0.2, 0.9, 0.3, 1);
+  --ease-move: cubic-bezier(0.25, 0.8, 0.25, 1);
+  --t-press: 180ms; --t-move: 300ms; --t-enter: 350ms; --t-fast: 160ms;
+}
+
+@keyframes m-fade { from { opacity: 0; } }
+@keyframes m-pop { from { transform: scale(0.4); opacity: 0; } }
+@keyframes m-rise { from { transform: translateY(25px); opacity: 0; } }
+@keyframes m-shake { 0%, 100% { translate: 0; } 20%, 60% { translate: -6px; } 40%, 80% { translate: 6px; } }
+@keyframes m-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes m-grow { from { transform: scaleX(0); } }
+
+/* 등장·교체 */
+.fade-in { animation: m-fade var(--t-fast) ease-out both; }
+/* 체크·상태 아이콘이 바뀔 때 커지며 등장(popIn, 누름 스프링) */
+.pop-in { display: inline-flex; animation: m-pop var(--t-press) var(--ease-press) both; }
+/* 목록 행: 25px 아래에서 위로, 40ms 간격, 처음 8개만 지연(넉터 6.3) */
+.rise-in { animation: m-rise var(--t-enter) var(--ease-move) both; animation-delay: calc(min(var(--i, 0), 7) * 40ms); }
+/* 입력 오류: 좌우 6px 3회, 320ms(넉터 shake) */
+.shake { animation: m-shake 320ms ease-in-out; }
+/* 그래프 선: 첫 표시 때 왼쪽부터 그림. path에 pathLength="1" 필요 */
+.draw { stroke-dasharray: 1; animation: m-draw 700ms var(--ease-move) both; }
+/* 막대: 첫 표시 때 왼쪽부터 자람, 값 변경은 폭 이동(300ms) */
+.grow { transform-origin: left center; transform-box: fill-box; animation: m-grow var(--t-move) var(--ease-move) both; transition: width var(--t-move) var(--ease-move); }
+
+/* 상태 전환: 선택 칩, 탭, 버튼 배경·글자 색 */
+.pill, .chip, .vtabs a, .side-link, .fl, .bt-btn, .bt-menu a, .suggest button, .pn-btn, .chat-mini, .icon, .user, .primary, .secondary, .orb, .lg-link, .en-row, .pf-card {
+  transition: transform var(--t-press) var(--ease-press), background-color var(--t-fast) ease-out, color var(--t-fast) ease-out, border-color var(--t-fast) ease-out, box-shadow var(--t-fast) ease-out;
+}
+/* 누름: 배경이 바뀌지 않는 요소만 축소(배경이 바뀌는 주 버튼·아이콘 버튼은 색만, 넉터 6.2) */
+.fl:active, .suggest button:active, .pn-btn:active, .chat-mini:active, .side-link:active, .bt-menu a:active, .en-row:active, .secondary:active, .lg-link:active { transform: scale(0.97); }
+/* 3D 그래프 칸·막대 색 변경 */
+.en-cell, .en-meter i, .pn-bar i { transition: fill var(--t-move) ease-out, width var(--t-move) var(--ease-move); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-delay: 0ms !important; transition-duration: 0.01ms !important; }
+}

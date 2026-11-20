@@ -1,0 +1,1952 @@
+{
+ "schema": "twin.pipeline/v1",
+ "id": "eng6-2026-11",
+ "base": "source/eng6/",
+ "building": {
+  "id": "PNU-ENG6",
+  "name": "제6공학관",
+  "campus": "부산대학교 부산캠퍼스",
+  "size": {
+   "w": 48,
+   "d": 35
+  },
+  "floorHeight": 3.6,
+  "ceiling": 2.8
+ },
+ "operation": {
+  "source": "BMS 운영 스케줄 설정",
+  "weekday": [
+   "08:00",
+   "21:00"
+  ],
+  "weekend": null
+ },
+ "floors": [
+  {
+   "id": "1F",
+   "image": "plans/wifimap-1F.png",
+   "corners": null,
+   "mode": "manual",
+   "params": {
+    "dark": 40,
+    "sat": 70,
+    "close": 1,
+    "minArea": 3.5
+   },
+   "ops": [
+    {
+     "op": "rect",
+     "x0": 0,
+     "x1": 9.2,
+     "y0": 0,
+     "y1": 5.3,
+     "type": "room",
+     "number": "6107-1",
+     "use": "office",
+     "capacity": 5
+    },
+    {
+     "op": "rect",
+     "x0": 0,
+     "x1": 9.2,
+     "y0": 5.3,
+     "y1": 10.5,
+     "type": "room",
+     "number": "6107-2",
+     "use": "office",
+     "capacity": 5
+    },
+    {
+     "op": "rect",
+     "x0": 0,
+     "x1": 9.2,
+     "y0": 10.5,
+     "y1": 15.8,
+     "type": "room",
+     "number": "6107",
+     "use": "office",
+     "capacity": 5
+    },
+    {
+     "op": "rect",
+     "x0": 0,
+     "x1": 9.2,
+     "y0": 15.8,
+     "y1": 18.1,
+     "type": "room",
+     "number": "6106",
+     "use": "office",
+     "capacity": 2
+    },
+    {
+     "op": "rect",
+     "x0": 0,
+     "x1": 9.2,
+     "y0": 18.1,
+     "y1": 20.8,
+     "type": "room",
+     "number": "6105",
+     "use": "office",
+     "capacity": 3
+    },
+    {
+     "op": "rect",
+     "x0": 0,
+     "x1": 5.4,
+     "y0": 20.8,
+     "y1": 25,
+     "type": "wc",
+     "name": "화장실"
+    },
+    {
+     "op": "rect",
+     "x0": 5.4,
+     "x1": 9.2,
+     "y0": 20.8,
+     "y1": 25,
+     "type": "core",
+     "name": "계단실"
+    },
+    {
+     "op": "rect",
+     "x0": 0,
+     "x1": 9.2,
+     "y0": 25,
+     "y1": 28,
+     "type": "corridor",
+     "name": "현관"
+    },
+    {
+     "op": "rect",
+     "x0": -3.8,
+     "x1": 0,
+     "y0": 25.5,
+     "y1": 28.4,
+     "type": "core",
+     "name": "외부계단"
+    },
+    {
+     "op": "rect",
+     "x0": 9.2,
+     "x1": 19.2,
+     "y0": 0,
+     "y1": 8.5,
+     "type": "room",
+     "number": "6108",
+     "use": "lecture",
+     "capacity": 50
+    },
+    {
+     "op": "rect",
+     "x0": 19.2,
+     "x1": 24.3,
+     "y0": 0,
+     "y1": 8.5,
+     "type": "room",
+     "number": "6108-2",
+     "use": "office",
+     "capacity": 5
+    },
+    {
+     "op": "rect",
+     "x0": 24.3,
+     "x1": 34.5,
+     "y0": 0,
+     "y1": 8.5,
+     "type": "room",
+     "number": "6108-1",
+     "use": "lecture",
+     "capacity": 51
+    },
+    {
+     "op": "rect",
+     "x0": 34.5,
+     "x1": 39.1,
+     "y0": 0,
+     "y1": 5.1,
+     "type": "room",
+     "number": "6109-1",
+     "use": "office",
+     "capacity": 3
+    },
+    {
+     "op": "rect",
+     "x0": 34.5,
+     "x1": 39.1,
+     "y0": 5.1,
+     "y1": 8.5,
+     "type": "wc",
+     "name": "화장실"
+    },
+    {
+     "op": "rect",
+     "x0": 39.1,
+     "x1": 48,
+     "y0": 0,
+     "y1": 15.9,
+     "type": "room",
+     "number": "6109",
+     "use": "lounge",
+     "capacity": 57
+    },
+    {
+     "op": "rect",
+     "x0": 39.1,
+     "x1": 48,
+     "y0": 15.9,
+     "y1": 20.7,
+     "type": "room",
+     "number": "6109-2",
+     "use": "office",
+     "capacity": 5
+    },
+    {
+     "op": "rect",
+     "x0": 39.1,
+     "x1": 41.6,
+     "y0": 20.7,
+     "y1": 28,
+     "type": "core",
+     "name": "계단실"
+    },
+    {
+     "op": "rect",
+     "x0": 41.6,
+     "x1": 48,
+     "y0": 20.7,
+     "y1": 28,
+     "type": "room",
+     "number": "6101",
+     "use": "office",
+     "capacity": 5
+    },
+    {
+     "op": "rect",
+     "x0": 0,
+     "x1": 9.6,
+     "y0": 28,
+     "y1": 35,
+     "type": "room",
+     "number": "6104",
+     "use": "lab",
+     "capacity": 22
+    },
+    {
+     "op": "rect",
+     "x0": 9.6,
+     "x1": 22.8,
+     "y0": 28,
+     "y1": 35,
+     "type": "room",
+     "number": "6103",
+     "use": "lecture",
+     "capacity": 54
+    },
+    {
+     "op": "rect",
+     "x0": 22.8,
+     "x1": 33.3,
+     "y0": 28,
+     "y1": 35,
+     "type": "room",
+     "number": "6102-1",
+     "use": "lab",
+     "capacity": 24
+    },
+    {
+     "op": "rect",
+     "x0": 33.3,
+     "x1": 48,
+     "y0": 28,
+     "y1": 35,
+     "type": "room",
+     "number": "6102",
+     "use": "lecture",
+     "capacity": 61
+    },
+    {
+     "op": "rect",
+     "x0": 9.2,
+     "x1": 39.1,
+     "y0": 8.5,
+     "y1": 12.8,
+     "type": "corridor",
+     "name": "복도"
+    },
+    {
+     "op": "rect",
+     "x0": 9.2,
+     "x1": 39.1,
+     "y0": 23,
+     "y1": 28,
+     "type": "corridor",
+     "name": "복도"
+    },
+    {
+     "op": "rect",
+     "x0": 9.2,
+     "x1": 13.5,
+     "y0": 12.8,
+     "y1": 23,
+     "type": "corridor",
+     "name": "복도"
+    },
+    {
+     "op": "rect",
+     "x0": 34.5,
+     "x1": 39.1,
+     "y0": 12.8,
+     "y1": 23,
+     "type": "corridor",
+     "name": "복도"
+    },
+    {
+     "op": "rect",
+     "x0": 13.5,
+     "x1": 34.5,
+     "y0": 12.8,
+     "y1": 23,
+     "type": "corridor",
+     "name": "중앙홀"
+    }
+   ]
+  },
+  {
+   "id": "2F",
+   "image": "plans/evac-2F.jpg",
+   "corners": [
+    [
+     327,
+     424
+    ],
+    [
+     1896,
+     428
+    ],
+    [
+     1899,
+     1611
+    ],
+    [
+     358,
+     1556
+    ]
+   ],
+   "mode": "auto",
+   "params": {
+    "dark": 22,
+    "sat": 70,
+    "close": 1,
+    "minArea": 3.5
+   },
+   "ops": [
+    {
+     "op": "wall",
+     "x0": 35.1,
+     "y0": 11.9,
+     "x1": 35.1,
+     "y1": 22.6
+    },
+    {
+     "op": "wall",
+     "x0": 26.9,
+     "y0": 0,
+     "x1": 26.9,
+     "y1": 4.8
+    },
+    {
+     "op": "merge",
+     "a": [
+      21,
+      17.5
+     ],
+     "b": [
+      33.5,
+      20.3
+     ]
+    },
+    {
+     "op": "label",
+     "x": 39.4,
+     "y": 22.5,
+     "type": "core",
+     "name": "계단실"
+    },
+    {
+     "op": "label",
+     "x": 4.3,
+     "y": 6.4,
+     "type": "room",
+     "number": "6207",
+     "use": "lecture",
+     "capacity": 65
+    },
+    {
+     "op": "label",
+     "x": 4.3,
+     "y": 14.45,
+     "type": "room",
+     "number": "6206-1",
+     "use": "office",
+     "capacity": 3
+    },
+    {
+     "op": "label",
+     "x": 4.3,
+     "y": 18.1,
+     "type": "room",
+     "number": "6206",
+     "use": "office",
+     "capacity": 4
+    },
+    {
+     "op": "label",
+     "x": 2.45,
+     "y": 22.2,
+     "type": "wc",
+     "name": "화장실"
+    },
+    {
+     "op": "label",
+     "x": 6.75,
+     "y": 22.2,
+     "type": "core",
+     "name": "계단실"
+    },
+    {
+     "op": "label",
+     "x": 4.3,
+     "y": 25.9,
+     "type": "corridor",
+     "name": "계단홀"
+    },
+    {
+     "op": "rect",
+     "x0": -4.1,
+     "x1": 0,
+     "y0": 24.7,
+     "y1": 27.5,
+     "type": "core",
+     "name": "외부계단"
+    },
+    {
+     "op": "label",
+     "x": 16.05,
+     "y": 4.4,
+     "type": "room",
+     "number": "6208",
+     "use": "lecture",
+     "capacity": 77
+    },
+    {
+     "op": "label",
+     "x": 24.95,
+     "y": 2.45,
+     "type": "room",
+     "number": "6209",
+     "use": "office",
+     "capacity": 2
+    },
+    {
+     "op": "label",
+     "x": 27.9,
+     "y": 2.45,
+     "type": "room",
+     "number": "6209-1",
+     "use": "office",
+     "capacity": 2
+    },
+    {
+     "op": "label",
+     "x": 31.95,
+     "y": 2.45,
+     "type": "room",
+     "number": "6209-2",
+     "use": "office",
+     "capacity": 3
+    },
+    {
+     "op": "label",
+     "x": 36.6,
+     "y": 2.45,
+     "type": "room",
+     "number": "6210-1",
+     "use": "office",
+     "capacity": 2
+    },
+    {
+     "op": "label",
+     "x": 26.75,
+     "y": 6.85,
+     "type": "store",
+     "name": "설비 샤프트"
+    },
+    {
+     "op": "label",
+     "x": 32.25,
+     "y": 6.85,
+     "type": "room",
+     "number": "6217",
+     "use": "meeting",
+     "capacity": 7
+    },
+    {
+     "op": "label",
+     "x": 36.6,
+     "y": 6.85,
+     "type": "wc",
+     "name": "화장실"
+    },
+    {
+     "op": "label",
+     "x": 43.35,
+     "y": 6.4,
+     "type": "room",
+     "number": "6210",
+     "use": "lecture",
+     "capacity": 70
+    },
+    {
+     "op": "label",
+     "x": 43.35,
+     "y": 14.2,
+     "type": "room",
+     "number": "6215",
+     "use": "meeting",
+     "capacity": 10
+    },
+    {
+     "op": "label",
+     "x": 40.8,
+     "y": 18,
+     "type": "corridor",
+     "name": "계단홀"
+    },
+    {
+     "op": "label",
+     "x": 45.45,
+     "y": 18,
+     "type": "store",
+     "name": "설비실"
+    },
+    {
+     "op": "label",
+     "x": 40.8,
+     "y": 23.95,
+     "type": "core",
+     "name": "계단실"
+    },
+    {
+     "op": "label",
+     "x": 45.45,
+     "y": 21.7,
+     "type": "room",
+     "number": "6213-1",
+     "use": "office",
+     "capacity": 1
+    },
+    {
+     "op": "label",
+     "x": 45.45,
+     "y": 25.25,
+     "type": "room",
+     "number": "6213",
+     "use": "office",
+     "capacity": 3
+    },
+    {
+     "op": "label",
+     "x": 4.45,
+     "y": 31.25,
+     "type": "room",
+     "number": "6203-1",
+     "use": "lab",
+     "capacity": 22
+    },
+    {
+     "op": "label",
+     "x": 11.2,
+     "y": 29.35,
+     "type": "room",
+     "number": "6203-3",
+     "use": "office",
+     "capacity": 2
+    },
+    {
+     "op": "label",
+     "x": 11.2,
+     "y": 33.1,
+     "type": "room",
+     "number": "6203-2",
+     "use": "office",
+     "capacity": 2
+    },
+    {
+     "op": "label",
+     "x": 17.85,
+     "y": 31.25,
+     "type": "room",
+     "number": "6203",
+     "use": "lab",
+     "capacity": 22
+    },
+    {
+     "op": "label",
+     "x": 27.6,
+     "y": 31.25,
+     "type": "room",
+     "number": "6202",
+     "use": "lab",
+     "capacity": 27
+    },
+    {
+     "op": "label",
+     "x": 40.5,
+     "y": 31.25,
+     "type": "room",
+     "number": "6201",
+     "use": "lecture",
+     "capacity": 66
+    },
+    {
+     "op": "label",
+     "x": 23.65,
+     "y": 10.8,
+     "type": "corridor",
+     "name": "복도"
+    },
+    {
+     "op": "label",
+     "x": 23.65,
+     "y": 25.25,
+     "type": "corridor",
+     "name": "복도"
+    },
+    {
+     "op": "label",
+     "x": 11.05,
+     "y": 17.9,
+     "type": "corridor",
+     "name": "복도"
+    },
+    {
+     "op": "label",
+     "x": 36.6,
+     "y": 17.9,
+     "type": "corridor",
+     "name": "복도"
+    },
+    {
+     "op": "label",
+     "x": 21,
+     "y": 17.9,
+     "type": "atrium"
+    },
+    {
+     "op": "label",
+     "x": 33.6,
+     "y": 17.2,
+     "type": "elevator"
+    }
+   ]
+  },
+  {
+   "id": "3F",
+   "image": "plans/evac-3F.jpg",
+   "corners": [
+    [
+     271,
+     360
+    ],
+    [
+     1860,
+     389
+    ],
+    [
+     1796,
+     1518
+    ],
+    [
+     318,
+     1525
+    ]
+   ],
+   "mode": "auto",
+   "params": {
+    "dark": 22,
+    "sat": 70,
+    "close": 1,
+    "minArea": 3.5
+   },
+   "ops": [
+    {
+     "op": "wall",
+     "x0": 34.1,
+     "y0": 12.4,
+     "x1": 34.1,
+     "y1": 22.4
+    },
+    {
+     "op": "wall",
+     "x0": 31.2,
+     "y0": 16.4,
+     "x1": 34.1,
+     "y1": 16.4
+    },
+    {
+     "op": "wall",
+     "x0": 31.2,
+     "y0": 16.4,
+     "x1": 31.2,
+     "y1": 18.95
+    },
+    {
+     "op": "label",
+     "x": 4.6,
+     "y": 7.9,
+     "type": "room",
+     "number": "6307",
+     "use": "lecture",
+     "capacity": 86
+    },
+    {
+     "op": "label",
+     "x": 4.6,
+     "y": 16.95,
+     "type": "room",
+     "number": "6306",
+     "use": "office",
+     "capacity": 2
+    },
+    {
+     "op": "label",
+     "x": 4.6,
+     "y": 19.45,
+     "type": "room",
+     "number": "6305",
+     "use": "admin",
+     "capacity": 4
+    },
+    {
+     "op": "label",
+     "x": 2.7,
+     "y": 22.9,
+     "type": "wc",
+     "name": "화장실"
+    },
+    {
+     "op": "label",
+     "x": 7.3,
+     "y": 22.9,
+     "type": "core",
+     "name": "계단실"
+    },
+    {
+     "op": "label",
+     "x": 4.6,
+     "y": 26.5,
+     "type": "corridor",
+     "name": "계단홀"
+    },
+    {
+     "op": "rect",
+     "x0": -3.8,
+     "x1": 0,
+     "y0": 25.5,
+     "y1": 28.4,
+     "type": "core",
+     "name": "외부계단"
+    },
+    {
+     "op": "label",
+     "x": 14.2,
+     "y": 4.25,
+     "type": "room",
+     "number": "6308",
+     "use": "lecture",
+     "capacity": 50
+    },
+    {
+     "op": "label",
+     "x": 21.75,
+     "y": 4.25,
+     "type": "room",
+     "number": "6308-2",
+     "use": "meeting",
+     "capacity": 17
+    },
+    {
+     "op": "label",
+     "x": 29.4,
+     "y": 4.25,
+     "type": "room",
+     "number": "6308-1",
+     "use": "lecture",
+     "capacity": 51
+    },
+    {
+     "op": "label",
+     "x": 36.8,
+     "y": 2.55,
+     "type": "room",
+     "number": "6309-1",
+     "use": "meeting",
+     "capacity": 9
+    },
+    {
+     "op": "label",
+     "x": 36.8,
+     "y": 6.8,
+     "type": "wc",
+     "name": "화장실"
+    },
+    {
+     "op": "label",
+     "x": 43.55,
+     "y": 7.95,
+     "type": "room",
+     "number": "6309",
+     "use": "lecture",
+     "capacity": 83
+    },
+    {
+     "op": "label",
+     "x": 43.55,
+     "y": 18.3,
+     "type": "room",
+     "number": "6309-2",
+     "use": "office",
+     "capacity": 5
+    },
+    {
+     "op": "label",
+     "x": 40.35,
+     "y": 24.35,
+     "type": "core",
+     "name": "계단실"
+    },
+    {
+     "op": "label",
+     "x": 44.8,
+     "y": 24.35,
+     "type": "room",
+     "number": "6301",
+     "use": "office",
+     "capacity": 5
+    },
+    {
+     "op": "label",
+     "x": 4.8,
+     "y": 31.5,
+     "type": "room",
+     "number": "6304",
+     "use": "lab",
+     "capacity": 22
+    },
+    {
+     "op": "label",
+     "x": 16.2,
+     "y": 31.5,
+     "type": "room",
+     "number": "6303",
+     "use": "lecture",
+     "capacity": 54
+    },
+    {
+     "op": "label",
+     "x": 28.05,
+     "y": 31.5,
+     "type": "room",
+     "number": "6302-1",
+     "use": "lab",
+     "capacity": 24
+    },
+    {
+     "op": "label",
+     "x": 40.65,
+     "y": 31.5,
+     "type": "room",
+     "number": "6302",
+     "use": "lecture",
+     "capacity": 61
+    },
+    {
+     "op": "label",
+     "x": 24.15,
+     "y": 10.65,
+     "type": "corridor",
+     "name": "복도"
+    },
+    {
+     "op": "label",
+     "x": 24.15,
+     "y": 25.5,
+     "type": "corridor",
+     "name": "복도"
+    },
+    {
+     "op": "label",
+     "x": 11.35,
+     "y": 17.9,
+     "type": "corridor",
+     "name": "복도"
+    },
+    {
+     "op": "label",
+     "x": 36.8,
+     "y": 17.9,
+     "type": "corridor",
+     "name": "복도"
+    },
+    {
+     "op": "label",
+     "x": 21,
+     "y": 17.9,
+     "type": "atrium"
+    },
+    {
+     "op": "label",
+     "x": 32.6,
+     "y": 17.7,
+     "type": "elevator"
+    }
+   ]
+  },
+  {
+   "id": "4F",
+   "image": "plans/wifimap-4F.png",
+   "corners": null,
+   "mode": "manual",
+   "params": {
+    "dark": 40,
+    "sat": 70,
+    "close": 1,
+    "minArea": 3.5
+   },
+   "ops": [
+    {
+     "op": "rect",
+     "x0": 0,
+     "x1": 8.6,
+     "y0": 0,
+     "y1": 12.8,
+     "type": "room",
+     "number": "6407",
+     "use": "lecture",
+     "capacity": 65
+    },
+    {
+     "op": "rect",
+     "x0": 0,
+     "x1": 8.6,
+     "y0": 12.8,
+     "y1": 16.1,
+     "type": "room",
+     "number": "6406-1",
+     "use": "office",
+     "capacity": 3
+    },
+    {
+     "op": "rect",
+     "x0": 0,
+     "x1": 8.6,
+     "y0": 16.1,
+     "y1": 20.1,
+     "type": "room",
+     "number": "6406",
+     "use": "office",
+     "capacity": 4
+    },
+    {
+     "op": "rect",
+     "x0": 0,
+     "x1": 4.9,
+     "y0": 20.1,
+     "y1": 24.3,
+     "type": "wc",
+     "name": "화장실"
+    },
+    {
+     "op": "rect",
+     "x0": 4.9,
+     "x1": 8.6,
+     "y0": 20.1,
+     "y1": 24.3,
+     "type": "core",
+     "name": "계단실"
+    },
+    {
+     "op": "rect",
+     "x0": 0,
+     "x1": 8.6,
+     "y0": 24.3,
+     "y1": 27.5,
+     "type": "corridor",
+     "name": "계단홀"
+    },
+    {
+     "op": "rect",
+     "x0": -4.1,
+     "x1": 0,
+     "y0": 24.7,
+     "y1": 27.5,
+     "type": "core",
+     "name": "외부계단"
+    },
+    {
+     "op": "rect",
+     "x0": 8.6,
+     "x1": 23.5,
+     "y0": 0,
+     "y1": 8.8,
+     "type": "room",
+     "number": "6408",
+     "use": "lecture",
+     "capacity": 77
+    },
+    {
+     "op": "rect",
+     "x0": 23.5,
+     "x1": 26.4,
+     "y0": 0,
+     "y1": 4.9,
+     "type": "room",
+     "number": "6409",
+     "use": "office",
+     "capacity": 2
+    },
+    {
+     "op": "rect",
+     "x0": 26.4,
+     "x1": 29.4,
+     "y0": 0,
+     "y1": 4.9,
+     "type": "room",
+     "number": "6409-1",
+     "use": "office",
+     "capacity": 2
+    },
+    {
+     "op": "rect",
+     "x0": 29.4,
+     "x1": 34.5,
+     "y0": 0,
+     "y1": 4.9,
+     "type": "room",
+     "number": "6409-2",
+     "use": "office",
+     "capacity": 3
+    },
+    {
+     "op": "rect",
+     "x0": 34.5,
+     "x1": 38.7,
+     "y0": 0,
+     "y1": 4.9,
+     "type": "room",
+     "number": "6410-1",
+     "use": "office",
+     "capacity": 2
+    },
+    {
+     "op": "rect",
+     "x0": 23.5,
+     "x1": 30,
+     "y0": 4.9,
+     "y1": 8.8,
+     "type": "store",
+     "name": "설비 샤프트"
+    },
+    {
+     "op": "rect",
+     "x0": 30,
+     "x1": 34.5,
+     "y0": 4.9,
+     "y1": 8.8,
+     "type": "room",
+     "number": "6417",
+     "use": "meeting",
+     "capacity": 7
+    },
+    {
+     "op": "rect",
+     "x0": 34.5,
+     "x1": 38.7,
+     "y0": 4.9,
+     "y1": 8.8,
+     "type": "wc",
+     "name": "화장실"
+    },
+    {
+     "op": "rect",
+     "x0": 38.7,
+     "x1": 48,
+     "y0": 0,
+     "y1": 12.8,
+     "type": "room",
+     "number": "6410",
+     "use": "lab",
+     "capacity": 40
+    },
+    {
+     "op": "rect",
+     "x0": 38.7,
+     "x1": 48,
+     "y0": 12.8,
+     "y1": 15.6,
+     "type": "room",
+     "number": "6415",
+     "use": "meeting",
+     "capacity": 10
+    },
+    {
+     "op": "rect",
+     "x0": 38.7,
+     "x1": 42.9,
+     "y0": 15.6,
+     "y1": 20.4,
+     "type": "corridor",
+     "name": "계단홀"
+    },
+    {
+     "op": "rect",
+     "x0": 42.9,
+     "x1": 48,
+     "y0": 15.6,
+     "y1": 20.4,
+     "type": "store",
+     "name": "설비실"
+    },
+    {
+     "op": "rect",
+     "x0": 38.7,
+     "x1": 42.9,
+     "y0": 20.4,
+     "y1": 27.5,
+     "type": "core",
+     "name": "계단실"
+    },
+    {
+     "op": "rect",
+     "x0": 42.9,
+     "x1": 48,
+     "y0": 20.4,
+     "y1": 23,
+     "type": "room",
+     "number": "6413-1",
+     "use": "office",
+     "capacity": 1
+    },
+    {
+     "op": "rect",
+     "x0": 42.9,
+     "x1": 48,
+     "y0": 23,
+     "y1": 27.5,
+     "type": "room",
+     "number": "6413",
+     "use": "office",
+     "capacity": 3
+    },
+    {
+     "op": "rect",
+     "x0": 0,
+     "x1": 8.9,
+     "y0": 27.5,
+     "y1": 35,
+     "type": "room",
+     "number": "6403-1",
+     "use": "lab",
+     "capacity": 22
+    },
+    {
+     "op": "rect",
+     "x0": 8.9,
+     "x1": 13.5,
+     "y0": 27.5,
+     "y1": 31.2,
+     "type": "room",
+     "number": "6403-3",
+     "use": "office",
+     "capacity": 2
+    },
+    {
+     "op": "rect",
+     "x0": 8.9,
+     "x1": 13.5,
+     "y0": 31.2,
+     "y1": 35,
+     "type": "room",
+     "number": "6403-2",
+     "use": "office",
+     "capacity": 2
+    },
+    {
+     "op": "rect",
+     "x0": 13.5,
+     "x1": 22.2,
+     "y0": 27.5,
+     "y1": 35,
+     "type": "room",
+     "number": "6403",
+     "use": "lab",
+     "capacity": 22
+    },
+    {
+     "op": "rect",
+     "x0": 22.2,
+     "x1": 33,
+     "y0": 27.5,
+     "y1": 35,
+     "type": "room",
+     "number": "6402",
+     "use": "lab",
+     "capacity": 27
+    },
+    {
+     "op": "rect",
+     "x0": 33,
+     "x1": 48,
+     "y0": 27.5,
+     "y1": 35,
+     "type": "room",
+     "number": "6401",
+     "use": "lecture",
+     "capacity": 66
+    },
+    {
+     "op": "rect",
+     "x0": 8.6,
+     "x1": 38.7,
+     "y0": 8.8,
+     "y1": 12.8,
+     "type": "corridor",
+     "name": "복도"
+    },
+    {
+     "op": "rect",
+     "x0": 8.6,
+     "x1": 38.7,
+     "y0": 23,
+     "y1": 27.5,
+     "type": "corridor",
+     "name": "복도"
+    },
+    {
+     "op": "rect",
+     "x0": 8.6,
+     "x1": 13.5,
+     "y0": 12.8,
+     "y1": 23,
+     "type": "corridor",
+     "name": "복도"
+    },
+    {
+     "op": "rect",
+     "x0": 34.5,
+     "x1": 38.7,
+     "y0": 12.8,
+     "y1": 23,
+     "type": "corridor",
+     "name": "복도"
+    },
+    {
+     "op": "rect",
+     "x0": 13.5,
+     "y0": 12.8,
+     "x1": 34.5,
+     "y1": 23,
+     "type": "atrium"
+    }
+   ]
+  },
+  {
+   "id": "5F",
+   "image": "plans/wifimap-5F.png",
+   "corners": null,
+   "mode": "manual",
+   "params": {
+    "dark": 40,
+    "sat": 70,
+    "close": 1,
+    "minArea": 3.5
+   },
+   "ops": [
+    {
+     "op": "rect",
+     "x0": 0,
+     "x1": 9.2,
+     "y0": 0,
+     "y1": 5.3,
+     "type": "room",
+     "number": "6507-1",
+     "use": "office",
+     "capacity": 5
+    },
+    {
+     "op": "rect",
+     "x0": 0,
+     "x1": 9.2,
+     "y0": 5.3,
+     "y1": 10.5,
+     "type": "room",
+     "number": "6507-2",
+     "use": "office",
+     "capacity": 5
+    },
+    {
+     "op": "rect",
+     "x0": 0,
+     "x1": 9.2,
+     "y0": 10.5,
+     "y1": 15.8,
+     "type": "room",
+     "number": "6507",
+     "use": "office",
+     "capacity": 5
+    },
+    {
+     "op": "rect",
+     "x0": 0,
+     "x1": 9.2,
+     "y0": 15.8,
+     "y1": 18.1,
+     "type": "room",
+     "number": "6506",
+     "use": "office",
+     "capacity": 2
+    },
+    {
+     "op": "rect",
+     "x0": 0,
+     "x1": 9.2,
+     "y0": 18.1,
+     "y1": 20.8,
+     "type": "room",
+     "number": "6505",
+     "use": "office",
+     "capacity": 3
+    },
+    {
+     "op": "rect",
+     "x0": 0,
+     "x1": 5.4,
+     "y0": 20.8,
+     "y1": 25,
+     "type": "wc",
+     "name": "화장실"
+    },
+    {
+     "op": "rect",
+     "x0": 5.4,
+     "x1": 9.2,
+     "y0": 20.8,
+     "y1": 25,
+     "type": "core",
+     "name": "계단실"
+    },
+    {
+     "op": "rect",
+     "x0": 0,
+     "x1": 9.2,
+     "y0": 25,
+     "y1": 28,
+     "type": "corridor",
+     "name": "계단홀"
+    },
+    {
+     "op": "rect",
+     "x0": -3.8,
+     "x1": 0,
+     "y0": 25.5,
+     "y1": 28.4,
+     "type": "core",
+     "name": "외부계단"
+    },
+    {
+     "op": "rect",
+     "x0": 9.2,
+     "x1": 19.2,
+     "y0": 0,
+     "y1": 8.5,
+     "type": "room",
+     "number": "6508",
+     "use": "lecture",
+     "capacity": 50
+    },
+    {
+     "op": "rect",
+     "x0": 19.2,
+     "x1": 24.3,
+     "y0": 0,
+     "y1": 8.5,
+     "type": "room",
+     "number": "6508-2",
+     "use": "meeting",
+     "capacity": 17
+    },
+    {
+     "op": "rect",
+     "x0": 24.3,
+     "x1": 34.5,
+     "y0": 0,
+     "y1": 8.5,
+     "type": "room",
+     "number": "6508-1",
+     "use": "lecture",
+     "capacity": 51
+    },
+    {
+     "op": "rect",
+     "x0": 34.5,
+     "x1": 39.1,
+     "y0": 0,
+     "y1": 5.1,
+     "type": "room",
+     "number": "6509-1",
+     "use": "office",
+     "capacity": 3
+    },
+    {
+     "op": "rect",
+     "x0": 34.5,
+     "x1": 39.1,
+     "y0": 5.1,
+     "y1": 8.5,
+     "type": "wc",
+     "name": "화장실"
+    },
+    {
+     "op": "rect",
+     "x0": 39.1,
+     "x1": 48,
+     "y0": 0,
+     "y1": 15.9,
+     "type": "room",
+     "number": "6509",
+     "use": "lecture",
+     "capacity": 83
+    },
+    {
+     "op": "rect",
+     "x0": 39.1,
+     "x1": 48,
+     "y0": 15.9,
+     "y1": 20.7,
+     "type": "room",
+     "number": "6509-2",
+     "use": "office",
+     "capacity": 5
+    },
+    {
+     "op": "rect",
+     "x0": 39.1,
+     "x1": 41.6,
+     "y0": 20.7,
+     "y1": 28,
+     "type": "core",
+     "name": "계단실"
+    },
+    {
+     "op": "rect",
+     "x0": 41.6,
+     "x1": 48,
+     "y0": 20.7,
+     "y1": 28,
+     "type": "room",
+     "number": "6501",
+     "use": "office",
+     "capacity": 5
+    },
+    {
+     "op": "rect",
+     "x0": 0,
+     "x1": 9.6,
+     "y0": 28,
+     "y1": 35,
+     "type": "room",
+     "number": "6504",
+     "use": "lab",
+     "capacity": 22
+    },
+    {
+     "op": "rect",
+     "x0": 9.6,
+     "x1": 22.8,
+     "y0": 28,
+     "y1": 35,
+     "type": "room",
+     "number": "6503",
+     "use": "lecture",
+     "capacity": 54
+    },
+    {
+     "op": "rect",
+     "x0": 22.8,
+     "x1": 33.3,
+     "y0": 28,
+     "y1": 35,
+     "type": "room",
+     "number": "6502-1",
+     "use": "lab",
+     "capacity": 24
+    },
+    {
+     "op": "rect",
+     "x0": 33.3,
+     "x1": 48,
+     "y0": 28,
+     "y1": 35,
+     "type": "room",
+     "number": "6502",
+     "use": "lecture",
+     "capacity": 61
+    },
+    {
+     "op": "rect",
+     "x0": 9.2,
+     "x1": 39.1,
+     "y0": 8.5,
+     "y1": 12.8,
+     "type": "corridor",
+     "name": "복도"
+    },
+    {
+     "op": "rect",
+     "x0": 9.2,
+     "x1": 39.1,
+     "y0": 23,
+     "y1": 28,
+     "type": "corridor",
+     "name": "복도"
+    },
+    {
+     "op": "rect",
+     "x0": 9.2,
+     "x1": 13.5,
+     "y0": 12.8,
+     "y1": 23,
+     "type": "corridor",
+     "name": "복도"
+    },
+    {
+     "op": "rect",
+     "x0": 34.5,
+     "x1": 39.1,
+     "y0": 12.8,
+     "y1": 23,
+     "type": "corridor",
+     "name": "복도"
+    },
+    {
+     "op": "rect",
+     "x0": 13.5,
+     "y0": 12.8,
+     "x1": 34.5,
+     "y1": 23,
+     "type": "atrium"
+    }
+   ]
+  }
+ ],
+ "exterior": {
+  "photos": []
+ },
+ "interior": [
+  {
+   "file": "photos/interior-8.jpg",
+   "use": "lecture",
+   "floorBox": [
+    60,
+    1700,
+    700,
+    1960
+   ],
+   "wallBox": [
+    20,
+    470,
+    150,
+    560
+   ]
+  },
+  {
+   "file": "photos/interior-5.jpg",
+   "use": "lab",
+   "floorBox": [
+    300,
+    1640,
+    1500,
+    1960
+   ],
+   "wallBox": [
+    1500,
+    20,
+    1900,
+    70
+   ]
+  }
+ ],
+ "acPhotos": [],
+ "site": {
+  "image": "photos/skyview.png",
+  "size": [
+   1312,
+   1126
+  ],
+  "mode": "similarity",
+  "note": "지도 스카이뷰(북쪽이 위). 지붕 네 모서리 = 도면 외곽 모서리. 사진이 약간 남쪽에서 비스듬히 찍혀 지붕이 지면보다 북쪽으로 1~2m 밀려 보임. outline=지붕 바깥 윤곽, holes=중정 지붕 안쪽 끝 (모양 검증용)",
+  "ref": [
+   {
+    "m": [
+     0,
+     0
+    ],
+    "px": [
+     345,
+     78
+    ]
+   },
+   {
+    "m": [
+     48,
+     0
+    ],
+    "px": [
+     1152,
+     393
+    ]
+   },
+   {
+    "m": [
+     48,
+     35
+    ],
+    "px": [
+     915,
+     988
+    ]
+   },
+   {
+    "m": [
+     0,
+     35
+    ],
+    "px": [
+     112,
+     672
+    ]
+   }
+  ],
+  "outline": [
+   [
+    345,
+    78
+   ],
+   [
+    1152,
+    393
+   ],
+   [
+    915,
+    988
+   ],
+   [
+    112,
+    672
+   ]
+  ],
+  "holes": [
+   [
+    [
+     450,
+     330
+    ],
+    [
+     945,
+     480
+    ],
+    [
+     840,
+     745
+    ],
+    [
+     355,
+     570
+    ]
+   ]
+  ]
+ },
+ "wifi": {
+  "note": "와이파이 지도(plans/wifimap-*F.png)에서 찍은 AP 위치. u,v = 지도 이미지 가로·세로 비율. 지도는 도면을 90° 돌린 방향(지도 오른쪽 = 도면 위쪽)",
+  "orient": "rot90",
+  "bounds": [
+   0.03,
+   0.015,
+   0.97,
+   0.985
+  ],
+  "devicesPerPerson": 1.3,
+  "floors": {
+   "1F": {
+    "image": "plans/wifimap-1F.png",
+    "aps": [
+     {
+      "id": "16K-201-1-2",
+      "u": 0.715,
+      "v": 0.363
+     },
+     {
+      "id": "11S-201-1-3",
+      "u": 0.713,
+      "v": 0.605
+     },
+     {
+      "id": "16K-201-1-1",
+      "u": 0.292,
+      "v": 0.807
+     }
+    ]
+   },
+   "2F": {
+    "image": "plans/wifimap-2F.png",
+    "aps": [
+     {
+      "id": "21L-201-2-4",
+      "u": 0.151,
+      "v": 0.118
+     },
+     {
+      "id": "21L-201-2-1",
+      "u": 0.806,
+      "v": 0.109
+     },
+     {
+      "id": "23AP-201-2-1",
+      "u": 0.446,
+      "v": 0.21
+     },
+     {
+      "id": "23AP-201-2-2",
+      "u": 0.159,
+      "v": 0.31
+     },
+     {
+      "id": "21AP-201-2-2",
+      "u": 0.159,
+      "v": 0.38
+     },
+     {
+      "id": "21L-201-2-2",
+      "u": 0.849,
+      "v": 0.355
+     },
+     {
+      "id": "AP_9136#2",
+      "u": 0.152,
+      "v": 0.54
+     },
+     {
+      "id": "AP_9136#1",
+      "u": 0.152,
+      "v": 0.64
+     },
+     {
+      "id": "21AP-201-2-1",
+      "u": 0.304,
+      "v": 0.77
+     },
+     {
+      "id": "21L-201-2-3",
+      "u": 0.803,
+      "v": 0.883
+     }
+    ]
+   },
+   "3F": {
+    "image": "plans/wifimap-3F.png",
+    "aps": [
+     {
+      "id": "24AP-201-3-2",
+      "u": 0.285,
+      "v": 0.1
+     },
+     {
+      "id": "21L-201-3-2",
+      "u": 0.766,
+      "v": 0.106
+     },
+     {
+      "id": "21L-201-3-3",
+      "u": 0.861,
+      "v": 0.29
+     },
+     {
+      "id": "21L-201-3-1",
+      "u": 0.171,
+      "v": 0.34
+     },
+     {
+      "id": "21L-201-3-4",
+      "u": 0.154,
+      "v": 0.61
+     },
+     {
+      "id": "21AP-201-3-1",
+      "u": 0.847,
+      "v": 0.62
+     },
+     {
+      "id": "24AP-201-3-1",
+      "u": 0.474,
+      "v": 0.79
+     }
+    ]
+   },
+   "4F": {
+    "image": "plans/wifimap-4F.png",
+    "aps": [
+     {
+      "id": "21AP-201-4-1",
+      "u": 0.152,
+      "v": 0.093
+     },
+     {
+      "id": "21AP-201-4-2",
+      "u": 0.687,
+      "v": 0.1
+     },
+     {
+      "id": "23AP-201-4-1",
+      "u": 0.832,
+      "v": 0.1
+     },
+     {
+      "id": "23AP-201-4-2",
+      "u": 0.854,
+      "v": 0.249
+     },
+     {
+      "id": "21AP-201-4-3",
+      "u": 0.853,
+      "v": 0.329
+     },
+     {
+      "id": "21L-201-4-5",
+      "u": 0.146,
+      "v": 0.343
+     },
+     {
+      "id": "23AP-201-4-3",
+      "u": 0.858,
+      "v": 0.46
+     },
+     {
+      "id": "21AP-201-4-4",
+      "u": 0.858,
+      "v": 0.534
+     },
+     {
+      "id": "21L-201-4-4",
+      "u": 0.146,
+      "v": 0.656
+     },
+     {
+      "id": "21L-201-4-3",
+      "u": 0.128,
+      "v": 0.907
+     },
+     {
+      "id": "21L-201-4-2",
+      "u": 0.376,
+      "v": 0.935
+     },
+     {
+      "id": "21L-201-4-1",
+      "u": 0.635,
+      "v": 0.897
+     },
+     {
+      "id": "21L-201-4-6",
+      "u": 0.9,
+      "v": 0.892
+     }
+    ]
+   },
+   "5F": {
+    "image": "plans/wifimap-5F.png",
+    "aps": [
+     {
+      "id": "21AP-201-5-3",
+      "u": 0.832,
+      "v": 0.059
+     },
+     {
+      "id": "21AP-201-5-2",
+      "u": 0.502,
+      "v": 0.105
+     },
+     {
+      "id": "23AP-201-5-3",
+      "u": 0.607,
+      "v": 0.107
+     },
+     {
+      "id": "23AP-201-5-2",
+      "u": 0.832,
+      "v": 0.143
+     },
+     {
+      "id": "21AP-201-5-1",
+      "u": 0.16,
+      "v": 0.15
+     },
+     {
+      "id": "23AP-201-5-1",
+      "u": 0.853,
+      "v": 0.245
+     },
+     {
+      "id": "21AP-201-5-4",
+      "u": 0.854,
+      "v": 0.322
+     },
+     {
+      "id": "21L-201-5-4",
+      "u": 0.134,
+      "v": 0.38
+     },
+     {
+      "id": "21L-201-5-3",
+      "u": 0.131,
+      "v": 0.536
+     },
+     {
+      "id": "21AP-201-5-5",
+      "u": 0.846,
+      "v": 0.583
+     },
+     {
+      "id": "21L-201-5-2",
+      "u": 0.128,
+      "v": 0.687
+     },
+     {
+      "id": "21L-201-5-1",
+      "u": 0.157,
+      "v": 0.903
+     },
+     {
+      "id": "21L-201-5-6",
+      "u": 0.502,
+      "v": 0.915
+     },
+     {
+      "id": "21L-201-5-5",
+      "u": 0.768,
+      "v": 0.885
+     }
+    ]
+   }
+  }
+ }
+}

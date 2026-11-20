@@ -1,0 +1,35 @@
+/* AI 사고 과정 패널
+   - 토큰: index.css :root(DESIGN.md) 값만 사용
+   - 상태 색: 진행·완료는 ink, 오류는 danger. primary는 화면의 주 버튼 전용이라 사용 안 함 */
+.thinking { display: flex; flex-direction: column; gap: 12px; }
+.th-query { margin: 0; font-size: 16px; font-weight: 600; line-height: 1.5; }
+.th-steps { list-style: none; margin: 0; padding: 0; }
+.th-step { position: relative; display: flex; gap: 12px; padding-bottom: 12px; }
+.th-step:last-child { padding-bottom: 0; }
+.th-step:not(:last-child)::before { content: ''; position: absolute; left: 12px; top: 28px; bottom: 4px; width: 1px; background: var(--hairline); }
+.th-icon { flex: none; width: 24px; height: 24px; display: grid; place-items: center; color: var(--ink); }
+.th-step.pending .th-icon { color: var(--muted); }
+.th-step.error .th-icon, .th-step.error .th-label { color: var(--danger); }
+.th-body { flex: 1; min-width: 0; padding-top: 2px; }
+.th-line { display: flex; align-items: baseline; gap: 8px; font-size: 15px; line-height: 22px; }
+.th-label { font-weight: 600; }
+.th-step.done .th-label { font-weight: 500; color: var(--body); }
+.th-step.pending .th-label { font-weight: 500; color: var(--muted); }
+.th-sec { margin-left: auto; font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.th-detail { margin: 2px 0 0; font-size: 14px; line-height: 21px; color: var(--muted); }
+.th-chips { list-style: none; display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 0; padding: 0; }
+.th-chips li { height: 32px; display: inline-flex; align-items: center; padding: 0 12px; border: 1px solid var(--hairline); border-radius: var(--r-full); background: var(--canvas); font-size: 14px; font-weight: 500; }
+.th-answer { margin: 0; font-size: 16px; line-height: 1.5; white-space: pre-wrap; }
+.th-caret { display: inline-block; width: 2px; height: 1.1em; margin-left: 2px; vertical-align: -3px; background: var(--ink); }
+.th-error { margin: 0; font-size: 15px; color: var(--error); }
+.th-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.th-badge { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: var(--r-full); background: var(--surface-strong); font-size: 14px; font-weight: 500; white-space: nowrap; }
+.th-badge .th-sec { margin-left: 0; font-size: 14px; color: var(--ink); }
+
+/* 진행 중 표시: 회전 아이콘만 사용. 글자 반짝임·커서 깜빡임은 장시간 화면의 눈 피로로 제외(넉터 디자인 시스템 6.6 글자 효과 미적용) */
+.th-step.active .th-icon svg, .th-badge svg { animation: th-spin 1.2s linear infinite; }
+@keyframes th-spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .th-step.active .th-icon svg, .th-badge svg { animation: none; }
+}

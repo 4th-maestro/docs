@@ -1,0 +1,648 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>자료 → 트윈 파이프라인</title>
+<style>
+  :root{ --bg:#0f1420; --panel:#161d2c; --line:#26304a; --tx:#dbe3f2; --mut:#8a96ad; --acc:#6aa8ff; --ok:#36c08a; --warn:#f2a01f; --bad:#e5484d; }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--tx);font:13px/1.45 Pretendard,system-ui,"Malgun Gothic",sans-serif}
+  header{display:flex;align-items:center;gap:14px;padding:10px 16px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+  header h1{font-size:15px;margin:0;font-weight:700}
+  nav{display:flex;gap:4px;flex-wrap:wrap}
+  nav button{background:transparent;border:1px solid var(--line);color:var(--mut);border-radius:999px;padding:5px 11px;cursor:pointer;font:inherit}
+  nav button.on{background:var(--acc);border-color:var(--acc);color:#071226;font-weight:700}
+  nav button .n{display:inline-block;width:16px;height:16px;border-radius:50%;background:rgba(255,255,255,.12);text-align:center;line-height:16px;font-size:11px;margin-right:5px}
+  nav button.done .n{background:var(--ok);color:#071226}
+  .sp{flex:1}
+  main{display:grid;grid-template-columns:1fr 340px;height:calc(100% - 52px);min-height:0}
+  #stage{position:relative;overflow:hidden;background:#0b0f18}
+  #cv{position:absolute;inset:0;width:100%;height:100%;cursor:crosshair}
+  #hint{position:absolute;left:12px;bottom:12px;background:rgba(10,14,22,.86);border:1px solid var(--line);padding:7px 10px;border-radius:8px;max-width:70%;pointer-events:none}
+  aside{border-left:1px solid var(--line);background:var(--panel);overflow:auto;padding:14px}
+  aside h2{font-size:14px;margin:0 0 4px}
+  aside h3{font-size:12px;margin:16px 0 6px;color:var(--mut);font-weight:600;text-transform:none}
+  .desc{color:var(--mut);margin:0 0 10px}
+  .row{display:flex;gap:6px;align-items:center;margin:5px 0;flex-wrap:wrap}
+  .row label{color:var(--mut);min-width:62px}
+  input,select{background:#0e1422;border:1px solid var(--line);color:var(--tx);border-radius:6px;padding:5px 7px;font:inherit;min-width:0}
+  input[type=number]{width:74px}
+  button.b{background:#202a40;border:1px solid var(--line);color:var(--tx);border-radius:6px;padding:5px 10px;cursor:pointer;font:inherit}
+  button.b:hover{border-color:var(--acc)}
+  button.b.on{background:var(--acc);color:#071226;border-color:var(--acc);font-weight:700}
+  button.pri{background:var(--acc);color:#071226;border:0;font-weight:700}
+  .tools{display:flex;flex-wrap:wrap;gap:4px}
+  .list{display:flex;flex-direction:column;gap:3px;max-height:220px;overflow:auto}
+  .item{display:flex;gap:6px;align-items:center;background:#111827;border:1px solid var(--line);border-radius:6px;padding:4px 7px;font-size:12px}
+  .item .x{margin-left:auto;cursor:pointer;color:var(--mut)}
+  .item.sel{border-color:var(--acc)}
+  .warn{color:var(--warn);font-size:12px}
+  .ok{color:var(--ok)}
+  .chip{display:inline-block;border-radius:999px;padding:1px 7px;font-size:11px;background:#223050;color:#bcd0ff}
+  .thumbs{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+  .thumbs div{position:relative;border:2px solid transparent;border-radius:6px;overflow:hidden;cursor:pointer;aspect-ratio:1;background:#0b0f18}
+  .thumbs div.sel{border-color:var(--acc)}
+  .thumbs img{width:100%;height:100%;object-fit:cover;display:block}
+  .thumbs span{position:absolute;left:3px;bottom:3px;background:rgba(0,0,0,.65);font-size:10px;padding:0 4px;border-radius:4px}
+  .sw{display:inline-block;width:16px;height:16px;border-radius:4px;border:1px solid rgba(255,255,255,.3);vertical-align:middle}
+  pre{background:#0b0f18;border:1px solid var(--line);border-radius:6px;padding:8px;font-size:11px;max-height:200px;overflow:auto;white-space:pre-wrap}
+  table{border-collapse:collapse;width:100%;font-size:12px}
+  td,th{border-bottom:1px solid var(--line);padding:3px 4px;text-align:left}
+  @media (max-width:860px){ main{grid-template-columns:1fr;grid-template-rows:55vh auto;height:auto} aside{border-left:0;border-top:1px solid var(--line)} }
+</style>
+</head>
+<body>
+<header>
+  <h1>자료 → 트윈 파이프라인</h1>
+  <nav id="steps"></nav>
+  <span class="sp"></span>
+  <button class="b" id="loadRecipe">레시피 열기</button>
+  <select id="sample"><option value="">예시 열기…</option><option value="source/eng6/recipe.json">제6공학관 (피난안내도·와이파이맵)</option><option value="source/busan-station/recipe.json">부산역 (안내도 사진)</option></select>
+  <input type="file" id="recipeFile" accept=".json" hidden>
+</header>
+<main>
+  <div id="stage"><canvas id="cv"></canvas><div id="hint"></div></div>
+  <aside id="side"></aside>
+</main>
+<input type="file" id="imgFile" accept="image/*" multiple hidden>
+<script type="module">
+import * as P from './pipeline/pipeline-core.js';
+import * as EP from './pipeline/energyplus.js';
+
+/* ───────── 상태: 레시피(사람이 한 모든 결정) + 이미지 ───────── */
+const blank = () => ({ schema:'twin.pipeline/v1', id:'new', base:'',
+  building:{ id:'BLDG', name:'새 건물', campus:'', size:{ w:48, d:35 }, floorHeight:3.6, ceiling:2.8 },
+  floors:[{ id:'1F', image:null, corners:null, mode:'auto', params:{ dark:40, sat:70, close:1, minArea:3.5 }, ops:[] }],
+  exterior:{ photos:[] }, interior:[], acPhotos:[] });
+let R = blank();
+const IMG = new Map();            // 파일명 → { el, data(ImageData), url }
+const RECT = new Map();           // 층 → 보정된 도면 (캐시)
+const RES = new Map();            // 층 → 분할 결과
+let iduKind = '4WAY', iduFrom = '도면 표기';
+let editMode = false, editF = 0, editTool = 'room', editSel = null, iduDrag = null, EV = { s:1, ox:0, oy:0 };
+let showMask = false, step = 'plan', fi = 0, tool = 'corner', sel = null, pending = [], drag = null, photoSel = null, OUT = null;
+const $ = s => document.querySelector(s), cv = $('#cv'), g = cv.getContext('2d');
+const F = () => R.floors[fi];
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' })[c]);
+
+async function addImage(name, src){
+  const el = new Image(); el.src = src; await el.decode();
+  const c = document.createElement('canvas'); c.width = el.naturalWidth; c.height = el.naturalHeight;
+  const cg = c.getContext('2d', { willReadFrequently:true }); cg.drawImage(el, 0, 0);
+  IMG.set(name, { el, url:src, data:cg.getImageData(0, 0, c.width, c.height) });
+}
+async function ensureImage(name){
+  if (!name || IMG.has(name)) return;
+  try { await addImage(name, (R.base || '') + name); } catch { console.warn('이미지 없음', name); }
+}
+function pickFiles(cb){ const f = $('#imgFile'); f.value = ''; f.onchange = async () => { const names = []; for (const file of f.files) { await addImage(file.name, URL.createObjectURL(file)); names.push(file.name); } cb(names); }; f.click(); }
+
+/* ───────── 계산: 층 하나 ───────── */
+function compute(f){
+  const W = R.building.size.w, D = R.building.size.d;
+  let rect = null;
+  if (f.mode !== 'manual' && f.image && f.corners?.length === 4 && IMG.has(f.image)) {
+    const key = f.image + JSON.stringify(f.corners) + W + 'x' + D;
+    if (RECT.get(f.id)?.key !== key) RECT.set(f.id, { key, rect:P.rectify(IMG.get(f.image).data, f.corners, W, D) });
+    rect = RECT.get(f.id).rect;
+  }
+  const res = P.resolveFloor(f, rect, W, D), out = P.floorRooms(f, res, W, D);
+  RES.set(f.id, { rect, res, out });
+  return RES.get(f.id);
+}
+function computeAll(){
+  const results = {};
+  for (const f of R.floors) results[f.id] = compute(f).out;
+  OUT = P.assemble(R, results);
+  return OUT;
+}
+
+/* ───────── 화면 좌표 ───────── */
+let view = { s:1, ox:0, oy:0, w:1, h:1 };
+function fit(w, h){ const W = cv.clientWidth, H = cv.clientHeight, s = Math.min(W / w, H / h) * .94; view = { s, ox:(W - w * s) / 2, oy:(H - h * s) / 2, w, h }; }
+const scr = (x, y) => [view.ox + x * view.s, view.oy + y * view.s];
+const inv = (X, Y) => [(X - view.ox) / view.s, (Y - view.oy) / view.s];
+const mToPx = (x, y) => [(x + P.MARGIN) * P.RES, (y + P.MARGIN) * P.RES];
+const pxToM = (i, j) => [i / P.RES - P.MARGIN, j / P.RES - P.MARGIN];
+const snap = v => Math.round(v * 20) / 20;
+
+/* ───────── 단계 정의 ───────── */
+const STEPS = [
+  ['info', '건물 정보'], ['plan', '평면도'], ['ext', '외부 사진'], ['int', '내부 사진'], ['ac', '에어컨 사진'], ['out', '결과'],
+];
+function renderSteps(){
+  const done = { info:!!R.building.name, plan:R.floors.every(f => f.ops.length), ext:!!R.exterior.window, int:R.interior.length > 0, ac:R.acPhotos.some(p => p.marks.length) || !!R.acModel?.result || R.floors.some(f => f.ops.some(o => o.op === 'idu')), out:!!OUT };
+  $('#steps').innerHTML = STEPS.map(([k, t], i) => `<button data-step="${k}" class="${k === step ? 'on' : ''} ${done[k] ? 'done' : ''}"><span class="n">${i + 1}</span>${t}</button>`).join('');
+}
+$('#steps').onclick = e => { const b = e.target.closest('[data-step]'); if (b) go(b.dataset.step); };
+function go(s){ step = s; sel = null; pending = []; photoSel = null; if (s === 'out') computeAll(); renderSteps(); renderSide(); draw(); }
+
+/* ───────── 오른쪽 패널 ───────── */
+const TYPES = [['room', '실(냉방)'], ['corridor', '복도·홀'], ['wc', '화장실'], ['core', '계단실'], ['store', '설비·창고'], ['atrium', '중정(뚫림)'], ['elevator', '엘리베이터']];
+const USES = Object.entries(P.USE_NAME);
+const roomOptions = (val) => { const rooms = R.floors.flatMap(f => (RES.get(f.id)?.out.rooms || []).filter(r => r.type === 'room'));
+  return `<option value="">— 방 선택 —</option>` + rooms.map(r => `<option value="${r.id}" ${r.id === val ? 'selected' : ''}>${r.id} ${esc(r.name.split(' ').slice(1).join(' '))}</option>`).join(''); };
+function thumbs(list, selName){ return `<div class="thumbs">${list.map(p => `<div data-photo="${esc(p.file)}" class="${p.file === selName ? 'sel' : ''}"><img src="${esc(IMG.get(p.file)?.url || '')}"><span>${esc(p.tag || p.file)}</span></div>`).join('')}</div>`; }
+
+function renderSide(){
+  const s = $('#side'), f = F();
+  let h = '';
+  if (step === 'info') {
+    const B = R.building;
+    h = `<h2>1. 건물 정보</h2><p class="desc">건축물대장(공공)·설계도면에서 그대로 옮기는 값. 평면도의 크기 기준이 됩니다.</p>
+      <div class="row"><label>이름</label><input data-b="name" value="${esc(B.name)}"></div>
+      <div class="row"><label>캠퍼스</label><input data-b="campus" value="${esc(B.campus)}"></div>
+      <div class="row"><label>가로(동서)</label><input type="number" step=".1" data-b="size.w" value="${B.size.w}"> m</div>
+      <div class="row"><label>세로(남북)</label><input type="number" step=".1" data-b="size.d" value="${B.size.d}"> m</div>
+      <div class="row"><label>층고</label><input type="number" step=".1" data-b="floorHeight" value="${B.floorHeight}"> m</div>
+      <div class="row"><label>천장고</label><input type="number" step=".1" data-b="ceiling" value="${B.ceiling}"> m</div>
+      <h3>층</h3><div class="list">${R.floors.map((x, i) => `<div class="item">${x.id}<span class="chip">${x.image ? esc(x.image) : '이미지 없음'}</span><span class="x" data-delfloor="${i}">삭제</span></div>`).join('')}</div>
+      <div class="row"><button class="b" id="addFloor">+ 층 추가</button></div>`;
+  }
+  if (step === 'plan') {
+    const res = RES.get(f.id), warn = res ? res.out.warn : [];
+    const labelForm = sel?.op === 'label' || sel?.op === 'rect' ? labelEditor(sel) : '';
+    h = `<h2>2. 평면도 → 공간</h2><p class="desc">피난안내도·와이파이맵·CAD 캡처 등 어떤 평면도든. 사진이면 기울어져도 됩니다.</p>
+      <div class="row">${R.floors.map((x, i) => `<button class="b ${i === fi ? 'on' : ''}" data-floor="${i}">${x.id}</button>`).join('')}</div>
+      <div class="row"><label>이미지</label><button class="b" id="pickPlan">${f.image ? esc(f.image) : '평면도 선택'}</button></div>
+      <div class="row"><label>방식</label><select id="mode"><option value="auto" ${f.mode === 'auto' ? 'selected' : ''}>자동 (선 도면)</option><option value="fill" ${f.mode === 'fill' ? 'selected' : ''}>색 채움 (안내도·사인물)</option><option value="manual" ${f.mode === 'manual' ? 'selected' : ''}>수동 (사각형 트레이스)</option></select></div>
+      <h3>도구</h3><div class="tools">
+        ${[['corner', '① 모서리 4점'], ['label', '② 라벨'], ['wall', '벽 긋기'], ['gap', '벽 지우기'], ['merge', '합치기'], ['rect', '사각형'], ['footprint', '건물 윤곽'], ['idu', '실내기 표기'], ['erase', '조작 삭제']].concat(f.mode === 'fill' ? [['pick', '칠한 색 찍기']] : []).map(([k, t]) => `<button class="b ${tool === k ? 'on' : ''}" data-tool="${k}">${t}</button>`).join('')}
+      </div>
+      ${f.mode === 'auto' ? `<h3>벽 검출 <label style="font-weight:400;margin-left:8px"><input type="checkbox" id="showMask" ${showMask ? 'checked' : ''}> 검출된 벽 보기</label></h3>
+        <div class="row"><label>어두움</label><input type="range" min="15" max="90" value="${f.params.dark}" data-p="dark"><span>${f.params.dark}</span></div>
+        <div class="row"><label>채도 한계</label><input type="range" min="20" max="140" value="${f.params.sat}" data-p="sat"><span>${f.params.sat}</span></div>
+        <div class="row"><label>틈 메움</label><input type="range" min="0" max="3" value="${f.params.close}" data-p="close"><span>${f.params.close}</span></div>` : ''}
+      ${f.mode === 'fill' ? `<h3>색 채움 검출 <label style="font-weight:400;margin-left:8px"><input type="checkbox" id="showMask" ${showMask ? 'checked' : ''}> 칠한 영역 보기</label></h3>
+        <div class="row"><label>칠한 색</label><span class="sw" style="background:${f.params.fill || '#8389b0'}"></span> ${f.params.fill || '#8389b0'} <span class="desc">'칠한 색 찍기'로 상점 칸 클릭</span></div>
+        <div class="row"><label>판정 강도</label><input type="range" min="20" max="90" value="${Math.round((f.params.strength ?? .5) * 100)}" data-p="strength" data-scale=".01"><span>${(f.params.strength ?? .5).toFixed(2)}</span></div>` : ''}
+      ${tool === 'idu' ? `<h3>실내기 표기 (도면·설비대장)</h3><div class="row">${['4WAY', '1WAY', 'WALL'].map(k => `<button class="b ${iduKind === k ? 'on' : ''}" data-idukind="${k}">${k}</button>`).join('')}</div>
+        <div class="row"><label>근거</label><input id="iduFrom" value="${esc(iduFrom)}"></div><div class="desc">이 층 표기 ${f.ops.filter(o => o.op === 'idu').length}대 · 표기가 있는 방은 모델·사진보다 우선</div>` : ''}
+      ${tool === 'footprint' ? `<div class="desc">윤곽 꼭짓점을 차례로 클릭, 첫 점을 다시 클릭하면 닫힘. 윤곽 밖은 건물 밖으로 봅니다 (곡선 입면·ㄱ자 건물). ${f.footprint ? `현재 ${f.footprint.length}점 <button class="b" id="clearFoot">윤곽 지우기</button>` : ''}</div>` : ''}
+      ${labelForm}
+      <h3>이 층의 조작 (${f.ops.length})</h3><div class="list">${f.ops.map((o, i) => `<div class="item ${sel === o ? 'sel' : ''}" data-op="${i}">${opText(o)}<span class="x" data-delop="${i}">×</span></div>`).join('') || '<span class="desc">아직 없음</span>'}</div>
+      ${warn.length ? `<h3>확인 필요</h3>${warn.map(w => `<div class="warn">· ${esc(w)}</div>`).join('')}` : res ? '<h3>확인</h3><div class="ok">경고 없음</div>' : ''}
+      ${res ? `<h3>결과</h3><div>${res.out.rooms.filter(r => r.type === 'room').length}개 실 · 전체 ${res.out.rooms.length}개 공간${res.out.meta.atrium ? ' · 중정' : ''}${res.out.meta.elevator ? ' · EV' : ''}</div>` : ''}`;
+  }
+  if (step === 'ext') {
+    const p = R.exterior.photos.find(x => x.file === photoSel), w = R.exterior.window;
+    h = `<h2>3. 외부 사진 → 층고·창 높이</h2><p class="desc">입면이 보이는 사진에서 슬래브 선(층 경계) 2개 이상과, 그 사이 창의 아랫선·윗선을 클릭합니다. 비율 × 층고 = 창 높이.</p>
+      <div class="row"><button class="b" id="addExt">+ 외부 사진</button></div>${thumbs(R.exterior.photos, photoSel)}
+      ${p ? `<h3>표시할 선</h3><div class="tools">${[['slab', '슬래브 선'], ['sill', '창 아랫선'], ['head', '창 윗선']].map(([k, t]) => `<button class="b ${tool === k ? 'on' : ''}" data-tool="${k}">${t}</button>`).join('')}</div>
+        <div class="list">${p.marks.map((m, i) => `<div class="item">${({ slab:'슬래브', sill:'창 아래', head:'창 위' })[m.kind]} · y=${Math.round(m.y)}<span class="x" data-delmark="${i}">×</span></div>`).join('')}</div>` : ''}
+      <h3>결과</h3>${w ? `<div>창 아래 <b>${w.sill} m</b> · 창 위 <b>${w.head} m</b> <span class="chip">사진 ${w.n}장</span></div>` : '<div class="desc">아직 없음 (기본값: 0.8 ~ 2.3 m)</div>'}`;
+  }
+  if (step === 'int') {
+    const p = R.interior.find(x => x.file === photoSel);
+    h = `<h2>4. 내부 사진 → 마감 색</h2><p class="desc">바닥·벽 영역을 드래그하면 그 안의 중앙값 색을 씁니다. 방 하나에 붙이거나, 같은 용도 전체의 대표 사진으로 지정합니다. 가구는 그리지 않습니다.</p>
+      <div class="row"><button class="b" id="addInt">+ 내부 사진</button></div>${thumbs(R.interior.map(x => ({ ...x, tag:x.room || P.USE_NAME[x.use] || x.file })), photoSel)}
+      ${p ? `<h3>적용 범위</h3>
+        <div class="row"><label>방</label><select id="intRoom">${roomOptions(p.room)}</select></div>
+        <div class="row"><label>또는 용도</label><select id="intUse"><option value="">—</option>${USES.map(([k, t]) => `<option value="${k}" ${p.use === k ? 'selected' : ''}>${t} 전체</option>`).join('')}</select></div>
+        <h3>영역</h3><div class="tools">${[['floorBox', '바닥 영역'], ['wallBox', '벽 영역']].map(([k, t]) => `<button class="b ${tool === k ? 'on' : ''}" data-tool="${k}">${t}</button>`).join('')}</div>
+        <div class="row">바닥 <span class="sw" style="background:${p.floor || 'transparent'}"></span> ${p.floor || '—'} &nbsp; 벽 <span class="sw" style="background:${p.wall || 'transparent'}"></span> ${p.wall || '—'}</div>
+        <div class="row"><button class="b" id="delPhoto">사진 빼기</button></div>` : ''}`;
+  }
+  if (step === 'ac') {
+    const p = R.acPhotos.find(x => x.file === photoSel);
+    const counts = {}; for (const x of R.acPhotos) if (x.room) counts[x.room] = (counts[x.room] || 0) + x.marks.length;
+    h = `<h2>5. 에어컨 사진 → 방별 실내기 수</h2><p class="desc">천장 사진에서 실내기를 하나씩 클릭합니다. 클릭 수가 그 방의 대수가 됩니다. 사진이 없는 방은 면적으로 추정하고 결과에 '추정'으로 표시합니다.</p>
+      <div class="row"><button class="b" id="addAc">+ 에어컨 사진</button></div>${thumbs(R.acPhotos.map(x => ({ ...x, tag:`${x.room || '?'} · ${x.marks.length}대` })), photoSel)}
+      ${p ? `<h3>이 사진</h3><div class="row"><label>방</label><select id="acRoom">${roomOptions(p.room)}</select></div>
+        <div class="row"><label>형식</label>${['4WAY', '1WAY', 'WALL'].map(k => `<button class="b ${tool === k ? 'on' : ''}" data-tool="${k}">${({ '4WAY':'4WAY 카세트', '1WAY':'1WAY 카세트', WALL:'벽걸이' })[k]}</button>`).join('')}</div>
+        <div class="desc">클릭: 추가 · 점 다시 클릭: 삭제</div>
+        <div class="row"><button class="b" id="delPhoto">사진 빼기</button></div>` : ''}
+      <h3>사진으로 확인한 방</h3><div class="list">${Object.entries(counts).map(([k, v]) => `<div class="item">${k}<span class="chip">${v}대</span></div>`).join('') || '<span class="desc">없음</span>'}</div>
+      <h3>실내기 위치 우선순위</h3><div class="desc">① 도면 표기(평면도 단계 '실내기 표기') → ② 모델 예측 → ③ 사진 대수 → ④ 면적 추정. 방마다 있는 근거 중 가장 앞의 것을 씁니다. 모델 위치 + 사진 대수가 함께 있으면 대수는 사진을 따릅니다.</div>
+      <h3>위치 예측 모델</h3>
+      <div class="desc">에어컨이 없는 평면도로 위치를 예측하는 모델과 주고받는 자리입니다. 입력: 층별 보정 평면도·벽 그림 PNG + 실 다각형(model-input.json). 출력: <code>twin.acplacement/v1</code>.</div>
+      <div class="row"><button class="b" id="mdlExport">모델 입력 내보내기</button><button class="b" id="mdlLoad">예측 결과 불러오기</button></div>
+      <div class="row"><label>모델 주소</label><input id="mdlEndpoint" placeholder="http://localhost:8000/predict (선택)" value="${esc(R.acModel?.endpoint || '')}"><button class="b" id="mdlRun">실행</button></div>
+      <div class="row"><label>신뢰도 하한</label><input type="range" id="mdlConf" min="0" max="100" value="${Math.round((R.acModel?.minConfidence ?? .5) * 100)}"><span>${(R.acModel?.minConfidence ?? .5).toFixed(2)}</span></div>
+      ${R.acModel?.result ? `<div class="ok">✔ ${esc(R.acModel.name || '모델')} 예측 ${R.acModel.result.units?.length || 0}개 <span class="chip">${esc(R.acModel.file || '레시피에 저장')}</span> <button class="b" id="mdlClear">빼기</button></div>` : '<div class="desc">예측 결과 없음</div>'}
+      <div id="mdlMsg" class="desc"></div>`;
+  }
+  if (step === 'out') {
+    const o = OUT, J = o.json;
+    h = `<h2>6. 결과 → 트윈</h2><p class="desc">레시피를 처음부터 다시 계산한 결과입니다. 같은 자료 + 같은 레시피면 항상 같은 파일이 나옵니다.</p>
+      <table><tr><td>층</td><td>${J.floors.length}</td></tr><tr><td>냉방 실</td><td>${o.stats.rooms}</td></tr>
+      <tr><td>실내기</td><td>${o.stats.idus}대 ${['plan', 'model', 'photo', 'estimate'].filter(k => o.stats[k]).map(k => `<span class="chip" style="color:${SRC_COLOR[k]}">${SRC_NAME[k]} ${o.stats[k]}</span>`).join(' ')}</td></tr>
+      <tr><td>실외기</td><td>${J.odus.length}</td></tr><tr><td>창 높이</td><td>${J.building.window ? `${J.building.window.sill}–${J.building.window.head} m` : '기본값'}</td></tr>
+      <tr><td>마감 색</td><td>${J.floors.flatMap(f => f.rooms).filter(r => r.finish).length}개 실</td></tr></table>
+      ${o.warn.length ? `<h3>확인 필요 (${o.warn.length})</h3><div style="max-height:150px;overflow:auto">${o.warn.map(w => `<div class="warn">· ${esc(w)}</div>`).join('')}</div>` : ''}
+      <h3>내보내기</h3><div class="row">
+        <button class="b pri" id="openTwin">트윈에서 렌더링</button><button class="b" id="dlBuilding">building.json</button><button class="b" id="dlRecipe">레시피</button></div>
+      <h3>에너지 시뮬레이션 (EnergyPlus)</h3><div class="desc">실마다 열 영역 하나, 외벽·창은 층 윤곽과 외부 사진의 창 높이로. 실별 최대 냉방부하를 설치된 실내기 용량과 비교합니다.
+        실행: <code>node tools/run-energyplus.mjs</code> (EnergyPlus 24.2 설치 필요) 또는 EP-Launch에서 in.idf 열기</div>
+      <div class="row"><button class="b" id="dlIdf">in.idf + zones.json</button></div>
+      <h3>직접 수정 <button class="b ${editMode ? 'on' : ''}" id="editToggle">${editMode ? '수정 끝' : '결과 고치기'}</button></h3>
+      ${editMode ? `<div class="row">${J.floors.map((x, i) => `<button class="b ${i === editF ? 'on' : ''}" data-editf="${i}">${x.id}</button>`).join('')}</div>
+        <div class="tools">${[['room', '실 속성'], ['move', '실내기 옮기기'], ['add', '실내기 추가'], ['del', '실내기 삭제']].map(([k, t]) => `<button class="b ${editTool === k ? 'on' : ''}" data-edittool="${k}">${t}</button>`).join('')}</div>
+        ${editTool === 'add' ? `<div class="row">${['4WAY', '1WAY', 'WALL'].map(k => `<button class="b ${iduKind === k ? 'on' : ''}" data-idukind="${k}">${k}</button>`).join('')}</div>` : ''}
+        ${editSel ? roomEditor(editSel) : '<div class="desc">실을 클릭하면 이름·용도·정원·종류를 바꿀 수 있습니다. 실내기를 옮기거나 더하고 빼면 그 방의 실내기는 모두 \'사람 수정\'(도면 표기와 같은 1순위)으로 고정됩니다.</div>'}
+        <div class="desc">수정 기록: 실 ${Object.keys(R.overrides?.rooms || {}).length}개 · 실내기 고정 ${R.floors.reduce((t, f) => t + f.ops.filter(o => o.op === 'idu' && o.from === '사람 수정').length, 0)}대 <button class="b" id="editReset">모두 되돌리기</button></div>` : ''}
+      <h3>검증</h3><div class="row"><button class="b" id="repeat">반복 실행 비교</button><button class="b" id="compare">손으로 그린 도면과 비교</button></div>
+      <div id="verify"></div>`;
+  }
+  s.innerHTML = h;
+  hint();
+}
+function roomEditor(id){
+  const r = OUT.json.floors.flatMap(f => f.rooms).find(x => x.id === id); if (!r) return '';
+  const n = OUT.json.idus.filter(a => a.room === id);
+  return `<h3>${esc(id)} <span class="chip">${n.length}대 · ${[...new Set(n.map(a => SRC_NAME[a.source]))].join(', ') || '실내기 없음'}</span></h3>
+    <div class="row"><label>이름</label><input data-ov="name" value="${esc(r.name)}"></div>
+    <div class="row"><label>종류</label><select data-ov="type">${TYPES.filter(t => !['atrium', 'elevator'].includes(t[0])).map(([k, t]) => `<option value="${k}" ${r.type === k ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+    ${r.type === 'room' ? `<div class="row"><label>용도</label><select data-ov="use">${USES.map(([k, t]) => `<option value="${k}" ${r.use === k ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+    <div class="row"><label>정원</label><input type="number" data-ov="capacity" value="${r.capacity || 0}"></div>` : ''}
+    ${R.overrides?.rooms?.[id] ? '<div class="row"><button class="b" id="ovUndo">이 실 수정 되돌리기</button></div>' : ''}`;
+}
+function labelEditor(o){
+  return `<h3>${o.op === 'rect' ? '사각형' : '라벨'} 속성</h3>
+    <div class="row"><label>종류</label><select data-l="type">${TYPES.map(([k, t]) => `<option value="${k}" ${o.type === k ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+    ${o.type === 'room' || !o.type ? `<div class="row"><label>호실</label><input data-l="number" value="${esc(o.number || '')}" placeholder="6301"></div>
+    <div class="row"><label>용도</label><select data-l="use">${USES.map(([k, t]) => `<option value="${k}" ${o.use === k ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+    <div class="row"><label>정원</label><input type="number" data-l="capacity" value="${o.capacity || ''}"> <span class="desc">시간표·대장</span></div>` :
+    `<div class="row"><label>이름</label><input data-l="name" value="${esc(o.name || '')}" placeholder="(기본)"></div>`}`;
+}
+const opText = o => ({
+  label:`라벨 ${o.type === 'room' ? (o.number || '?') + ' ' + (P.USE_NAME[o.use] || '') : TYPES.find(t => t[0] === o.type)?.[1]}`,
+  idu:o.none ? `실내기 없음 (${o.room})` : `실내기 ${o.kind} (${o.x}, ${o.y}) · ${o.from || '도면'}`,
+  rect:`사각형 ${o.type === 'room' ? o.number || '?' : TYPES.find(t => t[0] === o.type)?.[1] || ''} ${snap(o.x1 - o.x0)}×${snap(o.y1 - o.y0)}m`,
+  wall:`벽 (${o.x0},${o.y0})→(${o.x1},${o.y1})`, gap:`벽 지우기 ${snap(Math.abs(o.x1 - o.x0))}×${snap(Math.abs(o.y1 - o.y0))}m`, merge:'합치기',
+})[o.op];
+
+function hint(){
+  const f = F(), t = {
+    corner:'건물 외곽 모서리를 북서 → 북동 → 남동 → 남서 순서로 클릭 (외부 계단 등 튀어나온 부분 제외)',
+    label:'공간 안을 클릭해 라벨을 붙입니다. 오른쪽에서 호실·용도·정원 입력. 기존 라벨을 클릭하면 수정.',
+    wall:'선이 끊겨 두 공간이 합쳐졌으면 드래그로 벽을 긋습니다 (스티커·글자에 가린 선).',
+    gap:'잘못 잡힌 벽(글자·아이콘)을 드래그 사각형으로 지웁니다.',
+    merge:'한 공간이 둘로 나뉘었으면 두 곳을 차례로 클릭.',
+    rect:'드래그로 사각형을 그려 공간을 직접 지정 (도면 선이 흐린 와이파이맵 등).',
+    erase:'지울 라벨·벽·사각형·실내기를 클릭.',
+    footprint:'건물 윤곽 꼭짓점을 차례로 클릭 (첫 점을 다시 누르면 닫힘)',
+    idu:'평면도에 실내기가 그려져 있으면 그 자리를 클릭 (다시 클릭하면 삭제)',
+    pick:'상점처럼 색이 칠해진 칸을 클릭해 그 색을 기준으로 삼습니다',
+  };
+  let s = '';
+  if (step === 'plan') s = !f.image && f.mode === 'auto' ? '평면도 이미지를 고르세요.' : t[tool] || '';
+  if (step === 'ext') s = photoSel ? '선을 고르고 사진에서 그 높이를 클릭' : '외부 사진을 추가하거나 고르세요';
+  if (step === 'int') s = photoSel ? '바닥/벽 버튼을 누르고 사진에서 드래그' : '내부 사진을 추가하거나 고르세요';
+  if (step === 'ac') s = photoSel ? '사진 속 실내기를 하나씩 클릭' : '에어컨(천장) 사진을 추가하거나 고르세요';
+  if (step === 'info') s = '건축물대장·도면 기준 크기. 바꾸면 모든 층이 다시 계산됩니다.';
+  if (step === 'out') s = '오른쪽 패널에서 내보내기·검증';
+  $('#hint').textContent = s; $('#hint').style.display = s ? '' : 'none';
+}
+
+/* ───────── 그리기 ───────── */
+const SRC_COLOR = { plan:'#f2c14e', model:'#c084fc', photo:'#36c08a', estimate:'#8a96ad' };
+const SRC_NAME = { plan:'도면 표기', model:'모델 예측', photo:'사진 대수', estimate:'면적 추정' };
+const predFor = id => { try { return P.readPredictions(R.acModel?.result)[id] || []; } catch { return []; } };
+const COLORS = { room:'#5b8def', corridor:'#8a96ad', wc:'#4fb6c9', core:'#9a7bd6', store:'#6b7280' };
+function draw(){
+  const W = cv.clientWidth, H = cv.clientHeight, dpr = devicePixelRatio || 1;
+  cv.width = W * dpr; cv.height = H * dpr; g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.fillStyle = '#0b0f18'; g.fillRect(0, 0, W, H);
+  if (step === 'plan') drawPlan();
+  else if (step === 'ext' || step === 'int' || step === 'ac') drawPhoto();
+  else if (step === 'out') drawOut();
+  else if (step === 'info') drawInfo();
+}
+function drawInfo(){
+  const B = R.building, w = B.size.w, d = B.size.d; fit(w + 8, d + 8);
+  const [x, y] = scr(4, 4); g.strokeStyle = '#6aa8ff'; g.lineWidth = 2; g.strokeRect(x, y, w * view.s, d * view.s);
+  g.fillStyle = '#8a96ad'; g.font = '13px system-ui'; g.textAlign = 'center'; g.fillText(`${w} m`, x + w * view.s / 2, y - 8);
+  g.save(); g.translate(x - 10, y + d * view.s / 2); g.rotate(-Math.PI / 2); g.fillText(`${d} m`, 0, 0); g.restore();
+}
+function drawPlan(){
+  const f = F(), res = RES.get(f.id), img = IMG.get(f.image);
+  const rectified = res?.rect;
+  if (tool === 'corner' || !rectified) {
+    if (!img) { if (f.mode === 'manual' || res) return drawRectSpace(res); return; }
+    fit(img.data.width, img.data.height); g.drawImage(img.el, view.ox, view.oy, img.data.width * view.s, img.data.height * view.s);
+    const pts = tool === 'corner' && pending.length ? pending : f.corners || [];
+    g.strokeStyle = '#6aa8ff'; g.lineWidth = 2; g.beginPath(); pts.forEach((p, i) => { const [X, Y] = scr(p[0], p[1]); i ? g.lineTo(X, Y) : g.moveTo(X, Y); }); if (pts.length === 4) g.closePath(); g.stroke();
+    pts.forEach((p, i) => { const [X, Y] = scr(p[0], p[1]); g.fillStyle = '#6aa8ff'; g.beginPath(); g.arc(X, Y, 6, 0, 7); g.fill(); g.fillStyle = '#fff'; g.font = '700 12px system-ui'; g.fillText(['북서', '북동', '남동', '남서'][i], X + 9, Y - 8); });
+    return;
+  }
+  drawRectSpace(res);
+}
+let overlayCache = { key:null, cv:null }, maskCache = { key:null };
+function drawRectSpace(res){
+  const f = F(), W = R.building.size.w, D = R.building.size.d;
+  const w = Math.round((W + 2 * P.MARGIN) * P.RES), h = Math.round((D + 2 * P.MARGIN) * P.RES);
+  fit(w, h);
+  if (res?.rect) { const key = RECT.get(f.id).key;
+    if (overlayCache.key !== key) { const c = document.createElement('canvas'); c.width = w; c.height = h; c.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(res.rect.data), w, h), 0, 0); overlayCache = { key, cv:c }; }
+    g.globalAlpha = .55; g.drawImage(overlayCache.cv, view.ox, view.oy, w * view.s, h * view.s); g.globalAlpha = 1; }
+  if (showMask && res?.res.mask) { const mk = res.res.mask, key = 'm' + RECT.get(f.id)?.key + JSON.stringify(f.params) + f.ops.length;
+    if (maskCache.key !== key) { const c = document.createElement('canvas'); c.width = w; c.height = h; const id = new ImageData(w, h); for (let p = 0; p < mk.length; p++) if (mk[p]) { id.data[p * 4] = 255; id.data[p * 4 + 1] = 140; id.data[p * 4 + 2] = 0; id.data[p * 4 + 3] = 255; } c.getContext('2d').putImageData(id, 0, 0); maskCache = { key, cv:c }; }
+    g.drawImage(maskCache.cv, view.ox, view.oy, w * view.s, h * view.s); }
+  // 건물 외곽
+  const M = (x, y) => scr(...mToPx(x, y));
+  { const [a, b] = M(0, 0), [c, d] = M(W, D); g.strokeStyle = 'rgba(106,168,255,.5)'; g.setLineDash([6, 4]); g.strokeRect(a, b, c - a, d - b); g.setLineDash([]); }
+  if (!res) return;
+  const meta = res.out.meta;
+  for (const k of ['atrium', 'elevator']) if (meta[k]) { const b = meta[k], [a, c] = M(b.x0, b.y0), [e, d] = M(b.x1, b.y1); g.fillStyle = k === 'atrium' ? 'rgba(120,170,220,.18)' : 'rgba(242,193,78,.35)'; g.fillRect(a, c, e - a, d - c);
+    g.fillStyle = '#cfe0ff'; g.font = '600 12px system-ui'; g.textAlign = 'center'; g.fillText(k === 'atrium' ? '중정' : 'EV', (a + e) / 2, (c + d) / 2); }
+  for (const r of res.out.rooms) {
+    const col = COLORS[r.type] || '#999', unl = r.name === '미지정';
+    g.beginPath(); r.polygon.forEach(([x, y], i) => { const [X, Y] = M(x, y); i ? g.lineTo(X, Y) : g.moveTo(X, Y); }); g.closePath();
+    g.fillStyle = unl ? 'rgba(229,72,77,.22)' : col + '38'; g.fill(); g.strokeStyle = unl ? '#e5484d' : col; g.lineWidth = 1.6; g.stroke();
+    const xs = r.polygon.map(p => p[0]), ys = r.polygon.map(p => p[1]), [cx, cy] = M((Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2);
+    g.fillStyle = '#fff'; g.font = `600 ${Math.max(9, Math.min(13, view.s * 18))}px system-ui`; g.textAlign = 'center'; g.fillText(r.type === 'room' ? r.number || '?' : r.name, cx, cy + 4);
+  }
+  for (const o of f.ops) {
+    if (o.op === 'label') { const [X, Y] = M(o.x, o.y); g.fillStyle = o === sel ? '#f2c14e' : '#fff'; g.beginPath(); g.arc(X, Y, 4, 0, 7); g.fill(); g.strokeStyle = '#000'; g.lineWidth = 1; g.stroke(); }
+    if (o.op === 'wall') { const [a, b] = M(o.x0, o.y0), [c, d] = M(o.x1, o.y1); g.strokeStyle = '#f2a01f'; g.lineWidth = 3; g.beginPath(); g.moveTo(a, b); g.lineTo(c, d); g.stroke(); }
+    if (o.op === 'gap') { const [a, b] = M(o.x0, o.y0), [c, d] = M(o.x1, o.y1); g.strokeStyle = '#36c08a'; g.setLineDash([3, 3]); g.lineWidth = 1.5; g.strokeRect(a, b, c - a, d - b); g.setLineDash([]); }
+    if (o.op === 'rect') { const [a, b] = M(o.x0, o.y0), [c, d] = M(o.x1, o.y1); g.strokeStyle = o === sel ? '#f2c14e' : '#c7d2fe'; g.lineWidth = 1; g.setLineDash([2, 2]); g.strokeRect(a, b, c - a, d - b); g.setLineDash([]); }
+    if (o.op === 'merge') { const [a, b] = M(...o.a), [c, d] = M(...o.b); g.strokeStyle = '#e879f9'; g.lineWidth = 2; g.beginPath(); g.moveTo(a, b); g.lineTo(c, d); g.stroke(); }
+  }
+  // 건물 윤곽 · 실내기 표기 · 모델 예측
+  const fp = tool === 'footprint' && pending.length ? pending : f.footprint;
+  if (fp?.length) { g.strokeStyle = '#6aa8ff'; g.lineWidth = 2; g.beginPath(); fp.forEach((q, i) => { const [X, Y] = M(...q); i ? g.lineTo(X, Y) : g.moveTo(X, Y); }); if (fp === f.footprint) g.closePath(); g.stroke();
+    fp.forEach(q => { const [X, Y] = M(...q); g.fillStyle = '#6aa8ff'; g.fillRect(X - 3, Y - 3, 6, 6); }); }
+  const pred = predFor(f.id), minC = R.acModel?.minConfidence ?? .5;
+  for (const u of pred) { const [X, Y] = M(u.x, u.y); g.strokeStyle = u.confidence >= minC ? SRC_COLOR.model : '#6b7280'; g.lineWidth = 2; g.beginPath(); g.arc(X, Y, 5, 0, 7); g.stroke(); }
+  for (const o of f.ops) if (o.op === 'idu') { const [X, Y] = M(o.x, o.y); g.fillStyle = SRC_COLOR.plan; g.fillRect(X - 5, Y - 5, 10, 10); g.strokeStyle = '#000'; g.lineWidth = 1; g.strokeRect(X - 5, Y - 5, 10, 10); }
+  if (drag) { const [a, b] = scr(drag.a[0], drag.a[1]), [c, d] = scr(drag.b[0], drag.b[1]); g.strokeStyle = '#f2c14e'; g.lineWidth = 2;
+    if (tool === 'wall') { g.beginPath(); g.moveTo(a, b); g.lineTo(c, d); g.stroke(); } else g.strokeRect(a, b, c - a, d - b); }
+  if (pending.length && tool === 'merge') { const [X, Y] = M(...pending[0]); g.fillStyle = '#e879f9'; g.beginPath(); g.arc(X, Y, 5, 0, 7); g.fill(); }
+}
+function drawPhoto(){
+  const list = step === 'ext' ? R.exterior.photos : step === 'int' ? R.interior : R.acPhotos, p = list.find(x => x.file === photoSel), img = p && IMG.get(p.file);
+  if (!img) return;
+  fit(img.data.width, img.data.height); g.drawImage(img.el, view.ox, view.oy, img.data.width * view.s, img.data.height * view.s);
+  if (step === 'ext') for (const m of p.marks) { const [, Y] = scr(0, m.y); g.strokeStyle = { slab:'#6aa8ff', sill:'#36c08a', head:'#f2a01f' }[m.kind]; g.lineWidth = 2; g.beginPath(); g.moveTo(view.ox, Y); g.lineTo(view.ox + img.data.width * view.s, Y); g.stroke(); }
+  if (step === 'int') for (const k of ['floorBox', 'wallBox']) if (p[k]) { const b = p[k], [a, c] = scr(b[0], b[1]), [e, d] = scr(b[2], b[3]); g.strokeStyle = k === 'floorBox' ? '#36c08a' : '#f2a01f'; g.lineWidth = 2; g.strokeRect(a, c, e - a, d - c);
+    g.fillStyle = g.strokeStyle; g.font = '700 12px system-ui'; g.fillText(k === 'floorBox' ? '바닥' : '벽', a + 4, c + 14); }
+  if (step === 'ac') p.marks.forEach((m, i) => { const [X, Y] = scr(m.x, m.y); g.fillStyle = m.kind === '1WAY' ? '#36c08a' : m.kind === 'WALL' ? '#f2a01f' : '#6aa8ff'; g.beginPath(); g.arc(X, Y, 13, 0, 7); g.fill();
+    g.fillStyle = '#071226'; g.font = '800 13px system-ui'; g.textAlign = 'center'; g.fillText(i + 1, X, Y + 5); g.textAlign = 'start'; });
+  if (drag) { const [a, b] = scr(drag.a[0], drag.a[1]), [c, d] = scr(drag.b[0], drag.b[1]); g.strokeStyle = '#fff'; g.lineWidth = 1.5; g.strokeRect(a, b, c - a, d - b); }
+}
+const SRC_KIND = t => /1WAY/.test(t) ? '1WAY' : /벽걸이/.test(t) ? 'WALL' : '4WAY';
+const inRoomJ = (x, y, r) => { const ip = (p) => { let c = false; for (let i = 0, j = p.length - 1; i < p.length; j = i++) { const [xi, yi] = p[i], [xj, yj] = p[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c; } return c; };
+  return ip(r.polygon) && !(r.holes || []).some(ip); };
+function drawEdit(){
+  const J = OUT.json, f = J.floors[editF], W = J.building.size.w, D = J.building.size.d, cw = cv.clientWidth, ch = cv.clientHeight;
+  const s = Math.min((cw - 40) / (W + 4), (ch - 70) / (D + 4)), ox = (cw - W * s) / 2, oy = 40 + (ch - 70 - D * s) / 2; EV = { s, ox, oy };
+  const P = (x, y) => [ox + x * s, oy + y * s];
+  g.fillStyle = '#dbe3f2'; g.font = '700 14px system-ui'; g.textAlign = 'left'; g.fillText(`${f.id} — 결과 직접 수정`, 14, 24);
+  if (f.footprint) { g.strokeStyle = 'rgba(106,168,255,.6)'; g.lineWidth = 2; g.beginPath(); f.footprint.forEach(([x, y], i) => { const [X, Y] = P(x, y); i ? g.lineTo(X, Y) : g.moveTo(X, Y); }); g.closePath(); g.stroke(); }
+  for (const r of f.rooms) { g.beginPath(); for (const l of [r.polygon, ...(r.holes || [])]) l.forEach(([x, y], k) => { const [X, Y] = P(x, y); k ? g.lineTo(X, Y) : g.moveTo(X, Y); }), g.closePath();
+    const col = COLORS[r.type] || '#999', ovd = R.overrides?.rooms?.[r.id];
+    g.fillStyle = r.id === editSel ? 'rgba(242,193,78,.35)' : col + '30'; g.fill('evenodd'); g.strokeStyle = r.id === editSel ? '#f2c14e' : ovd ? '#fb923c' : col; g.lineWidth = r.id === editSel || ovd ? 2.2 : 1; g.stroke();
+    if (r.type === 'room') { const xs = r.polygon.map(p => p[0]), ys = r.polygon.map(p => p[1]), [cx, cy] = P((Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2);
+      g.fillStyle = '#fff'; g.font = `600 ${Math.max(9, Math.min(12, s * 1.6))}px system-ui`; g.textAlign = 'center'; g.fillText(r.number || '', cx, cy - 6); } }
+  for (const a of J.idus) { if (!a.room.startsWith(f.id + '-')) continue; const pos = iduDrag?.id === a.id ? iduDrag.pos : a.pos, [X, Y] = P(...pos);
+    g.fillStyle = SRC_COLOR[a.source] || '#8a96ad'; g.beginPath(); g.arc(X, Y, 6, 0, 7); g.fill(); g.strokeStyle = '#0b0f18'; g.lineWidth = 1.5; g.stroke(); }
+  g.font = '12px system-ui'; g.textAlign = 'left'; let lx = 12; for (const k of ['plan', 'model', 'photo', 'estimate']) { g.fillStyle = SRC_COLOR[k]; g.fillRect(lx, ch - 21, 10, 10); g.fillStyle = '#c9d3e6'; g.fillText(SRC_NAME[k], lx + 14, ch - 12); lx += 24 + g.measureText(SRC_NAME[k]).width; }
+}
+// 한 방의 실내기 목록을 '사람 수정' 표기로 고정 (그 방의 기존 표기는 지움)
+//   공조 구역(zoneOf)은 파이프라인이 나중에 만든 실이라, 원래 공간 전체(모든 구역의 실내기)를 함께 고정한다
+function pinRoomIdus(roomId, units){
+  const J = OUT.json, fj = J.floors.find(f => f.rooms.some(r => r.id === roomId)); if (!fj) return;
+  const room = fj.rooms.find(r => r.id === roomId), fr = R.floors.find(f => f.id === fj.id);
+  const parent = room.zoneOf || roomId, group = room.zoneOf ? fj.rooms.filter(r => r.zoneOf === room.zoneOf) : [room];
+  const all = [...units, ...group.filter(r => r.id !== roomId).flatMap(r => unitsOf(r.id))];
+  // 결과 화면은 스카이뷰 모양 보정 뒤 좌표, 레시피 작업은 평면도 좌표 → 저장할 때 되돌림
+  const Wp = J.site?.warp, toPlan = (x, y) => P.unwarpPoint(Wp, [x, y]);
+  fr.ops = fr.ops.filter(o => !(o.op === 'idu' && (o.room === parent || group.some(r => inRoomJ(...P.warpPoint(Wp, [o.x, o.y]), r)))));
+  for (const u of all) { const [x, y] = toPlan(u.x, u.y); fr.ops.push({ op:'idu', x:snap(x), y:snap(y), kind:u.kind, coolKw:u.coolKw, room:parent, from:'사람 수정' }); }
+  if (!all.length) { const xs = room.polygon.map(p => p[0]), ys = room.polygon.map(p => p[1]), [x, y] = toPlan((Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2); fr.ops.push({ op:'idu', none:true, x:snap(x), y:snap(y), room:parent, from:'사람 수정' }); }
+  computeAll(); renderSteps(); renderSide(); draw();
+}
+const unitsOf = roomId => OUT.json.idus.filter(a => a.room === roomId).map(a => ({ id:a.id, x:a.pos[0], y:a.pos[1], kind:SRC_KIND(a.type), coolKw:a.coolKw }));
+function drawOut(){
+  if (editMode) return drawEdit();
+  const J = OUT.json, W = J.building.size.w, D = J.building.size.d, n = J.floors.length, cols = Math.min(n, 3), rows = Math.ceil(n / cols);
+  const cw = cv.clientWidth, ch = cv.clientHeight, cellW = cw / cols, cellH = ch / rows, s = Math.min((cellW - 30) / (W + 6), (cellH - 40) / (D + 6));
+  J.floors.forEach((f, i) => {
+    const ox = (i % cols) * cellW + (cellW - W * s) / 2, oy = Math.floor(i / cols) * cellH + 30 + (cellH - 30 - D * s) / 2;
+    g.fillStyle = '#dbe3f2'; g.font = '700 13px system-ui'; g.textAlign = 'left'; g.fillText(f.id, ox, oy - 10);
+    for (const r of f.rooms) { g.beginPath(); r.polygon.forEach(([x, y], k) => k ? g.lineTo(ox + x * s, oy + y * s) : g.moveTo(ox + x * s, oy + y * s)); g.closePath();
+      g.fillStyle = r.finish?.floor ? r.finish.floor + 'aa' : (COLORS[r.type] || '#999') + '30'; g.fill(); g.strokeStyle = (COLORS[r.type] || '#999'); g.lineWidth = 1; g.stroke(); }
+    for (const a of J.idus) { if (!a.room.startsWith(f.id + '-')) continue; g.fillStyle = SRC_COLOR[a.source] || '#8a96ad'; g.fillRect(ox + a.pos[0] * s - 2.5, oy + a.pos[1] * s - 2.5, 5, 5); }
+  });
+  g.font = '12px system-ui'; let lx = 12; for (const k of ['plan', 'model', 'photo', 'estimate']) { g.fillStyle = SRC_COLOR[k]; g.fillRect(lx, ch - 21, 10, 10); g.fillStyle = '#c9d3e6'; g.fillText(SRC_NAME[k], lx + 14, ch - 12); lx += 24 + g.measureText(SRC_NAME[k]).width; }
+}
+
+/* ───────── 입력 ───────── */
+const evPt = e => { const r = cv.getBoundingClientRect(); return inv(e.clientX - r.left, e.clientY - r.top); };
+cv.addEventListener('pointerdown', e => {
+  if (step === 'out' && editMode) { editDown(e); return; }
+  const p = evPt(e), f = F();
+  if (step === 'plan') {
+    if (tool === 'corner') { if (!f.image) return; pending.push([Math.round(p[0]), Math.round(p[1])]); if (pending.length === 4) { f.corners = pending; pending = []; tool = 'label'; recompute(); } draw(); return; }
+    const m = pxToM(p[0], p[1]).map(snap);
+    if (tool === 'pick') { const rr = RES.get(f.id)?.rect; if (!rr) return; const i = Math.round(p[0]), j = Math.round(p[1]); f.params.fill = P.medianColor(rr, [i - 4, j - 4, i + 5, j + 5]); recompute(); return; }
+    if (tool === 'footprint') { if (pending.length >= 3 && Math.hypot(pending[0][0] - m[0], pending[0][1] - m[1]) < .8) { f.footprint = pending; pending = []; recompute(); } else { pending.push(m); draw(); } return; }
+    if (tool === 'idu') { const i = f.ops.findIndex(o => o.op === 'idu' && Math.hypot(o.x - m[0], o.y - m[1]) < .6);
+      if (i >= 0) f.ops.splice(i, 1); else f.ops.push({ op:'idu', x:m[0], y:m[1], kind:iduKind, from:iduFrom }); OUT = null; renderSteps(); renderSide(); draw(); return; }
+    if (tool === 'label') { const near = f.ops.find(o => o.op === 'label' && Math.hypot(o.x - m[0], o.y - m[1]) < .8);
+      sel = near || { op:'label', x:m[0], y:m[1], type:'room', use:'lecture' }; if (!near) f.ops.push(sel); recompute(); return; }
+    if (tool === 'merge') { pending.push(m); if (pending.length === 2) { f.ops.push({ op:'merge', a:pending[0], b:pending[1] }); pending = []; recompute(); } draw(); return; }
+    if (tool === 'erase') { const i = f.ops.findIndex(o => o.op === 'idu' ? Math.hypot(o.x - m[0], o.y - m[1]) < .6 : o.op === 'label' ? Math.hypot(o.x - m[0], o.y - m[1]) < .8 : o.op === 'merge' ? Math.hypot(o.a[0] - m[0], o.a[1] - m[1]) < .8
+        : o.op === 'wall' ? distSeg(m, [o.x0, o.y0], [o.x1, o.y1]) < .5 : m[0] >= Math.min(o.x0, o.x1) && m[0] <= Math.max(o.x0, o.x1) && m[1] >= Math.min(o.y0, o.y1) && m[1] <= Math.max(o.y0, o.y1));
+      if (i >= 0) { f.ops.splice(i, 1); sel = null; recompute(); } return; }
+    if (tool === 'rect') { const hit = f.ops.find(o => o.op === 'rect' && m[0] >= o.x0 && m[0] <= o.x1 && m[1] >= o.y0 && m[1] <= o.y1); if (hit && !e.shiftKey) { sel = hit; renderSide(); draw(); return; } }
+    if (tool === 'wall' || tool === 'gap' || tool === 'rect') { drag = { a:p, b:p }; cv.setPointerCapture(e.pointerId); }
+    return;
+  }
+  const list = step === 'ext' ? R.exterior.photos : step === 'int' ? R.interior : R.acPhotos, ph = list.find(x => x.file === photoSel);
+  if (!ph) return;
+  if (step === 'ext') { if (!['slab', 'sill', 'head'].includes(tool)) tool = 'slab'; ph.marks.push({ kind:tool, y:Math.round(p[1]) }); calcWindow(); renderSide(); draw(); }
+  if (step === 'int' && (tool === 'floorBox' || tool === 'wallBox')) { drag = { a:p, b:p }; cv.setPointerCapture(e.pointerId); }
+  if (step === 'ac') { const i = ph.marks.findIndex(m => Math.hypot(m.x - p[0], m.y - p[1]) * view.s < 14);
+    if (i >= 0) ph.marks.splice(i, 1); else ph.marks.push({ x:Math.round(p[0]), y:Math.round(p[1]), kind:['4WAY', '1WAY', 'WALL'].includes(tool) ? tool : '4WAY' });
+    renderSteps(); renderSide(); draw(); }
+});
+cv.addEventListener('pointermove', e => { if (iduDrag) { const r = cv.getBoundingClientRect(); iduDrag.pos = [(e.clientX - r.left - EV.ox) / EV.s, (e.clientY - r.top - EV.oy) / EV.s]; draw(); return; } if (!drag) return; drag.b = evPt(e); draw(); });
+function editDown(e){
+  const r = cv.getBoundingClientRect(), X = e.clientX - r.left, Y = e.clientY - r.top, m = [(X - EV.ox) / EV.s, (Y - EV.oy) / EV.s], J = OUT.json, f = J.floors[editF];
+  const hitIdu = J.idus.find(a => a.room.startsWith(f.id + '-') && Math.hypot(a.pos[0] * EV.s + EV.ox - X, a.pos[1] * EV.s + EV.oy - Y) < 9);
+  const room = f.rooms.find(x => x.type === 'room' && inRoomJ(m[0], m[1], x)) || f.rooms.find(x => inRoomJ(m[0], m[1], x));
+  if (editTool === 'room') { editSel = room?.id || null; renderSide(); draw(); return; }
+  if (editTool === 'move' && hitIdu) { iduDrag = { id:hitIdu.id, room:hitIdu.room, pos:[...hitIdu.pos] }; cv.setPointerCapture(e.pointerId); return; }
+  if (editTool === 'del' && hitIdu) { pinRoomIdus(hitIdu.room, unitsOf(hitIdu.room).filter(u => u.id !== hitIdu.id)); return; }
+  if (editTool === 'add' && room?.type === 'room') { pinRoomIdus(room.id, [...unitsOf(room.id), { x:m[0], y:m[1], kind:iduKind }]); return; }
+}
+cv.addEventListener('pointerup', e => {
+  if (iduDrag) { const d = iduDrag; iduDrag = null; const J = OUT.json, f = J.floors[editF], target = f.rooms.find(x => x.type === 'room' && inRoomJ(d.pos[0], d.pos[1], x));
+    if (!target) { draw(); return; }
+    const zoneOf = id => f.rooms.find(x => x.id === id)?.zoneOf;
+    if (target.id === d.room || (zoneOf(d.room) && zoneOf(d.room) === zoneOf(target.id))) pinRoomIdus(d.room, unitsOf(d.room).map(u => u.id === d.id ? { ...u, x:d.pos[0], y:d.pos[1] } : u));
+    else { const moved = unitsOf(d.room).find(u => u.id === d.id); pinRoomIdus(d.room, unitsOf(d.room).filter(u => u.id !== d.id)); pinRoomIdus(target.id, [...unitsOf(target.id), { ...moved, x:d.pos[0], y:d.pos[1] }]); }
+    return; }
+  if (!drag) return; const d = drag; drag = null;
+  if (step === 'plan') {
+    const a = pxToM(...d.a).map(snap), b = pxToM(...d.b).map(snap), f = F();
+    if (Math.hypot(a[0] - b[0], a[1] - b[1]) < .3) { draw(); return; }
+    if (tool === 'wall') { const ax = Math.abs(a[0] - b[0]) > Math.abs(a[1] - b[1]); f.ops.push({ op:'wall', x0:a[0], y0:a[1], x1:ax ? b[0] : a[0], y1:ax ? a[1] : b[1] }); }   // 축 방향으로 곧게
+    if (tool === 'gap') f.ops.push({ op:'gap', x0:Math.min(a[0], b[0]), y0:Math.min(a[1], b[1]), x1:Math.max(a[0], b[0]), y1:Math.max(a[1], b[1]) });
+    if (tool === 'rect') { sel = { op:'rect', x0:Math.min(a[0], b[0]), y0:Math.min(a[1], b[1]), x1:Math.max(a[0], b[0]), y1:Math.max(a[1], b[1]), type:'room', use:'office' }; f.ops.push(sel); }
+    recompute(); return;
+  }
+  if (step === 'int') { const ph = R.interior.find(x => x.file === photoSel), box = [d.a[0], d.a[1], d.b[0], d.b[1]].map(Math.round);
+    ph[tool] = box; ph[tool === 'floorBox' ? 'floor' : 'wall'] = P.medianColor(IMG.get(ph.file).data, box); renderSteps(); renderSide(); draw(); }
+});
+const distSeg = (p, a, b) => { const dx = b[0] - a[0], dy = b[1] - a[1], t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / (dx * dx + dy * dy || 1))); return Math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dy); };
+
+// 외부 사진: 슬래브 선 간격에 대한 창 위·아래 비율 × 층고
+function calcWindow(){
+  const sills = [], heads = [];
+  for (const p of R.exterior.photos) {
+    const slabs = p.marks.filter(m => m.kind === 'slab').map(m => m.y).sort((a, b) => a - b);
+    for (const m of p.marks.filter(m => m.kind !== 'slab')) {
+      const below = slabs.find(y => y > m.y), above = [...slabs].reverse().find(y => y < m.y);
+      if (below == null || above == null) continue;
+      (m.kind === 'sill' ? sills : heads).push((below - m.y) / (below - above));
+    }
+  }
+  const avg = a => a.reduce((s, v) => s + v, 0) / a.length, FH = R.building.floorHeight;
+  R.exterior.window = sills.length && heads.length ? { sill:Math.round(avg(sills) * FH * 20) / 20, head:Math.round(avg(heads) * FH * 20) / 20, n:R.exterior.photos.filter(p => p.marks.length).length } : undefined;
+}
+
+/* 패널 이벤트 */
+$('#side').addEventListener('click', e => {
+  const t = e.target, f = F();
+  if (t.dataset.tool) { tool = t.dataset.tool; pending = []; renderSide(); draw(); }
+  if (t.dataset.idukind) { iduKind = t.dataset.idukind; renderSide(); }
+  if (t.id === 'editToggle') { editMode = !editMode; editSel = null; renderSide(); draw(); }
+  if (t.dataset.editf) { editF = +t.dataset.editf; editSel = null; renderSide(); draw(); }
+  if (t.dataset.edittool) { editTool = t.dataset.edittool; renderSide(); draw(); }
+  if (t.id === 'ovUndo') { delete R.overrides.rooms[editSel]; computeAll(); renderSide(); draw(); }
+  if (t.id === 'editReset' && confirm('결과 화면에서 고친 실 속성과 실내기 고정을 모두 지울까요?')) { delete R.overrides; for (const f of R.floors) f.ops = f.ops.filter(o => !(o.op === 'idu' && o.from === '사람 수정')); editSel = null; computeAll(); renderSteps(); renderSide(); draw(); }
+  if (t.id === 'clearFoot') { delete f.footprint; recompute(); }
+  if (t.id === 'mdlExport') exportModelInput();
+  if (t.id === 'mdlLoad') loadPrediction();
+  if (t.id === 'mdlRun') runModel();
+  if (t.id === 'mdlClear') { delete R.acModel; OUT = null; renderSteps(); renderSide(); draw(); }
+  if (t.dataset.floor) { fi = +t.dataset.floor; sel = null; pending = []; tool = F().corners ? 'label' : 'corner'; prepFloor().then(() => { renderSide(); draw(); }); }
+  if (t.dataset.delop) { f.ops.splice(+t.dataset.delop, 1); sel = null; recompute(); e.stopPropagation(); return; }
+  const it = t.closest('[data-op]'); if (it && !t.dataset.delop) { sel = f.ops[+it.dataset.op]; renderSide(); draw(); }
+  if (t.dataset.delfloor) { R.floors.splice(+t.dataset.delfloor, 1); fi = 0; renderSide(); }
+  if (t.dataset.delmark) { R.exterior.photos.find(x => x.file === photoSel).marks.splice(+t.dataset.delmark, 1); calcWindow(); renderSide(); draw(); }
+  const th = t.closest('[data-photo]'); if (th) { photoSel = th.dataset.photo; tool = step === 'ext' ? 'slab' : step === 'int' ? 'floorBox' : '4WAY'; renderSide(); draw(); }
+  if (t.id === 'addFloor') { const n = R.floors.length + 1; R.floors.push({ id:`${n}F`, image:null, corners:null, mode:'auto', params:{ dark:40, sat:70, close:1, minArea:3.5 }, ops:[] }); renderSide(); }
+  if (t.id === 'pickPlan') pickFiles(names => { f.image = names[0]; f.corners = null; tool = 'corner'; pending = []; RECT.delete(f.id); RES.delete(f.id); renderSide(); draw(); });
+  if (t.id === 'addExt') pickFiles(n => { n.forEach(file => R.exterior.photos.push({ file, marks:[] })); photoSel = n[0]; tool = 'slab'; renderSide(); draw(); });
+  if (t.id === 'addInt') pickFiles(n => { n.forEach(file => R.interior.push({ file, use:'lecture' })); photoSel = n[0]; tool = 'floorBox'; renderSide(); draw(); });
+  if (t.id === 'addAc') pickFiles(n => { n.forEach(file => R.acPhotos.push({ file, room:'', marks:[] })); photoSel = n[0]; tool = '4WAY'; renderSide(); draw(); });
+  if (t.id === 'delPhoto') { for (const L of [R.interior, R.acPhotos]) { const i = L.findIndex(x => x.file === photoSel); if (i >= 0) L.splice(i, 1); } photoSel = null; renderSteps(); renderSide(); draw(); }
+  // 대시보드의 '건물 추가'에서 열렸으면 만든 도면을 대시보드로 보냄 → 대시보드가 저장하고 그때부터 데이터 생성
+  if (t.id === 'openTwin' && window.parent !== window) { window.parent.postMessage({ source:'twin', type:'buildingRendered', building:OUT.json }, '*'); return; }
+  if (t.id === 'openTwin') { try { sessionStorage.setItem('twin:building', JSON.stringify(OUT.json)); } catch {} window.open('digital-twin.html', '_blank'); }
+  if (t.id === 'dlBuilding') download('building.json', OUT.json);
+  if (t.id === 'dlRecipe') download(`recipe-${R.id}.json`, cleanRecipe());
+  if (t.id === 'dlIdf') { const { idf, zones } = EP.toIdf(OUT.json); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([idf], { type:'text/plain' })); a.download = 'in.idf'; a.click(); setTimeout(() => download('zones.json', zones), 200); }
+  if (t.id === 'repeat') verifyRepeat();
+  if (t.id === 'compare') verifyCompare();
+});
+$('#side').addEventListener('input', e => {
+  const t = e.target, f = F();
+  if (t.dataset.b) { const k = t.dataset.b.split('.'); let o = R.building; while (k.length > 1) o = o[k.shift()]; o[k[0]] = t.type === 'number' ? +t.value : t.value; RECT.clear(); renderSteps(); draw(); }
+  if (t.dataset.p) { const v = +t.value * (+t.dataset.scale || 1); f.params[t.dataset.p] = v; t.nextElementSibling.textContent = t.dataset.scale ? v.toFixed(2) : t.value; clearTimeout(t._t); t._t = setTimeout(() => recompute(false), 150); }
+  if (t.dataset.l && sel) { sel[t.dataset.l] = t.type === 'number' ? +t.value : t.value; clearTimeout(t._t); t._t = setTimeout(() => recompute(t.tagName === 'SELECT'), 250); }
+  if (t.id === 'showMask') { showMask = t.checked; draw(); }
+  if (t.id === 'iduFrom') iduFrom = t.value;
+  if (t.dataset.ov && editSel) { const o = (((R.overrides ||= {}).rooms ||= {})[editSel] ||= {}); o[t.dataset.ov] = t.type === 'number' ? +t.value : t.value;
+    clearTimeout(t._t); t._t = setTimeout(() => { computeAll(); if (t.tagName === 'SELECT') renderSide(); draw(); }, 300); }
+  if (t.id === 'mdlEndpoint') { (R.acModel ||= {}).endpoint = t.value || undefined; }
+  if (t.id === 'mdlConf') { (R.acModel ||= {}).minConfidence = +t.value / 100; t.nextElementSibling.textContent = (+t.value / 100).toFixed(2); OUT = null; draw(); }
+  if (t.id === 'mode') { f.mode = t.value; recompute(); }
+  if (t.id === 'intRoom' || t.id === 'intUse') { const p = R.interior.find(x => x.file === photoSel); p.room = $('#intRoom').value || undefined; p.use = p.room ? undefined : $('#intUse').value || undefined; renderSide(); }
+  if (t.id === 'acRoom') { R.acPhotos.find(x => x.file === photoSel).room = t.value; renderSide(); }
+});
+function recompute(full = true){ compute(F()); OUT = null; renderSteps(); if (full) renderSide(); else renderSide(); draw(); }
+async function prepFloor(){ const f = F(); await ensureImage(f.image); compute(f); }
+
+/* 내보내기 · 검증 */
+function download(name, obj){ const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(obj, null, 1)], { type:'application/json' })); a.download = name; a.click(); }
+const cleanRecipe = () => JSON.parse(JSON.stringify(R, (k, v) => k.startsWith('_') ? undefined : v));
+async function sha(obj){ const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(obj))); return [...new Uint8Array(b)].slice(0, 8).map(x => x.toString(16).padStart(2, '0')).join(''); }
+async function verifyRepeat(){
+  const v = $('#verify'); v.innerHTML = '계산 중…';
+  const h1 = await sha(OUT.json);
+  const keep = R; R = JSON.parse(JSON.stringify(cleanRecipe())); RECT.clear(); RES.clear();
+  const again = computeAll(); const h2 = await sha(again.json); R = keep;
+  v.innerHTML = `<p>${h1 === h2 ? '<span class="ok">✔ 동일</span>' : '<span class="warn">✘ 다름</span>'} — 레시피를 새로 읽어 이미지부터 다시 계산</p><pre>1회차 ${h1}\n2회차 ${h2}</pre>`;
+}
+async function verifyCompare(){
+  const v = $('#verify'); let ref;
+  const refUrl = (R.base || '') + 'building.handtraced.json';
+  try { ref = await (await fetch(refUrl, { cache:'no-store' })).json(); } catch { v.textContent = refUrl + '을 읽을 수 없음 (손으로 그린 기준 도면)'; return; }
+  const area = p => { let s = 0; for (let i = 0; i < p.length; i++) { const [x0, y0] = p[i], [x1, y1] = p[(i + 1) % p.length]; s += x0 * y1 - x1 * y0; } return Math.abs(s) / 2; };
+  const bb = p => ({ x0:Math.min(...p.map(q => q[0])), x1:Math.max(...p.map(q => q[0])), y0:Math.min(...p.map(q => q[1])), y1:Math.max(...p.map(q => q[1])) });
+  const iou = (a, b) => { const A = bb(a), B = bb(b), w = Math.max(0, Math.min(A.x1, B.x1) - Math.max(A.x0, B.x0)), h = Math.max(0, Math.min(A.y1, B.y1) - Math.max(A.y0, B.y0)), I = w * h; return I / (area(a) + area(b) - I); };
+  const rows = [];
+  for (const f of OUT.json.floors) {
+    const rf = ref.floors.find(x => x.id === f.id); if (!rf) continue;
+    const mine = f.rooms.filter(r => r.type === 'room'), theirs = rf.rooms.filter(r => r.type === 'room');
+    const ious = theirs.map(t => { const m = mine.find(r => r.number === t.number); return m ? iou(m.polygon, t.polygon) : 0; });
+    const found = ious.filter(x => x > 0).length, good = ious.filter(x => x >= .8).length, mean = ious.reduce((s, x) => s + x, 0) / Math.max(1, ious.length);
+    const ac = n => n.reduce((s, r) => s + ((n === mine ? OUT.json.idus : ref.idus).filter(a => a.room === r.id).length), 0);
+    rows.push(`<tr><td>${f.id}</td><td>${found}/${theirs.length}</td><td>${good}</td><td>${(mean * 100).toFixed(0)}%</td><td>${ac(mine)} / ${ac(theirs)}</td></tr>`);
+  }
+  v.innerHTML = `<table><tr><th>층</th><th>찾은 실</th><th>IoU≥0.8</th><th>평균 IoU</th><th>실내기 (새/기존)</th></tr>${rows.join('')}</table>
+    <p class="desc">IoU: 같은 호실끼리 겹치는 면적 비율. 1이면 완전히 같음.</p>`;
+}
+
+/* 위치 예측 모델 연결 */
+function rasterUrl(img){ const c = document.createElement('canvas'); c.width = img.width; c.height = img.height; c.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(img.data), img.width, img.height), 0, 0); return c.toDataURL('image/png'); }
+function modelPackage(withImages){
+  if (!OUT) computeAll();
+  const inp = P.modelInput(R, OUT.planFloors), W = R.building.size.w, D = R.building.size.d, imgs = {};
+  for (const f of OUT.planFloors) { const fl = inp.floors.find(x => x.id === f.id), rect = RES.get(f.id)?.rect;
+    if (!rect) fl.plan = null; else if (withImages) imgs[fl.plan] = rasterUrl(rect);
+    if (withImages) imgs[fl.walls] = rasterUrl(P.renderWalls(f, W, D)); }
+  return { inp, imgs };
+}
+async function exportModelInput(){
+  const { inp, imgs } = modelPackage(true);
+  download('model-input.json', inp);
+  for (const [name, url] of Object.entries(imgs)) { const a = document.createElement('a'); a.href = url; a.download = name; a.click(); await new Promise(r => setTimeout(r, 150)); }
+  $('#mdlMsg').textContent = `model-input.json + PNG ${Object.keys(imgs).length}장 내려받음`;
+}
+function takePrediction(res, file){
+  P.readPredictions(res);                       // 형식 확인 (틀리면 예외)
+  R.acModel = { ...(R.acModel || {}), name:res.model?.name || res.model || '모델', file, result:res };
+  OUT = null; renderSteps(); renderSide(); draw();
+}
+function loadPrediction(){ const f = $('#recipeFile'); f.value = ''; f.onchange = async () => { try { takePrediction(JSON.parse(await f.files[0].text()), f.files[0].name); } catch (e) { $('#mdlMsg').textContent = '읽기 실패: ' + e.message; } }; f.click(); }
+// 연결 방법 두 가지: ① window.TWIN_AC_MODEL = async input => result (같은 페이지에서 돌리는 모델)  ② 모델 주소로 POST (JSON in → JSON out)
+async function runModel(){
+  const msg = $('#mdlMsg'), { inp, imgs } = modelPackage(true), body = { ...inp, images:imgs };
+  try {
+    let res;
+    if (typeof window.TWIN_AC_MODEL === 'function') res = await window.TWIN_AC_MODEL(body);
+    else if (R.acModel?.endpoint) { msg.textContent = '모델 실행 중…'; const r = await fetch(R.acModel.endpoint, { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify(body) }); if (!r.ok) throw new Error('HTTP ' + r.status); res = await r.json(); }
+    else { msg.textContent = '모델 주소를 넣거나 window.TWIN_AC_MODEL을 등록하세요'; return; }
+    takePrediction(res, undefined); $('#mdlMsg').textContent = '예측을 받았습니다';
+  } catch (e) { msg.textContent = '실행 실패: ' + e.message; }
+}
+
+/* 레시피 열기 */
+async function openRecipe(rec){
+  R = rec; RECT.clear(); RES.clear(); OUT = null; fi = 0;
+  const files = new Set([...R.floors.map(f => f.image), ...R.exterior.photos.map(p => p.file), ...R.interior.map(p => p.file), ...R.acPhotos.map(p => p.file)].filter(Boolean));
+  await Promise.all([...files].map(ensureImage));
+  if (R.exterior.photos.length) calcWindow();
+  if (R.acModel?.file && !R.acModel.result) try { R.acModel.result = await (await fetch((R.base || '') + R.acModel.file, { cache:'no-store' })).json(); } catch { console.warn('모델 결과 없음', R.acModel.file); }
+  for (const p of R.interior) for (const k of ['floorBox', 'wallBox']) if (p[k] && IMG.has(p.file)) p[k === 'floorBox' ? 'floor' : 'wall'] = P.medianColor(IMG.get(p.file).data, p[k]);
+  computeAll(); tool = F().corners ? 'label' : 'corner'; go('out');
+}
+$('#loadRecipe').onclick = () => { const f = $('#recipeFile'); f.value = ''; f.onchange = async () => { const rec = JSON.parse(await f.files[0].text()); rec.base ||= ''; await openRecipe(rec); }; f.click(); };
+$('#sample').onchange = async e => { const url = e.target.value; if (!url) return; const rec = await (await fetch(url, { cache:'no-store' })).json(); await openRecipe(rec); e.target.value = ''; };
+addEventListener('resize', draw);
+window.PIPE = { get recipe(){ return R; }, get out(){ return OUT; }, openRecipe, computeAll, sha, pinRoomIdus, unitsOf };
+
+renderSteps(); renderSide(); draw();
+{ const q = new URLSearchParams(location.search), smp = q.get('sample');
+  if (q.has('sample')) { const sel = $('#sample'); sel.value = smp && [...sel.options].some(o => o.value.includes(smp)) ? [...sel.options].find(o => o.value.includes(smp)).value : sel.options[1].value; sel.dispatchEvent(new Event('change')); } }
+</script>
+</body>
+</html>

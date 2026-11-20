@@ -15,7 +15,7 @@ for (const t of targets) {
     await page.goto(t.url, { waitUntil: 'domcontentloaded', timeout: 40000 });
     await page.waitForTimeout(t.wait ?? 3000);
     // 쿠키 동의 버튼 클릭, 고정 요소 숨김
-    for (const label of ['Accept all', 'Accept All', 'Accept', 'I agree', '동의', '확인']) {
+    for (const label of ['Accept all', 'Accept All', 'Accept', 'I agree', 'Reject Cookies', 'Reject All', '동의', '확인']) {
       const b = page.getByRole('button', { name: label, exact: true });
       if (await b.count()) { await b.first().click({ timeout: 2000 }).catch(() => {}); break; }
     }

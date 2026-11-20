@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>건물 운영자 문제 도식</title>
+<style>
+@font-face { font-family: 'Pre'; src: url("../../fonts/Pretendard-Regular.ttf"); font-weight: 400; }
+@font-face { font-family: 'Pre'; src: url("../../fonts/Pretendard-Bold.ttf"); font-weight: 700; }
+:root { --navy: #1F3864; --blue: #2563EB; --line: #C5CCDA; --soft: #EEF1F7; --ink: #1A1A1A; --muted: #5A6478; --red: #B91C1C; }
+* { box-sizing: border-box; }
+body { margin: 0; padding: 24px; background: #fff; font-family: 'Pre', sans-serif; color: var(--ink); word-break: keep-all; }
+section { width: 900px; padding: 20px; margin-bottom: 40px; background: #fff; }
+.title { font-weight: 700; font-size: 15px; color: var(--navy); margin-bottom: 14px; }
+.note { font-size: 11.5px; color: var(--muted); margin-top: 10px; line-height: 1.5; }
+
+/* 유형별 출처 수 */
+.bars { display: grid; grid-template-columns: 210px 1fr; row-gap: 7px; column-gap: 12px; align-items: center; }
+.bars .lab { font-size: 13px; text-align: right; }
+.bars .lab b { color: var(--navy); margin-right: 6px; }
+.bars .track { position: relative; height: 22px; border-left: 1px solid var(--line); }
+.bars .bar { height: 22px; background: var(--navy); border-radius: 0 4px 4px 0; }
+.bars .bar.hl { background: var(--blue); }
+.bars .val { position: absolute; top: 2px; font-size: 12.5px; font-weight: 700; color: var(--ink); }
+.axis { display: grid; grid-template-columns: 210px 1fr; column-gap: 12px; margin-top: 4px; font-size: 11px; color: var(--muted); }
+.axis .ticks { display: flex; justify-content: space-between; border-top: 1px solid var(--line); padding-top: 3px; }
+
+/* 원인 구조 */
+.flow { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+.step { background: var(--soft); border-radius: 8px; padding: 10px; font-size: 12.5px; line-height: 1.45; }
+.step b { display: block; color: var(--navy); font-size: 13px; margin-bottom: 3px; }
+.step .num { font-size: 20px; font-weight: 700; color: var(--red); }
+.arrowrow { text-align: center; font-size: 12px; font-weight: 700; color: var(--muted); padding: 4px 0 8px; }
+.center { background: var(--navy); color: #fff; border-radius: 8px; padding: 12px; text-align: center; font-weight: 700; font-size: 14.5px; margin-bottom: 8px; }
+.center span { display: block; font-weight: 400; font-size: 12px; opacity: .9; margin-top: 3px; }
+.causes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.cause { border: 1px solid var(--line); border-radius: 8px; padding: 10px; background: #fff; }
+.cause .no { display: inline-block; font-size: 11px; font-weight: 700; color: #fff; background: var(--red); border-radius: 4px; padding: 1px 6px; }
+.cause .name { font-weight: 700; font-size: 13px; margin: 6px 0 2px; }
+.cause .num { font-weight: 700; font-size: 21px; color: var(--red); line-height: 1.2; }
+.cause .desc { font-size: 11.5px; color: var(--muted); line-height: 1.45; margin-top: 2px; }
+
+/* 문제-요구-기능 */
+table.map { width: 100%; border-collapse: separate; border-spacing: 4px; font-size: 12px; }
+table.map th { background: var(--navy); color: #fff; padding: 7px 6px; border-radius: 5px; font-size: 12.5px; }
+table.map td { background: var(--soft); padding: 7px 8px; border-radius: 5px; line-height: 1.45; vertical-align: top; }
+table.map td.f { background: #F2F6FE; border: 1px solid var(--blue); }
+table.map td b { color: var(--navy); }
+table.map td.gap { background: #fff; border: 1px dashed var(--line); color: var(--muted); }
+</style>
+</head>
+<body>
+
+<section id="d-o-freq">
+  <div class="title">그림 1. 문제 유형별 근거 자료 수(수록 99건, 중복 집계)</div>
+  <div class="bars" id="bars"></div>
+  <div class="axis"><div></div><div class="ticks"><span>0</span><span>10</span><span>20</span><span>30</span><span>40</span><span>50건</span></div></div>
+  <div class="note">주: 자료 1건이 여러 유형에 해당하면 각 유형에 1건씩 집계. 판매 기업 설문은 인력·예산 문항 비중이 커서 해당 유형 건수가 높게 나옴. 파란 막대는 과제 문제 정의(상태 파악)와 직접 연결되는 유형.</div>
+</section>
+
+<section id="d-o-cause">
+  <div class="title">그림 2. 운영자의 현재 상태 파악 경로와 원인 4가지</div>
+  <div class="flow">
+    <div class="step"><b>1. 재실자 민원 접수</b>최대 불만은 온도<br><span class="num">68%</span> FM 응답(BOM 2014)</div>
+    <div class="step"><b>2. BMS 화면 확인</b>"녹색이면 괜찮다"<br>실내온도는 수집하지만 운영에 거의 미사용</div>
+    <div class="step"><b>3. 현장 확인·조정</b>현장 온도 확인 90%<br>HVAC 작동 확인 87%(IFMA 2009)</div>
+    <div class="step"><b>4. 대응 완료</b>1건 평균<br><span class="num">1.6~2.1시간</span>(더움, 추움)</div>
+  </div>
+  <div class="arrowrow">▼ 재실자 알림 전에는 문제 위치 파악이 어려움(Annex 79 운영자 72명 인터뷰) ▼</div>
+  <div class="center">공간 현황과 설비 상태를 직관적으로 파악하기 어려움<span>과제 4 문제 정의</span></div>
+  <div class="causes">
+    <div class="cause"><span class="no">원인 1</span><div class="name">데이터 분산</div><div class="num">10%</div><div class="desc">건물 시스템을 완전히 통합한 조직(3,445명). 현장 엔지니어는 하루 15% 이상을 정보 추적에 사용</div></div>
+    <div class="cause"><span class="no">원인 2</span><div class="name">도구 사용성·경보 과다</div><div class="num">32%</div><div class="desc">BEMS 기능을 잘 활용하는 학교(43개교). BMS 경보 하루 평균 12.5건</div></div>
+    <div class="cause"><span class="no">원인 3</span><div class="name">낭비 위치 미파악</div><div class="num">40%</div><div class="desc">빈 강의실 중 에어컨 가동 비율(123실). 예약 회의실의 31.2%는 빈 시간</div></div>
+    <div class="cause"><span class="no">원인 4</span><div class="name">인력·숙련 부족</div><div class="num">72%</div><div class="desc">국내 기계설비 유지관리자 중 50대 이상(66,792명). EMS 사용 직원 1~2명인 기관 44%</div></div>
+  </div>
+</section>
+
+<section id="d-o-map">
+  <div class="title">그림 3. 문제, 운영자 요구, 서비스 기능 연결</div>
+  <table class="map">
+    <thead><tr><th style="width:24%">문제</th><th style="width:38%">운영자 요구(근거)</th><th style="width:38%">서비스 기능</th></tr></thead>
+    <tbody>
+      <tr><td><b>민원으로 상태 파악</b></td><td>민원 위치·시간 기록 6건, 실별 재실 정보 8건</td><td class="f">호실 선택 시 On/Off, 설정온도, 재실 표시</td></tr>
+      <tr><td><b>데이터 분산</b></td><td>통합 단일 화면 14건, 단일 플랫폼 74%</td><td class="f">도면 기반 단일 화면(공간-설비 매핑)</td></tr>
+      <tr><td><b>BEMS 사용 어려움</b></td><td>고장 조회 95%, 일괄 on/off 93%, 재실 확인 88%</td><td class="f">자연어 질의, 스케줄 생성(시뮬레이션)</td></tr>
+      <tr><td><b>낭비 위치 미파악</b></td><td>조작 시 에너지·비용 영향 표시 3건</td><td class="f">낭비 규칙 3종 추천, 절감 kWh 표시</td></tr>
+      <tr><td><b>경보 과다</b></td><td>경보 우선순위, 평면도 위 경보 표시 4건</td><td class="gap">고장 탐지 확장 모듈 범위</td></tr>
+      <tr><td><b>인력·숙련 부족</b></td><td>인수인계·학습 지원 6건</td><td class="gap">직접 대응 기능 없음. 자연어 질의의 효과는 미검증</td></tr>
+    </tbody>
+  </table>
+  <div class="note">주: 근거 수는 수록 자료 중 해당 요구를 언급한 자료 수. 백분율은 국내 학교 43개교 설문(2022)과 Johnson Controls·Forrester 조사(2023, 판매 기업). 점선 칸은 현재 서비스 범위 밖.</div>
+</section>
+
+<script>
+// 유형별 출처 수: scratchpad tally.py 집계 결과
+const data = [
+  ['P6', '인력·숙련·업무량', 48], ['P8', '예산·보고·의사결정', 33], ['P4', '재실자 온도 민원', 28],
+  ['P5', '에너지 낭비·빈 공간 운전', 27], ['P2', '데이터 분산·시스템 단절', 26, 1], ['P9', '기존 도구 사용성', 22, 1],
+  ['P1', '공간·설비 상태 가시성', 21, 1], ['P7', '도면·자산 정보 부재', 12], ['P3', '경보·정보 과부하', 8, 1],
+];
+const max = 50, el = document.getElementById('bars');
+for (const [code, name, n, hl] of data) {
+  el.insertAdjacentHTML('beforeend', `<div class="lab"><b>${code}</b>${name}</div><div class="track"><div class="bar${hl ? ' hl' : ''}" style="width:${n / max * 100}%"></div><span class="val" style="left:calc(${n / max * 100}% + 6px)">${n}</span></div>`);
+}
+</script>
+</body>
+</html>

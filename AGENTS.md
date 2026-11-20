@@ -1,18 +1,32 @@
-# Maestro 작업 공간 안내
+# 에게(에너지게이트) 작업 공간 안내
 
-해커톤 주제 "AI 디지털트윈 기반 공간 가시화 및 운영 최적화" 프로젝트의 작업 규칙입니다. 규칙의 기준은 넉터 작업 공간(`_nuktu/AGENTS.md`, `_nuktu/doc/AGENTS.md`)이며, 내용이 다르면 이 파일이 Maestro의 기준입니다.
+해커톤 주제 "AI 디지털트윈 기반 공간 가시화 및 운영 최적화" 프로젝트의 작업 규칙입니다. 팀 과제는 과제 4(ES 클라우드)이며, 서비스는 건물 운영자용 도면 기반 운영 디지털트윈입니다(2026-11-19 반영). 고장 탐지는 확장 모듈입니다. 규칙의 기준은 넉터 작업 공간(`_nuktu/AGENTS.md`, `_nuktu/doc/AGENTS.md`)이며, 내용이 다르면 이 파일이 이 프로젝트의 기준입니다.
+
+프로젝트 이름은 에게(에너지게이트)입니다(2026-11-20 변경, 이전 이름 Maestro). AWS 스택(`maestro`), Cognito 사용자 풀, 저장소 폴더(`_maestro`) 이름은 재생성이 필요한 자원이라 그대로 유지합니다. 로고 원본은 `frontend/assets/ege.svg`(화면용 벡터)와 `frontend/assets/Logo.png`(점토 질감 이미지)입니다.
 
 | 필요한 내용 | 파일 |
 |---|---|
 | 처음 합류한 팀원 안내 | `docs/human/tutorials/first-day.md` |
+| 서비스 기획 | `docs/human/explanation/service-plan.md` |
+| 시스템 설계 | `docs/human/explanation/architecture.md` |
+| 기능 요구사항과 완료 기준 | `docs/human/reference/requirements.md` |
+| 공개 IFC 샘플·추출 실험 | `docs/human/explanation/research/ifc-sample-feasibility.md` |
 | 사람이 읽는 설명 | `docs/human/README.md` |
 | AI 작업 안내 | `docs/ai/README.md` |
 | 관련 파일 찾기 | `docs/ai/sources.json` |
 | 문서 작성 기준 | `docs/human/how-to/write-docs.md` |
-| UI 규칙 | `docs/human/reference/design-system.md` |
+| 시각 디자인 가이드 | `DESIGN.md` |
+| 데이터 시각화·상태 규칙 | `docs/human/reference/design-system.md` |
 | 해커톤 주제 조사 | `docs/human/explanation/research/korea-space-topics.md` |
 | 해외 기술 동향·경쟁 조사 | `docs/human/explanation/research/digital-twin-survey.md` |
+| 정비 문제 배경·시장 조사 | `docs/human/explanation/research/maintenance-background-market.md` |
 | PDF 보고서 원본 | `docs/reports/<날짜-주제>/report.md` |
+| 웹 대시보드 코드 | `frontend/`(실행·배포는 `frontend/README.md`) |
+| Lambda·AWS 리소스 코드 | `lambda/`(테스트·배포는 `lambda/README.md`) |
+| AI 도우미 KB 문서(규정·쾌적 기준) | `lambda/kb/`(근거는 `docs/human/explanation/research/kb-sources.md`, 반영은 `lambda/tools/kb_sync.sh`) |
+| 도면 실내기 기호 검출 학습(SageMaker) | `ml/`(실행은 `ml/README.md`) |
+| HVAC 제어 방식 비교(규칙 기반, JEV, DDPG, EnergyPlus) | `ml/hvac_control/`(실행은 `ml/hvac_control/README.md`) |
+| 3D 트윈 임베드 규약 | `docs/human/reference/twin-embed.md` |
 
 문서는 작업에 필요한 것부터 읽는 것이 원칙입니다. 기존 사용자 변경과 병합 충돌은 보존할 대상입니다.
 
@@ -22,9 +36,9 @@
 
 ## UI 비율 점검
 
-UI를 바꾸는 작업의 완료 조건에는 버튼 높이·너비 비율과 라벨 잘림 확인이 포함입니다. 기준은 `docs/human/reference/design-system.md` 5절입니다. 같은 줄 버튼은 높이 쌍(52 또는 40)과 너비 1:1을 맞추십시오. 1440px와 390px 너비 화면으로 확인하고, 확인하지 못한 화면은 완료 보고에 미확인으로 적으십시오.
+UI를 바꾸는 작업은 `DESIGN.md` "운영자 화면 기준"(40~50대 운영자, 노안, 하루 종일 사용)으로 자가 점검하십시오. 밝은 화면과 어두운 화면을 모두 확인하십시오. UI를 바꾸는 작업의 완료 조건에는 버튼 높이·너비 비율과 라벨 잘림 확인이 포함입니다. 시각 기준은 루트 `DESIGN.md`입니다. 주 버튼 높이는 48px이고, 같은 줄 버튼은 높이와 너비 1:1을 맞추십시오. 1440px와 390px 너비 화면으로 확인하고, 확인하지 못한 화면은 완료 보고에 미확인으로 적으십시오.
 
-공간 시각화 화면은 같은 문서 6절의 범례, 단위, 데이터 기준 시각 표시를 완료 조건에 포함하십시오. 이모지, 제목 위 영문 라벨(eyebrow), 제목 아래 회색 설명 문장은 사용하지 마십시오.
+공간 시각화 화면은 `docs/human/reference/design-system.md` 6절의 범례, 단위, 데이터 기준 시각 표시를 완료 조건에 포함하십시오. 이모지, 제목 위 영문 라벨(eyebrow), 제목 아래 회색 설명 문장은 사용하지 마십시오.
 
 <!-- devdog-docs:begin docs-layout -->
 ## 문서 위치
@@ -98,13 +112,29 @@ UI를 바꾸는 작업의 완료 조건에는 버튼 높이·너비 비율과 �
 - 개발 서버·로컬 DB·시뮬레이터 같은 공유 자원은 주 작업자만 사용하십시오. 에이전트의 확인 범위는 타입 검사와 단위 테스트입니다.
 - 에이전트의 작업 범위는 브랜치 푸시입니다. 머지와 화면 확인은 주 작업자가 수행하십시오.
 
+## SageMaker Endpoint 비용 관리
+
+SageMaker 실시간 Endpoint는 호출이 없어도 켜 둔 시간만큼 요금이 발생합니다. 상시 비용을 막기 위해 다음 규칙을 따르십시오(2026-11-20 사용자 지시).
+
+1. Endpoint는 모델을 실제로 실행해야 할 때만 생성하십시오. 시연, 평가, 도면 변환처럼 사용 시점이 정해진 작업이 대상입니다.
+2. 모델 사용이 끝나면 즉시 `aws sagemaker delete-endpoint`로 Endpoint를 삭제하십시오. 모델(`Model`)과 Endpoint 설정(`EndpointConfig`)은 요금이 없으므로 재생성용으로 유지합니다.
+3. Step Functions 같은 자동 흐름에서 Endpoint를 쓰면 같은 흐름 안에 생성, 호출, 삭제 단계를 모두 포함하십시오. 실패 경로에도 삭제 단계를 넣으십시오.
+4. 작업을 마치기 전에 `aws sagemaker list-endpoints --profile maestro`로 남은 Endpoint가 없는지 확인하고, 결과를 완료 보고에 적으십시오.
+5. 상시 Endpoint가 필요하다고 판단되면 생성 전에 사용자에게 예상 시간당 요금과 함께 확인하십시오.
+
 ## 커밋 메시지와 PR
 
 - 커밋 제목은 짧은 명사형입니다. 예: `재실 히트맵 범례 단위 누락 수정`
 - 커밋 제목, 커밋 본문, PR 제목, PR 본문에서 항목을 나열할 때는 가운뎃점(`·`) 대신 쉼표와 공백(`, `)을 사용하십시오.
 - `Co-Authored-By` 등 AI 도구 흔적을 커밋 메시지에 넣지 마십시오.
-- PR 생성은 사람의 역할입니다. 요청이 없으면 커밋과 푸시까지만 수행하십시오.
-- API 키, 토큰, `.env` 파일은 커밋하지 마십시오. 해커톤 제공 데이터는 공고의 사용 조건을 확인한 뒤 저장소에 포함하십시오.
+- `frontend/`와 `lambda/`는 각각 GitHub 저장소(`4th-maestro/Frontend`, `4th-maestro/Lambda`)입니다. 작업 흐름은 다음과 같습니다(2026-11-20 사용자 지시).
+  1. `dev`에서 `<type>/<작업 내용>` 브랜치를 만들어 커밋하고 푸시하십시오.
+  2. `dev` 대상 PR을 만들고 Squash로 머지하십시오. PR 본문에는 변경 내용, 확인 결과, 미확인 항목을 적으십시오.
+  3. `main` 반영은 사용자가 요청할 때만 `dev` → `main` PR로 진행하십시오. 이 PR은 머지 커밋으로 합치고, 머지 후 `dev`를 `main`으로 빨리 감기(fast-forward)하십시오. Squash로 합치면 두 브랜치 이력이 갈라져 다음 반영 때 같은 변경이 다시 충돌합니다.
+  4. 웹·Lambda 배포는 `main` 기준입니다. `dev` 코드는 로컬에서만 확인하십시오.
+- 상위 `_maestro` 저장소도 같은 파일을 추적합니다. 하위 저장소 머지 후 상위 저장소에도 같은 변경을 커밋하십시오.
+- API 키, 토큰, `.env` 파일, AWS 자격 증명은 커밋하지 마십시오. AWS 키는 `aws configure --profile maestro`로 각자 입력하고 대화에 붙여 넣지 마십시오.
+- Bedrock Claude 모델은 최대 Sonnet 5.5입니다. Opus 계열을 쓰지 마십시오. 해커톤 제공 데이터는 공고의 사용 조건을 확인한 뒤 저장소에 포함하십시오.
 
 <!-- devdog-docs:begin branch-name -->
 ## 브랜치 이름

@@ -1,0 +1,1906 @@
+{
+ "schema": "twin.maintenance/v1",
+ "source": "설비 유지보수·서비스 이력 (회사 내부) 형식 — 가상 값",
+ "filterLimitHours": 2500,
+ "idus": {
+  "IDU-1F-맞이방-1": {
+   "installed": "2016-08",
+   "runHours": 29482,
+   "filterHours": 759,
+   "lastFilterClean": "2026-03-18",
+   "faults": []
+  },
+  "IDU-1F-맞이방-2": {
+   "installed": "2016-08",
+   "runHours": 26750,
+   "filterHours": 397,
+   "lastFilterClean": "2026-04-27",
+   "faults": []
+  },
+  "IDU-1F-맞이방-3": {
+   "installed": "2016-08",
+   "runHours": 27936,
+   "filterHours": 451,
+   "lastFilterClean": "2026-04-21",
+   "faults": []
+  },
+  "IDU-1F-맞이방-4": {
+   "installed": "2016-08",
+   "runHours": 25602,
+   "filterHours": 2221,
+   "lastFilterClean": "2025-10-06",
+   "faults": []
+  },
+  "IDU-1F-맞이방-5": {
+   "installed": "2016-08",
+   "runHours": 22998,
+   "filterHours": 1296,
+   "lastFilterClean": "2026-01-17",
+   "faults": []
+  },
+  "IDU-1F-맞이방-6": {
+   "installed": "2016-08",
+   "runHours": 25182,
+   "filterHours": 644,
+   "lastFilterClean": "2026-03-30",
+   "faults": [
+    {
+     "date": "2025-07-14",
+     "code": "CH04",
+     "action": "현장 조치 완료"
+    }
+   ]
+  },
+  "IDU-1F-맞이방-7": {
+   "installed": "2016-08",
+   "runHours": 26061,
+   "filterHours": 217,
+   "lastFilterClean": "2026-05-17",
+   "faults": [
+    {
+     "date": "2025-09-13",
+     "code": "CH05",
+     "action": "현장 조치 완료"
+    }
+   ]
+  },
+  "IDU-1F-맞이방-8": {
+   "installed": "2016-08",
+   "runHours": 26824,
+   "filterHours": 733,
+   "lastFilterClean": "2026-03-21",
+   "faults": []
+  },
+  "IDU-1F-맞이방-9": {
+   "installed": "2016-08",
+   "runHours": 28317,
+   "filterHours": 657,
+   "lastFilterClean": "2026-03-29",
+   "faults": []
+  },
+  "IDU-1F-맞이방-10": {
+   "installed": "2016-08",
+   "runHours": 29011,
+   "filterHours": 1852,
+   "lastFilterClean": "2025-11-16",
+   "faults": []
+  },
+  "IDU-1F-맞이방-11": {
+   "installed": "2016-08",
+   "runHours": 16894,
+   "filterHours": 1739,
+   "lastFilterClean": "2025-11-29",
+   "faults": []
+  },
+  "IDU-1F-맞이방-12": {
+   "installed": "2016-08",
+   "runHours": 17398,
+   "filterHours": 228,
+   "lastFilterClean": "2026-05-16",
+   "faults": []
+  },
+  "IDU-1F-맞이방-13": {
+   "installed": "2016-08",
+   "runHours": 15240,
+   "filterHours": 2091,
+   "lastFilterClean": "2025-10-21",
+   "faults": []
+  },
+  "IDU-1F-맞이방-14": {
+   "installed": "2016-08",
+   "runHours": 23962,
+   "filterHours": 217,
+   "lastFilterClean": "2026-05-17",
+   "faults": []
+  },
+  "IDU-1F-맞이방-15": {
+   "installed": "2016-08",
+   "runHours": 26258,
+   "filterHours": 1273,
+   "lastFilterClean": "2026-01-20",
+   "faults": []
+  },
+  "IDU-1F-맞이방-16": {
+   "installed": "2016-08",
+   "runHours": 27197,
+   "filterHours": 1336,
+   "lastFilterClean": "2026-01-13",
+   "faults": []
+  },
+  "IDU-1F-맞이방-17": {
+   "installed": "2016-08",
+   "runHours": 23502,
+   "filterHours": 2221,
+   "lastFilterClean": "2025-10-06",
+   "faults": [
+    {
+     "date": "2025-09-11",
+     "code": "CH04",
+     "action": "현장 조치 완료"
+    }
+   ]
+  },
+  "IDU-1F-맞이방-18": {
+   "installed": "2016-08",
+   "runHours": 16454,
+   "filterHours": 240,
+   "lastFilterClean": "2026-05-14",
+   "faults": []
+  },
+  "IDU-1F-맞이방-19": {
+   "installed": "2016-08",
+   "runHours": 28939,
+   "filterHours": 1289,
+   "lastFilterClean": "2026-01-18",
+   "faults": [
+    {
+     "date": "2025-07-15",
+     "code": "CH04",
+     "action": "현장 조치 완료"
+    }
+   ]
+  },
+  "IDU-1F-맞이방-20": {
+   "installed": "2016-08",
+   "runHours": 16299,
+   "filterHours": 326,
+   "lastFilterClean": "2026-05-05",
+   "faults": []
+  },
+  "IDU-1F-맞이방-21": {
+   "installed": "2016-08",
+   "runHours": 28621,
+   "filterHours": 2471,
+   "lastFilterClean": "2025-09-08",
+   "faults": []
+  },
+  "IDU-1F-맞이방-22": {
+   "installed": "2016-08",
+   "runHours": 21045,
+   "filterHours": 1583,
+   "lastFilterClean": "2025-12-16",
+   "faults": []
+  },
+  "IDU-1F-맞이방-23": {
+   "installed": "2016-08",
+   "runHours": 14627,
+   "filterHours": 807,
+   "lastFilterClean": "2026-03-12",
+   "faults": []
+  },
+  "IDU-1F-맞이방-24": {
+   "installed": "2016-08",
+   "runHours": 21554,
+   "filterHours": 1171,
+   "lastFilterClean": "2026-01-31",
+   "faults": []
+  },
+  "IDU-1F-맞이방-25": {
+   "installed": "2016-08",
+   "runHours": 26170,
+   "filterHours": 639,
+   "lastFilterClean": "2026-03-31",
+   "faults": []
+  },
+  "IDU-1F-맞이방-26": {
+   "installed": "2016-08",
+   "runHours": 18440,
+   "filterHours": 2651,
+   "lastFilterClean": "2025-08-19",
+   "faults": []
+  },
+  "IDU-1F-맞이방-27": {
+   "installed": "2016-08",
+   "runHours": 16784,
+   "filterHours": 402,
+   "lastFilterClean": "2026-04-26",
+   "faults": []
+  },
+  "IDU-1F-맞이방-28": {
+   "installed": "2016-08",
+   "runHours": 22430,
+   "filterHours": 258,
+   "lastFilterClean": "2026-05-12",
+   "faults": []
+  },
+  "IDU-1F-맞이방-29": {
+   "installed": "2016-08",
+   "runHours": 29683,
+   "filterHours": 845,
+   "lastFilterClean": "2026-03-08",
+   "faults": []
+  },
+  "IDU-1F-맞이방-30": {
+   "installed": "2016-08",
+   "runHours": 20381,
+   "filterHours": 1163,
+   "lastFilterClean": "2026-02-01",
+   "faults": []
+  },
+  "IDU-1F-맞이방-31": {
+   "installed": "2016-08",
+   "runHours": 18888,
+   "filterHours": 1262,
+   "lastFilterClean": "2026-01-21",
+   "faults": []
+  },
+  "IDU-1F-맞이방-32": {
+   "installed": "2016-08",
+   "runHours": 25594,
+   "filterHours": 2637,
+   "lastFilterClean": "2025-08-21",
+   "faults": []
+  },
+  "IDU-1F-맞이방-33": {
+   "installed": "2016-08",
+   "runHours": 26533,
+   "filterHours": 1159,
+   "lastFilterClean": "2026-02-01",
+   "faults": []
+  },
+  "IDU-1F-맞이방-34": {
+   "installed": "2016-08",
+   "runHours": 19530,
+   "filterHours": 269,
+   "lastFilterClean": "2026-05-11",
+   "faults": [
+    {
+     "date": "2025-07-16",
+     "code": "CH01",
+     "action": "현장 조치 완료"
+    }
+   ]
+  },
+  "IDU-1F-맞이방-35": {
+   "installed": "2016-08",
+   "runHours": 20162,
+   "filterHours": 647,
+   "lastFilterClean": "2026-03-30",
+   "faults": []
+  },
+  "IDU-1F-맞이방-36": {
+   "installed": "2016-08",
+   "runHours": 23437,
+   "filterHours": 308,
+   "lastFilterClean": "2026-05-07",
+   "faults": []
+  },
+  "IDU-1F-맞이방-37": {
+   "installed": "2016-08",
+   "runHours": 28139,
+   "filterHours": 782,
+   "lastFilterClean": "2026-03-15",
+   "faults": []
+  },
+  "IDU-1F-맞이방-38": {
+   "installed": "2016-08",
+   "runHours": 21546,
+   "filterHours": 1295,
+   "lastFilterClean": "2026-01-17",
+   "faults": []
+  },
+  "IDU-1F-맞이방-39": {
+   "installed": "2016-08",
+   "runHours": 15061,
+   "filterHours": 620,
+   "lastFilterClean": "2026-04-02",
+   "faults": [
+    {
+     "date": "2025-09-11",
+     "code": "CH01",
+     "action": "현장 조치 완료"
+    }
+   ]
+  },
+  "IDU-1F-맞이방-40": {
+   "installed": "2016-08",
+   "runHours": 20597,
+   "filterHours": 2622,
+   "lastFilterClean": "2025-08-23",
+   "faults": []
+  },
+  "IDU-1F-맞이방-41": {
+   "installed": "2016-08",
+   "runHours": 29360,
+   "filterHours": 1764,
+   "lastFilterClean": "2025-11-26",
+   "faults": [
+    {
+     "date": "2025-07-17",
+     "code": "CH01",
+     "action": "현장 조치 완료"
+    }
+   ]
+  },
+  "IDU-1F-맞이방-42": {
+   "installed": "2016-08",
+   "runHours": 29086,
+   "filterHours": 207,
+   "lastFilterClean": "2026-05-18",
+   "faults": []
+  },
+  "IDU-1F-맞이방-43": {
+   "installed": "2016-08",
+   "runHours": 16883,
+   "filterHours": 1104,
+   "lastFilterClean": "2026-02-07",
+   "faults": []
+  },
+  "IDU-1F-108-1": {
+   "installed": "2016-08",
+   "runHours": 20314,
+   "filterHours": 641,
+   "lastFilterClean": "2026-03-31",
+   "faults": []
+  },
+  "IDU-1F-104-1": {
+   "installed": "2016-08",
+   "runHours": 21626,
+   "filterHours": 690,
+   "lastFilterClean": "2026-03-25",
+   "faults": []
+  },
+  "IDU-1F-104-2": {
+   "installed": "2016-08",
+   "runHours": 26594,
+   "filterHours": 2748,
+   "lastFilterClean": "2025-08-09",
+   "faults": []
+  },
+  "IDU-1F-103-1": {
+   "installed": "2016-08",
+   "runHours": 29403,
+   "filterHours": 208,
+   "lastFilterClean": "2026-05-18",
+   "faults": [
+    {
+     "date": "2025-07-11",
+     "code": "CH01",
+     "action": "현장 조치 완료"
+    }
+   ]
+  },
+  "IDU-1F-103-2": {
+   "installed": "2016-08",
+   "runHours": 28045,
+   "filterHours": 479,
+   "lastFilterClean": "2026-04-18",
+   "faults": []
+  },
+  "IDU-1F-101-1": {
+   "installed": "2016-08",
+   "runHours": 20530,
+   "filterHours": 768,
+   "lastFilterClean": "2026-03-17",
+   "faults": []
+  },
+  "IDU-1F-101-2": {
+   "installed": "2016-08",
+   "runHours": 15760,
+   "filterHours": 220,
+   "lastFilterClean": "2026-05-17",
+   "faults": []
+  },
+  "IDU-1F-105-1": {
+   "installed": "2016-08",
+   "runHours": 23032,
+   "filterHours": 1702,
+   "lastFilterClean": "2025-12-03",
+   "faults": []
+  },
+  "IDU-1F-102-1": {
+   "installed": "2016-08",
+   "runHours": 16618,
+   "filterHours": 1603,
+   "lastFilterClean": "2025-12-14",
+   "faults": []
+  },
+  "IDU-1F-106-1": {
+   "installed": "2016-08",
+   "runHours": 27491,
+   "filterHours": 235,
+   "lastFilterClean": "2026-05-15",
+   "faults": []
+  },
+  "IDU-1F-106-2": {
+   "installed": "2016-08",
+   "runHours": 16926,
+   "filterHours": 279,
+   "lastFilterClean": "2026-05-10",
+   "faults": []
+  },
+  "IDU-1F-107-1": {
+   "installed": "2016-08",
+   "runHours": 29294,
+   "filterHours": 2765,
+   "lastFilterClean": "2025-08-07",
+   "faults": []
+  },
+  "IDU-1F-109-1": {
+   "installed": "2016-08",
+   "runHours": 21874,
+   "filterHours": 1793,
+   "lastFilterClean": "2025-11-23",
+   "faults": []
+  },
+  "IDU-1F-110-1": {
+   "installed": "2016-08",
+   "runHours": 20846,
+   "filterHours": 1971,
+   "lastFilterClean": "2025-11-03",
+   "faults": []
+  },
+  "IDU-1F-111-1": {
+   "installed": "2016-08",
+   "runHours": 18634,
+   "filterHours": 284,
+   "lastFilterClean": "2026-05-09",
+   "faults": []
+  },
+  "IDU-1F-112-1": {
+   "installed": "2016-08",
+   "runHours": 17758,
+   "filterHours": 609,
+   "lastFilterClean": "2026-04-03",
+   "faults": []
+  },
+  "IDU-1F-113-1": {
+   "installed": "2016-08",
+   "runHours": 16915,
+   "filterHours": 2512,
+   "lastFilterClean": "2025-09-04",
+   "faults": []
+  },
+  "IDU-1F-114-1": {
+   "installed": "2016-08",
+   "runHours": 24693,
+   "filterHours": 1459,
+   "lastFilterClean": "2025-12-30",
+   "faults": []
+  },
+  "IDU-1F-115-1": {
+   "installed": "2016-08",
+   "runHours": 27242,
+   "filterHours": 502,
+   "lastFilterClean": "2026-04-15",
+   "faults": []
+  },
+  "IDU-1F-115-2": {
+   "installed": "2016-08",
+   "runHours": 23102,
+   "filterHours": 2827,
+   "lastFilterClean": "2025-07-31",
+   "faults": []
+  },
+  "IDU-1F-116-1": {
+   "installed": "2016-08",
+   "runHours": 15154,
+   "filterHours": 416,
+   "lastFilterClean": "2026-04-25",
+   "faults": []
+  },
+  "IDU-1F-116-2": {
+   "installed": "2016-08",
+   "runHours": 26384,
+   "filterHours": 2385,
+   "lastFilterClean": "2025-09-18",
+   "faults": []
+  },
+  "IDU-2F-대합실-1": {
+   "installed": "2016-08",
+   "runHours": 19822,
+   "filterHours": 1545,
+   "lastFilterClean": "2025-12-20",
+   "faults": []
+  },
+  "IDU-2F-대합실-2": {
+   "installed": "2016-08",
+   "runHours": 27347,
+   "filterHours": 688,
+   "lastFilterClean": "2026-03-26",
+   "faults": []
+  },
+  "IDU-2F-대합실-3": {
+   "installed": "2016-08",
+   "runHours": 26162,
+   "filterHours": 618,
+   "lastFilterClean": "2026-04-02",
+   "faults": []
+  },
+  "IDU-2F-대합실-4": {
+   "installed": "2016-08",
+   "runHours": 24509,
+   "filterHours": 2323,
+   "lastFilterClean": "2025-09-25",
+   "faults": []
+  },
+  "IDU-2F-대합실-5": {
+   "installed": "2016-08",
+   "runHours": 28827,
+   "filterHours": 1659,
+   "lastFilterClean": "2025-12-08",
+   "faults": []
+  },
+  "IDU-2F-대합실-6": {
+   "installed": "2016-08",
+   "runHours": 19072,
+   "filterHours": 1402,
+   "lastFilterClean": "2026-01-05",
+   "faults": []
+  },
+  "IDU-2F-대합실-7": {
+   "installed": "2016-08",
+   "runHours": 16453,
+   "filterHours": 2244,
+   "lastFilterClean": "2025-10-04",
+   "faults": []
+  },
+  "IDU-2F-대합실-8": {
+   "installed": "2016-08",
+   "runHours": 27728,
+   "filterHours": 2636,
+   "lastFilterClean": "2025-08-21",
+   "faults": []
+  },
+  "IDU-2F-대합실-9": {
+   "installed": "2016-08",
+   "runHours": 18734,
+   "filterHours": 2775,
+   "lastFilterClean": "2025-08-06",
+   "faults": []
+  },
+  "IDU-2F-대합실-10": {
+   "installed": "2016-08",
+   "runHours": 24789,
+   "filterHours": 1758,
+   "lastFilterClean": "2025-11-27",
+   "faults": []
+  },
+  "IDU-2F-대합실-11": {
+   "installed": "2016-08",
+   "runHours": 27229,
+   "filterHours": 584,
+   "lastFilterClean": "2026-04-06",
+   "faults": []
+  },
+  "IDU-2F-대합실-12": {
+   "installed": "2016-08",
+   "runHours": 15998,
+   "filterHours": 1474,
+   "lastFilterClean": "2025-12-28",
+   "faults": [
+    {
+     "date": "2025-08-16",
+     "code": "CH05",
+     "action": "현장 조치 완료"
+    }
+   ]
+  },
+  "IDU-2F-대합실-13": {
+   "installed": "2016-08",
+   "runHours": 17184,
+   "filterHours": 1579,
+   "lastFilterClean": "2025-12-17",
+   "faults": []
+  },
+  "IDU-2F-대합실-14": {
+   "installed": "2016-08",
+   "runHours": 27394,
+   "filterHours": 890,
+   "lastFilterClean": "2026-03-03",
+   "faults": []
+  },
+  "IDU-2F-대합실-15": {
+   "installed": "2016-08",
+   "runHours": 20746,
+   "filterHours": 1065,
+   "lastFilterClean": "2026-02-12",
+   "faults": []
+  },
+  "IDU-2F-대합실-16": {
+   "installed": "2016-08",
+   "runHours": 18475,
+   "filterHours": 335,
+   "lastFilterClean": "2026-05-04",
+   "faults": []
+  },
+  "IDU-2F-대합실-17": {
+   "installed": "2016-08",
+   "runHours": 23808,
+   "filterHours": 463,
+   "lastFilterClean": "2026-04-20",
+   "faults": []
+  },
+  "IDU-2F-대합실-18": {
+   "installed": "2016-08",
+   "runHours": 29640,
+   "filterHours": 561,
+   "lastFilterClean": "2026-04-09",
+   "faults": []
+  },
+  "IDU-2F-대합실-19": {
+   "installed": "2016-08",
+   "runHours": 17283,
+   "filterHours": 344,
+   "lastFilterClean": "2026-05-03",
+   "faults": []
+  },
+  "IDU-2F-대합실-20": {
+   "installed": "2016-08",
+   "runHours": 20150,
+   "filterHours": 1057,
+   "lastFilterClean": "2026-02-13",
+   "faults": []
+  },
+  "IDU-2F-대합실-21": {
+   "installed": "2016-08",
+   "runHours": 28181,
+   "filterHours": 2285,
+   "lastFilterClean": "2025-09-29",
+   "faults": [
+    {
+     "date": "2025-07-12",
+     "code": "CH01",
+     "action": "현장 조치 완료"
+    }
+   ]
+  },
+  "IDU-2F-대합실-22": {
+   "installed": "2016-08",
+   "runHours": 23213,
+   "filterHours": 458,
+   "lastFilterClean": "2026-04-20",
+   "faults": []
+  },
+  "IDU-2F-대합실-23": {
+   "installed": "2016-08",
+   "runHours": 19186,
+   "filterHours": 1815,
+   "lastFilterClean": "2025-11-20",
+   "faults": []
+  },
+  "IDU-2F-대합실-24": {
+   "installed": "2016-08",
+   "runHours": 28182,
+   "filterHours": 599,
+   "lastFilterClean": "2026-04-04",
+   "faults": []
+  },
+  "IDU-2F-대합실-25": {
+   "installed": "2016-08",
+   "runHours": 24770,
+   "filterHours": 2305,
+   "lastFilterClean": "2025-09-27",
+   "faults": []
+  },
+  "IDU-2F-대합실-26": {
+   "installed": "2016-08",
+   "runHours": 16730,
+   "filterHours": 890,
+   "lastFilterClean": "2026-03-03",
+   "faults": [
+    {
+     "date": "2025-09-15",
+     "code": "CH01",
+     "action": "현장 조치 완료"
+    }
+   ]
+  },
+  "IDU-2F-대합실-27": {
+   "installed": "2016-08",
+   "runHours": 16978,
+   "filterHours": 1447,
+   "lastFilterClean": "2025-12-31",
+   "faults": []
+  },
+  "IDU-2F-대합실-28": {
+   "installed": "2016-08",
+   "runHours": 25770,
+   "filterHours": 2328,
+   "lastFilterClean": "2025-09-24",
+   "faults": []
+  },
+  "IDU-2F-대합실-29": {
+   "installed": "2016-08",
+   "runHours": 23714,
+   "filterHours": 1131,
+   "lastFilterClean": "2026-02-04",
+   "faults": []
+  },
+  "IDU-2F-대합실-30": {
+   "installed": "2016-08",
+   "runHours": 16069,
+   "filterHours": 280,
+   "lastFilterClean": "2026-05-10",
+   "faults": []
+  },
+  "IDU-2F-대합실-31": {
+   "installed": "2016-08",
+   "runHours": 21274,
+   "filterHours": 267,
+   "lastFilterClean": "2026-05-11",
+   "faults": []
+  },
+  "IDU-2F-대합실-32": {
+   "installed": "2016-08",
+   "runHours": 20814,
+   "filterHours": 1462,
+   "lastFilterClean": "2025-12-30",
+   "faults": []
+  },
+  "IDU-2F-대합실-33": {
+   "installed": "2016-08",
+   "runHours": 19235,
+   "filterHours": 1678,
+   "lastFilterClean": "2025-12-06",
+   "faults": [
+    {
+     "date": "2025-07-17",
+     "code": "CH01",
+     "action": "현장 조치 완료"
+    }
+   ]
+  },
+  "IDU-2F-대합실-34": {
+   "installed": "2016-08",
+   "runHours": 18661,
+   "filterHours": 1336,
+   "lastFilterClean": "2026-01-13",
+   "faults": []
+  },
+  "IDU-2F-대합실-35": {
+   "installed": "2016-08",
+   "runHours": 18822,
+   "filterHours": 561,
+   "lastFilterClean": "2026-04-09",
+   "faults": []
+  },
+  "IDU-2F-대합실-36": {
+   "installed": "2016-08",
+   "runHours": 18210,
+   "filterHours": 2499,
+   "lastFilterClean": "2025-09-05",
+   "faults": []
+  },
+  "IDU-2F-대합실-37": {
+   "installed": "2016-08",
+   "runHours": 16323,
+   "filterHours": 1064,
+   "lastFilterClean": "2026-02-12",
+   "faults": []
+  },
+  "IDU-2F-대합실-38": {
+   "installed": "2016-08",
+   "runHours": 27038,
+   "filterHours": 1462,
+   "lastFilterClean": "2025-12-30",
+   "faults": []
+  },
+  "IDU-2F-대합실-39": {
+   "installed": "2016-08",
+   "runHours": 18010,
+   "filterHours": 755,
+   "lastFilterClean": "2026-03-18",
+   "faults": []
+  },
+  "IDU-2F-대합실-40": {
+   "installed": "2016-08",
+   "runHours": 20877,
+   "filterHours": 2638,
+   "lastFilterClean": "2025-08-21",
+   "faults": []
+  },
+  "IDU-2F-대합실-41": {
+   "installed": "2016-08",
+   "runHours": 29624,
+   "filterHours": 1457,
+   "lastFilterClean": "2025-12-30",
+   "faults": []
+  },
+  "IDU-2F-대합실-42": {
+   "installed": "2016-08",
+   "runHours": 14102,
+   "filterHours": 512,
+   "lastFilterClean": "2026-04-14",
+   "faults": []
+  },
+  "IDU-2F-대합실-43": {
+   "installed": "2016-08",
+   "runHours": 17909,
+   "filterHours": 1802,
+   "lastFilterClean": "2025-11-22",
+   "faults": [
+    {
+     "date": "2025-09-17",
+     "code": "CH05",
+     "action": "현장 조치 완료"
+    }
+   ]
+  },
+  "IDU-2F-대합실-44": {
+   "installed": "2016-08",
+   "runHours": 27078,
+   "filterHours": 856,
+   "lastFilterClean": "2026-03-07",
+   "faults": []
+  },
+  "IDU-2F-대합실-45": {
+   "installed": "2016-08",
+   "runHours": 21106,
+   "filterHours": 1664,
+   "lastFilterClean": "2025-12-07",
+   "faults": [
+    {
+     "date": "2025-08-18",
+     "code": "CH05",
+     "action": "현장 조치 완료"
+    }
+   ]
+  },
+  "IDU-2F-대합실-46": {
+   "installed": "2016-08",
+   "runHours": 25245,
+   "filterHours": 1668,
+   "lastFilterClean": "2025-12-07",
+   "faults": []
+  },
+  "IDU-2F-대합실-47": {
+   "installed": "2016-08",
+   "runHours": 25646,
+   "filterHours": 1783,
+   "lastFilterClean": "2025-11-24",
+   "faults": []
+  },
+  "IDU-2F-대합실-48": {
+   "installed": "2016-08",
+   "runHours": 19814,
+   "filterHours": 892,
+   "lastFilterClean": "2026-03-03",
+   "faults": []
+  },
+  "IDU-2F-대합실-49": {
+   "installed": "2016-08",
+   "runHours": 23493,
+   "filterHours": 1646,
+   "lastFilterClean": "2025-12-09",
+   "faults": []
+  },
+  "IDU-2F-대합실-50": {
+   "installed": "2016-08",
+   "runHours": 21390,
+   "filterHours": 452,
+   "lastFilterClean": "2026-04-21",
+   "faults": []
+  },
+  "IDU-2F-대합실-51": {
+   "installed": "2016-08",
+   "runHours": 29130,
+   "filterHours": 1637,
+   "lastFilterClean": "2025-12-10",
+   "faults": []
+  },
+  "IDU-2F-대합실-52": {
+   "installed": "2016-08",
+   "runHours": 14238,
+   "filterHours": 1788,
+   "lastFilterClean": "2025-11-23",
+   "faults": []
+  },
+  "IDU-2F-대합실-53": {
+   "installed": "2016-08",
+   "runHours": 21491,
+   "filterHours": 2080,
+   "lastFilterClean": "2025-10-22",
+   "faults": []
+  },
+  "IDU-2F-대합실-54": {
+   "installed": "2016-08",
+   "runHours": 20987,
+   "filterHours": 2450,
+   "lastFilterClean": "2025-09-11",
+   "faults": []
+  },
+  "IDU-2F-대합실-55": {
+   "installed": "2016-08",
+   "runHours": 20586,
+   "filterHours": 265,
+   "lastFilterClean": "2026-05-12",
+   "faults": []
+  },
+  "IDU-2F-대합실-56": {
+   "installed": "2016-08",
+   "runHours": 20133,
+   "filterHours": 264,
+   "lastFilterClean": "2026-05-12",
+   "faults": []
+  },
+  "IDU-2F-대합실-57": {
+   "installed": "2016-08",
+   "runHours": 23648,
+   "filterHours": 1398,
+   "lastFilterClean": "2026-01-06",
+   "faults": []
+  },
+  "IDU-2F-대합실-58": {
+   "installed": "2016-08",
+   "runHours": 14696,
+   "filterHours": 261,
+   "lastFilterClean": "2026-05-12",
+   "faults": []
+  },
+  "IDU-2F-대합실-59": {
+   "installed": "2016-08",
+   "runHours": 18390,
+   "filterHours": 281,
+   "lastFilterClean": "2026-05-10",
+   "faults": []
+  },
+  "IDU-2F-대합실-60": {
+   "installed": "2016-08",
+   "runHours": 26378,
+   "filterHours": 1356,
+   "lastFilterClean": "2026-01-10",
+   "faults": []
+  },
+  "IDU-2F-대합실-61": {
+   "installed": "2016-08",
+   "runHours": 17026,
+   "filterHours": 1160,
+   "lastFilterClean": "2026-02-01",
+   "faults": []
+  },
+  "IDU-2F-대합실-62": {
+   "installed": "2016-08",
+   "runHours": 29440,
+   "filterHours": 661,
+   "lastFilterClean": "2026-03-29",
+   "faults": []
+  },
+  "IDU-2F-대합실-63": {
+   "installed": "2016-08",
+   "runHours": 19781,
+   "filterHours": 1154,
+   "lastFilterClean": "2026-02-02",
+   "faults": []
+  },
+  "IDU-2F-대합실-64": {
+   "installed": "2016-08",
+   "runHours": 28534,
+   "filterHours": 806,
+   "lastFilterClean": "2026-03-12",
+   "faults": []
+  },
+  "IDU-2F-대합실-65": {
+   "installed": "2016-08",
+   "runHours": 14421,
+   "filterHours": 2115,
+   "lastFilterClean": "2025-10-18",
+   "faults": []
+  },
+  "IDU-2F-대합실-66": {
+   "installed": "2016-08",
+   "runHours": 18490,
+   "filterHours": 1921,
+   "lastFilterClean": "2025-11-09",
+   "faults": []
+  },
+  "IDU-2F-대합실-67": {
+   "installed": "2016-08",
+   "runHours": 17304,
+   "filterHours": 1807,
+   "lastFilterClean": "2025-11-21",
+   "faults": []
+  },
+  "IDU-2F-대합실-68": {
+   "installed": "2016-08",
+   "runHours": 27414,
+   "filterHours": 910,
+   "lastFilterClean": "2026-03-01",
+   "faults": []
+  },
+  "IDU-2F-대합실-69": {
+   "installed": "2016-08",
+   "runHours": 18651,
+   "filterHours": 792,
+   "lastFilterClean": "2026-03-14",
+   "faults": [
+    {
+     "date": "2025-08-14",
+     "code": "CH04",
+     "action": "현장 조치 완료"
+    }
+   ]
+  },
+  "IDU-2F-대합실-70": {
+   "installed": "2016-08",
+   "runHours": 27595,
+   "filterHours": 1618,
+   "lastFilterClean": "2025-12-12",
+   "faults": []
+  },
+  "IDU-2F-대합실-71": {
+   "installed": "2016-08",
+   "runHours": 28781,
+   "filterHours": 1727,
+   "lastFilterClean": "2025-11-30",
+   "faults": [
+    {
+     "date": "2025-07-10",
+     "code": "CH04",
+     "action": "현장 조치 완료"
+    }
+   ]
+  },
+  "IDU-2F-대합실-72": {
+   "installed": "2016-08",
+   "runHours": 16930,
+   "filterHours": 200,
+   "lastFilterClean": "2026-05-19",
+   "faults": []
+  },
+  "IDU-2F-대합실-73": {
+   "installed": "2016-08",
+   "runHours": 28099,
+   "filterHours": 206,
+   "lastFilterClean": "2026-05-18",
+   "faults": []
+  },
+  "IDU-2F-대합실-74": {
+   "installed": "2016-08",
+   "runHours": 29560,
+   "filterHours": 1000,
+   "lastFilterClean": "2026-02-19",
+   "faults": []
+  },
+  "IDU-2F-대합실-75": {
+   "installed": "2016-08",
+   "runHours": 16179,
+   "filterHours": 2729,
+   "lastFilterClean": "2025-08-11",
+   "faults": []
+  },
+  "IDU-2F-대합실-76": {
+   "installed": "2016-08",
+   "runHours": 14261,
+   "filterHours": 214,
+   "lastFilterClean": "2026-05-17",
+   "faults": []
+  },
+  "IDU-2F-대합실-77": {
+   "installed": "2016-08",
+   "runHours": 21616,
+   "filterHours": 435,
+   "lastFilterClean": "2026-04-23",
+   "faults": []
+  },
+  "IDU-2F-대합실-78": {
+   "installed": "2016-08",
+   "runHours": 23128,
+   "filterHours": 2098,
+   "lastFilterClean": "2025-10-20",
+   "faults": []
+  },
+  "IDU-2F-대합실-79": {
+   "installed": "2016-08",
+   "runHours": 26874,
+   "filterHours": 1752,
+   "lastFilterClean": "2025-11-27",
+   "faults": []
+  },
+  "IDU-2F-대합실-80": {
+   "installed": "2016-08",
+   "runHours": 25798,
+   "filterHours": 1220,
+   "lastFilterClean": "2026-01-25",
+   "faults": []
+  },
+  "IDU-2F-대합실-81": {
+   "installed": "2016-08",
+   "runHours": 20056,
+   "filterHours": 1045,
+   "lastFilterClean": "2026-02-14",
+   "faults": []
+  },
+  "IDU-2F-대합실-82": {
+   "installed": "2016-08",
+   "runHours": 15235,
+   "filterHours": 1182,
+   "lastFilterClean": "2026-01-30",
+   "faults": [
+    {
+     "date": "2025-07-18",
+     "code": "CH04",
+     "action": "현장 조치 완료"
+    }
+   ]
+  },
+  "IDU-2F-대합실-83": {
+   "installed": "2016-08",
+   "runHours": 24366,
+   "filterHours": 2272,
+   "lastFilterClean": "2025-10-01",
+   "faults": [
+    {
+     "date": "2025-07-12",
+     "code": "CH01",
+     "action": "현장 조치 완료"
+    }
+   ]
+  },
+  "IDU-2F-대합실-84": {
+   "installed": "2016-08",
+   "runHours": 23642,
+   "filterHours": 1867,
+   "lastFilterClean": "2025-11-15",
+   "faults": [
+    {
+     "date": "2025-09-15",
+     "code": "CH01",
+     "action": "현장 조치 완료"
+    }
+   ]
+  },
+  "IDU-2F-대합실-85": {
+   "installed": "2016-08",
+   "runHours": 28344,
+   "filterHours": 2856,
+   "lastFilterClean": "2025-07-28",
+   "faults": []
+  },
+  "IDU-2F-대합실-86": {
+   "installed": "2016-08",
+   "runHours": 29053,
+   "filterHours": 231,
+   "lastFilterClean": "2026-05-15",
+   "faults": []
+  },
+  "IDU-2F-대합실-87": {
+   "installed": "2016-08",
+   "runHours": 20571,
+   "filterHours": 690,
+   "lastFilterClean": "2026-03-25",
+   "faults": []
+  },
+  "IDU-2F-대합실-88": {
+   "installed": "2016-08",
+   "runHours": 24454,
+   "filterHours": 779,
+   "lastFilterClean": "2026-03-15",
+   "faults": [
+    {
+     "date": "2025-08-12",
+     "code": "CH05",
+     "action": "현장 조치 완료"
+    }
+   ]
+  },
+  "IDU-2F-대합실-89": {
+   "installed": "2016-08",
+   "runHours": 24293,
+   "filterHours": 1656,
+   "lastFilterClean": "2025-12-08",
+   "faults": []
+  },
+  "IDU-2F-대합실-90": {
+   "installed": "2016-08",
+   "runHours": 18658,
+   "filterHours": 1157,
+   "lastFilterClean": "2026-02-01",
+   "faults": []
+  },
+  "IDU-2F-대합실-91": {
+   "installed": "2016-08",
+   "runHours": 22301,
+   "filterHours": 901,
+   "lastFilterClean": "2026-03-02",
+   "faults": []
+  },
+  "IDU-2F-대합실-92": {
+   "installed": "2016-08",
+   "runHours": 18162,
+   "filterHours": 342,
+   "lastFilterClean": "2026-05-03",
+   "faults": []
+  },
+  "IDU-2F-대합실-93": {
+   "installed": "2016-08",
+   "runHours": 20294,
+   "filterHours": 2492,
+   "lastFilterClean": "2025-09-06",
+   "faults": []
+  },
+  "IDU-2F-대합실-94": {
+   "installed": "2016-08",
+   "runHours": 21851,
+   "filterHours": 1172,
+   "lastFilterClean": "2026-01-31",
+   "faults": []
+  },
+  "IDU-2F-대합실-95": {
+   "installed": "2016-08",
+   "runHours": 22832,
+   "filterHours": 1855,
+   "lastFilterClean": "2025-11-16",
+   "faults": []
+  },
+  "IDU-2F-대합실-96": {
+   "installed": "2016-08",
+   "runHours": 27909,
+   "filterHours": 775,
+   "lastFilterClean": "2026-03-16",
+   "faults": []
+  },
+  "IDU-2F-대합실-97": {
+   "installed": "2016-08",
+   "runHours": 18880,
+   "filterHours": 266,
+   "lastFilterClean": "2026-05-11",
+   "faults": []
+  },
+  "IDU-2F-대합실-98": {
+   "installed": "2016-08",
+   "runHours": 17621,
+   "filterHours": 2677,
+   "lastFilterClean": "2025-08-17",
+   "faults": []
+  },
+  "IDU-2F-대합실-99": {
+   "installed": "2016-08",
+   "runHours": 27920,
+   "filterHours": 1189,
+   "lastFilterClean": "2026-01-29",
+   "faults": []
+  },
+  "IDU-2F-대합실-100": {
+   "installed": "2016-08",
+   "runHours": 15317,
+   "filterHours": 669,
+   "lastFilterClean": "2026-03-28",
+   "faults": []
+  },
+  "IDU-2F-대합실-101": {
+   "installed": "2016-08",
+   "runHours": 17987,
+   "filterHours": 2328,
+   "lastFilterClean": "2025-09-24",
+   "faults": []
+  },
+  "IDU-2F-대합실-102": {
+   "installed": "2016-08",
+   "runHours": 22757,
+   "filterHours": 392,
+   "lastFilterClean": "2026-04-27",
+   "faults": []
+  },
+  "IDU-2F-대합실-103": {
+   "installed": "2016-08",
+   "runHours": 27373,
+   "filterHours": 1777,
+   "lastFilterClean": "2025-11-25",
+   "faults": []
+  },
+  "IDU-2F-대합실-104": {
+   "installed": "2016-08",
+   "runHours": 17922,
+   "filterHours": 224,
+   "lastFilterClean": "2026-05-16",
+   "faults": []
+  },
+  "IDU-2F-대합실-105": {
+   "installed": "2016-08",
+   "runHours": 27504,
+   "filterHours": 228,
+   "lastFilterClean": "2026-05-16",
+   "faults": []
+  },
+  "IDU-2F-대합실-106": {
+   "installed": "2016-08",
+   "runHours": 17502,
+   "filterHours": 2133,
+   "lastFilterClean": "2025-10-16",
+   "faults": []
+  },
+  "IDU-2F-대합실-107": {
+   "installed": "2016-08",
+   "runHours": 25498,
+   "filterHours": 575,
+   "lastFilterClean": "2026-04-07",
+   "faults": []
+  },
+  "IDU-2F-대합실-108": {
+   "installed": "2016-08",
+   "runHours": 15330,
+   "filterHours": 2285,
+   "lastFilterClean": "2025-09-29",
+   "faults": []
+  },
+  "IDU-2F-대합실-109": {
+   "installed": "2016-08",
+   "runHours": 19254,
+   "filterHours": 2157,
+   "lastFilterClean": "2025-10-13",
+   "faults": []
+  },
+  "IDU-2F-대합실-110": {
+   "installed": "2016-08",
+   "runHours": 16877,
+   "filterHours": 253,
+   "lastFilterClean": "2026-05-13",
+   "faults": []
+  },
+  "IDU-2F-대합실-111": {
+   "installed": "2016-08",
+   "runHours": 15691,
+   "filterHours": 225,
+   "lastFilterClean": "2026-05-16",
+   "faults": []
+  },
+  "IDU-2F-대합실-112": {
+   "installed": "2016-08",
+   "runHours": 18422,
+   "filterHours": 462,
+   "lastFilterClean": "2026-04-20",
+   "faults": []
+  },
+  "IDU-2F-대합실-113": {
+   "installed": "2016-08",
+   "runHours": 16264,
+   "filterHours": 1747,
+   "lastFilterClean": "2025-11-28",
+   "faults": []
+  },
+  "IDU-2F-대합실-114": {
+   "installed": "2016-08",
+   "runHours": 19328,
+   "filterHours": 2484,
+   "lastFilterClean": "2025-09-07",
+   "faults": []
+  },
+  "IDU-2F-대합실-115": {
+   "installed": "2016-08",
+   "runHours": 14123,
+   "filterHours": 378,
+   "lastFilterClean": "2026-04-29",
+   "faults": []
+  },
+  "IDU-2F-대합실-116": {
+   "installed": "2016-08",
+   "runHours": 16266,
+   "filterHours": 896,
+   "lastFilterClean": "2026-03-02",
+   "faults": []
+  },
+  "IDU-2F-대합실-117": {
+   "installed": "2016-08",
+   "runHours": 18869,
+   "filterHours": 882,
+   "lastFilterClean": "2026-03-04",
+   "faults": [
+    {
+     "date": "2025-09-10",
+     "code": "CH01",
+     "action": "현장 조치 완료"
+    }
+   ]
+  },
+  "IDU-2F-대합실-118": {
+   "installed": "2016-08",
+   "runHours": 26797,
+   "filterHours": 1398,
+   "lastFilterClean": "2026-01-06",
+   "faults": []
+  },
+  "IDU-2F-대합실-119": {
+   "installed": "2016-08",
+   "runHours": 27736,
+   "filterHours": 386,
+   "lastFilterClean": "2026-04-28",
+   "faults": []
+  },
+  "IDU-2F-대합실-120": {
+   "installed": "2016-08",
+   "runHours": 22930,
+   "filterHours": 986,
+   "lastFilterClean": "2026-02-20",
+   "faults": []
+  },
+  "IDU-2F-대합실-121": {
+   "installed": "2016-08",
+   "runHours": 25549,
+   "filterHours": 449,
+   "lastFilterClean": "2026-04-21",
+   "faults": []
+  },
+  "IDU-2F-대합실-122": {
+   "installed": "2016-08",
+   "runHours": 19304,
+   "filterHours": 211,
+   "lastFilterClean": "2026-05-18",
+   "faults": [
+    {
+     "date": "2025-07-15",
+     "code": "CH04",
+     "action": "현장 조치 완료"
+    }
+   ]
+  },
+  "IDU-2F-대합실-123": {
+   "installed": "2016-08",
+   "runHours": 14986,
+   "filterHours": 427,
+   "lastFilterClean": "2026-04-24",
+   "faults": []
+  },
+  "IDU-2F-대합실-124": {
+   "installed": "2016-08",
+   "runHours": 16638,
+   "filterHours": 1602,
+   "lastFilterClean": "2025-12-14",
+   "faults": []
+  },
+  "IDU-2F-대합실-125": {
+   "installed": "2016-08",
+   "runHours": 17824,
+   "filterHours": 1710,
+   "lastFilterClean": "2025-12-02",
+   "faults": []
+  },
+  "IDU-2F-대합실-126": {
+   "installed": "2016-08",
+   "runHours": 26299,
+   "filterHours": 2895,
+   "lastFilterClean": "2025-07-23",
+   "faults": []
+  },
+  "IDU-2F-대합실-127": {
+   "installed": "2016-08",
+   "runHours": 17142,
+   "filterHours": 204,
+   "lastFilterClean": "2026-05-18",
+   "faults": []
+  },
+  "IDU-2F-대합실-128": {
+   "installed": "2016-08",
+   "runHours": 14290,
+   "filterHours": 870,
+   "lastFilterClean": "2026-03-05",
+   "faults": []
+  },
+  "IDU-2F-211-1": {
+   "installed": "2016-08",
+   "runHours": 14278,
+   "filterHours": 219,
+   "lastFilterClean": "2026-05-17",
+   "faults": []
+  },
+  "IDU-2F-212-1": {
+   "installed": "2016-08",
+   "runHours": 25480,
+   "filterHours": 785,
+   "lastFilterClean": "2026-03-15",
+   "faults": []
+  },
+  "IDU-2F-213-1": {
+   "installed": "2016-08",
+   "runHours": 28950,
+   "filterHours": 2644,
+   "lastFilterClean": "2025-08-20",
+   "faults": [
+    {
+     "date": "2025-08-10",
+     "code": "CH04",
+     "action": "현장 조치 완료"
+    }
+   ]
+  },
+  "IDU-2F-203-1": {
+   "installed": "2016-08",
+   "runHours": 28357,
+   "filterHours": 1444,
+   "lastFilterClean": "2026-01-01",
+   "faults": [
+    {
+     "date": "2025-08-17",
+     "code": "CH04",
+     "action": "현장 조치 완료"
+    }
+   ]
+  },
+  "IDU-2F-역무실-1": {
+   "installed": "2016-08",
+   "runHours": 14066,
+   "filterHours": 837,
+   "lastFilterClean": "2026-03-09",
+   "faults": []
+  },
+  "IDU-2F-202-1": {
+   "installed": "2016-08",
+   "runHours": 29050,
+   "filterHours": 931,
+   "lastFilterClean": "2026-02-27",
+   "faults": []
+  },
+  "IDU-2F-214-1": {
+   "installed": "2016-08",
+   "runHours": 28901,
+   "filterHours": 2064,
+   "lastFilterClean": "2025-10-24",
+   "faults": [
+    {
+     "date": "2025-08-15",
+     "code": "CH04",
+     "action": "현장 조치 완료"
+    }
+   ]
+  },
+  "IDU-2F-매표-1": {
+   "installed": "2016-08",
+   "runHours": 20310,
+   "filterHours": 968,
+   "lastFilterClean": "2026-02-22",
+   "faults": []
+  },
+  "IDU-2F-매표-2": {
+   "installed": "2016-08",
+   "runHours": 26309,
+   "filterHours": 2643,
+   "lastFilterClean": "2025-08-20",
+   "faults": []
+  },
+  "IDU-2F-225-1": {
+   "installed": "2016-08",
+   "runHours": 24408,
+   "filterHours": 1122,
+   "lastFilterClean": "2026-02-05",
+   "faults": []
+  },
+  "IDU-2F-224-1": {
+   "installed": "2016-08",
+   "runHours": 21517,
+   "filterHours": 2080,
+   "lastFilterClean": "2025-10-22",
+   "faults": []
+  },
+  "IDU-2F-219-1": {
+   "installed": "2016-08",
+   "runHours": 18003,
+   "filterHours": 1666,
+   "lastFilterClean": "2025-12-07",
+   "faults": []
+  },
+  "IDU-2F-201-1": {
+   "installed": "2016-08",
+   "runHours": 17058,
+   "filterHours": 473,
+   "lastFilterClean": "2026-04-18",
+   "faults": []
+  },
+  "IDU-2F-204-1": {
+   "installed": "2016-08",
+   "runHours": 27549,
+   "filterHours": 1278,
+   "lastFilterClean": "2026-01-19",
+   "faults": []
+  },
+  "IDU-2F-205-1": {
+   "installed": "2016-08",
+   "runHours": 27150,
+   "filterHours": 1433,
+   "lastFilterClean": "2026-01-02",
+   "faults": []
+  },
+  "IDU-2F-206-1": {
+   "installed": "2016-08",
+   "runHours": 19994,
+   "filterHours": 208,
+   "lastFilterClean": "2026-05-18",
+   "faults": []
+  },
+  "IDU-2F-207-1": {
+   "installed": "2016-08",
+   "runHours": 15461,
+   "filterHours": 545,
+   "lastFilterClean": "2026-04-10",
+   "faults": []
+  },
+  "IDU-2F-208-1": {
+   "installed": "2016-08",
+   "runHours": 20925,
+   "filterHours": 1185,
+   "lastFilterClean": "2026-01-29",
+   "faults": []
+  },
+  "IDU-2F-209-1": {
+   "installed": "2016-08",
+   "runHours": 18248,
+   "filterHours": 213,
+   "lastFilterClean": "2026-05-17",
+   "faults": [
+    {
+     "date": "2025-08-16",
+     "code": "CH04",
+     "action": "현장 조치 완료"
+    }
+   ]
+  },
+  "IDU-2F-210-1": {
+   "installed": "2016-08",
+   "runHours": 19218,
+   "filterHours": 278,
+   "lastFilterClean": "2026-05-10",
+   "faults": [
+    {
+     "date": "2025-09-10",
+     "code": "CH05",
+     "action": "현장 조치 완료"
+    }
+   ]
+  },
+  "IDU-2F-215-1": {
+   "installed": "2016-08",
+   "runHours": 28058,
+   "filterHours": 1214,
+   "lastFilterClean": "2026-01-26",
+   "faults": []
+  },
+  "IDU-2F-216-1": {
+   "installed": "2016-08",
+   "runHours": 19214,
+   "filterHours": 303,
+   "lastFilterClean": "2026-05-07",
+   "faults": []
+  },
+  "IDU-2F-217-1": {
+   "installed": "2016-08",
+   "runHours": 14262,
+   "filterHours": 1163,
+   "lastFilterClean": "2026-02-01",
+   "faults": []
+  },
+  "IDU-2F-218-1": {
+   "installed": "2016-08",
+   "runHours": 22712,
+   "filterHours": 215,
+   "lastFilterClean": "2026-05-17",
+   "faults": []
+  },
+  "IDU-2F-220-1": {
+   "installed": "2016-08",
+   "runHours": 17235,
+   "filterHours": 229,
+   "lastFilterClean": "2026-05-16",
+   "faults": []
+  },
+  "IDU-2F-221-1": {
+   "installed": "2016-08",
+   "runHours": 28779,
+   "filterHours": 304,
+   "lastFilterClean": "2026-05-07",
+   "faults": []
+  },
+  "IDU-2F-222-1": {
+   "installed": "2016-08",
+   "runHours": 19696,
+   "filterHours": 2361,
+   "lastFilterClean": "2025-09-21",
+   "faults": []
+  },
+  "IDU-2F-223-1": {
+   "installed": "2016-08",
+   "runHours": 16149,
+   "filterHours": 2040,
+   "lastFilterClean": "2025-10-26",
+   "faults": []
+  },
+  "IDU-2F-226-1": {
+   "installed": "2016-08",
+   "runHours": 15197,
+   "filterHours": 870,
+   "lastFilterClean": "2026-03-05",
+   "faults": []
+  },
+  "IDU-2F-철도경찰-1": {
+   "installed": "2016-08",
+   "runHours": 24133,
+   "filterHours": 1075,
+   "lastFilterClean": "2026-02-11",
+   "faults": [
+    {
+     "date": "2025-08-16",
+     "code": "CH04",
+     "action": "현장 조치 완료"
+    }
+   ]
+  },
+  "IDU-2F-철도경찰-2": {
+   "installed": "2016-08",
+   "runHours": 27299,
+   "filterHours": 238,
+   "lastFilterClean": "2026-05-15",
+   "faults": [
+    {
+     "date": "2025-08-12",
+     "code": "CH04",
+     "action": "현장 조치 완료"
+    }
+   ]
+  },
+  "IDU-2F-227-1": {
+   "installed": "2016-08",
+   "runHours": 19586,
+   "filterHours": 1627,
+   "lastFilterClean": "2025-12-11",
+   "faults": []
+  },
+  "IDU-2F-228-1": {
+   "installed": "2016-08",
+   "runHours": 29229,
+   "filterHours": 311,
+   "lastFilterClean": "2026-05-06",
+   "faults": []
+  },
+  "IDU-2F-229-1": {
+   "installed": "2016-08",
+   "runHours": 14635,
+   "filterHours": 1048,
+   "lastFilterClean": "2026-02-14",
+   "faults": []
+  },
+  "IDU-2F-230-1": {
+   "installed": "2016-08",
+   "runHours": 16501,
+   "filterHours": 264,
+   "lastFilterClean": "2026-05-12",
+   "faults": []
+  },
+  "IDU-2F-231-1": {
+   "installed": "2016-08",
+   "runHours": 23376,
+   "filterHours": 1831,
+   "lastFilterClean": "2025-11-19",
+   "faults": []
+  },
+  "IDU-3F-301-1": {
+   "installed": "2016-08",
+   "runHours": 20075,
+   "filterHours": 2475,
+   "lastFilterClean": "2025-09-08",
+   "faults": []
+  },
+  "IDU-3F-301-2": {
+   "installed": "2016-08",
+   "runHours": 14998,
+   "filterHours": 503,
+   "lastFilterClean": "2026-04-15",
+   "faults": []
+  },
+  "IDU-3F-301-3": {
+   "installed": "2016-08",
+   "runHours": 14018,
+   "filterHours": 220,
+   "lastFilterClean": "2026-05-17",
+   "faults": []
+  },
+  "IDU-3F-301-4": {
+   "installed": "2016-08",
+   "runHours": 28461,
+   "filterHours": 877,
+   "lastFilterClean": "2026-03-05",
+   "faults": []
+  },
+  "IDU-3F-301-5": {
+   "installed": "2016-08",
+   "runHours": 22002,
+   "filterHours": 1648,
+   "lastFilterClean": "2025-12-09",
+   "faults": []
+  },
+  "IDU-3F-301-6": {
+   "installed": "2016-08",
+   "runHours": 14467,
+   "filterHours": 2683,
+   "lastFilterClean": "2025-08-16",
+   "faults": []
+  },
+  "IDU-3F-301-7": {
+   "installed": "2016-08",
+   "runHours": 22498,
+   "filterHours": 216,
+   "lastFilterClean": "2026-05-17",
+   "faults": [
+    {
+     "date": "2025-07-13",
+     "code": "CH01",
+     "action": "현장 조치 완료"
+    }
+   ]
+  },
+  "IDU-3F-302-1": {
+   "installed": "2016-08",
+   "runHours": 23869,
+   "filterHours": 2336,
+   "lastFilterClean": "2025-09-23",
+   "faults": []
+  },
+  "IDU-3F-302-2": {
+   "installed": "2016-08",
+   "runHours": 26053,
+   "filterHours": 1449,
+   "lastFilterClean": "2025-12-31",
+   "faults": []
+  },
+  "IDU-3F-302-3": {
+   "installed": "2016-08",
+   "runHours": 26931,
+   "filterHours": 671,
+   "lastFilterClean": "2026-03-27",
+   "faults": [
+    {
+     "date": "2025-09-13",
+     "code": "CH05",
+     "action": "현장 조치 완료"
+    }
+   ]
+  },
+  "IDU-3F-302-4": {
+   "installed": "2016-08",
+   "runHours": 28194,
+   "filterHours": 318,
+   "lastFilterClean": "2026-05-06",
+   "faults": [
+    {
+     "date": "2025-09-10",
+     "code": "CH05",
+     "action": "현장 조치 완료"
+    }
+   ]
+  },
+  "IDU-3F-303-1": {
+   "installed": "2016-08",
+   "runHours": 26542,
+   "filterHours": 1711,
+   "lastFilterClean": "2025-12-02",
+   "faults": [
+    {
+     "date": "2025-07-10",
+     "code": "CH05",
+     "action": "현장 조치 완료"
+    }
+   ]
+  },
+  "IDU-3F-304-1": {
+   "installed": "2016-08",
+   "runHours": 21568,
+   "filterHours": 207,
+   "lastFilterClean": "2026-05-18",
+   "faults": []
+  },
+  "IDU-3F-304-2": {
+   "installed": "2016-08",
+   "runHours": 18600,
+   "filterHours": 2114,
+   "lastFilterClean": "2025-10-18",
+   "faults": []
+  }
+ }
+}

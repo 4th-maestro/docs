@@ -1,0 +1,1193 @@
+{
+ "schema": "twin.pipeline/v1",
+ "id": "busan-station-2026-11",
+ "base": "source/busan-station/",
+ "building": {
+  "id": "KORAIL-BUSAN",
+  "name": "부산역 역사",
+  "campus": "부산 동구",
+  "size": {
+   "w": 132,
+   "d": 75
+  },
+  "floorHeight": 6.5,
+  "ceiling": 5,
+  "assumed": [
+   "크기 132×75m: 안내도 축척 가정(상점 폭 ≈ 5.5m) — 건축물대장으로 확인 필요",
+   "층고 6.5m: 외부 사진 비율 추정",
+   "층 사이 위치: 안내도에서 층 그림이 같은 축척·같은 남측 입면이라고 가정"
+  ]
+ },
+ "operation": {
+  "source": "역사 운영시간(가정)",
+  "weekday": [
+   "05:00",
+   "24:00"
+  ],
+  "weekend": [
+   "05:00",
+   "24:00"
+  ]
+ },
+ "floors": [
+  {
+   "id": "1F",
+   "image": "plans/guide-all.png",
+   "corners": [
+    [
+     370,
+     954
+    ],
+    [
+     1690,
+     954
+    ],
+    [
+     1690,
+     1704
+    ],
+    [
+     370,
+     1704
+    ]
+   ],
+   "mode": "fill",
+   "params": {
+    "fill": "#8389a0",
+    "strength": 0.5,
+    "minArea": 2
+   },
+   "footprint": [
+    [
+     15.7,
+     48.5
+    ],
+    [
+     19.7,
+     45.5
+    ],
+    [
+     51.2,
+     45
+    ],
+    [
+     51.2,
+     51
+    ],
+    [
+     69,
+     51
+    ],
+    [
+     69,
+     44.8
+    ],
+    [
+     109.2,
+     44.8
+    ],
+    [
+     109.2,
+     41.5
+    ],
+    [
+     127.2,
+     41.5
+    ],
+    [
+     127.2,
+     38.5
+    ],
+    [
+     134.2,
+     38.5
+    ],
+    [
+     134.2,
+     60.2
+    ],
+    [
+     115.2,
+     66
+    ],
+    [
+     86.2,
+     74
+    ],
+    [
+     80.2,
+     75
+    ],
+    [
+     39.2,
+     75
+    ],
+    [
+     20.2,
+     72.5
+    ],
+    [
+     21.2,
+     62
+    ],
+    [
+     17.7,
+     53
+    ]
+   ],
+   "ops": [
+    {
+     "op": "label",
+     "x": 27.7,
+     "y": 69,
+     "type": "room",
+     "number": "101",
+     "use": "retail",
+     "name": "공실(입점 모집)",
+     "capacity": 0
+    },
+    {
+     "op": "label",
+     "x": 43.4,
+     "y": 71.7,
+     "type": "room",
+     "number": "102",
+     "use": "retail",
+     "name": "편의점",
+     "capacity": 6
+    },
+    {
+     "op": "label",
+     "x": 54.8,
+     "y": 69,
+     "type": "room",
+     "number": "103",
+     "use": "restaurant",
+     "name": "베이커리",
+     "capacity": 12
+    },
+    {
+     "op": "label",
+     "x": 65.8,
+     "y": 69,
+     "type": "room",
+     "number": "104",
+     "use": "retail",
+     "name": "문구·팬시",
+     "capacity": 8
+    },
+    {
+     "op": "label",
+     "x": 77.2,
+     "y": 72,
+     "type": "room",
+     "number": "105",
+     "use": "restaurant",
+     "name": "분식·스낵",
+     "capacity": 10
+    },
+    {
+     "op": "label",
+     "x": 97,
+     "y": 66.6,
+     "type": "room",
+     "number": "106",
+     "use": "restaurant",
+     "name": "패스트푸드",
+     "capacity": 24
+    },
+    {
+     "op": "label",
+     "x": 108.5,
+     "y": 65.3,
+     "type": "room",
+     "number": "107",
+     "use": "retail",
+     "name": "편의점",
+     "capacity": 6
+    },
+    {
+     "op": "label",
+     "x": 125.2,
+     "y": 56.6,
+     "type": "room",
+     "number": "108",
+     "use": "restaurant",
+     "name": "한식",
+     "capacity": 30
+    },
+    {
+     "op": "label",
+     "x": 106.2,
+     "y": 50.8,
+     "type": "room",
+     "number": "109",
+     "use": "restaurant",
+     "name": "막걸리",
+     "capacity": 20
+    },
+    {
+     "op": "label",
+     "x": 100.4,
+     "y": 48.8,
+     "type": "room",
+     "number": "110",
+     "use": "restaurant",
+     "name": "식당",
+     "capacity": 24
+    },
+    {
+     "op": "label",
+     "x": 96.3,
+     "y": 48.8,
+     "type": "room",
+     "number": "111",
+     "use": "restaurant",
+     "name": "베트남 음식",
+     "capacity": 24
+    },
+    {
+     "op": "label",
+     "x": 93,
+     "y": 48.8,
+     "type": "room",
+     "number": "112",
+     "use": "restaurant",
+     "name": "베이커리",
+     "capacity": 12
+    },
+    {
+     "op": "label",
+     "x": 89,
+     "y": 48.8,
+     "type": "room",
+     "number": "113",
+     "use": "restaurant",
+     "name": "한식",
+     "capacity": 30
+    },
+    {
+     "op": "label",
+     "x": 82.9,
+     "y": 48.8,
+     "type": "room",
+     "number": "114",
+     "use": "restaurant",
+     "name": "한식",
+     "capacity": 30
+    },
+    {
+     "op": "label",
+     "x": 77,
+     "y": 48.8,
+     "type": "room",
+     "number": "115",
+     "use": "restaurant",
+     "name": "한식",
+     "capacity": 30
+    },
+    {
+     "op": "label",
+     "x": 69.8,
+     "y": 53.3,
+     "type": "room",
+     "number": "116",
+     "use": "restaurant",
+     "name": "베이커리",
+     "capacity": 12
+    },
+    {
+     "op": "rect",
+     "x0": 41.7,
+     "y0": 54.8,
+     "x1": 52.7,
+     "y1": 58,
+     "type": "store",
+     "name": "물품보관함"
+    },
+    {
+     "op": "rect",
+     "x0": 22,
+     "y0": 61.2,
+     "x1": 31,
+     "y1": 64.6,
+     "type": "store",
+     "name": "KTX특송"
+    },
+    {
+     "op": "label",
+     "x": 93.2,
+     "y": 57.2,
+     "type": "room",
+     "number": "맞이방",
+     "use": "waiting",
+     "name": "전문식당가 맞이방",
+     "capacity": 200
+    },
+    {
+     "op": "rect",
+     "x0": 18.7,
+     "y0": 49,
+     "x1": 25.2,
+     "y1": 54,
+     "type": "wc",
+     "name": "화장실"
+    },
+    {
+     "op": "rect",
+     "x0": 18.7,
+     "y0": 54.5,
+     "x1": 25.2,
+     "y1": 59,
+     "type": "wc",
+     "name": "화장실"
+    },
+    {
+     "op": "rect",
+     "x0": 127.2,
+     "y0": 38.5,
+     "x1": 134.2,
+     "y1": 44,
+     "type": "wc",
+     "name": "화장실"
+    },
+    {
+     "op": "rect",
+     "x0": 127.2,
+     "y0": 44.5,
+     "x1": 134.2,
+     "y1": 50,
+     "type": "wc",
+     "name": "화장실"
+    }
+   ]
+  },
+  {
+   "id": "2F",
+   "image": "plans/guide-all.png",
+   "corners": [
+    [
+     370,
+     538
+    ],
+    [
+     1690,
+     538
+    ],
+    [
+     1690,
+     1288
+    ],
+    [
+     370,
+     1288
+    ]
+   ],
+   "mode": "fill",
+   "params": {
+    "fill": "#8389a0",
+    "strength": 0.5,
+    "minArea": 2
+   },
+   "footprint": [
+    [
+     0,
+     -0.05
+    ],
+    [
+     78.2,
+     -0.05
+    ],
+    [
+     78.2,
+     43.45
+    ],
+    [
+     132,
+     43.45
+    ],
+    [
+     132,
+     60.45
+    ],
+    [
+     61.2,
+     74.95
+    ],
+    [
+     61.2,
+     66.95
+    ],
+    [
+     51.7,
+     66.95
+    ],
+    [
+     51.7,
+     74.95
+    ],
+    [
+     16.2,
+     70.45
+    ],
+    [
+     17.7,
+     61.95
+    ],
+    [
+     1.7,
+     44.95
+    ],
+    [
+     16.2,
+     44.15
+    ],
+    [
+     4.2,
+     30.95
+    ],
+    [
+     4.2,
+     6.45
+    ]
+   ],
+   "ops": [
+    {
+     "op": "label",
+     "x": 8.7,
+     "y": 29.75,
+     "type": "room",
+     "number": "202",
+     "use": "restaurant",
+     "name": "분식·스낵",
+     "capacity": 10
+    },
+    {
+     "op": "label",
+     "x": 8.7,
+     "y": 27.15,
+     "type": "room",
+     "number": "203",
+     "use": "restaurant",
+     "name": "카페",
+     "capacity": 16
+    },
+    {
+     "op": "label",
+     "x": 6.4,
+     "y": 10.15,
+     "type": "room",
+     "number": "205",
+     "use": "restaurant",
+     "name": "베이커리",
+     "capacity": 12
+    },
+    {
+     "op": "label",
+     "x": 8,
+     "y": 7.25,
+     "type": "room",
+     "number": "206",
+     "use": "restaurant",
+     "name": "카페",
+     "capacity": 16
+    },
+    {
+     "op": "label",
+     "x": 20,
+     "y": 2.65,
+     "type": "room",
+     "number": "207",
+     "use": "restaurant",
+     "name": "베이커리",
+     "capacity": 12
+    },
+    {
+     "op": "label",
+     "x": 26,
+     "y": 2.65,
+     "type": "room",
+     "number": "208",
+     "use": "retail",
+     "name": "문구·팬시",
+     "capacity": 8
+    },
+    {
+     "op": "label",
+     "x": 31.8,
+     "y": 2.65,
+     "type": "room",
+     "number": "209",
+     "use": "restaurant",
+     "name": "카페",
+     "capacity": 16
+    },
+    {
+     "op": "label",
+     "x": 39.2,
+     "y": 2.65,
+     "type": "room",
+     "number": "210",
+     "use": "restaurant",
+     "name": "카페",
+     "capacity": 16
+    },
+    {
+     "op": "label",
+     "x": 40.7,
+     "y": 10.15,
+     "type": "room",
+     "number": "211",
+     "use": "retail",
+     "name": "편의점",
+     "capacity": 6
+    },
+    {
+     "op": "label",
+     "x": 61.4,
+     "y": 14.95,
+     "type": "room",
+     "number": "212",
+     "use": "restaurant",
+     "name": "분식·스낵",
+     "capacity": 10
+    },
+    {
+     "op": "label",
+     "x": 52.7,
+     "y": 28.45,
+     "type": "room",
+     "number": "213",
+     "use": "restaurant",
+     "name": "베이커리",
+     "capacity": 12
+    },
+    {
+     "op": "label",
+     "x": 52.7,
+     "y": 37.65,
+     "type": "room",
+     "number": "214",
+     "use": "retail",
+     "name": "뷰티",
+     "capacity": 8
+    },
+    {
+     "op": "label",
+     "x": 40.9,
+     "y": 53.65,
+     "type": "room",
+     "number": "215",
+     "use": "restaurant",
+     "name": "베이커리",
+     "capacity": 12
+    },
+    {
+     "op": "label",
+     "x": 46.4,
+     "y": 53.65,
+     "type": "room",
+     "number": "216",
+     "use": "restaurant",
+     "name": "분식·스낵",
+     "capacity": 10
+    },
+    {
+     "op": "label",
+     "x": 25,
+     "y": 63.05,
+     "type": "room",
+     "number": "217",
+     "use": "retail",
+     "name": "편의점",
+     "capacity": 6
+    },
+    {
+     "op": "label",
+     "x": 31.8,
+     "y": 63.55,
+     "type": "room",
+     "number": "218",
+     "use": "retail",
+     "name": "제과",
+     "capacity": 6
+    },
+    {
+     "op": "label",
+     "x": 49.8,
+     "y": 65.15,
+     "type": "room",
+     "number": "219",
+     "use": "retail",
+     "name": "꽃집",
+     "capacity": 4
+    },
+    {
+     "op": "label",
+     "x": 49.2,
+     "y": 68.75,
+     "type": "room",
+     "number": "220",
+     "use": "restaurant",
+     "name": "베이커리",
+     "capacity": 12
+    },
+    {
+     "op": "label",
+     "x": 49.2,
+     "y": 72.55,
+     "type": "room",
+     "number": "221",
+     "use": "restaurant",
+     "name": "분식·스낵",
+     "capacity": 10
+    },
+    {
+     "op": "label",
+     "x": 63.3,
+     "y": 72.55,
+     "type": "room",
+     "number": "222",
+     "use": "restaurant",
+     "name": "분식·스낵",
+     "capacity": 10
+    },
+    {
+     "op": "label",
+     "x": 63.3,
+     "y": 68.75,
+     "type": "room",
+     "number": "223",
+     "use": "restaurant",
+     "name": "한식",
+     "capacity": 30
+    },
+    {
+     "op": "label",
+     "x": 62.8,
+     "y": 65.15,
+     "type": "room",
+     "number": "224",
+     "use": "restaurant",
+     "name": "막걸리",
+     "capacity": 20
+    },
+    {
+     "op": "label",
+     "x": 80.2,
+     "y": 55.35,
+     "type": "room",
+     "number": "225",
+     "use": "restaurant",
+     "name": "카페",
+     "capacity": 16
+    },
+    {
+     "op": "label",
+     "x": 92.4,
+     "y": 46.05,
+     "type": "room",
+     "number": "226",
+     "use": "restaurant",
+     "name": "분식·스낵",
+     "capacity": 10
+    },
+    {
+     "op": "label",
+     "x": 92,
+     "y": 68.15,
+     "type": "room",
+     "number": "227",
+     "use": "restaurant",
+     "name": "카페",
+     "capacity": 16
+    },
+    {
+     "op": "label",
+     "x": 98.8,
+     "y": 66.75,
+     "type": "room",
+     "number": "228",
+     "use": "retail",
+     "name": "편의점",
+     "capacity": 6
+    },
+    {
+     "op": "label",
+     "x": 105.2,
+     "y": 65.45,
+     "type": "room",
+     "number": "229",
+     "use": "restaurant",
+     "name": "한식",
+     "capacity": 30
+    },
+    {
+     "op": "label",
+     "x": 112,
+     "y": 63.75,
+     "type": "room",
+     "number": "230",
+     "use": "restaurant",
+     "name": "베이커리",
+     "capacity": 12
+    },
+    {
+     "op": "label",
+     "x": 119,
+     "y": 62.45,
+     "type": "room",
+     "number": "231",
+     "use": "restaurant",
+     "name": "패스트푸드",
+     "capacity": 24
+    },
+    {
+     "op": "rect",
+     "x0": 14.5,
+     "y0": 39.15,
+     "x1": 18.5,
+     "y1": 43.15,
+     "type": "room",
+     "number": "201",
+     "use": "restaurant",
+     "name": "베이커리",
+     "capacity": 12
+    },
+    {
+     "op": "rect",
+     "x0": 4.7,
+     "y0": 23.45,
+     "x1": 12.2,
+     "y1": 25.95,
+     "type": "room",
+     "number": "204",
+     "use": "retail",
+     "name": "약국",
+     "capacity": 6
+    },
+    {
+     "op": "label",
+     "x": 61.4,
+     "y": 32.95,
+     "type": "room",
+     "number": "역무실",
+     "use": "admin",
+     "name": "역무실",
+     "capacity": 12
+    },
+    {
+     "op": "label",
+     "x": 68.7,
+     "y": 45.75,
+     "type": "room",
+     "number": "매표",
+     "use": "admin",
+     "name": "매표창구",
+     "capacity": 10
+    },
+    {
+     "op": "label",
+     "x": 105.4,
+     "y": 45.55,
+     "type": "room",
+     "number": "철도경찰",
+     "use": "office",
+     "name": "철도경찰서",
+     "capacity": 8
+    },
+    {
+     "op": "label",
+     "x": 68.2,
+     "y": 57.95,
+     "type": "room",
+     "number": "대합실",
+     "use": "waiting",
+     "name": "맞이방",
+     "capacity": 600
+    },
+    {
+     "op": "rect",
+     "x0": 63.2,
+     "y0": 1.95,
+     "x1": 70.2,
+     "y1": 5.45,
+     "type": "wc",
+     "name": "화장실"
+    },
+    {
+     "op": "rect",
+     "x0": 63.2,
+     "y0": 10.45,
+     "x1": 70.2,
+     "y1": 14.45,
+     "type": "wc",
+     "name": "화장실"
+    },
+    {
+     "op": "rect",
+     "x0": 8.2,
+     "y0": 49.95,
+     "x1": 16.2,
+     "y1": 53.95,
+     "type": "wc",
+     "name": "화장실"
+    },
+    {
+     "op": "rect",
+     "x0": 14.2,
+     "y0": 56.95,
+     "x1": 20.7,
+     "y1": 60.45,
+     "type": "wc",
+     "name": "화장실"
+    },
+    {
+     "op": "rect",
+     "x0": 125.2,
+     "y0": 48.95,
+     "x1": 131.7,
+     "y1": 52.45,
+     "type": "wc",
+     "name": "화장실"
+    },
+    {
+     "op": "rect",
+     "x0": 125.2,
+     "y0": 53.95,
+     "x1": 131.7,
+     "y1": 57.45,
+     "type": "wc",
+     "name": "화장실"
+    }
+   ]
+  },
+  {
+   "id": "3F",
+   "image": "plans/guide-all.png",
+   "corners": [
+    [
+     370,
+     93
+    ],
+    [
+     1690,
+     93
+    ],
+    [
+     1690,
+     843
+    ],
+    [
+     370,
+     843
+    ]
+   ],
+   "mode": "fill",
+   "params": {
+    "fill": "#8389a0",
+    "strength": 0.5,
+    "minArea": 2
+   },
+   "footprint": [
+    [
+     -0.8,
+     0
+    ],
+    [
+     70.2,
+     0
+    ],
+    [
+     70.2,
+     38
+    ],
+    [
+     51.2,
+     38
+    ],
+    [
+     51.2,
+     14
+    ],
+    [
+     3,
+     14
+    ],
+    [
+     3,
+     3.5
+    ]
+   ],
+   "ops": [
+    {
+     "op": "label",
+     "x": 29.7,
+     "y": 3.8,
+     "type": "room",
+     "number": "301",
+     "use": "restaurant",
+     "name": "푸드코트",
+     "capacity": 120
+    },
+    {
+     "op": "label",
+     "x": 61.5,
+     "y": 3.8,
+     "type": "room",
+     "number": "302",
+     "use": "restaurant",
+     "name": "한식",
+     "capacity": 30
+    },
+    {
+     "op": "label",
+     "x": 59.5,
+     "y": 18,
+     "type": "room",
+     "number": "303",
+     "use": "restaurant",
+     "name": "한식",
+     "capacity": 30
+    },
+    {
+     "op": "label",
+     "x": 59.7,
+     "y": 34,
+     "type": "room",
+     "number": "304",
+     "use": "restaurant",
+     "name": "베이커리",
+     "capacity": 12
+    },
+    {
+     "op": "label",
+     "x": 23.2,
+     "y": 10.5,
+     "type": "corridor",
+     "name": "전문식당가 통로"
+    },
+    {
+     "op": "label",
+     "x": 54.2,
+     "y": 27,
+     "type": "corridor",
+     "name": "통로"
+    },
+    {
+     "op": "rect",
+     "x0": 62.7,
+     "y0": 8.5,
+     "x1": 70.2,
+     "y1": 14,
+     "type": "wc",
+     "name": "화장실"
+    }
+   ]
+  }
+ ],
+ "exterior": {
+  "photos": [
+   {
+    "file": "photos/exterior-1.jpg",
+    "marks": [
+     {
+      "kind": "slab",
+      "y": 760
+     },
+     {
+      "kind": "slab",
+      "y": 600
+     },
+     {
+      "kind": "slab",
+      "y": 350
+     },
+     {
+      "kind": "sill",
+      "y": 590
+     },
+     {
+      "kind": "head",
+      "y": 362
+     }
+    ]
+   }
+  ]
+ },
+ "interior": [
+  {
+   "file": "photos/interior-13.png",
+   "use": "waiting",
+   "floorBox": [
+    750,
+    1500,
+    1950,
+    1950
+   ],
+   "wallBox": [
+    560,
+    420,
+    840,
+    1150
+   ]
+  },
+  {
+   "file": "photos/interior-17.png",
+   "use": "restaurant",
+   "floorBox": [
+    600,
+    1600,
+    1500,
+    1950
+   ]
+  },
+  {
+   "file": "photos/interior-17.png",
+   "use": "retail",
+   "floorBox": [
+    600,
+    1600,
+    1500,
+    1950
+   ]
+  }
+ ],
+ "acPhotos": [],
+ "site": {
+  "image": "photos/skyview.png",
+  "size": [
+   799,
+   1150
+  ],
+  "mode": "similarity",
+  "ref": [
+   {
+    "m": [
+     0,
+     0
+    ],
+    "px": [
+     750,
+     140
+    ]
+   },
+   {
+    "m": [
+     132,
+     60.45
+    ],
+    "px": [
+     169,
+     1042
+    ]
+   },
+   {
+    "m": [
+     132,
+     43.45
+    ],
+    "px": [
+     300,
+     1040
+    ]
+   },
+   {
+    "m": [
+     6.5,
+     27.1
+    ],
+    "px": [
+     411,
+     298
+    ]
+   },
+   {
+    "m": [
+     120.6,
+     61
+    ],
+    "px": [
+     242,
+     915
+    ]
+   },
+   {
+    "m": [
+     91.6,
+     66.9
+    ],
+    "px": [
+     264,
+     682
+    ]
+   }
+  ],
+  "outline": [
+   [
+    430,
+    75
+   ],
+   [
+    525,
+    178
+   ],
+   [
+    760,
+    125
+   ],
+   [
+    715,
+    262
+   ],
+   [
+    640,
+    300
+   ],
+   [
+    640,
+    550
+   ],
+   [
+    540,
+    555
+   ],
+   [
+    540,
+    700
+   ],
+   [
+    505,
+    710
+   ],
+   [
+    490,
+    1030
+   ],
+   [
+    160,
+    1048
+   ],
+   [
+    163,
+    900
+   ],
+   [
+    175,
+    700
+   ],
+   [
+    215,
+    520
+   ],
+   [
+    280,
+    330
+   ],
+   [
+    350,
+    180
+   ]
+  ]
+ }
+}

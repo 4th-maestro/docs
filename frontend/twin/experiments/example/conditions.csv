@@ -1,0 +1,5 @@
+timestamp,room_id,occupants,activity,lighting_fraction,active_computers,other_equipment_fraction,window_open_fraction,ventilation_fraction
+2026-08-03T08:15:00+09:00,1F-6107-1,2,seated,0.8,2,0.2,0,0.5
+2026-08-03T08:30:00+09:00,1F-6107-1,2,seated,0.8,2,0.2,0,0.5
+2026-08-03T08:45:00+09:00,1F-6107-1,0,seated,0.1,0,0.2,0,0.5
+2026-08-03T09:00:00+09:00,1F-6107-1,0,seated,0.1,0,0.2,0,0.5

@@ -1,0 +1,4921 @@
+{
+ "schema": "twin.schedule/v1",
+ "source": "부산대학교 학사 시간표 (수강편람 공개 정보) 형식 — 가상 생성",
+ "term": "2026-1",
+ "classes": [
+  {
+   "room": "1F-6108",
+   "day": "월",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "자료구조",
+   "code": "CSE2494",
+   "enrolled": 41
+  },
+  {
+   "room": "1F-6108",
+   "day": "월",
+   "start": "12:00",
+   "end": "13:15",
+   "course": "알고리즘",
+   "code": "CSE4510",
+   "enrolled": 31
+  },
+  {
+   "room": "1F-6108",
+   "day": "월",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "운영체제",
+   "code": "CSE3906",
+   "enrolled": 43
+  },
+  {
+   "room": "1F-6108",
+   "day": "월",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "프로그래밍기초",
+   "code": "CSE5074",
+   "enrolled": 38
+  },
+  {
+   "room": "1F-6108",
+   "day": "화",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "임베디드시스템",
+   "code": "CSE1258",
+   "enrolled": 47
+  },
+  {
+   "room": "1F-6108",
+   "day": "화",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "컴퓨터네트워크",
+   "code": "CSE5455",
+   "enrolled": 45
+  },
+  {
+   "room": "1F-6108",
+   "day": "화",
+   "start": "12:00",
+   "end": "13:15",
+   "course": "회로이론",
+   "code": "CSE1036",
+   "enrolled": 36
+  },
+  {
+   "room": "1F-6108",
+   "day": "화",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "데이터베이스",
+   "code": "CSE6364",
+   "enrolled": 39
+  },
+  {
+   "room": "1F-6108",
+   "day": "화",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "알고리즘",
+   "code": "CSE4510",
+   "enrolled": 43
+  },
+  {
+   "room": "1F-6108",
+   "day": "수",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "프로그래밍기초",
+   "code": "CSE5074",
+   "enrolled": 28
+  },
+  {
+   "room": "1F-6108",
+   "day": "수",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "전자회로",
+   "code": "CSE6105",
+   "enrolled": 33
+  },
+  {
+   "room": "1F-6108",
+   "day": "수",
+   "start": "12:00",
+   "end": "13:15",
+   "course": "신호및시스템",
+   "code": "CSE7707",
+   "enrolled": 44
+  },
+  {
+   "room": "1F-6108",
+   "day": "수",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "소프트웨어공학",
+   "code": "CSE6501",
+   "enrolled": 44
+  },
+  {
+   "room": "1F-6108",
+   "day": "수",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "확률및통계",
+   "code": "CSE9095",
+   "enrolled": 35
+  },
+  {
+   "room": "1F-6108",
+   "day": "목",
+   "start": "12:00",
+   "end": "13:15",
+   "course": "디지털논리회로",
+   "code": "CSE4199",
+   "enrolled": 32
+  },
+  {
+   "room": "1F-6108",
+   "day": "목",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "신호및시스템",
+   "code": "CSE7707",
+   "enrolled": 40
+  },
+  {
+   "room": "1F-6108",
+   "day": "목",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "컴퓨터구조",
+   "code": "CSE1279",
+   "enrolled": 43
+  },
+  {
+   "room": "1F-6108",
+   "day": "금",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "확률및통계",
+   "code": "CSE9095",
+   "enrolled": 43
+  },
+  {
+   "room": "1F-6108",
+   "day": "금",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "디지털논리회로",
+   "code": "CSE4199",
+   "enrolled": 35
+  },
+  {
+   "room": "1F-6108",
+   "day": "금",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "알고리즘",
+   "code": "CSE4510",
+   "enrolled": 31
+  },
+  {
+   "room": "1F-6108",
+   "day": "금",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "임베디드시스템",
+   "code": "CSE1258",
+   "enrolled": 37
+  },
+  {
+   "room": "1F-6108-1",
+   "day": "월",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "공학수학",
+   "code": "CSE7263",
+   "enrolled": 33
+  },
+  {
+   "room": "1F-6108-1",
+   "day": "월",
+   "start": "12:00",
+   "end": "13:15",
+   "course": "프로그래밍기초",
+   "code": "CSE5074",
+   "enrolled": 32
+  },
+  {
+   "room": "1F-6108-1",
+   "day": "월",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "임베디드시스템",
+   "code": "CSE1258",
+   "enrolled": 34
+  },
+  {
+   "room": "1F-6108-1",
+   "day": "화",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "객체지향프로그래밍",
+   "code": "CSE1030",
+   "enrolled": 40
+  },
+  {
+   "room": "1F-6108-1",
+   "day": "화",
+   "start": "12:00",
+   "end": "13:15",
+   "course": "운영체제",
+   "code": "CSE3906",
+   "enrolled": 39
+  },
+  {
+   "room": "1F-6108-1",
+   "day": "화",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "자료구조",
+   "code": "CSE2494",
+   "enrolled": 41
+  },
+  {
+   "room": "1F-6108-1",
+   "day": "수",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "소프트웨어공학",
+   "code": "CSE6501",
+   "enrolled": 48
+  },
+  {
+   "room": "1F-6108-1",
+   "day": "수",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "임베디드시스템",
+   "code": "CSE1258",
+   "enrolled": 38
+  },
+  {
+   "room": "1F-6108-1",
+   "day": "수",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "공학수학",
+   "code": "CSE7263",
+   "enrolled": 46
+  },
+  {
+   "room": "1F-6108-1",
+   "day": "목",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "디지털논리회로",
+   "code": "CSE4199",
+   "enrolled": 34
+  },
+  {
+   "room": "1F-6108-1",
+   "day": "목",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "프로그래밍기초",
+   "code": "CSE5074",
+   "enrolled": 47
+  },
+  {
+   "room": "1F-6108-1",
+   "day": "목",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "자료구조",
+   "code": "CSE2494",
+   "enrolled": 47
+  },
+  {
+   "room": "1F-6108-1",
+   "day": "금",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "자료구조",
+   "code": "CSE2494",
+   "enrolled": 35
+  },
+  {
+   "room": "1F-6108-1",
+   "day": "금",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "회로이론",
+   "code": "CSE1036",
+   "enrolled": 31
+  },
+  {
+   "room": "1F-6108-1",
+   "day": "금",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "데이터베이스",
+   "code": "CSE6364",
+   "enrolled": 29
+  },
+  {
+   "room": "1F-6108-1",
+   "day": "금",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "프로그래밍기초",
+   "code": "CSE5074",
+   "enrolled": 32
+  },
+  {
+   "room": "1F-6108-1",
+   "day": "금",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "객체지향프로그래밍",
+   "code": "CSE1030",
+   "enrolled": 44
+  },
+  {
+   "room": "1F-6104",
+   "day": "월",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "공학수학",
+   "code": "CSE7263",
+   "enrolled": 16
+  },
+  {
+   "room": "1F-6104",
+   "day": "월",
+   "start": "12:00",
+   "end": "13:15",
+   "course": "프로그래밍기초",
+   "code": "CSE5074",
+   "enrolled": 14
+  },
+  {
+   "room": "1F-6104",
+   "day": "월",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "회로이론",
+   "code": "CSE1036",
+   "enrolled": 13
+  },
+  {
+   "room": "1F-6104",
+   "day": "화",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "프로그래밍기초",
+   "code": "CSE5074",
+   "enrolled": 19
+  },
+  {
+   "room": "1F-6104",
+   "day": "화",
+   "start": "12:00",
+   "end": "13:15",
+   "course": "객체지향프로그래밍",
+   "code": "CSE1030",
+   "enrolled": 14
+  },
+  {
+   "room": "1F-6104",
+   "day": "화",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "전자회로",
+   "code": "CSE6105",
+   "enrolled": 14
+  },
+  {
+   "room": "1F-6104",
+   "day": "수",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "반도체공학",
+   "code": "CSE7879",
+   "enrolled": 17
+  },
+  {
+   "room": "1F-6104",
+   "day": "목",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "신호및시스템",
+   "code": "CSE7707",
+   "enrolled": 14
+  },
+  {
+   "room": "1F-6104",
+   "day": "목",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "디지털논리회로",
+   "code": "CSE4199",
+   "enrolled": 19
+  },
+  {
+   "room": "1F-6104",
+   "day": "목",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "공학수학",
+   "code": "CSE7263",
+   "enrolled": 16
+  },
+  {
+   "room": "1F-6104",
+   "day": "금",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "객체지향프로그래밍",
+   "code": "CSE1030",
+   "enrolled": 17
+  },
+  {
+   "room": "1F-6104",
+   "day": "금",
+   "start": "12:00",
+   "end": "13:15",
+   "course": "전자기학",
+   "code": "CSE8708",
+   "enrolled": 12
+  },
+  {
+   "room": "1F-6103",
+   "day": "월",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "임베디드시스템",
+   "code": "CSE1258",
+   "enrolled": 40
+  },
+  {
+   "room": "1F-6103",
+   "day": "월",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "임베디드시스템",
+   "code": "CSE1258",
+   "enrolled": 46
+  },
+  {
+   "room": "1F-6103",
+   "day": "월",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "데이터베이스",
+   "code": "CSE6364",
+   "enrolled": 32
+  },
+  {
+   "room": "1F-6103",
+   "day": "화",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "회로이론",
+   "code": "CSE1036",
+   "enrolled": 33
+  },
+  {
+   "room": "1F-6103",
+   "day": "화",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "전자회로",
+   "code": "CSE6105",
+   "enrolled": 39
+  },
+  {
+   "room": "1F-6103",
+   "day": "화",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "객체지향프로그래밍",
+   "code": "CSE1030",
+   "enrolled": 31
+  },
+  {
+   "room": "1F-6103",
+   "day": "수",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "알고리즘",
+   "code": "CSE4510",
+   "enrolled": 46
+  },
+  {
+   "room": "1F-6103",
+   "day": "수",
+   "start": "12:00",
+   "end": "13:15",
+   "course": "컴퓨터네트워크",
+   "code": "CSE5455",
+   "enrolled": 51
+  },
+  {
+   "room": "1F-6103",
+   "day": "수",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "임베디드시스템",
+   "code": "CSE1258",
+   "enrolled": 31
+  },
+  {
+   "room": "1F-6103",
+   "day": "수",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "컴퓨터네트워크",
+   "code": "CSE5455",
+   "enrolled": 49
+  },
+  {
+   "room": "1F-6103",
+   "day": "목",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "기계학습",
+   "code": "CSE9400",
+   "enrolled": 37
+  },
+  {
+   "room": "1F-6103",
+   "day": "목",
+   "start": "12:00",
+   "end": "13:15",
+   "course": "공학수학",
+   "code": "CSE7263",
+   "enrolled": 50
+  },
+  {
+   "room": "1F-6103",
+   "day": "목",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "회로이론",
+   "code": "CSE1036",
+   "enrolled": 39
+  },
+  {
+   "room": "1F-6103",
+   "day": "목",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "운영체제",
+   "code": "CSE3906",
+   "enrolled": 46
+  },
+  {
+   "room": "1F-6103",
+   "day": "금",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "반도체공학",
+   "code": "CSE7879",
+   "enrolled": 33
+  },
+  {
+   "room": "1F-6103",
+   "day": "금",
+   "start": "12:00",
+   "end": "13:15",
+   "course": "객체지향프로그래밍",
+   "code": "CSE1030",
+   "enrolled": 43
+  },
+  {
+   "room": "1F-6103",
+   "day": "금",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "컴퓨터네트워크",
+   "code": "CSE5455",
+   "enrolled": 44
+  },
+  {
+   "room": "1F-6103",
+   "day": "금",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "컴퓨터구조",
+   "code": "CSE1279",
+   "enrolled": 35
+  },
+  {
+   "room": "1F-6102-1",
+   "day": "월",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "디지털논리회로",
+   "code": "CSE4199",
+   "enrolled": 20
+  },
+  {
+   "room": "1F-6102-1",
+   "day": "월",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "회로이론",
+   "code": "CSE1036",
+   "enrolled": 20
+  },
+  {
+   "room": "1F-6102-1",
+   "day": "월",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "객체지향프로그래밍",
+   "code": "CSE1030",
+   "enrolled": 19
+  },
+  {
+   "room": "1F-6102-1",
+   "day": "화",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "운영체제",
+   "code": "CSE3906",
+   "enrolled": 17
+  },
+  {
+   "room": "1F-6102-1",
+   "day": "화",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "컴퓨터네트워크",
+   "code": "CSE5455",
+   "enrolled": 19
+  },
+  {
+   "room": "1F-6102-1",
+   "day": "화",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "공학수학",
+   "code": "CSE7263",
+   "enrolled": 16
+  },
+  {
+   "room": "1F-6102-1",
+   "day": "수",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "알고리즘",
+   "code": "CSE4510",
+   "enrolled": 16
+  },
+  {
+   "room": "1F-6102-1",
+   "day": "수",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "디지털논리회로",
+   "code": "CSE4199",
+   "enrolled": 20
+  },
+  {
+   "room": "1F-6102-1",
+   "day": "수",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "반도체공학",
+   "code": "CSE7879",
+   "enrolled": 14
+  },
+  {
+   "room": "1F-6102-1",
+   "day": "목",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "컴퓨터구조",
+   "code": "CSE1279",
+   "enrolled": 19
+  },
+  {
+   "room": "1F-6102-1",
+   "day": "목",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "전자회로",
+   "code": "CSE6105",
+   "enrolled": 20
+  },
+  {
+   "room": "1F-6102-1",
+   "day": "금",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "캡스톤디자인",
+   "code": "CSE2619",
+   "enrolled": 20
+  },
+  {
+   "room": "1F-6102",
+   "day": "월",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "반도체공학",
+   "code": "CSE7879",
+   "enrolled": 40
+  },
+  {
+   "room": "1F-6102",
+   "day": "월",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "알고리즘",
+   "code": "CSE4510",
+   "enrolled": 55
+  },
+  {
+   "room": "1F-6102",
+   "day": "월",
+   "start": "12:00",
+   "end": "13:15",
+   "course": "전자회로",
+   "code": "CSE6105",
+   "enrolled": 45
+  },
+  {
+   "room": "1F-6102",
+   "day": "월",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "전자기학",
+   "code": "CSE8708",
+   "enrolled": 54
+  },
+  {
+   "room": "1F-6102",
+   "day": "화",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "공학수학",
+   "code": "CSE7263",
+   "enrolled": 49
+  },
+  {
+   "room": "1F-6102",
+   "day": "화",
+   "start": "12:00",
+   "end": "13:15",
+   "course": "운영체제",
+   "code": "CSE3906",
+   "enrolled": 39
+  },
+  {
+   "room": "1F-6102",
+   "day": "화",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "임베디드시스템",
+   "code": "CSE1258",
+   "enrolled": 46
+  },
+  {
+   "room": "1F-6102",
+   "day": "수",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "자료구조",
+   "code": "CSE2494",
+   "enrolled": 52
+  },
+  {
+   "room": "1F-6102",
+   "day": "수",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "자료구조",
+   "code": "CSE2494",
+   "enrolled": 49
+  },
+  {
+   "room": "1F-6102",
+   "day": "목",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "알고리즘",
+   "code": "CSE4510",
+   "enrolled": 53
+  },
+  {
+   "room": "1F-6102",
+   "day": "목",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "자료구조",
+   "code": "CSE2494",
+   "enrolled": 38
+  },
+  {
+   "room": "1F-6102",
+   "day": "목",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "컴퓨터네트워크",
+   "code": "CSE5455",
+   "enrolled": 55
+  },
+  {
+   "room": "1F-6102",
+   "day": "목",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "디지털논리회로",
+   "code": "CSE4199",
+   "enrolled": 47
+  },
+  {
+   "room": "1F-6102",
+   "day": "금",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "임베디드시스템",
+   "code": "CSE1258",
+   "enrolled": 54
+  },
+  {
+   "room": "1F-6102",
+   "day": "금",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "임베디드시스템",
+   "code": "CSE1258",
+   "enrolled": 44
+  },
+  {
+   "room": "1F-6102",
+   "day": "금",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "확률및통계",
+   "code": "CSE9095",
+   "enrolled": 41
+  },
+  {
+   "room": "1F-6102",
+   "day": "금",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "프로그래밍기초",
+   "code": "CSE5074",
+   "enrolled": 57
+  },
+  {
+   "room": "1F-6102",
+   "day": "금",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "프로그래밍기초",
+   "code": "CSE5074",
+   "enrolled": 38
+  },
+  {
+   "room": "2F-6207",
+   "day": "월",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "확률및통계",
+   "code": "CSE9095",
+   "enrolled": 61
+  },
+  {
+   "room": "2F-6207",
+   "day": "월",
+   "start": "12:00",
+   "end": "13:15",
+   "course": "프로그래밍기초",
+   "code": "CSE5074",
+   "enrolled": 55
+  },
+  {
+   "room": "2F-6207",
+   "day": "월",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "임베디드시스템",
+   "code": "CSE1258",
+   "enrolled": 58
+  },
+  {
+   "room": "2F-6207",
+   "day": "월",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "캡스톤디자인",
+   "code": "CSE2619",
+   "enrolled": 37
+  },
+  {
+   "room": "2F-6207",
+   "day": "화",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "자료구조",
+   "code": "CSE2494",
+   "enrolled": 61
+  },
+  {
+   "room": "2F-6207",
+   "day": "화",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "회로이론",
+   "code": "CSE1036",
+   "enrolled": 54
+  },
+  {
+   "room": "2F-6207",
+   "day": "화",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "확률및통계",
+   "code": "CSE9095",
+   "enrolled": 45
+  },
+  {
+   "room": "2F-6207",
+   "day": "화",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "공학수학",
+   "code": "CSE7263",
+   "enrolled": 57
+  },
+  {
+   "room": "2F-6207",
+   "day": "수",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "자료구조",
+   "code": "CSE2494",
+   "enrolled": 38
+  },
+  {
+   "room": "2F-6207",
+   "day": "수",
+   "start": "12:00",
+   "end": "13:15",
+   "course": "데이터베이스",
+   "code": "CSE6364",
+   "enrolled": 57
+  },
+  {
+   "room": "2F-6207",
+   "day": "수",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "회로이론",
+   "code": "CSE1036",
+   "enrolled": 52
+  },
+  {
+   "room": "2F-6207",
+   "day": "수",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "프로그래밍기초",
+   "code": "CSE5074",
+   "enrolled": 36
+  },
+  {
+   "room": "2F-6207",
+   "day": "목",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "컴퓨터네트워크",
+   "code": "CSE5455",
+   "enrolled": 45
+  },
+  {
+   "room": "2F-6207",
+   "day": "목",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "확률및통계",
+   "code": "CSE9095",
+   "enrolled": 60
+  },
+  {
+   "room": "2F-6207",
+   "day": "목",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "알고리즘",
+   "code": "CSE4510",
+   "enrolled": 42
+  },
+  {
+   "room": "2F-6207",
+   "day": "목",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "운영체제",
+   "code": "CSE3906",
+   "enrolled": 57
+  },
+  {
+   "room": "2F-6207",
+   "day": "금",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "기계학습",
+   "code": "CSE9400",
+   "enrolled": 42
+  },
+  {
+   "room": "2F-6207",
+   "day": "금",
+   "start": "12:00",
+   "end": "13:15",
+   "course": "공학수학",
+   "code": "CSE7263",
+   "enrolled": 39
+  },
+  {
+   "room": "2F-6207",
+   "day": "금",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "전자기학",
+   "code": "CSE8708",
+   "enrolled": 41
+  },
+  {
+   "room": "2F-6208",
+   "day": "월",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "반도체공학",
+   "code": "CSE7879",
+   "enrolled": 50
+  },
+  {
+   "room": "2F-6208",
+   "day": "월",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "확률및통계",
+   "code": "CSE9095",
+   "enrolled": 48
+  },
+  {
+   "room": "2F-6208",
+   "day": "월",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "임베디드시스템",
+   "code": "CSE1258",
+   "enrolled": 52
+  },
+  {
+   "room": "2F-6208",
+   "day": "월",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "알고리즘",
+   "code": "CSE4510",
+   "enrolled": 57
+  },
+  {
+   "room": "2F-6208",
+   "day": "월",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "전자회로",
+   "code": "CSE6105",
+   "enrolled": 45
+  },
+  {
+   "room": "2F-6208",
+   "day": "화",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "컴퓨터네트워크",
+   "code": "CSE5455",
+   "enrolled": 60
+  },
+  {
+   "room": "2F-6208",
+   "day": "화",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "객체지향프로그래밍",
+   "code": "CSE1030",
+   "enrolled": 58
+  },
+  {
+   "room": "2F-6208",
+   "day": "화",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "자료구조",
+   "code": "CSE2494",
+   "enrolled": 62
+  },
+  {
+   "room": "2F-6208",
+   "day": "화",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "운영체제",
+   "code": "CSE3906",
+   "enrolled": 59
+  },
+  {
+   "room": "2F-6208",
+   "day": "화",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "임베디드시스템",
+   "code": "CSE1258",
+   "enrolled": 55
+  },
+  {
+   "room": "2F-6208",
+   "day": "수",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "객체지향프로그래밍",
+   "code": "CSE1030",
+   "enrolled": 44
+  },
+  {
+   "room": "2F-6208",
+   "day": "목",
+   "start": "12:00",
+   "end": "13:15",
+   "course": "기계학습",
+   "code": "CSE9400",
+   "enrolled": 54
+  },
+  {
+   "room": "2F-6208",
+   "day": "목",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "프로그래밍기초",
+   "code": "CSE5074",
+   "enrolled": 43
+  },
+  {
+   "room": "2F-6208",
+   "day": "목",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "반도체공학",
+   "code": "CSE7879",
+   "enrolled": 61
+  },
+  {
+   "room": "2F-6208",
+   "day": "금",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "자료구조",
+   "code": "CSE2494",
+   "enrolled": 48
+  },
+  {
+   "room": "2F-6208",
+   "day": "금",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "운영체제",
+   "code": "CSE3906",
+   "enrolled": 43
+  },
+  {
+   "room": "2F-6208",
+   "day": "금",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "디지털논리회로",
+   "code": "CSE4199",
+   "enrolled": 60
+  },
+  {
+   "room": "2F-6208",
+   "day": "금",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "기계학습",
+   "code": "CSE9400",
+   "enrolled": 56
+  },
+  {
+   "room": "2F-6210",
+   "day": "월",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "회로이론",
+   "code": "CSE1036",
+   "enrolled": 42
+  },
+  {
+   "room": "2F-6210",
+   "day": "월",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "확률및통계",
+   "code": "CSE9095",
+   "enrolled": 63
+  },
+  {
+   "room": "2F-6210",
+   "day": "월",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "운영체제",
+   "code": "CSE3906",
+   "enrolled": 40
+  },
+  {
+   "room": "2F-6210",
+   "day": "월",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "전자회로",
+   "code": "CSE6105",
+   "enrolled": 60
+  },
+  {
+   "room": "2F-6210",
+   "day": "화",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "운영체제",
+   "code": "CSE3906",
+   "enrolled": 49
+  },
+  {
+   "room": "2F-6210",
+   "day": "화",
+   "start": "12:00",
+   "end": "13:15",
+   "course": "캡스톤디자인",
+   "code": "CSE2619",
+   "enrolled": 55
+  },
+  {
+   "room": "2F-6210",
+   "day": "화",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "컴퓨터구조",
+   "code": "CSE1279",
+   "enrolled": 46
+  },
+  {
+   "room": "2F-6210",
+   "day": "화",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "기계학습",
+   "code": "CSE9400",
+   "enrolled": 39
+  },
+  {
+   "room": "2F-6210",
+   "day": "수",
+   "start": "12:00",
+   "end": "13:15",
+   "course": "캡스톤디자인",
+   "code": "CSE2619",
+   "enrolled": 52
+  },
+  {
+   "room": "2F-6210",
+   "day": "수",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "전자기학",
+   "code": "CSE8708",
+   "enrolled": 47
+  },
+  {
+   "room": "2F-6210",
+   "day": "목",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "컴퓨터네트워크",
+   "code": "CSE5455",
+   "enrolled": 52
+  },
+  {
+   "room": "2F-6210",
+   "day": "목",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "전자회로",
+   "code": "CSE6105",
+   "enrolled": 41
+  },
+  {
+   "room": "2F-6210",
+   "day": "목",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "디지털논리회로",
+   "code": "CSE4199",
+   "enrolled": 55
+  },
+  {
+   "room": "2F-6210",
+   "day": "목",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "확률및통계",
+   "code": "CSE9095",
+   "enrolled": 43
+  },
+  {
+   "room": "2F-6210",
+   "day": "금",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "디지털논리회로",
+   "code": "CSE4199",
+   "enrolled": 44
+  },
+  {
+   "room": "2F-6210",
+   "day": "금",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "컴퓨터구조",
+   "code": "CSE1279",
+   "enrolled": 48
+  },
+  {
+   "room": "2F-6210",
+   "day": "금",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "임베디드시스템",
+   "code": "CSE1258",
+   "enrolled": 46
+  },
+  {
+   "room": "2F-6210",
+   "day": "금",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "기계학습",
+   "code": "CSE9400",
+   "enrolled": 59
+  },
+  {
+   "room": "2F-6201",
+   "day": "월",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "알고리즘",
+   "code": "CSE4510",
+   "enrolled": 60
+  },
+  {
+   "room": "2F-6201",
+   "day": "월",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "객체지향프로그래밍",
+   "code": "CSE1030",
+   "enrolled": 41
+  },
+  {
+   "room": "2F-6201",
+   "day": "월",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "반도체공학",
+   "code": "CSE7879",
+   "enrolled": 40
+  },
+  {
+   "room": "2F-6201",
+   "day": "화",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "캡스톤디자인",
+   "code": "CSE2619",
+   "enrolled": 52
+  },
+  {
+   "room": "2F-6201",
+   "day": "화",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "확률및통계",
+   "code": "CSE9095",
+   "enrolled": 59
+  },
+  {
+   "room": "2F-6201",
+   "day": "화",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "객체지향프로그래밍",
+   "code": "CSE1030",
+   "enrolled": 58
+  },
+  {
+   "room": "2F-6201",
+   "day": "수",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "디지털논리회로",
+   "code": "CSE4199",
+   "enrolled": 41
+  },
+  {
+   "room": "2F-6201",
+   "day": "수",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "확률및통계",
+   "code": "CSE9095",
+   "enrolled": 62
+  },
+  {
+   "room": "2F-6201",
+   "day": "수",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "캡스톤디자인",
+   "code": "CSE2619",
+   "enrolled": 37
+  },
+  {
+   "room": "2F-6201",
+   "day": "목",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "프로그래밍기초",
+   "code": "CSE5074",
+   "enrolled": 36
+  },
+  {
+   "room": "2F-6201",
+   "day": "목",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "임베디드시스템",
+   "code": "CSE1258",
+   "enrolled": 51
+  },
+  {
+   "room": "2F-6201",
+   "day": "목",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "캡스톤디자인",
+   "code": "CSE2619",
+   "enrolled": 54
+  },
+  {
+   "room": "2F-6201",
+   "day": "목",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "자료구조",
+   "code": "CSE2494",
+   "enrolled": 39
+  },
+  {
+   "room": "2F-6201",
+   "day": "금",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "반도체공학",
+   "code": "CSE7879",
+   "enrolled": 54
+  },
+  {
+   "room": "2F-6201",
+   "day": "금",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "전자회로",
+   "code": "CSE6105",
+   "enrolled": 56
+  },
+  {
+   "room": "2F-6201",
+   "day": "금",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "객체지향프로그래밍",
+   "code": "CSE1030",
+   "enrolled": 40
+  },
+  {
+   "room": "2F-6203-1",
+   "day": "월",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "확률및통계",
+   "code": "CSE9095",
+   "enrolled": 15
+  },
+  {
+   "room": "2F-6203-1",
+   "day": "월",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "반도체공학",
+   "code": "CSE7879",
+   "enrolled": 15
+  },
+  {
+   "room": "2F-6203-1",
+   "day": "월",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "디지털논리회로",
+   "code": "CSE4199",
+   "enrolled": 13
+  },
+  {
+   "room": "2F-6203-1",
+   "day": "월",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "컴퓨터구조",
+   "code": "CSE1279",
+   "enrolled": 16
+  },
+  {
+   "room": "2F-6203-1",
+   "day": "화",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "데이터베이스",
+   "code": "CSE6364",
+   "enrolled": 17
+  },
+  {
+   "room": "2F-6203-1",
+   "day": "화",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "신호및시스템",
+   "code": "CSE7707",
+   "enrolled": 18
+  },
+  {
+   "room": "2F-6203-1",
+   "day": "수",
+   "start": "12:00",
+   "end": "13:15",
+   "course": "기계학습",
+   "code": "CSE9400",
+   "enrolled": 16
+  },
+  {
+   "room": "2F-6203-1",
+   "day": "수",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "확률및통계",
+   "code": "CSE9095",
+   "enrolled": 20
+  },
+  {
+   "room": "2F-6203-1",
+   "day": "목",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "임베디드시스템",
+   "code": "CSE1258",
+   "enrolled": 14
+  },
+  {
+   "room": "2F-6203-1",
+   "day": "금",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "소프트웨어공학",
+   "code": "CSE6501",
+   "enrolled": 17
+  },
+  {
+   "room": "2F-6203-1",
+   "day": "금",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "캡스톤디자인",
+   "code": "CSE2619",
+   "enrolled": 12
+  },
+  {
+   "room": "2F-6203-1",
+   "day": "금",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "데이터베이스",
+   "code": "CSE6364",
+   "enrolled": 13
+  },
+  {
+   "room": "2F-6202",
+   "day": "월",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "신호및시스템",
+   "code": "CSE7707",
+   "enrolled": 17
+  },
+  {
+   "room": "2F-6202",
+   "day": "월",
+   "start": "12:00",
+   "end": "13:15",
+   "course": "디지털논리회로",
+   "code": "CSE4199",
+   "enrolled": 21
+  },
+  {
+   "room": "2F-6202",
+   "day": "월",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "반도체공학",
+   "code": "CSE7879",
+   "enrolled": 24
+  },
+  {
+   "room": "2F-6202",
+   "day": "화",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "알고리즘",
+   "code": "CSE4510",
+   "enrolled": 24
+  },
+  {
+   "room": "2F-6202",
+   "day": "수",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "컴퓨터구조",
+   "code": "CSE1279",
+   "enrolled": 25
+  },
+  {
+   "room": "2F-6202",
+   "day": "목",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "신호및시스템",
+   "code": "CSE7707",
+   "enrolled": 21
+  },
+  {
+   "room": "2F-6202",
+   "day": "목",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "공학수학",
+   "code": "CSE7263",
+   "enrolled": 22
+  },
+  {
+   "room": "2F-6202",
+   "day": "금",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "확률및통계",
+   "code": "CSE9095",
+   "enrolled": 18
+  },
+  {
+   "room": "2F-6202",
+   "day": "금",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "소프트웨어공학",
+   "code": "CSE6501",
+   "enrolled": 19
+  },
+  {
+   "room": "2F-6203",
+   "day": "월",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "신호및시스템",
+   "code": "CSE7707",
+   "enrolled": 14
+  },
+  {
+   "room": "2F-6203",
+   "day": "월",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "운영체제",
+   "code": "CSE3906",
+   "enrolled": 16
+  },
+  {
+   "room": "2F-6203",
+   "day": "월",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "임베디드시스템",
+   "code": "CSE1258",
+   "enrolled": 17
+  },
+  {
+   "room": "2F-6203",
+   "day": "화",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "운영체제",
+   "code": "CSE3906",
+   "enrolled": 20
+  },
+  {
+   "room": "2F-6203",
+   "day": "화",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "회로이론",
+   "code": "CSE1036",
+   "enrolled": 14
+  },
+  {
+   "room": "2F-6203",
+   "day": "수",
+   "start": "12:00",
+   "end": "13:15",
+   "course": "신호및시스템",
+   "code": "CSE7707",
+   "enrolled": 13
+  },
+  {
+   "room": "2F-6203",
+   "day": "수",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "프로그래밍기초",
+   "code": "CSE5074",
+   "enrolled": 14
+  },
+  {
+   "room": "2F-6203",
+   "day": "목",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "회로이론",
+   "code": "CSE1036",
+   "enrolled": 16
+  },
+  {
+   "room": "2F-6203",
+   "day": "목",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "전자회로",
+   "code": "CSE6105",
+   "enrolled": 13
+  },
+  {
+   "room": "2F-6203",
+   "day": "목",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "공학수학",
+   "code": "CSE7263",
+   "enrolled": 17
+  },
+  {
+   "room": "2F-6203",
+   "day": "목",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "프로그래밍기초",
+   "code": "CSE5074",
+   "enrolled": 16
+  },
+  {
+   "room": "2F-6203",
+   "day": "금",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "전자기학",
+   "code": "CSE8708",
+   "enrolled": 18
+  },
+  {
+   "room": "2F-6203",
+   "day": "금",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "컴퓨터구조",
+   "code": "CSE1279",
+   "enrolled": 17
+  },
+  {
+   "room": "2F-6203",
+   "day": "금",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "자료구조",
+   "code": "CSE2494",
+   "enrolled": 18
+  },
+  {
+   "room": "3F-6307",
+   "day": "월",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "전자회로",
+   "code": "CSE6105",
+   "enrolled": 56
+  },
+  {
+   "room": "3F-6307",
+   "day": "월",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "확률및통계",
+   "code": "CSE9095",
+   "enrolled": 81
+  },
+  {
+   "room": "3F-6307",
+   "day": "월",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "공학수학",
+   "code": "CSE7263",
+   "enrolled": 59
+  },
+  {
+   "room": "3F-6307",
+   "day": "월",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "알고리즘",
+   "code": "CSE4510",
+   "enrolled": 59
+  },
+  {
+   "room": "3F-6307",
+   "day": "화",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "임베디드시스템",
+   "code": "CSE1258",
+   "enrolled": 67
+  },
+  {
+   "room": "3F-6307",
+   "day": "화",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "전자기학",
+   "code": "CSE8708",
+   "enrolled": 57
+  },
+  {
+   "room": "3F-6307",
+   "day": "화",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "객체지향프로그래밍",
+   "code": "CSE1030",
+   "enrolled": 70
+  },
+  {
+   "room": "3F-6307",
+   "day": "화",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "운영체제",
+   "code": "CSE3906",
+   "enrolled": 61
+  },
+  {
+   "room": "3F-6307",
+   "day": "수",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "캡스톤디자인",
+   "code": "CSE2619",
+   "enrolled": 77
+  },
+  {
+   "room": "3F-6307",
+   "day": "수",
+   "start": "12:00",
+   "end": "13:15",
+   "course": "소프트웨어공학",
+   "code": "CSE6501",
+   "enrolled": 59
+  },
+  {
+   "room": "3F-6307",
+   "day": "수",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "프로그래밍기초",
+   "code": "CSE5074",
+   "enrolled": 52
+  },
+  {
+   "room": "3F-6307",
+   "day": "수",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "확률및통계",
+   "code": "CSE9095",
+   "enrolled": 73
+  },
+  {
+   "room": "3F-6307",
+   "day": "목",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "객체지향프로그래밍",
+   "code": "CSE1030",
+   "enrolled": 81
+  },
+  {
+   "room": "3F-6307",
+   "day": "목",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "임베디드시스템",
+   "code": "CSE1258",
+   "enrolled": 58
+  },
+  {
+   "room": "3F-6307",
+   "day": "목",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "객체지향프로그래밍",
+   "code": "CSE1030",
+   "enrolled": 64
+  },
+  {
+   "room": "3F-6307",
+   "day": "목",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "임베디드시스템",
+   "code": "CSE1258",
+   "enrolled": 78
+  },
+  {
+   "room": "3F-6307",
+   "day": "목",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "공학수학",
+   "code": "CSE7263",
+   "enrolled": 55
+  },
+  {
+   "room": "3F-6307",
+   "day": "금",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "알고리즘",
+   "code": "CSE4510",
+   "enrolled": 71
+  },
+  {
+   "room": "3F-6307",
+   "day": "금",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "임베디드시스템",
+   "code": "CSE1258",
+   "enrolled": 80
+  },
+  {
+   "room": "3F-6307",
+   "day": "금",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "데이터베이스",
+   "code": "CSE6364",
+   "enrolled": 79
+  },
+  {
+   "room": "3F-6308",
+   "day": "월",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "데이터베이스",
+   "code": "CSE6364",
+   "enrolled": 37
+  },
+  {
+   "room": "3F-6308",
+   "day": "월",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "프로그래밍기초",
+   "code": "CSE5074",
+   "enrolled": 36
+  },
+  {
+   "room": "3F-6308",
+   "day": "월",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "전자기학",
+   "code": "CSE8708",
+   "enrolled": 38
+  },
+  {
+   "room": "3F-6308",
+   "day": "월",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "회로이론",
+   "code": "CSE1036",
+   "enrolled": 42
+  },
+  {
+   "room": "3F-6308",
+   "day": "월",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "전자기학",
+   "code": "CSE8708",
+   "enrolled": 41
+  },
+  {
+   "room": "3F-6308",
+   "day": "화",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "반도체공학",
+   "code": "CSE7879",
+   "enrolled": 32
+  },
+  {
+   "room": "3F-6308",
+   "day": "화",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "확률및통계",
+   "code": "CSE9095",
+   "enrolled": 31
+  },
+  {
+   "room": "3F-6308",
+   "day": "화",
+   "start": "12:00",
+   "end": "13:15",
+   "course": "기계학습",
+   "code": "CSE9400",
+   "enrolled": 42
+  },
+  {
+   "room": "3F-6308",
+   "day": "화",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "임베디드시스템",
+   "code": "CSE1258",
+   "enrolled": 36
+  },
+  {
+   "room": "3F-6308",
+   "day": "수",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "신호및시스템",
+   "code": "CSE7707",
+   "enrolled": 40
+  },
+  {
+   "room": "3F-6308",
+   "day": "수",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "기계학습",
+   "code": "CSE9400",
+   "enrolled": 39
+  },
+  {
+   "room": "3F-6308",
+   "day": "목",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "자료구조",
+   "code": "CSE2494",
+   "enrolled": 36
+  },
+  {
+   "room": "3F-6308",
+   "day": "목",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "소프트웨어공학",
+   "code": "CSE6501",
+   "enrolled": 45
+  },
+  {
+   "room": "3F-6308",
+   "day": "목",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "데이터베이스",
+   "code": "CSE6364",
+   "enrolled": 38
+  },
+  {
+   "room": "3F-6308",
+   "day": "금",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "컴퓨터네트워크",
+   "code": "CSE5455",
+   "enrolled": 37
+  },
+  {
+   "room": "3F-6308",
+   "day": "금",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "임베디드시스템",
+   "code": "CSE1258",
+   "enrolled": 39
+  },
+  {
+   "room": "3F-6309",
+   "day": "월",
+   "start": "12:00",
+   "end": "13:15",
+   "course": "알고리즘",
+   "code": "CSE4510",
+   "enrolled": 69
+  },
+  {
+   "room": "3F-6309",
+   "day": "월",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "자료구조",
+   "code": "CSE2494",
+   "enrolled": 49
+  },
+  {
+   "room": "3F-6309",
+   "day": "화",
+   "start": "12:00",
+   "end": "13:15",
+   "course": "운영체제",
+   "code": "CSE3906",
+   "enrolled": 71
+  },
+  {
+   "room": "3F-6309",
+   "day": "화",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "회로이론",
+   "code": "CSE1036",
+   "enrolled": 60
+  },
+  {
+   "room": "3F-6309",
+   "day": "수",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "컴퓨터네트워크",
+   "code": "CSE5455",
+   "enrolled": 52
+  },
+  {
+   "room": "3F-6309",
+   "day": "수",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "신호및시스템",
+   "code": "CSE7707",
+   "enrolled": 66
+  },
+  {
+   "room": "3F-6309",
+   "day": "수",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "회로이론",
+   "code": "CSE1036",
+   "enrolled": 70
+  },
+  {
+   "room": "3F-6309",
+   "day": "수",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "컴퓨터구조",
+   "code": "CSE1279",
+   "enrolled": 78
+  },
+  {
+   "room": "3F-6309",
+   "day": "수",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "객체지향프로그래밍",
+   "code": "CSE1030",
+   "enrolled": 78
+  },
+  {
+   "room": "3F-6309",
+   "day": "목",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "객체지향프로그래밍",
+   "code": "CSE1030",
+   "enrolled": 65
+  },
+  {
+   "room": "3F-6309",
+   "day": "금",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "임베디드시스템",
+   "code": "CSE1258",
+   "enrolled": 64
+  },
+  {
+   "room": "3F-6309",
+   "day": "금",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "디지털논리회로",
+   "code": "CSE4199",
+   "enrolled": 73
+  },
+  {
+   "room": "3F-6309",
+   "day": "금",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "프로그래밍기초",
+   "code": "CSE5074",
+   "enrolled": 67
+  },
+  {
+   "room": "3F-6309",
+   "day": "금",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "자료구조",
+   "code": "CSE2494",
+   "enrolled": 49
+  },
+  {
+   "room": "3F-6308-1",
+   "day": "월",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "알고리즘",
+   "code": "CSE4510",
+   "enrolled": 33
+  },
+  {
+   "room": "3F-6308-1",
+   "day": "월",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "전자회로",
+   "code": "CSE6105",
+   "enrolled": 29
+  },
+  {
+   "room": "3F-6308-1",
+   "day": "화",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "전자회로",
+   "code": "CSE6105",
+   "enrolled": 40
+  },
+  {
+   "room": "3F-6308-1",
+   "day": "화",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "임베디드시스템",
+   "code": "CSE1258",
+   "enrolled": 31
+  },
+  {
+   "room": "3F-6308-1",
+   "day": "수",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "기계학습",
+   "code": "CSE9400",
+   "enrolled": 47
+  },
+  {
+   "room": "3F-6308-1",
+   "day": "목",
+   "start": "12:00",
+   "end": "13:15",
+   "course": "알고리즘",
+   "code": "CSE4510",
+   "enrolled": 46
+  },
+  {
+   "room": "3F-6308-1",
+   "day": "목",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "공학수학",
+   "code": "CSE7263",
+   "enrolled": 41
+  },
+  {
+   "room": "3F-6308-1",
+   "day": "목",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "데이터베이스",
+   "code": "CSE6364",
+   "enrolled": 41
+  },
+  {
+   "room": "3F-6308-1",
+   "day": "금",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "신호및시스템",
+   "code": "CSE7707",
+   "enrolled": 42
+  },
+  {
+   "room": "3F-6308-1",
+   "day": "금",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "소프트웨어공학",
+   "code": "CSE6501",
+   "enrolled": 39
+  },
+  {
+   "room": "3F-6308-1",
+   "day": "금",
+   "start": "12:00",
+   "end": "13:15",
+   "course": "프로그래밍기초",
+   "code": "CSE5074",
+   "enrolled": 47
+  },
+  {
+   "room": "3F-6308-1",
+   "day": "금",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "확률및통계",
+   "code": "CSE9095",
+   "enrolled": 38
+  },
+  {
+   "room": "3F-6302",
+   "day": "월",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "프로그래밍기초",
+   "code": "CSE5074",
+   "enrolled": 36
+  },
+  {
+   "room": "3F-6302",
+   "day": "월",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "디지털논리회로",
+   "code": "CSE4199",
+   "enrolled": 41
+  },
+  {
+   "room": "3F-6302",
+   "day": "월",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "자료구조",
+   "code": "CSE2494",
+   "enrolled": 43
+  },
+  {
+   "room": "3F-6302",
+   "day": "월",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "알고리즘",
+   "code": "CSE4510",
+   "enrolled": 34
+  },
+  {
+   "room": "3F-6302",
+   "day": "화",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "컴퓨터네트워크",
+   "code": "CSE5455",
+   "enrolled": 48
+  },
+  {
+   "room": "3F-6302",
+   "day": "화",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "자료구조",
+   "code": "CSE2494",
+   "enrolled": 55
+  },
+  {
+   "room": "3F-6302",
+   "day": "화",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "캡스톤디자인",
+   "code": "CSE2619",
+   "enrolled": 37
+  },
+  {
+   "room": "3F-6302",
+   "day": "화",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "객체지향프로그래밍",
+   "code": "CSE1030",
+   "enrolled": 52
+  },
+  {
+   "room": "3F-6302",
+   "day": "수",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "컴퓨터구조",
+   "code": "CSE1279",
+   "enrolled": 42
+  },
+  {
+   "room": "3F-6302",
+   "day": "수",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "반도체공학",
+   "code": "CSE7879",
+   "enrolled": 50
+  },
+  {
+   "room": "3F-6302",
+   "day": "수",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "프로그래밍기초",
+   "code": "CSE5074",
+   "enrolled": 47
+  },
+  {
+   "room": "3F-6302",
+   "day": "수",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "전자회로",
+   "code": "CSE6105",
+   "enrolled": 44
+  },
+  {
+   "room": "3F-6302",
+   "day": "목",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "컴퓨터네트워크",
+   "code": "CSE5455",
+   "enrolled": 45
+  },
+  {
+   "room": "3F-6302",
+   "day": "목",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "디지털논리회로",
+   "code": "CSE4199",
+   "enrolled": 47
+  },
+  {
+   "room": "3F-6302",
+   "day": "금",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "컴퓨터네트워크",
+   "code": "CSE5455",
+   "enrolled": 45
+  },
+  {
+   "room": "3F-6302",
+   "day": "금",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "확률및통계",
+   "code": "CSE9095",
+   "enrolled": 41
+  },
+  {
+   "room": "3F-6302",
+   "day": "금",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "캡스톤디자인",
+   "code": "CSE2619",
+   "enrolled": 46
+  },
+  {
+   "room": "3F-6302",
+   "day": "금",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "소프트웨어공학",
+   "code": "CSE6501",
+   "enrolled": 54
+  },
+  {
+   "room": "3F-6302",
+   "day": "금",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "캡스톤디자인",
+   "code": "CSE2619",
+   "enrolled": 43
+  },
+  {
+   "room": "3F-6304",
+   "day": "월",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "반도체공학",
+   "code": "CSE7879",
+   "enrolled": 20
+  },
+  {
+   "room": "3F-6304",
+   "day": "월",
+   "start": "12:00",
+   "end": "13:15",
+   "course": "자료구조",
+   "code": "CSE2494",
+   "enrolled": 15
+  },
+  {
+   "room": "3F-6304",
+   "day": "월",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "프로그래밍기초",
+   "code": "CSE5074",
+   "enrolled": 18
+  },
+  {
+   "room": "3F-6304",
+   "day": "화",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "회로이론",
+   "code": "CSE1036",
+   "enrolled": 17
+  },
+  {
+   "room": "3F-6304",
+   "day": "화",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "데이터베이스",
+   "code": "CSE6364",
+   "enrolled": 13
+  },
+  {
+   "room": "3F-6304",
+   "day": "화",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "캡스톤디자인",
+   "code": "CSE2619",
+   "enrolled": 20
+  },
+  {
+   "room": "3F-6304",
+   "day": "화",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "알고리즘",
+   "code": "CSE4510",
+   "enrolled": 20
+  },
+  {
+   "room": "3F-6304",
+   "day": "수",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "전자회로",
+   "code": "CSE6105",
+   "enrolled": 18
+  },
+  {
+   "room": "3F-6304",
+   "day": "수",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "자료구조",
+   "code": "CSE2494",
+   "enrolled": 18
+  },
+  {
+   "room": "3F-6304",
+   "day": "수",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "전자기학",
+   "code": "CSE8708",
+   "enrolled": 15
+  },
+  {
+   "room": "3F-6304",
+   "day": "수",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "프로그래밍기초",
+   "code": "CSE5074",
+   "enrolled": 17
+  },
+  {
+   "room": "3F-6304",
+   "day": "목",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "전자회로",
+   "code": "CSE6105",
+   "enrolled": 14
+  },
+  {
+   "room": "3F-6304",
+   "day": "목",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "디지털논리회로",
+   "code": "CSE4199",
+   "enrolled": 17
+  },
+  {
+   "room": "3F-6304",
+   "day": "목",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "객체지향프로그래밍",
+   "code": "CSE1030",
+   "enrolled": 19
+  },
+  {
+   "room": "3F-6304",
+   "day": "목",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "컴퓨터네트워크",
+   "code": "CSE5455",
+   "enrolled": 16
+  },
+  {
+   "room": "3F-6304",
+   "day": "금",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "컴퓨터구조",
+   "code": "CSE1279",
+   "enrolled": 19
+  },
+  {
+   "room": "3F-6303",
+   "day": "월",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "객체지향프로그래밍",
+   "code": "CSE1030",
+   "enrolled": 45
+  },
+  {
+   "room": "3F-6303",
+   "day": "월",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "신호및시스템",
+   "code": "CSE7707",
+   "enrolled": 45
+  },
+  {
+   "room": "3F-6303",
+   "day": "월",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "소프트웨어공학",
+   "code": "CSE6501",
+   "enrolled": 43
+  },
+  {
+   "room": "3F-6303",
+   "day": "월",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "반도체공학",
+   "code": "CSE7879",
+   "enrolled": 37
+  },
+  {
+   "room": "3F-6303",
+   "day": "화",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "확률및통계",
+   "code": "CSE9095",
+   "enrolled": 38
+  },
+  {
+   "room": "3F-6303",
+   "day": "화",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "운영체제",
+   "code": "CSE3906",
+   "enrolled": 38
+  },
+  {
+   "room": "3F-6303",
+   "day": "화",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "전자회로",
+   "code": "CSE6105",
+   "enrolled": 36
+  },
+  {
+   "room": "3F-6303",
+   "day": "화",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "기계학습",
+   "code": "CSE9400",
+   "enrolled": 30
+  },
+  {
+   "room": "3F-6303",
+   "day": "수",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "전자회로",
+   "code": "CSE6105",
+   "enrolled": 42
+  },
+  {
+   "room": "3F-6303",
+   "day": "수",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "확률및통계",
+   "code": "CSE9095",
+   "enrolled": 44
+  },
+  {
+   "room": "3F-6303",
+   "day": "목",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "운영체제",
+   "code": "CSE3906",
+   "enrolled": 37
+  },
+  {
+   "room": "3F-6303",
+   "day": "목",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "데이터베이스",
+   "code": "CSE6364",
+   "enrolled": 50
+  },
+  {
+   "room": "3F-6303",
+   "day": "목",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "운영체제",
+   "code": "CSE3906",
+   "enrolled": 47
+  },
+  {
+   "room": "3F-6303",
+   "day": "목",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "회로이론",
+   "code": "CSE1036",
+   "enrolled": 39
+  },
+  {
+   "room": "3F-6303",
+   "day": "목",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "신호및시스템",
+   "code": "CSE7707",
+   "enrolled": 31
+  },
+  {
+   "room": "3F-6303",
+   "day": "금",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "확률및통계",
+   "code": "CSE9095",
+   "enrolled": 46
+  },
+  {
+   "room": "3F-6303",
+   "day": "금",
+   "start": "12:00",
+   "end": "13:15",
+   "course": "운영체제",
+   "code": "CSE3906",
+   "enrolled": 48
+  },
+  {
+   "room": "3F-6303",
+   "day": "금",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "데이터베이스",
+   "code": "CSE6364",
+   "enrolled": 43
+  },
+  {
+   "room": "3F-6303",
+   "day": "금",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "알고리즘",
+   "code": "CSE4510",
+   "enrolled": 33
+  },
+  {
+   "room": "3F-6302-1",
+   "day": "월",
+   "start": "12:00",
+   "end": "13:15",
+   "course": "신호및시스템",
+   "code": "CSE7707",
+   "enrolled": 18
+  },
+  {
+   "room": "3F-6302-1",
+   "day": "화",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "신호및시스템",
+   "code": "CSE7707",
+   "enrolled": 13
+  },
+  {
+   "room": "3F-6302-1",
+   "day": "수",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "임베디드시스템",
+   "code": "CSE1258",
+   "enrolled": 21
+  },
+  {
+   "room": "3F-6302-1",
+   "day": "수",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "객체지향프로그래밍",
+   "code": "CSE1030",
+   "enrolled": 22
+  },
+  {
+   "room": "3F-6302-1",
+   "day": "목",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "프로그래밍기초",
+   "code": "CSE5074",
+   "enrolled": 18
+  },
+  {
+   "room": "3F-6302-1",
+   "day": "목",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "객체지향프로그래밍",
+   "code": "CSE1030",
+   "enrolled": 14
+  },
+  {
+   "room": "3F-6302-1",
+   "day": "목",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "반도체공학",
+   "code": "CSE7879",
+   "enrolled": 16
+  },
+  {
+   "room": "3F-6302-1",
+   "day": "금",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "운영체제",
+   "code": "CSE3906",
+   "enrolled": 16
+  },
+  {
+   "room": "3F-6302-1",
+   "day": "금",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "기계학습",
+   "code": "CSE9400",
+   "enrolled": 18
+  },
+  {
+   "room": "3F-6302-1",
+   "day": "금",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "반도체공학",
+   "code": "CSE7879",
+   "enrolled": 14
+  },
+  {
+   "room": "4F-6407",
+   "day": "월",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "전자회로",
+   "code": "CSE6105",
+   "enrolled": 38
+  },
+  {
+   "room": "4F-6407",
+   "day": "월",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "회로이론",
+   "code": "CSE1036",
+   "enrolled": 49
+  },
+  {
+   "room": "4F-6407",
+   "day": "월",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "확률및통계",
+   "code": "CSE9095",
+   "enrolled": 41
+  },
+  {
+   "room": "4F-6407",
+   "day": "월",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "공학수학",
+   "code": "CSE7263",
+   "enrolled": 52
+  },
+  {
+   "room": "4F-6407",
+   "day": "화",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "알고리즘",
+   "code": "CSE4510",
+   "enrolled": 56
+  },
+  {
+   "room": "4F-6407",
+   "day": "화",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "자료구조",
+   "code": "CSE2494",
+   "enrolled": 41
+  },
+  {
+   "room": "4F-6407",
+   "day": "화",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "데이터베이스",
+   "code": "CSE6364",
+   "enrolled": 58
+  },
+  {
+   "room": "4F-6407",
+   "day": "화",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "데이터베이스",
+   "code": "CSE6364",
+   "enrolled": 44
+  },
+  {
+   "room": "4F-6407",
+   "day": "수",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "회로이론",
+   "code": "CSE1036",
+   "enrolled": 39
+  },
+  {
+   "room": "4F-6407",
+   "day": "수",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "자료구조",
+   "code": "CSE2494",
+   "enrolled": 43
+  },
+  {
+   "room": "4F-6407",
+   "day": "수",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "전자회로",
+   "code": "CSE6105",
+   "enrolled": 41
+  },
+  {
+   "room": "4F-6407",
+   "day": "수",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "공학수학",
+   "code": "CSE7263",
+   "enrolled": 47
+  },
+  {
+   "room": "4F-6407",
+   "day": "목",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "캡스톤디자인",
+   "code": "CSE2619",
+   "enrolled": 51
+  },
+  {
+   "room": "4F-6407",
+   "day": "목",
+   "start": "12:00",
+   "end": "13:15",
+   "course": "프로그래밍기초",
+   "code": "CSE5074",
+   "enrolled": 60
+  },
+  {
+   "room": "4F-6407",
+   "day": "목",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "컴퓨터네트워크",
+   "code": "CSE5455",
+   "enrolled": 40
+  },
+  {
+   "room": "4F-6407",
+   "day": "금",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "자료구조",
+   "code": "CSE2494",
+   "enrolled": 57
+  },
+  {
+   "room": "4F-6407",
+   "day": "금",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "컴퓨터네트워크",
+   "code": "CSE5455",
+   "enrolled": 50
+  },
+  {
+   "room": "4F-6407",
+   "day": "금",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "프로그래밍기초",
+   "code": "CSE5074",
+   "enrolled": 55
+  },
+  {
+   "room": "4F-6407",
+   "day": "금",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "알고리즘",
+   "code": "CSE4510",
+   "enrolled": 47
+  },
+  {
+   "room": "4F-6408",
+   "day": "월",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "데이터베이스",
+   "code": "CSE6364",
+   "enrolled": 53
+  },
+  {
+   "room": "4F-6408",
+   "day": "월",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "데이터베이스",
+   "code": "CSE6364",
+   "enrolled": 43
+  },
+  {
+   "room": "4F-6408",
+   "day": "월",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "캡스톤디자인",
+   "code": "CSE2619",
+   "enrolled": 73
+  },
+  {
+   "room": "4F-6408",
+   "day": "화",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "회로이론",
+   "code": "CSE1036",
+   "enrolled": 47
+  },
+  {
+   "room": "4F-6408",
+   "day": "화",
+   "start": "12:00",
+   "end": "13:15",
+   "course": "신호및시스템",
+   "code": "CSE7707",
+   "enrolled": 64
+  },
+  {
+   "room": "4F-6408",
+   "day": "화",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "디지털논리회로",
+   "code": "CSE4199",
+   "enrolled": 50
+  },
+  {
+   "room": "4F-6408",
+   "day": "화",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "디지털논리회로",
+   "code": "CSE4199",
+   "enrolled": 54
+  },
+  {
+   "room": "4F-6408",
+   "day": "수",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "알고리즘",
+   "code": "CSE4510",
+   "enrolled": 66
+  },
+  {
+   "room": "4F-6408",
+   "day": "수",
+   "start": "12:00",
+   "end": "13:15",
+   "course": "알고리즘",
+   "code": "CSE4510",
+   "enrolled": 51
+  },
+  {
+   "room": "4F-6408",
+   "day": "수",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "컴퓨터구조",
+   "code": "CSE1279",
+   "enrolled": 70
+  },
+  {
+   "room": "4F-6408",
+   "day": "수",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "확률및통계",
+   "code": "CSE9095",
+   "enrolled": 48
+  },
+  {
+   "room": "4F-6408",
+   "day": "목",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "전자기학",
+   "code": "CSE8708",
+   "enrolled": 67
+  },
+  {
+   "room": "4F-6408",
+   "day": "목",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "소프트웨어공학",
+   "code": "CSE6501",
+   "enrolled": 45
+  },
+  {
+   "room": "4F-6408",
+   "day": "목",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "알고리즘",
+   "code": "CSE4510",
+   "enrolled": 70
+  },
+  {
+   "room": "4F-6408",
+   "day": "금",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "컴퓨터네트워크",
+   "code": "CSE5455",
+   "enrolled": 43
+  },
+  {
+   "room": "4F-6408",
+   "day": "금",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "프로그래밍기초",
+   "code": "CSE5074",
+   "enrolled": 59
+  },
+  {
+   "room": "4F-6408",
+   "day": "금",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "디지털논리회로",
+   "code": "CSE4199",
+   "enrolled": 45
+  },
+  {
+   "room": "4F-6410",
+   "day": "월",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "전자회로",
+   "code": "CSE6105",
+   "enrolled": 30
+  },
+  {
+   "room": "4F-6410",
+   "day": "월",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "컴퓨터구조",
+   "code": "CSE1279",
+   "enrolled": 24
+  },
+  {
+   "room": "4F-6410",
+   "day": "화",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "알고리즘",
+   "code": "CSE4510",
+   "enrolled": 24
+  },
+  {
+   "room": "4F-6410",
+   "day": "화",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "객체지향프로그래밍",
+   "code": "CSE1030",
+   "enrolled": 23
+  },
+  {
+   "room": "4F-6410",
+   "day": "수",
+   "start": "12:00",
+   "end": "13:15",
+   "course": "알고리즘",
+   "code": "CSE4510",
+   "enrolled": 38
+  },
+  {
+   "room": "4F-6410",
+   "day": "수",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "디지털논리회로",
+   "code": "CSE4199",
+   "enrolled": 33
+  },
+  {
+   "room": "4F-6410",
+   "day": "목",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "전자기학",
+   "code": "CSE8708",
+   "enrolled": 36
+  },
+  {
+   "room": "4F-6410",
+   "day": "금",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "확률및통계",
+   "code": "CSE9095",
+   "enrolled": 29
+  },
+  {
+   "room": "4F-6410",
+   "day": "금",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "공학수학",
+   "code": "CSE7263",
+   "enrolled": 36
+  },
+  {
+   "room": "4F-6410",
+   "day": "금",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "소프트웨어공학",
+   "code": "CSE6501",
+   "enrolled": 38
+  },
+  {
+   "room": "4F-6403-1",
+   "day": "월",
+   "start": "12:00",
+   "end": "13:15",
+   "course": "임베디드시스템",
+   "code": "CSE1258",
+   "enrolled": 17
+  },
+  {
+   "room": "4F-6403-1",
+   "day": "월",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "전자기학",
+   "code": "CSE8708",
+   "enrolled": 15
+  },
+  {
+   "room": "4F-6403-1",
+   "day": "화",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "소프트웨어공학",
+   "code": "CSE6501",
+   "enrolled": 17
+  },
+  {
+   "room": "4F-6403-1",
+   "day": "화",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "컴퓨터구조",
+   "code": "CSE1279",
+   "enrolled": 17
+  },
+  {
+   "room": "4F-6403-1",
+   "day": "화",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "확률및통계",
+   "code": "CSE9095",
+   "enrolled": 15
+  },
+  {
+   "room": "4F-6403-1",
+   "day": "수",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "소프트웨어공학",
+   "code": "CSE6501",
+   "enrolled": 12
+  },
+  {
+   "room": "4F-6403-1",
+   "day": "수",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "공학수학",
+   "code": "CSE7263",
+   "enrolled": 20
+  },
+  {
+   "room": "4F-6403-1",
+   "day": "목",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "전자기학",
+   "code": "CSE8708",
+   "enrolled": 19
+  },
+  {
+   "room": "4F-6403-1",
+   "day": "금",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "임베디드시스템",
+   "code": "CSE1258",
+   "enrolled": 15
+  },
+  {
+   "room": "4F-6403-1",
+   "day": "금",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "소프트웨어공학",
+   "code": "CSE6501",
+   "enrolled": 19
+  },
+  {
+   "room": "4F-6403",
+   "day": "월",
+   "start": "12:00",
+   "end": "13:15",
+   "course": "데이터베이스",
+   "code": "CSE6364",
+   "enrolled": 20
+  },
+  {
+   "room": "4F-6403",
+   "day": "월",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "기계학습",
+   "code": "CSE9400",
+   "enrolled": 20
+  },
+  {
+   "room": "4F-6403",
+   "day": "화",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "컴퓨터네트워크",
+   "code": "CSE5455",
+   "enrolled": 20
+  },
+  {
+   "room": "4F-6403",
+   "day": "화",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "객체지향프로그래밍",
+   "code": "CSE1030",
+   "enrolled": 14
+  },
+  {
+   "room": "4F-6403",
+   "day": "화",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "알고리즘",
+   "code": "CSE4510",
+   "enrolled": 19
+  },
+  {
+   "room": "4F-6403",
+   "day": "수",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "자료구조",
+   "code": "CSE2494",
+   "enrolled": 20
+  },
+  {
+   "room": "4F-6403",
+   "day": "수",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "알고리즘",
+   "code": "CSE4510",
+   "enrolled": 14
+  },
+  {
+   "room": "4F-6403",
+   "day": "수",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "전자기학",
+   "code": "CSE8708",
+   "enrolled": 18
+  },
+  {
+   "room": "4F-6403",
+   "day": "목",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "캡스톤디자인",
+   "code": "CSE2619",
+   "enrolled": 18
+  },
+  {
+   "room": "4F-6403",
+   "day": "목",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "확률및통계",
+   "code": "CSE9095",
+   "enrolled": 15
+  },
+  {
+   "room": "4F-6403",
+   "day": "금",
+   "start": "12:00",
+   "end": "13:15",
+   "course": "임베디드시스템",
+   "code": "CSE1258",
+   "enrolled": 17
+  },
+  {
+   "room": "4F-6403",
+   "day": "금",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "알고리즘",
+   "code": "CSE4510",
+   "enrolled": 14
+  },
+  {
+   "room": "4F-6402",
+   "day": "월",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "반도체공학",
+   "code": "CSE7879",
+   "enrolled": 15
+  },
+  {
+   "room": "4F-6402",
+   "day": "월",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "컴퓨터구조",
+   "code": "CSE1279",
+   "enrolled": 23
+  },
+  {
+   "room": "4F-6402",
+   "day": "월",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "신호및시스템",
+   "code": "CSE7707",
+   "enrolled": 22
+  },
+  {
+   "room": "4F-6402",
+   "day": "화",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "컴퓨터네트워크",
+   "code": "CSE5455",
+   "enrolled": 19
+  },
+  {
+   "room": "4F-6402",
+   "day": "화",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "디지털논리회로",
+   "code": "CSE4199",
+   "enrolled": 16
+  },
+  {
+   "room": "4F-6402",
+   "day": "화",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "캡스톤디자인",
+   "code": "CSE2619",
+   "enrolled": 25
+  },
+  {
+   "room": "4F-6402",
+   "day": "수",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "자료구조",
+   "code": "CSE2494",
+   "enrolled": 19
+  },
+  {
+   "room": "4F-6402",
+   "day": "수",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "자료구조",
+   "code": "CSE2494",
+   "enrolled": 25
+  },
+  {
+   "room": "4F-6402",
+   "day": "수",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "객체지향프로그래밍",
+   "code": "CSE1030",
+   "enrolled": 17
+  },
+  {
+   "room": "4F-6402",
+   "day": "수",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "컴퓨터구조",
+   "code": "CSE1279",
+   "enrolled": 26
+  },
+  {
+   "room": "4F-6402",
+   "day": "목",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "자료구조",
+   "code": "CSE2494",
+   "enrolled": 25
+  },
+  {
+   "room": "4F-6402",
+   "day": "목",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "반도체공학",
+   "code": "CSE7879",
+   "enrolled": 19
+  },
+  {
+   "room": "4F-6402",
+   "day": "목",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "객체지향프로그래밍",
+   "code": "CSE1030",
+   "enrolled": 22
+  },
+  {
+   "room": "4F-6402",
+   "day": "목",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "프로그래밍기초",
+   "code": "CSE5074",
+   "enrolled": 16
+  },
+  {
+   "room": "4F-6402",
+   "day": "금",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "컴퓨터구조",
+   "code": "CSE1279",
+   "enrolled": 16
+  },
+  {
+   "room": "4F-6401",
+   "day": "월",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "운영체제",
+   "code": "CSE3906",
+   "enrolled": 55
+  },
+  {
+   "room": "4F-6401",
+   "day": "월",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "디지털논리회로",
+   "code": "CSE4199",
+   "enrolled": 57
+  },
+  {
+   "room": "4F-6401",
+   "day": "월",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "객체지향프로그래밍",
+   "code": "CSE1030",
+   "enrolled": 61
+  },
+  {
+   "room": "4F-6401",
+   "day": "월",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "전자기학",
+   "code": "CSE8708",
+   "enrolled": 53
+  },
+  {
+   "room": "4F-6401",
+   "day": "화",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "신호및시스템",
+   "code": "CSE7707",
+   "enrolled": 37
+  },
+  {
+   "room": "4F-6401",
+   "day": "화",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "프로그래밍기초",
+   "code": "CSE5074",
+   "enrolled": 39
+  },
+  {
+   "room": "4F-6401",
+   "day": "화",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "컴퓨터구조",
+   "code": "CSE1279",
+   "enrolled": 44
+  },
+  {
+   "room": "4F-6401",
+   "day": "화",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "데이터베이스",
+   "code": "CSE6364",
+   "enrolled": 61
+  },
+  {
+   "room": "4F-6401",
+   "day": "수",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "프로그래밍기초",
+   "code": "CSE5074",
+   "enrolled": 37
+  },
+  {
+   "room": "4F-6401",
+   "day": "수",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "자료구조",
+   "code": "CSE2494",
+   "enrolled": 40
+  },
+  {
+   "room": "4F-6401",
+   "day": "목",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "임베디드시스템",
+   "code": "CSE1258",
+   "enrolled": 47
+  },
+  {
+   "room": "4F-6401",
+   "day": "목",
+   "start": "12:00",
+   "end": "13:15",
+   "course": "소프트웨어공학",
+   "code": "CSE6501",
+   "enrolled": 61
+  },
+  {
+   "room": "4F-6401",
+   "day": "목",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "공학수학",
+   "code": "CSE7263",
+   "enrolled": 43
+  },
+  {
+   "room": "4F-6401",
+   "day": "목",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "데이터베이스",
+   "code": "CSE6364",
+   "enrolled": 58
+  },
+  {
+   "room": "4F-6401",
+   "day": "금",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "전자기학",
+   "code": "CSE8708",
+   "enrolled": 58
+  },
+  {
+   "room": "4F-6401",
+   "day": "금",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "회로이론",
+   "code": "CSE1036",
+   "enrolled": 49
+  },
+  {
+   "room": "4F-6401",
+   "day": "금",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "자료구조",
+   "code": "CSE2494",
+   "enrolled": 59
+  },
+  {
+   "room": "4F-6401",
+   "day": "금",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "컴퓨터구조",
+   "code": "CSE1279",
+   "enrolled": 43
+  },
+  {
+   "room": "5F-6508",
+   "day": "월",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "캡스톤디자인",
+   "code": "CSE2619",
+   "enrolled": 39
+  },
+  {
+   "room": "5F-6508",
+   "day": "월",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "컴퓨터구조",
+   "code": "CSE1279",
+   "enrolled": 35
+  },
+  {
+   "room": "5F-6508",
+   "day": "화",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "컴퓨터구조",
+   "code": "CSE1279",
+   "enrolled": 47
+  },
+  {
+   "room": "5F-6508",
+   "day": "화",
+   "start": "12:00",
+   "end": "13:15",
+   "course": "컴퓨터구조",
+   "code": "CSE1279",
+   "enrolled": 37
+  },
+  {
+   "room": "5F-6508",
+   "day": "화",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "자료구조",
+   "code": "CSE2494",
+   "enrolled": 46
+  },
+  {
+   "room": "5F-6508",
+   "day": "수",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "디지털논리회로",
+   "code": "CSE4199",
+   "enrolled": 44
+  },
+  {
+   "room": "5F-6508",
+   "day": "수",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "회로이론",
+   "code": "CSE1036",
+   "enrolled": 28
+  },
+  {
+   "room": "5F-6508",
+   "day": "수",
+   "start": "12:00",
+   "end": "13:15",
+   "course": "운영체제",
+   "code": "CSE3906",
+   "enrolled": 34
+  },
+  {
+   "room": "5F-6508",
+   "day": "수",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "전자기학",
+   "code": "CSE8708",
+   "enrolled": 32
+  },
+  {
+   "room": "5F-6508",
+   "day": "수",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "컴퓨터구조",
+   "code": "CSE1279",
+   "enrolled": 44
+  },
+  {
+   "room": "5F-6508",
+   "day": "목",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "컴퓨터구조",
+   "code": "CSE1279",
+   "enrolled": 29
+  },
+  {
+   "room": "5F-6508",
+   "day": "목",
+   "start": "12:00",
+   "end": "13:15",
+   "course": "컴퓨터네트워크",
+   "code": "CSE5455",
+   "enrolled": 31
+  },
+  {
+   "room": "5F-6508",
+   "day": "목",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "디지털논리회로",
+   "code": "CSE4199",
+   "enrolled": 45
+  },
+  {
+   "room": "5F-6508",
+   "day": "목",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "반도체공학",
+   "code": "CSE7879",
+   "enrolled": 43
+  },
+  {
+   "room": "5F-6508",
+   "day": "금",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "데이터베이스",
+   "code": "CSE6364",
+   "enrolled": 39
+  },
+  {
+   "room": "5F-6508",
+   "day": "금",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "전자기학",
+   "code": "CSE8708",
+   "enrolled": 40
+  },
+  {
+   "room": "5F-6508",
+   "day": "금",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "전자회로",
+   "code": "CSE6105",
+   "enrolled": 41
+  },
+  {
+   "room": "5F-6508-1",
+   "day": "월",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "기계학습",
+   "code": "CSE9400",
+   "enrolled": 39
+  },
+  {
+   "room": "5F-6508-1",
+   "day": "월",
+   "start": "12:00",
+   "end": "13:15",
+   "course": "반도체공학",
+   "code": "CSE7879",
+   "enrolled": 32
+  },
+  {
+   "room": "5F-6508-1",
+   "day": "월",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "알고리즘",
+   "code": "CSE4510",
+   "enrolled": 36
+  },
+  {
+   "room": "5F-6508-1",
+   "day": "월",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "신호및시스템",
+   "code": "CSE7707",
+   "enrolled": 32
+  },
+  {
+   "room": "5F-6508-1",
+   "day": "화",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "전자기학",
+   "code": "CSE8708",
+   "enrolled": 45
+  },
+  {
+   "room": "5F-6508-1",
+   "day": "수",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "확률및통계",
+   "code": "CSE9095",
+   "enrolled": 41
+  },
+  {
+   "room": "5F-6508-1",
+   "day": "수",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "컴퓨터네트워크",
+   "code": "CSE5455",
+   "enrolled": 46
+  },
+  {
+   "room": "5F-6508-1",
+   "day": "수",
+   "start": "12:00",
+   "end": "13:15",
+   "course": "객체지향프로그래밍",
+   "code": "CSE1030",
+   "enrolled": 31
+  },
+  {
+   "room": "5F-6508-1",
+   "day": "수",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "알고리즘",
+   "code": "CSE4510",
+   "enrolled": 34
+  },
+  {
+   "room": "5F-6508-1",
+   "day": "수",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "신호및시스템",
+   "code": "CSE7707",
+   "enrolled": 30
+  },
+  {
+   "room": "5F-6508-1",
+   "day": "목",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "소프트웨어공학",
+   "code": "CSE6501",
+   "enrolled": 35
+  },
+  {
+   "room": "5F-6508-1",
+   "day": "목",
+   "start": "12:00",
+   "end": "13:15",
+   "course": "전자기학",
+   "code": "CSE8708",
+   "enrolled": 39
+  },
+  {
+   "room": "5F-6508-1",
+   "day": "목",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "알고리즘",
+   "code": "CSE4510",
+   "enrolled": 41
+  },
+  {
+   "room": "5F-6508-1",
+   "day": "목",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "컴퓨터네트워크",
+   "code": "CSE5455",
+   "enrolled": 48
+  },
+  {
+   "room": "5F-6508-1",
+   "day": "금",
+   "start": "12:00",
+   "end": "13:15",
+   "course": "기계학습",
+   "code": "CSE9400",
+   "enrolled": 47
+  },
+  {
+   "room": "5F-6508-1",
+   "day": "금",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "공학수학",
+   "code": "CSE7263",
+   "enrolled": 31
+  },
+  {
+   "room": "5F-6509",
+   "day": "월",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "회로이론",
+   "code": "CSE1036",
+   "enrolled": 51
+  },
+  {
+   "room": "5F-6509",
+   "day": "월",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "알고리즘",
+   "code": "CSE4510",
+   "enrolled": 51
+  },
+  {
+   "room": "5F-6509",
+   "day": "월",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "디지털논리회로",
+   "code": "CSE4199",
+   "enrolled": 58
+  },
+  {
+   "room": "5F-6509",
+   "day": "월",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "객체지향프로그래밍",
+   "code": "CSE1030",
+   "enrolled": 48
+  },
+  {
+   "room": "5F-6509",
+   "day": "화",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "회로이론",
+   "code": "CSE1036",
+   "enrolled": 59
+  },
+  {
+   "room": "5F-6509",
+   "day": "화",
+   "start": "12:00",
+   "end": "13:15",
+   "course": "소프트웨어공학",
+   "code": "CSE6501",
+   "enrolled": 63
+  },
+  {
+   "room": "5F-6509",
+   "day": "화",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "전자기학",
+   "code": "CSE8708",
+   "enrolled": 52
+  },
+  {
+   "room": "5F-6509",
+   "day": "화",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "소프트웨어공학",
+   "code": "CSE6501",
+   "enrolled": 66
+  },
+  {
+   "room": "5F-6509",
+   "day": "화",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "운영체제",
+   "code": "CSE3906",
+   "enrolled": 56
+  },
+  {
+   "room": "5F-6509",
+   "day": "수",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "소프트웨어공학",
+   "code": "CSE6501",
+   "enrolled": 61
+  },
+  {
+   "room": "5F-6509",
+   "day": "수",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "객체지향프로그래밍",
+   "code": "CSE1030",
+   "enrolled": 54
+  },
+  {
+   "room": "5F-6509",
+   "day": "수",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "기계학습",
+   "code": "CSE9400",
+   "enrolled": 53
+  },
+  {
+   "room": "5F-6509",
+   "day": "수",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "소프트웨어공학",
+   "code": "CSE6501",
+   "enrolled": 46
+  },
+  {
+   "room": "5F-6509",
+   "day": "목",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "전자기학",
+   "code": "CSE8708",
+   "enrolled": 50
+  },
+  {
+   "room": "5F-6509",
+   "day": "목",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "회로이론",
+   "code": "CSE1036",
+   "enrolled": 54
+  },
+  {
+   "room": "5F-6509",
+   "day": "목",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "운영체제",
+   "code": "CSE3906",
+   "enrolled": 53
+  },
+  {
+   "room": "5F-6509",
+   "day": "금",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "전자회로",
+   "code": "CSE6105",
+   "enrolled": 49
+  },
+  {
+   "room": "5F-6509",
+   "day": "금",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "운영체제",
+   "code": "CSE3906",
+   "enrolled": 57
+  },
+  {
+   "room": "5F-6509",
+   "day": "금",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "확률및통계",
+   "code": "CSE9095",
+   "enrolled": 52
+  },
+  {
+   "room": "5F-6509",
+   "day": "금",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "반도체공학",
+   "code": "CSE7879",
+   "enrolled": 54
+  },
+  {
+   "room": "5F-6504",
+   "day": "월",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "운영체제",
+   "code": "CSE3906",
+   "enrolled": 19
+  },
+  {
+   "room": "5F-6504",
+   "day": "월",
+   "start": "12:00",
+   "end": "13:15",
+   "course": "프로그래밍기초",
+   "code": "CSE5074",
+   "enrolled": 12
+  },
+  {
+   "room": "5F-6504",
+   "day": "월",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "반도체공학",
+   "code": "CSE7879",
+   "enrolled": 17
+  },
+  {
+   "room": "5F-6504",
+   "day": "화",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "프로그래밍기초",
+   "code": "CSE5074",
+   "enrolled": 17
+  },
+  {
+   "room": "5F-6504",
+   "day": "화",
+   "start": "12:00",
+   "end": "13:15",
+   "course": "공학수학",
+   "code": "CSE7263",
+   "enrolled": 18
+  },
+  {
+   "room": "5F-6504",
+   "day": "화",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "임베디드시스템",
+   "code": "CSE1258",
+   "enrolled": 15
+  },
+  {
+   "room": "5F-6504",
+   "day": "수",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "임베디드시스템",
+   "code": "CSE1258",
+   "enrolled": 19
+  },
+  {
+   "room": "5F-6504",
+   "day": "수",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "회로이론",
+   "code": "CSE1036",
+   "enrolled": 13
+  },
+  {
+   "room": "5F-6504",
+   "day": "수",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "디지털논리회로",
+   "code": "CSE4199",
+   "enrolled": 18
+  },
+  {
+   "room": "5F-6504",
+   "day": "목",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "알고리즘",
+   "code": "CSE4510",
+   "enrolled": 18
+  },
+  {
+   "room": "5F-6504",
+   "day": "목",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "컴퓨터구조",
+   "code": "CSE1279",
+   "enrolled": 16
+  },
+  {
+   "room": "5F-6504",
+   "day": "목",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "객체지향프로그래밍",
+   "code": "CSE1030",
+   "enrolled": 17
+  },
+  {
+   "room": "5F-6504",
+   "day": "목",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "반도체공학",
+   "code": "CSE7879",
+   "enrolled": 15
+  },
+  {
+   "room": "5F-6504",
+   "day": "금",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "전자기학",
+   "code": "CSE8708",
+   "enrolled": 19
+  },
+  {
+   "room": "5F-6503",
+   "day": "월",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "임베디드시스템",
+   "code": "CSE1258",
+   "enrolled": 36
+  },
+  {
+   "room": "5F-6503",
+   "day": "월",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "객체지향프로그래밍",
+   "code": "CSE1030",
+   "enrolled": 51
+  },
+  {
+   "room": "5F-6503",
+   "day": "월",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "캡스톤디자인",
+   "code": "CSE2619",
+   "enrolled": 40
+  },
+  {
+   "room": "5F-6503",
+   "day": "월",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "소프트웨어공학",
+   "code": "CSE6501",
+   "enrolled": 49
+  },
+  {
+   "room": "5F-6503",
+   "day": "화",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "신호및시스템",
+   "code": "CSE7707",
+   "enrolled": 41
+  },
+  {
+   "room": "5F-6503",
+   "day": "화",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "프로그래밍기초",
+   "code": "CSE5074",
+   "enrolled": 32
+  },
+  {
+   "room": "5F-6503",
+   "day": "화",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "반도체공학",
+   "code": "CSE7879",
+   "enrolled": 33
+  },
+  {
+   "room": "5F-6503",
+   "day": "수",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "확률및통계",
+   "code": "CSE9095",
+   "enrolled": 50
+  },
+  {
+   "room": "5F-6503",
+   "day": "목",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "임베디드시스템",
+   "code": "CSE1258",
+   "enrolled": 43
+  },
+  {
+   "room": "5F-6503",
+   "day": "목",
+   "start": "12:00",
+   "end": "13:15",
+   "course": "반도체공학",
+   "code": "CSE7879",
+   "enrolled": 33
+  },
+  {
+   "room": "5F-6503",
+   "day": "목",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "프로그래밍기초",
+   "code": "CSE5074",
+   "enrolled": 46
+  },
+  {
+   "room": "5F-6503",
+   "day": "목",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "컴퓨터구조",
+   "code": "CSE1279",
+   "enrolled": 51
+  },
+  {
+   "room": "5F-6503",
+   "day": "금",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "기계학습",
+   "code": "CSE9400",
+   "enrolled": 41
+  },
+  {
+   "room": "5F-6503",
+   "day": "금",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "확률및통계",
+   "code": "CSE9095",
+   "enrolled": 50
+  },
+  {
+   "room": "5F-6503",
+   "day": "금",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "캡스톤디자인",
+   "code": "CSE2619",
+   "enrolled": 42
+  },
+  {
+   "room": "5F-6503",
+   "day": "금",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "캡스톤디자인",
+   "code": "CSE2619",
+   "enrolled": 31
+  },
+  {
+   "room": "5F-6502-1",
+   "day": "월",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "소프트웨어공학",
+   "code": "CSE6501",
+   "enrolled": 18
+  },
+  {
+   "room": "5F-6502-1",
+   "day": "월",
+   "start": "12:00",
+   "end": "13:15",
+   "course": "공학수학",
+   "code": "CSE7263",
+   "enrolled": 21
+  },
+  {
+   "room": "5F-6502-1",
+   "day": "월",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "데이터베이스",
+   "code": "CSE6364",
+   "enrolled": 15
+  },
+  {
+   "room": "5F-6502-1",
+   "day": "화",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "운영체제",
+   "code": "CSE3906",
+   "enrolled": 15
+  },
+  {
+   "room": "5F-6502-1",
+   "day": "화",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "반도체공학",
+   "code": "CSE7879",
+   "enrolled": 21
+  },
+  {
+   "room": "5F-6502-1",
+   "day": "화",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "반도체공학",
+   "code": "CSE7879",
+   "enrolled": 15
+  },
+  {
+   "room": "5F-6502-1",
+   "day": "화",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "디지털논리회로",
+   "code": "CSE4199",
+   "enrolled": 20
+  },
+  {
+   "room": "5F-6502-1",
+   "day": "수",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "디지털논리회로",
+   "code": "CSE4199",
+   "enrolled": 21
+  },
+  {
+   "room": "5F-6502-1",
+   "day": "수",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "기계학습",
+   "code": "CSE9400",
+   "enrolled": 22
+  },
+  {
+   "room": "5F-6502-1",
+   "day": "목",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "컴퓨터구조",
+   "code": "CSE1279",
+   "enrolled": 14
+  },
+  {
+   "room": "5F-6502-1",
+   "day": "목",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "반도체공학",
+   "code": "CSE7879",
+   "enrolled": 19
+  },
+  {
+   "room": "5F-6502-1",
+   "day": "목",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "회로이론",
+   "code": "CSE1036",
+   "enrolled": 15
+  },
+  {
+   "room": "5F-6502-1",
+   "day": "금",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "디지털논리회로",
+   "code": "CSE4199",
+   "enrolled": 21
+  },
+  {
+   "room": "5F-6502-1",
+   "day": "금",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "프로그래밍기초",
+   "code": "CSE5074",
+   "enrolled": 18
+  },
+  {
+   "room": "5F-6502-1",
+   "day": "금",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "확률및통계",
+   "code": "CSE9095",
+   "enrolled": 22
+  },
+  {
+   "room": "5F-6502",
+   "day": "월",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "객체지향프로그래밍",
+   "code": "CSE1030",
+   "enrolled": 58
+  },
+  {
+   "room": "5F-6502",
+   "day": "월",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "객체지향프로그래밍",
+   "code": "CSE1030",
+   "enrolled": 45
+  },
+  {
+   "room": "5F-6502",
+   "day": "월",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "소프트웨어공학",
+   "code": "CSE6501",
+   "enrolled": 55
+  },
+  {
+   "room": "5F-6502",
+   "day": "월",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "공학수학",
+   "code": "CSE7263",
+   "enrolled": 39
+  },
+  {
+   "room": "5F-6502",
+   "day": "화",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "확률및통계",
+   "code": "CSE9095",
+   "enrolled": 50
+  },
+  {
+   "room": "5F-6502",
+   "day": "화",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "공학수학",
+   "code": "CSE7263",
+   "enrolled": 37
+  },
+  {
+   "room": "5F-6502",
+   "day": "화",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "전자회로",
+   "code": "CSE6105",
+   "enrolled": 48
+  },
+  {
+   "room": "5F-6502",
+   "day": "화",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "컴퓨터구조",
+   "code": "CSE1279",
+   "enrolled": 56
+  },
+  {
+   "room": "5F-6502",
+   "day": "수",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "컴퓨터네트워크",
+   "code": "CSE5455",
+   "enrolled": 50
+  },
+  {
+   "room": "5F-6502",
+   "day": "수",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "데이터베이스",
+   "code": "CSE6364",
+   "enrolled": 37
+  },
+  {
+   "room": "5F-6502",
+   "day": "목",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "운영체제",
+   "code": "CSE3906",
+   "enrolled": 46
+  },
+  {
+   "room": "5F-6502",
+   "day": "목",
+   "start": "13:30",
+   "end": "14:45",
+   "course": "컴퓨터구조",
+   "code": "CSE1279",
+   "enrolled": 43
+  },
+  {
+   "room": "5F-6502",
+   "day": "목",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "확률및통계",
+   "code": "CSE9095",
+   "enrolled": 55
+  },
+  {
+   "room": "5F-6502",
+   "day": "금",
+   "start": "09:00",
+   "end": "10:15",
+   "course": "전자회로",
+   "code": "CSE6105",
+   "enrolled": 52
+  },
+  {
+   "room": "5F-6502",
+   "day": "금",
+   "start": "10:30",
+   "end": "11:45",
+   "course": "신호및시스템",
+   "code": "CSE7707",
+   "enrolled": 42
+  },
+  {
+   "room": "5F-6502",
+   "day": "금",
+   "start": "15:00",
+   "end": "16:15",
+   "course": "확률및통계",
+   "code": "CSE9095",
+   "enrolled": 55
+  },
+  {
+   "room": "5F-6502",
+   "day": "금",
+   "start": "16:30",
+   "end": "17:45",
+   "course": "컴퓨터네트워크",
+   "code": "CSE5455",
+   "enrolled": 43
+  }
+ ]
+}

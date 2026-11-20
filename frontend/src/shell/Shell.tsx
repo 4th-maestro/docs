@@ -1,0 +1,163 @@
+import { useContext, useEffect, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
+import { AlertTriangle, BarChart3, Briefcase, Building2, CheckCircle2, ChevronDown, LayoutDashboard, LogOut, Menu, Plus, Settings, X } from 'lucide-react'
+import { addCustom, buildingsChanged } from '../custom'
+import { AUTH_ON, currentEmail, isAdmin, signOut } from '../auth/cognito'
+import { MeContext, ROLE } from '../auth/me'
+import { LEVEL } from '../portfolio/level'
+import type { BuildingCard } from '../types'
+import logo from '../../assets/ege.svg'
+import './shell.css'
+
+import { href, type FloorSummary, type Tab } from './route'
+import { Sk } from '../skeleton/Skeleton'
+import CountUp from '../motion/CountUp'
+
+// 화면 틀: 상단바(로고, 건물 토글, 운영·전력 분석 탭, 오른쪽 도구) + 왼쪽 사이드바(전체 현황, 층) + 본문
+// - 사이드바: 743px 이하에서 숨기고 상단바 메뉴 버튼으로 여닫음
+export function Layout({ building, tab, buildings, tools, side, admin, settings, children }: {
+  building: string | null; tab: Tab; buildings: BuildingCard[]; tools: ReactNode; side?: ReactNode; admin?: boolean; settings?: boolean; children: ReactNode
+}) {
+  const [drawer, setDrawer] = useState(false)
+  const me = useContext(MeContext)
+  // 주소(건물·층·탭) 변경 시 열린 메뉴 닫기
+  useEffect(() => {
+    const close = () => setDrawer(false)
+    window.addEventListener('hashchange', close)
+    return () => window.removeEventListener('hashchange', close)
+  }, [])
+  return (
+    <div className="app">
+      <header className="top">
+        <button className="icon menu-btn" onClick={() => setDrawer(!drawer)} aria-expanded={drawer} aria-controls="side" aria-label={drawer ? '메뉴 닫기' : '메뉴 열기'}>
+          {drawer ? <X size={20} /> : <Menu size={20} />}
+        </button>
+        <a className="brand" href="#/" aria-label="에게(에너지게이트) 전체 현황"><img src={logo} alt="" /></a>
+        <span className="slash" aria-hidden>/</span>
+        <BuildingToggle buildings={buildings} current={building} tab={tab} />
+        {building && (
+          <nav className="vtabs" aria-label="건물 화면">
+            <a href={href(building)} aria-current={tab === 'ops' ? 'page' : undefined}><LayoutDashboard size={18} aria-hidden />운영</a>
+            <a href={href(building, 'energy')} aria-current={tab === 'energy' ? 'page' : undefined}><BarChart3 size={18} aria-hidden />전력 분석</a>
+          </nav>
+        )}
+        <div className="tools">
+          {tools}
+          {AUTH_ON && <UserButton />}
+        </div>
+      </header>
+      <div className="body">
+        <aside id="side" className={drawer ? 'side open' : 'side'} aria-label="이동">
+          <a className={building || admin || settings ? 'side-link' : 'side-link on'} href="#/" aria-current={building || admin || settings ? undefined : 'page'} onClick={() => setDrawer(false)}>
+            <LayoutDashboard size={20} aria-hidden />전체 현황
+          </a>
+          {side}
+          {AUTH_ON && (
+            <div className="side-foot">
+              {/* 고객사 소속: GET /me의 기업 이름과 역할 */}
+              {me?.company && (
+                <p className="side-me">
+                  <Building2 size={20} aria-hidden />
+                  <span>{me.company.name}<small>{me.role ? ROLE[me.role] : ''}</small></span>
+                </p>
+              )}
+              {/* 고객사 기업 설정: 판매사 관리자는 기업 관리 사용 */}
+              {me?.company && me.role !== 'admin' && (
+                <a className={settings ? 'side-link on' : 'side-link'} href="#/settings" aria-current={settings ? 'page' : undefined} onClick={() => setDrawer(false)}>
+                  <Settings size={20} aria-hidden />기업 설정
+                </a>
+              )}
+              {/* 관리자 메뉴: 표시는 ID 토큰 그룹 또는 GET /me 역할 기준, 권한은 admin API가 판정 */}
+              {(isAdmin() || me?.role === 'admin') && (
+                <a className={admin ? 'side-link on' : 'side-link'} href="#/admin" aria-current={admin ? 'page' : undefined} onClick={() => setDrawer(false)}>
+                  <Briefcase size={20} aria-hidden />기업 관리
+                </a>
+              )}
+            </div>
+          )}
+        </aside>
+        {drawer && <div className="scrim" onClick={() => setDrawer(false)} aria-hidden />}
+        <div className="content">{children}</div>
+      </div>
+    </div>
+  )
+}
+
+// 건물 토글: 로고 오른쪽, 누르면 건물 목록(상태, 현재 전력) 표시
+function BuildingToggle({ buildings, current, tab }: { buildings: BuildingCard[]; current: string | null; tab: Tab }) {
+  const [open, setOpen] = useState(false)
+  const box = useRef<HTMLDivElement>(null)
+  const cur = buildings.find((b) => b.id === current)
+  useEffect(() => {
+    if (!open) return
+    const out = (e: MouseEvent) => { if (!box.current?.contains(e.target as Node)) setOpen(false) }
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') { setOpen(false); box.current?.querySelector('button')?.focus() } }
+    document.addEventListener('mousedown', out)
+    document.addEventListener('keydown', esc)
+    box.current?.querySelector<HTMLElement>('.bt-menu a')?.focus()
+    return () => { document.removeEventListener('mousedown', out); document.removeEventListener('keydown', esc) }
+  }, [open])
+  const Lv = cur ? LEVEL[cur.level].Icon : Building2
+  return (
+    <div className="bt" ref={box}>
+      <button className={`bt-btn ${cur?.level ?? ''}`} onClick={() => setOpen(!open)} aria-expanded={open} aria-haspopup="true">
+        <Lv size={18} aria-hidden />
+        <span className="bt-cur">{cur?.name ?? (current && !buildings.length ? <Sk w={56} h={18} /> : current ?? '건물 선택')}</span>
+        {cur && <span className="bt-lv">{LEVEL[cur.level].text(cur)}</span>}
+        <ChevronDown size={18} aria-hidden />
+      </button>
+      {open && (
+        <div className="bt-menu fade-in" role="menu" aria-label="건물 선택">
+          {buildings.map((b) => {
+            const { Icon, text } = LEVEL[b.level]
+            return (
+              <a key={b.id} role="menuitem" href={href(b.id, tab)} aria-current={b.id === current ? 'true' : undefined} onClick={() => setOpen(false)}>
+                <span className="bt-name">{b.name}<small>{b.use}{b.virtual ? ', 가상 건물' : ''}</small></span>
+                <span className={`bt-st ${b.level}`}><Icon size={16} aria-hidden />{text(b)}</span>
+                <span className="bt-kw">{b.now.powerKw}kW</span>
+              </a>
+            )
+          })}
+          {/* 건물 추가: 도면을 넣고 트윈에서 렌더링하면 그때부터 데이터 생성 */}
+          <button className="bt-add" role="menuitem" onClick={() => { const id = addCustom(); setOpen(false); buildingsChanged(); location.hash = href(id) }}>
+            <Plus size={18} aria-hidden />건물 추가하기
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// 층 목록: 위층이 위(건물 단면 순서), 층마다 이상 건수와 전력 표시
+export function FloorList({ floors, floor, onFloor }: { floors: FloorSummary[]; floor: string; onFloor: (f: string) => void }) {
+  return (
+    <nav className="floors" aria-label="층 선택">
+      <h2>층</h2>
+      <ol>
+        {[...floors].reverse().map((f) => (
+          <li key={f.floor}>
+            <button className={f.floor === floor ? 'fl on' : 'fl'} aria-pressed={f.floor === floor} onClick={() => onFloor(f.floor)}>
+              <span className="fl-name">{f.floor}</span>
+              <span className="fl-kw"><CountUp value={f.powerKw} />kW</span>
+              <span className={f.anomaly ? 'fl-st bad' : 'fl-st'}>
+                {/* 상태가 바뀔 때만 아이콘 다시 등장(key) */}
+                <span key={f.anomaly ? 'bad' : 'ok'} className="pop-in">{f.anomaly ? <AlertTriangle size={16} aria-hidden /> : <CheckCircle2 size={16} aria-hidden />}</span>
+                {f.anomaly ? `이상 ${f.anomaly}` : '정상'}
+              </span>
+              <span className="fl-on">운전 {f.on}/{f.total}대</span>
+            </button>
+          </li>
+        ))}
+      </ol>
+    </nav>
+  )
+}
+
+function UserButton() {
+  const email = currentEmail()
+  return (
+    <button className="user" onClick={signOut} title={email ? `${email} 로그아웃` : '로그아웃'}>
+      <LogOut size={18} aria-hidden /><span>로그아웃</span>
+    </button>
+  )
+}

@@ -1,0 +1,54 @@
+{
+  "controller": "rule",
+  "season": "heating",
+  "start": "2026-01-12",
+  "days": 7,
+  "steps": 672,
+  "energy_kwh": 457.97,
+  "peak_kw": 7.95,
+  "occupied_zone_h": 125.0,
+  "discomfort_zone_h": 70.5,
+  "discomfort_degree_h": 255.99,
+  "zones": {
+    "SPACE1-1": {
+      "occupied_h": 45.0,
+      "discomfort_h": 39.75,
+      "discomfort_degree_h": 209.1,
+      "cold_h": 1.25,
+      "hot_h": 38.5
+    },
+    "SPACE2-1": {
+      "occupied_h": 8.5,
+      "discomfort_h": 7.0,
+      "discomfort_degree_h": 31.59,
+      "cold_h": 0.0,
+      "hot_h": 7.0
+    },
+    "SPACE3-1": {
+      "occupied_h": 11.5,
+      "discomfort_h": 0.5,
+      "discomfort_degree_h": 0.27,
+      "cold_h": 0.5,
+      "hot_h": 0.0
+    },
+    "SPACE4-1": {
+      "occupied_h": 10.0,
+      "discomfort_h": 5.25,
+      "discomfort_degree_h": 4.09,
+      "cold_h": 0.0,
+      "hot_h": 5.25
+    },
+    "SPACE5-1": {
+      "occupied_h": 50.0,
+      "discomfort_h": 18.0,
+      "discomfort_degree_h": 10.94,
+      "cold_h": 1.25,
+      "hot_h": 16.75
+    }
+  },
+  "energy_kwh_occupied": 80.41,
+  "energy_kwh_vacant": 377.56,
+  "cold_zone_h": 3.0,
+  "hot_zone_h": 67.5,
+  "discomfort_pct": 56.4
+}

@@ -1,0 +1,5 @@
+.claude/worktrees/
+.claude/settings.local.json
+.env
+__pycache__/
+ml/hvac_control/runs/

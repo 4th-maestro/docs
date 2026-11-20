@@ -16,7 +16,11 @@
 | AI 작업 규칙 | 각 저장소의 `AGENTS.md` | 해당 저장소 |
 | AI가 참고할 문서 목록 | `docs/ai/sources.json` | 해당 작업 |
 | 과거 보고서·초안 | `docs/human/archive/` | 작성한 담당자 |
-| UI 규칙 | `docs/human/reference/design-system.md` | 프론트엔드 |
+| 시각 디자인 가이드 | `DESIGN.md` | 프론트엔드 |
+| 데이터 시각화·상태 규칙 | `docs/human/reference/design-system.md` | 프론트엔드 |
+| 서비스 기획 | `docs/human/explanation/service-plan.md` | 팀 전체 |
+| 시스템 설계 | `docs/human/explanation/architecture.md` | 개발 |
+| 기능·비기능 요구사항 | `docs/human/reference/requirements.md` | 팀 전체 |
 | 외부 조사 기록 | `docs/human/explanation/research/` | 조사한 담당자 |
 | 기술 선택 기록 | `docs/human/explanation/decisions/` | 결정한 담당자 |
 | PDF 보고서 원본 | `docs/reports/<날짜-주제>/report.md` | 작성한 담당자 |

@@ -1,0 +1,67 @@
+{
+  "buildings": {
+    "PNU-ENG6": {
+      "1": {
+        "file": "../../data/building.json",
+        "rooms": {
+          "1F-6107-1": {
+            "lighting_W": 80,
+            "installed_computers": 3,
+            "other_base_W": 10,
+            "other_variable_W": 80,
+            "ventilation_m3_s": 0.04,
+            "infiltration_ach": 0.3,
+            "hvac": {
+              "mode": "COOL",
+              "capacity_W": 3500,
+              "cop": 3,
+              "setpoint_range_c": [
+                22,
+                28
+              ],
+              "setpoint_c": 25
+            },
+            "thermal_5r1c": {
+              "air_surface_W_K": 740,
+              "mass_surface_W_K": 1080,
+              "mass_outdoor_W_K": 90,
+              "window_outdoor_W_K": 20,
+              "mass_capacity_J_K": 7900000,
+              "volume_m3": 172,
+              "solar_effective_area_m2": 1.5,
+              "source": "Illustrative demo assumptions, not calibrated with measurements"
+            }
+          }
+        }
+      }
+    }
+  },
+  "load_profiles": {
+    "test": {
+      "1": {
+        "lighting_radiant": 0.4,
+        "lighting_visible": 0.2,
+        "lighting_return": 0,
+        "equipment_latent": 0,
+        "equipment_radiant": 0.3,
+        "equipment_lost": 0,
+        "computer_standby_W": 5,
+        "computer_active_W": 100,
+        "activities": {
+          "seated": {
+            "total_W_per_person": 120,
+            "sensible_fraction": 0.6,
+            "radiant_fraction": 0.3
+          }
+        }
+      }
+    }
+  },
+  "initialization_profiles": {
+    "repeat": {
+      "energyplus": "preceding_day_off",
+      "outside_window": "off_zero_external_conditions",
+      "rc5r1c": "preceding_day_off_outdoor_seed"
+    }
+  }
+}
