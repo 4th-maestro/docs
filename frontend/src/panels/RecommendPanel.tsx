@@ -1,0 +1,54 @@
+import { CalendarPlus, LocateFixed, Moon, Thermometer, UserX } from 'lucide-react'
+import { getRecommendations } from '../api'
+import type { Draft } from '../types'
+import Panel from './Panel'
+import type { Rule } from './types'
+import { usePoll } from './usePoll'
+
+// 규칙 3종(architecture.md 8절): 태그는 아이콘과 글자로 함께 표시
+const RULES: Record<Rule, { label: string; Icon: typeof UserX }> = {
+  idle: { label: '빈 공간 운전', Icon: UserX },
+  after_hours: { label: '업무 외 운전', Icon: Moon },
+  overset: { label: '과냉·과열 설정', Icon: Thermometer },
+}
+
+export default function RecommendPanel({ floor, onDraft, onLocate }: { floor: string; onDraft(draft: Draft): void; onLocate(roomId: string): void }) {
+  const { data, error, stale } = usePoll(getRecommendations, floor)
+  return (
+    <Panel
+      title="최적 제어 추천" at={data?.generatedAt} mock={data?.mock} error={error} loading={!data && !error} stale={stale}
+      empty={data?.items.length === 0 && `${floor}에서 낭비 규칙에 해당하는 HVAC이 없습니다.`}
+    >
+      {data && (
+        <>
+          <div className="pn-stat">
+            <span className="label">예상 절감 합계</span>
+            <strong>{data.totalSavingKwh}<small>kWh/일</small></strong>
+            <span className="sub">{floor} 추천 {data.items.length}건, 시뮬레이터 적용 전후 비교(가상)</span>
+          </div>
+          <ol className="pn-list">
+            {data.items.map((it) => {
+              const { label, Icon } = RULES[it.rule]
+              return (
+                <li key={it.id}>
+                  <div className="pn-row">
+                    <div>
+                      <span className="pn-tagline"><Icon size={14} aria-hidden />{label}</span>
+                      <p className="pn-name">{it.roomName}<span>HVAC {it.idu}</span></p>
+                    </div>
+                    <button className="pn-icon" onClick={() => onLocate(it.roomId)} aria-label={`${it.roomName} 3D에서 보기`} title="3D에서 보기"><LocateFixed size={18} /></button>
+                  </div>
+                  <p className="pn-reason">{it.reason}</p>
+                  <div className="pn-row">
+                    <span className="pn-saving">{it.title}<strong>절감 {it.savingKwhDay}kWh/일</strong></span>
+                    <button className="pn-btn" onClick={() => onDraft(it.draft)} aria-label={`${it.roomName} 스케줄 초안 만들기`}><CalendarPlus size={16} aria-hidden />초안 만들기</button>
+                  </div>
+                </li>
+              )
+            })}
+          </ol>
+        </>
+      )}
+    </Panel>
+  )
+}

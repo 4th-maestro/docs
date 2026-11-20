@@ -35,3 +35,10 @@ def list_schedules():
 def put_schedule(item):
     from decimal import Decimal
     _table().put_item(Item={k: Decimal(str(v)) if isinstance(v, float) else v for k, v in item.items()})
+
+
+def delete_schedule(sid):
+    # 삭제한 항목이 있으면 True, 테이블이 없는 로컬 실행은 항상 없음
+    if not TABLE_NAME:
+        return False
+    return 'Attributes' in _table().delete_item(Key={'id': sid}, ReturnValues='ALL_OLD')

@@ -52,14 +52,14 @@ def occupants(room, t):
 
 
 def _scheduled(room, t, occ, schedules):
-    # 오늘 지정 시각이 지난 스케줄만 적용, 마지막 스케줄 우선
-    hit = None
-    for s in schedules:
-        if room['id'] in s['roomIds'] and t.strftime('%H:%M') >= s['time']:
-            if s.get('condition') == 'unused' and occ > 0:
-                continue
-            hit = s
-    return hit
+    # 오늘 지정 시각이 지난 스케줄을 저장 순서대로 모두 적용: 운전 ON·OFF는 마지막 스케줄 우선, 설정온도 변경은 ON·OFF와 별개로 유지
+    return [s for s in schedules if room['id'] in s['roomIds'] and t.strftime('%H:%M') >= s['time']
+            and not (s.get('condition') == 'unused' and occ > 0)]
+
+
+def rated(room):
+    # 정격 전력(kW): 면적 1㎡당 0.1kW, 최소 1.5kW
+    return round(max(1.5, room['areaM2'] * 0.1), 1)
 
 
 def state(room, t, schedules=()):
@@ -69,8 +69,7 @@ def state(room, t, schedules=()):
     fault = _u(room['id'], 'fault') < 0.03
     on = occ > 0 or (wasteful and 8 <= t.hour < 21)
     sp = (22 if overset else 26) if m == 'cooling' else (24 if overset else 20)
-    s = _scheduled(room, t, occ, schedules)
-    if s:
+    for s in _scheduled(room, t, occ, schedules):
         if s['action'] == 'off':
             on = False
         elif s['action'] == 'on':
@@ -84,12 +83,11 @@ def state(room, t, schedules=()):
         temp = sp + occ * 0.08 + noise + ((4 if m == 'cooling' else -4) if fault else 0)
     else:
         temp = (24 if m == 'cooling' else 17) + (out - (27 if m == 'cooling' else 12)) * 0.3 + occ * 0.08 + noise
-    rated = round(max(1.5, room['areaM2'] * 0.1), 1)
     load = 1.0 if fault else min(1.0, 0.3 + 0.05 * occ + abs(sp - out) / 40)
     return {
         'id': room['id'], 'idu': room['idu'], 'name': room['name'], 'floor': room['floor'], 'use': room['use'],
         'areaM2': room['areaM2'], 'occupants': occ, 'onOff': on, 'mode': m, 'setpoint': sp,
         'temp': round(temp, 1), 'humidity': round(min(70, max(30, 40 + occ * 0.8 + noise * 5)), 1),
-        'powerKw': round(rated * load * jitter, 2) if on else 0.0,
+        'powerKw': round(rated(room) * load * jitter, 2) if on else 0.0,
         'anomaly': 'setpoint_unreached' if on and fault else None,
     }

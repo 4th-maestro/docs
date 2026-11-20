@@ -4,13 +4,18 @@ Maestro API(Lambda, Python 3.12)와 AWS 리소스(SAM) 폴더입니다. 구조 �
 
 | 경로 | 내용 |
 |---|---|
-| `template.yaml` | API Gateway HTTP API, Lambda 3개, DynamoDB, S3, CloudFront |
+| `template.yaml` | API Gateway HTTP API, Lambda 6개, DynamoDB, S3, CloudFront |
 | `src/status.py` | `GET /rooms/status?floor=1F` 호실별 가상 상태 |
 | `src/query.py` | `POST /query` 자연어 질의(Bedrock Claude Sonnet 5.5) |
-| `src/schedules.py` | `GET·POST /schedules` 스케줄 조회·저장 |
+| `src/schedules.py` | `GET·POST /schedules` 스케줄 조회·저장, `DELETE /schedules/{id}` 취소(UUID 형식 아니면 400, 없으면 404) |
+| `src/recommend.py` | `GET /recommendations?floor=1F` 낭비 규칙 3종 추천, 예상 절감량, 스케줄 초안 |
+| `src/anomalies.py` | `GET /anomalies?floor=1F` 설정온도 미도달 HVAC 상세, 기대 온도, 원인 후보(규칙 기반 추정) |
+| `src/history.py` | `GET /rooms/history?floor=1F` 층 전력 시간별 평균(kW)과 사용량(kWh), 오늘 0시~현재와 어제 0~23시 |
 | `src/tools.py` | LLM 도구 정의와 서버 검증 |
 | `src/sim.py`, `src/rooms.json` | 가상 HVAC 상태 생성, 시연 호실 137개(공개 IFC 의원 건물) |
 | `tools/demo_status.py` | Frontend 데모용 상태 JSON 출력 |
+
+판정 기준과 응답 필드는 [시스템 설계](../docs/human/explanation/architecture.md) 8절과 9절에 있습니다.
 
 ## 테스트
 

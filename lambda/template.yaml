@@ -32,7 +32,7 @@ Resources:
     Properties:
       CorsConfiguration:
         AllowOrigins: [!Ref AllowedOrigin]
-        AllowMethods: [GET, POST]
+        AllowMethods: [GET, POST, DELETE]
         AllowHeaders: [content-type]
 
   SchedulesTable:
@@ -77,6 +77,31 @@ Resources:
       Events:
         List: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /schedules, Method: GET}}
         Create: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /schedules, Method: POST}}
+        Delete: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: '/schedules/{id}', Method: DELETE}}
+
+  RecommendFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: recommend.handler
+      Policies: [DynamoDBReadPolicy: {TableName: !Ref SchedulesTable}]
+      Events:
+        Get: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /recommendations, Method: GET}}
+
+  AnomaliesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: anomalies.handler
+      Policies: [DynamoDBReadPolicy: {TableName: !Ref SchedulesTable}]
+      Events:
+        Get: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /anomalies, Method: GET}}
+
+  HistoryFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: history.handler
+      Policies: [DynamoDBReadPolicy: {TableName: !Ref SchedulesTable}]
+      Events:
+        Get: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /rooms/history, Method: GET}}
 
   WebBucket:
     Type: AWS::S3::Bucket
