@@ -2,6 +2,7 @@
 
 - 실행: AWS_PROFILE=maestro python tools/eval_ai.py [--building main] [--out eval/results.json] (lambda 폴더, anthropic 설치 필요)
 - 도구 선택: eval/questions.json의 정답 도구·인자(일부 키)와 실제 첫 도구 호출을 비교. tool=null은 도구 호출 없음이 정답
+- 다중 턴: turns 목록을 대화 메모리(chat.make_memory)로 이어 실행하고 마지막 턴의 도구 호출을 비교
 - JEV 판단: 환경 변수 TYPESAFE_API_KEY가 있으면 답변마다 3개 항목 판단, 확신도 0.8 미만은 사람 검토 목록
   - TypeSafe 직접 호출 POST https://api.typesafe.ai/v1/systemone, 모델 기본 jev-latest(JEV_MODEL로 변경), docs.typesafe.ai/api 기준
 - 실제 Bedrock(Sonnet 5.5) 호출 비용 발생: 질문당 모델 호출 1~3회, 사용 토큰을 결과에 기록
@@ -18,6 +19,7 @@ import urllib.request
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'src'))
+import chat  # noqa: E402
 import query  # noqa: E402
 import tools  # noqa: E402
 
@@ -113,22 +115,25 @@ def main():
     query.client.messages.stream = spy_stream
     rows = []
     for q in qs:
-        calls.clear()
+        texts, mem = q.get('turns') or [q['text']], None
         t0 = time.monotonic()
-        try:
-            res = query.run(q['text'], lambda e: None, a.building)
-        except Exception as e:  # 실패도 결과로 기록
-            res = {'answer': f'오류: {e}', 'charts': []}
+        for text in texts:
+            calls.clear()
+            try:
+                res = query.run(text, lambda e: None, a.building, mem)
+            except Exception as e:  # 실패도 결과로 기록
+                res = {'answer': f'오류: {e}', 'charts': []}
+            history, mem = (mem or {}).get('turns', []), chat.make_memory(mem, text, res)
         ok, why = match(q, calls)
-        row = {'id': q['id'], 'text': q['text'], 'expected': q.get('tool'), 'calls': list(calls), 'ok': ok, 'why': why,
+        row = {'id': q['id'], 'text': ' → '.join(texts), 'expected': q.get('tool'), 'calls': list(calls), 'ok': ok, 'why': why,
                'answer': res.get('answer', ''), 'charts': len(res.get('charts') or []), 'sec': round(time.monotonic() - t0, 1)}
         row['sentences'] = sentences(row['answer'])
         try:
-            row['jev'] = jev({'question': q['text'], 'tool_calls': row['calls'], 'answer': row['answer']})
+            row['jev'] = jev({'previous_turns': history, 'question': texts[-1], 'tool_calls': row['calls'], 'answer': row['answer']})
         except Exception as e:
             row['jev'] = {'error': str(e)[:200]}
         rows.append(row)
-        print(f"{q['id']} {'O' if ok else 'X'} {why:28} {row['sec']:5}s  {q['text']}", flush=True)
+        print(f"{q['id']} {'O' if ok else 'X'} {why:28} {row['sec']:5}s  {row['text']}", flush=True)
     passed = sum(r['ok'] for r in rows)
     review = [r['id'] for r in rows if isinstance(r.get('jev'), dict) and any(r['jev'].get(k, {}).get('confidence', 1) < REVIEW_BELOW for k in JEV_QUESTIONS)]
     summary = {'at': dt.datetime.now().isoformat(timespec='seconds'), 'model': query.MODEL, 'building': a.building, 'total': len(rows), 'passed': passed,

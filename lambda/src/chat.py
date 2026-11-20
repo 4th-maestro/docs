@@ -1,7 +1,7 @@
 """대화 기록과 대화 메모리(DynamoDB CHAT_TABLE, 키 pk·sk)
 
 - 기록: pk=chat#<사용자>#<건물>, sk=<ISO 시각>#<순번>, 90일 뒤 자동 삭제(ttl)
-- 메모리: pk=mem#<사용자>#<건물>, sk=mem, 24시간 뒤 자동 삭제. 원문 대화 대신 모델에 넘기는 요약(1KB 이하)
+- 메모리: pk=mem#<사용자>#<건물>, sk=mem, 24시간 뒤 자동 삭제. 원문 대화 대신 모델에 넘기는 요약(최근 10턴, 8KB 이하)
 - GET /chat?building=: 최근 30개(오래된 순), DELETE /chat?building=: 기록과 메모리 삭제
 """
 import datetime as dt
@@ -16,6 +16,8 @@ import common
 TABLE = os.environ.get('CHAT_TABLE')
 HISTORY_DAYS = 90
 MEMORY_HOURS = 24
+MEMORY_TURNS = 10  # 되묻기가 여러 턴 이어져도 처음 요청 유지(2026-11-20)
+MEMORY_BYTES = 8192  # 턴당 질문 100자·답변 150자(한글 3바이트) × 10턴 + 조건·초안
 LIMIT = 30
 _table = None
 
@@ -80,24 +82,26 @@ def put_memory(sub, bid, memory):
 
 
 def make_memory(prev, text, result):
-    # 질의 결과로 메모리 갱신: 마지막 질문·조건·대상 호실·초안, 답변 앞부분
+    # 질의 결과로 메모리 갱신: 최근 10턴 질문·답변 앞부분, 마지막 조건·대상 호실·초안
+    prev = prev or {}
     query = next((s for s in result.get('steps') or [] if s.get('id') == 'query'), {})
     d = result.get('draft')
+    # 이전 형식(lastQuestion·lastAnswer, 2026-11-20 이전) 메모리는 첫 턴으로 이어받음
+    turns = prev.get('turns') or ([{'q': prev['lastQuestion'], 'a': prev.get('lastAnswer', '')}] if prev.get('lastQuestion') else [])
     mem = {
-        'lastQuestion': text[:200],
-        'lastAnswer': (result.get('answer') or '')[:200],
-        'conditions': query.get('chips') or (prev or {}).get('conditions') or [],
+        'turns': (turns + [{'q': text[:100], 'a': (result.get('answer') or '')[:150]}])[-MEMORY_TURNS:],
+        'conditions': query.get('chips') or prev.get('conditions') or [],
         'targetRoomIds': (result.get('highlight') or [])[:30],
-        'draft': {k: d[k] for k in ('floor', 'use', 'action', 'time', 'condition', 'setpoint')} | {'targets': len(d['roomIds'])} if d else None,
-        'lastSchedule': (prev or {}).get('lastSchedule'),
+        # 되묻기 턴(초안 없음)은 직전 초안 유지: "15:30" 같은 짧은 답을 초안 수정으로 해석
+        'draft': {k: d[k] for k in ('floor', 'use', 'action', 'time', 'condition', 'setpoint')} | {'targets': len(d['roomIds'])} if d else prev.get('draft'),
+        'lastSchedule': prev.get('lastSchedule'),
     }
-    # 1KB 상한: 대상 호실 → 답변 → 질문 순으로 축소(한글은 글자당 3바이트)
+    # 8KB 상한: 대상 호실 → 오래된 턴 순으로 축소
     size = lambda: len(json.dumps(mem, ensure_ascii=False).encode())  # noqa: E731
-    while size() > 1024 and mem['targetRoomIds']:
+    while size() > MEMORY_BYTES and mem['targetRoomIds']:
         mem['targetRoomIds'] = mem['targetRoomIds'][: len(mem['targetRoomIds']) // 2]
-    for k in ('lastAnswer', 'lastQuestion'):
-        while size() > 1024 and len(mem[k]) > 40:
-            mem[k] = mem[k][: len(mem[k]) * 2 // 3]
+    while size() > MEMORY_BYTES and len(mem['turns']) > 1:
+        mem['turns'].pop(0)
     return mem
 
 

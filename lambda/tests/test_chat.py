@@ -26,10 +26,27 @@ class ChatTest(unittest.TestCase):
         result = {'answer': '가' * 500, 'highlight': [f'room-id-{i:04d}-xxxxxxxx' for i in range(200)], 'draft': draft,
                   'steps': [{'id': 'query', 'chips': ['2F', '회의실', '13:00 이후']}]}
         mem = chat.make_memory({'lastSchedule': {'id': 's1'}}, '질문' * 200, result)
-        self.assertLessEqual(len(json.dumps(mem, ensure_ascii=False).encode()), 1024)
+        self.assertLessEqual(len(json.dumps(mem, ensure_ascii=False).encode()), chat.MEMORY_BYTES)
         self.assertEqual(mem['conditions'], ['2F', '회의실', '13:00 이후'])
         self.assertEqual(mem['draft']['targets'], 200)
         self.assertEqual(mem['lastSchedule'], {'id': 's1'})
+
+    def test_memory_keeps_ten_turns_and_draft_across_clarifications(self):
+        # 제보 경로: 요청 → 시각 되묻기 → "지금" → 형식 되묻기 → "15:30"에서 처음 요청이 남아야 함
+        mem, ask = None, {'answer': '가' * 500, 'steps': [], 'highlight': [], 'draft': None}
+        for i in range(12):
+            mem = chat.make_memory(mem, f'{i}번 질문 ' + '나' * 300, ask)
+        self.assertEqual(len(mem['turns']), chat.MEMORY_TURNS)
+        self.assertTrue(mem['turns'][0]['q'].startswith('2번'))
+        self.assertLessEqual(len(json.dumps(mem, ensure_ascii=False).encode()), chat.MEMORY_BYTES)
+        draft = {'roomIds': ['r1'], 'floor': 'all', 'use': 'all', 'action': 'off', 'time': '15:26', 'condition': 'unused', 'setpoint': 0}
+        mem = chat.make_memory(mem, '현재 재실 0곳 꺼줘', {'answer': '초안', 'steps': [], 'highlight': [], 'draft': draft})
+        mem = chat.make_memory(mem, '몇 시?', ask)
+        self.assertEqual(mem['draft']['time'], '15:26')  # 되묻기 턴에도 초안 유지
+
+    def test_old_memory_format_carried_over(self):
+        mem = chat.make_memory({'lastQuestion': '이전 질문', 'lastAnswer': '이전 답'}, '새 질문', {'answer': '새 답', 'steps': []})
+        self.assertEqual([x['q'] for x in mem['turns']], ['이전 질문', '새 질문'])
 
     def test_handler_requires_login(self):
         self.assertEqual(chat.handler({'requestContext': {'http': {'method': 'GET'}}}, None)['statusCode'], 401)

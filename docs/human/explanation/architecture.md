@@ -27,7 +27,7 @@
 
 **2-1. AWS 서비스만 사용하며, 웹은 CloudFront·S3로 배포하고 API는 API Gateway와 Lambda로 처리합니다.**
 
-LLM 호출과 도구 실행은 query Lambda가 담당합니다. 모든 HTTP API와 WebSocket 연결은 Cognito 로그인이 필요합니다([로그인과 AI 대화 메모리](decisions/2026-11-20%28%EB%A1%9C%EA%B7%B8%EC%9D%B8%EA%B3%BC%20AI%20%EB%8C%80%ED%99%94%20%EB%A9%94%EB%AA%A8%EB%A6%AC%29.md)). AI에는 원문 대화 대신 1KB 이하 대화 메모리만 전달합니다. 실시간 연동은 WebSocket 대신 Frontend가 5초마다 상태를 다시 조회하는 목업이며(값은 5초 구간마다 범위 안에서 변동), Lambda 호출이 실패하면 Frontend 목업(`frontend/src/mock.ts`)으로 대체합니다. 3D 트윈은 팀원이 만든 화면을 iframe으로 임베드하며, 연동 규약은 [3D 트윈 임베드 규약](../reference/twin-embed.md)에 있습니다.
+LLM 호출과 도구 실행은 query Lambda가 담당합니다. 모든 HTTP API와 WebSocket 연결은 Cognito 로그인이 필요합니다([로그인과 AI 대화 메모리](decisions/2026-11-20%28%EB%A1%9C%EA%B7%B8%EC%9D%B8%EA%B3%BC%20AI%20%EB%8C%80%ED%99%94%20%EB%A9%94%EB%AA%A8%EB%A6%AC%29.md)). AI에는 원문 대화 대신 최근 10턴 대화 메모리 요약(8KB 이하)만 전달합니다([AI 대화 메모리 10턴 확장](decisions/2026-11-20%28AI%20%EB%8C%80%ED%99%94%20%EB%A9%94%EB%AA%A8%EB%A6%AC%2010%ED%84%B4%20%ED%99%95%EC%9E%A5%29.md)). 실시간 연동은 WebSocket 대신 Frontend가 5초마다 상태를 다시 조회하는 목업이며(값은 5초 구간마다 범위 안에서 변동), Lambda 호출이 실패하면 Frontend 목업(`frontend/src/mock.ts`)으로 대체합니다. 3D 트윈은 팀원이 만든 화면을 iframe으로 임베드하며, 연동 규약은 [3D 트윈 임베드 규약](../reference/twin-embed.md)에 있습니다.
 
 ![AWS 구조](img/d-a-aws.png)
 
@@ -164,7 +164,7 @@ Frontend는 `VITE_WS_URL`이 있으면 WebSocket API의 `ask` 라우트로 질�
 
 주: 단계 순서는 요청 해석(understand), 데이터 조회(query), 결과 검토(review), 답변 작성(answer). 도구 없이 되묻는 경우 understand 다음 answer. query의 chips는 도구 인자를 한국어로 바꾼 조건(예: `2F`, `회의실`, `13:00 이후`), 완료 detail은 결과 호실 수. 도구 호출 앞 텍스트는 답변에서 제외. 원본은 `lambda/src/query.py`, `lambda/src/ws.py`.
 
-**7-3. AI 답변 품질 평가는 운영 질의 경로 밖의 개발용 스크립트로 수행하며, 외부 판단 모델(JEV)은 운영 경로에 연결하지 않습니다.**
+**7-3. AI 답변 품질 평가는 운영 질의 경로 밖의 개발용 스크립트로 수행하며, 답변 판단용 JEV 호출은 운영 질의 경로에 연결하지 않습니다.**
 
 | 구분 | 운영 질의 | 품질 평가 |
 |---|---|---|

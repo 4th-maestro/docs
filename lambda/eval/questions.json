@@ -28,5 +28,10 @@
   {"id": "q27", "text": "에어컨 좀 꺼줘", "tool": null, "note": "층, 용도, 시각이 없어 되물어야 함"},
   {"id": "q28", "text": "3층 회의실 꺼줘", "tool": null, "note": "본관에 3층 없음, 되물어야 함"},
   {"id": "q29", "text": "업무동 전력 알려줘", "tool": null, "note": "다른 건물은 조회 불가, 안내해야 함"},
-  {"id": "q30", "text": "안녕하세요", "tool": null, "note": "도구 없이 인사와 사용 안내"}
+  {"id": "q30", "text": "안녕하세요", "tool": null, "note": "도구 없이 인사와 사용 안내"},
+  {"id": "q31", "text": "1층 사무실 지금 꺼줘", "tool": "create_schedule", "args": {"floor": "1F", "use": "사무실", "action": "off"}, "note": "현재 시각으로 초안(2026-11-20 정책)"},
+  {"id": "m01", "turns": ["전체 전력 추이를 확인해보고 현재 재실 0곳인 곳은 HVAC 꺼줘", "지금 시각으로 꺼", "15:30"], "tool": "create_schedule", "args": {"floor": "all", "use": "all", "action": "off", "time": "15:30", "condition": "unused"}, "note": "2026-11-20 제보 경로, 마지막 턴에서 처음 요청 유지"},
+  {"id": "m02", "turns": ["회의실 냉방 꺼줘", "2층", "18시로 바꿔줘"], "tool": "create_schedule", "args": {"floor": "2F", "use": "회의실", "action": "off", "time": "18:00"}, "note": "층 되묻기 후 초안 시각 수정"},
+  {"id": "m03", "turns": ["사무실 설정온도 24도로 해줘", "1층", "아니 2층으로"], "tool": "create_schedule", "args": {"floor": "2F", "use": "사무실", "action": "setpoint", "setpoint": 24}, "note": "초안 층 수정"},
+  {"id": "m04", "turns": ["2층 회의실 꺼줘", "3시 반부터로 해줘"], "tool": "create_schedule", "args": {"floor": "2F", "use": "회의실", "action": "off", "time": "15:30"}, "note": "자연어 시각으로 초안 수정"}
 ]

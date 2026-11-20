@@ -23,22 +23,25 @@ LABELS = {'understand': '요청 해석', 'query': '데이터 조회', 'review': 
 REFUSAL = '이 요청은 처리할 수 없습니다. 질문을 바꿔 다시 입력하십시오.'
 
 
-def system(b, memory=None):
+def system(b, memory=None, t=None):
     """건물별 시스템 프롬프트: 도구 enum은 전체 건물 합집합이라 이 건물의 층·용도를 프롬프트로 한정
 
-    - memory: 대화 메모리(chat.py, 1KB 이하 요약). 원문 대화 대신 이 요약만 전달해 후속 질문 해석
+    - memory: 대화 메모리(chat.py, 최근 10턴 요약). 원문 대화 대신 이 요약만 전달해 후속 질문 해석
+    - t: 현재 시각(sim.now). 없으면 모델이 시각을 추측하거나 운영자에게 HH:MM 형식을 요구(2026-11-20 제보)
     """
+    t = t or sim.now()
     uses = sorted({r['use'] for r in buildings.rooms(b['id'])})
     kind = '가상 건물' if b['virtual'] else '공개 IFC 도면 건물'
     return f"""너는 건물 운영 디지털트윈의 운영 도우미다. 사용자는 건물 운영자다.
 - 대상 건물: {b['name']}({b['use']}, {kind}). 다른 건물은 조회할 수 없다.
+- 현재 시각: {t:%Y-%m-%d}({'월화수목금토일'[t.weekday()]}) {t:%H:%M}. '지금', '현재', '바로'나 시각을 말하지 않은 제어 요청은 이 시각을 time으로 쓰고 답변에 적용 시각을 밝힌다. '3시 반', '오후 6시'처럼 말한 시각은 HH:MM으로 바꿔 쓰고, 사용자에게 시각 형식을 요구하지 않는다.
 - 층 목록: {', '.join(buildings.floors(b['id']))}. 용도 목록: {', '.join(uses)}.
 - 호실 지표 순위는 query_spaces, 층·용도별 합계·비교는 aggregate_spaces, 기간 전력 추이·이전 기간 비교는 energy_trend, 켜기·끄기·설정온도 요청은 create_schedule 도구로 처리한다. 도구 결과에 없는 수치는 만들지 않는다.
 - 화면이 도구 결과로 그래프와 표를 자동으로 그린다. 답변에 수치 목록을 길게 나열하지 말고 핵심 수치 1~2개와 해석만 쓴다. 사용자가 표를 원하면 view=table, 그 외에는 view=auto로 호출한다.
 - 대상 층이나 용도가 불분명하거나 이 건물에 없으면 도구를 쓰지 말고 후보를 들어 되묻는다. 되물을 때는 판단 이유나 지침을 쓰지 말고 질문 1문장과 후보만 쓴다.
 - 스케줄 저장 방법과 실제 설비 미제어 안내는 화면의 초안 카드가 표시하므로 답변에 쓰지 않는다. 실제 설비 제어는 하지 않는다.
 - 답변은 한국어 3문장 이내로 쓰고, 마지막 문장에서 낭비를 줄일 다음 조치 1개를 제안한다.""" + (
-        f"\n- 이전 대화 메모리(JSON): {json.dumps(memory, ensure_ascii=False)}\n  사용자가 '그중', '방금 것', '아까 그 층'처럼 앞 대화를 가리키면 이 메모리로 해석한다. 메모리로 정할 수 없으면 되묻는다."
+        f"\n- 이전 대화 메모리(JSON): {json.dumps(memory, ensure_ascii=False)}\n  turns는 최근 대화(오래된 순, 질문 q와 답변 a 앞부분)다. 사용자가 '그중', '방금 것', '아까 그 층'처럼 앞 대화를 가리키면 이 메모리로 해석한다. 직전 답변이 되물은 경우 사용자의 짧은 답(시각, 층, 용도)은 그 되묻기의 답이므로 처음 요청과 합쳐 처리한다. draft가 있으면 '15:30', '2층으로'처럼 짧은 답은 그 초안의 해당 값만 바꿔 create_schedule을 다시 호출한다. 메모리로 정할 수 없으면 되묻는다."
         if memory else '')
 
 
@@ -84,7 +87,8 @@ def converse(text, emit, bid, sub):
 def run(text, emit, bid=None, memory=None):
     """질의 처리 후 {answer, highlight, draft, steps} 반환. emit 예외(연결 종료)는 그대로 전파해 모델 호출 중단"""
     b = buildings.get(bid)
-    prompt, t, schedules = system(b, memory), sim.now(), common.list_schedules()
+    t, schedules = sim.now(), common.list_schedules()
+    prompt = system(b, memory, t)
     messages, ui = [{'role': 'user', 'content': text}], {'highlight': [], 'draft': None, 'charts': []}
     trace, started, t0 = {}, {}, time.monotonic()
 
