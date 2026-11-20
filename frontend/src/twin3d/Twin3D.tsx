@@ -37,6 +37,8 @@ const MARK_Y = H + 0.5
 const MAX_POLAR = 1.35 // 약 77도, 바닥 아래로 회전 차단
 // WebGL 재질 색: 재질은 CSS 변수를 읽지 못하므로 index.css 토큰 값을 사용
 const INK = '#222222'
+// 선택 외곽선: 디자인 시스템 표 6.1 기준 primary
+const PRIMARY = '#ff385c'
 const OFF = '#c1c1c1'
 const NO_DATA = '#dddddd'
 const CANVAS = '#ffffff'
@@ -292,7 +294,7 @@ export default function Twin3D({ floor, mode, rooms, highlight, selectedId, onSe
     const ctx = ctxRef.current
     const o = ctx?.rooms.find((r) => r.id === selectedId)
     if (!ctx || !o) return
-    const line = new LineSegments2(new LineSegmentsGeometry().fromEdgesGeometry(o.edges.geometry), new LineMaterial({ color: INK, linewidth: 3 }))
+    const line = new LineSegments2(new LineSegmentsGeometry().fromEdgesGeometry(o.edges.geometry), new LineMaterial({ color: PRIMARY, linewidth: 3 }))
     o.mesh.add(line)
     ctx.selected = o
     ctx.request()
