@@ -1,3 +1,4 @@
+import { call, HAS_API } from '../api'
 import { mockBreakdown, mockCompare, mockHeatmap, mockTrend } from './mock'
 
 // 에너지 분석 API 응답 형식(lambda/src/energy.py와 같은 필드)
@@ -16,20 +17,13 @@ export type Breakdown = Base & {
 }
 export type Period = 'day' | 'week' | 'month'
 
-const BASE = import.meta.env.VITE_API_BASE_URL as string | undefined
-
-async function call<T>(path: string): Promise<T> {
-  if (!BASE) throw new Error('VITE_API_BASE_URL 없음')
-  const res = await fetch(`${BASE}${path}`)
-  const data = await res.json()
-  if (!res.ok) throw new Error(data.error ?? `요청 실패(${res.status})`)
-  return data as T
-}
-
-// 인자는 쿼리 문자열 1개(usePoll이 같은 값이면 다시 조회하지 않도록 문자열로 전달). 실패하면 목업으로 대체하고 mock 표시
+// 인자는 쿼리 문자열 1개(usePoll이 같은 값이면 다시 조회하지 않도록 문자열로 전달)
+// - 공용 call 사용: 로그인 토큰 전송, 401 로그인 이동, 사용 중지 기업 처리
+// - 목업은 API 주소가 없을 때만. API 오류를 목업으로 바꾸면 서버 건물(목업에 없음)이 "알 수 없는 건물"로 표시됨(2026-11-20 장애)
 export const query = (q: Record<string, string>) => new URLSearchParams(q).toString()
 const params = (q: string) => Object.fromEntries(new URLSearchParams(q))
-export const getCompare = (q: string) => call<Compare>(`/energy/compare?${q}`).catch(() => mockCompare(params(q)))
-export const getTrend = (q: string) => call<Trend>(`/energy/trend?${q}`).catch(() => mockTrend(params(q)))
-export const getHeatmap = (q: string) => call<Heatmap>(`/energy/heatmap?${q}`).catch(() => mockHeatmap(params(q)))
-export const getBreakdown = (q: string) => call<Breakdown>(`/energy/breakdown?${q}`).catch(() => mockBreakdown(params(q)))
+const get = <T,>(path: string, mock: () => T | Promise<T>): Promise<T> => (HAS_API ? call<T>(path) : Promise.resolve().then(mock))
+export const getCompare = (q: string) => get<Compare>(`/energy/compare?${q}`, () => mockCompare(params(q)))
+export const getTrend = (q: string) => get<Trend>(`/energy/trend?${q}`, () => mockTrend(params(q)))
+export const getHeatmap = (q: string) => get<Heatmap>(`/energy/heatmap?${q}`, () => mockHeatmap(params(q)))
+export const getBreakdown = (q: string) => get<Breakdown>(`/energy/breakdown?${q}`, () => mockBreakdown(params(q)))

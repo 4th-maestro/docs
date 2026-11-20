@@ -71,6 +71,9 @@ h3 { font-size: 17px; font-weight: 600; margin: 0 0 8px; }
 .card { border: 1px solid var(--hairline); border-radius: var(--r-md); padding: 24px; background: var(--canvas); }
 .twin-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
 .twin-head h2 { margin: 0; }
+.twin-title { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.twin-back { display: inline-flex; align-items: center; gap: 6px; height: 44px; padding: 0 14px; border: 1px solid var(--hairline); border-radius: var(--r-full); background: var(--canvas); color: var(--ink); font-size: 15px; font-weight: 600; white-space: nowrap; }
+.twin-back:hover { background: var(--surface-soft); }
 .modes { display: flex; gap: 8px; flex-wrap: wrap; }
 /* 3D 영역: 화면 높이의 64%(560~760px). 층 평면도가 높이에 맞춰 커지도록 고정 560px에서 변경(2026-11-20) */
 .embed { width: 100%; height: clamp(560px, 64vh, 760px); border: 0; border-radius: var(--r-sm); background: var(--surface-soft); }

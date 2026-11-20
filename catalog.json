@@ -363,6 +363,12 @@
       "type": "explanation"
     },
     {
+      "path": "docs/human/explanation/troubleshooting/2026-11-20(전력 분석 인증 누락과 목업 대체).md",
+      "title": "전력 분석 인증 누락과 목업 대체",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
       "path": "docs/human/explanation/troubleshooting/2026-11-20(트윈 로딩 중 이전 화면 노출과 지연).md",
       "title": "트윈 로딩 중 이전 화면 노출과 지연",
       "audience": "human",

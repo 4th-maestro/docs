@@ -10,6 +10,8 @@ import type { Chart, Draft, Portfolio, QueryResult, Source, Status } from './typ
 export type ChatRecord = { sk: string; role: 'user' | 'assistant'; text: string; steps?: Step[]; highlight?: string[]; draft?: Draft | null; charts?: Chart[]; sources?: Source[] }
 
 const BASE = import.meta.env.VITE_API_BASE_URL as string | undefined
+// API 주소 설정 여부: 없으면 화면 전체가 목업 모드
+export const HAS_API = !!BASE
 
 // 로그인 만료: 로그아웃 처리 후 로그인 화면으로 전환(목업 대체 화면이 잠깐 보일 수 있으나 곧 해제됨)
 export class AuthRequired extends Error {}

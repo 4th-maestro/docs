@@ -1,5 +1,5 @@
 import { Suspense, lazy, useContext, useEffect, useMemo, useRef, useState } from 'react'
-import { AlertTriangle, CalendarClock, Droplets, Info, Moon, RefreshCw, Sun, Zap } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, CalendarClock, Droplets, Info, Moon, RefreshCw, Sun, Zap } from 'lucide-react'
 import AdminPage from './admin/AdminPage'
 import ChatPanel, { type ChatMsg } from './ai/ChatPanel'
 import type { AskResult } from './ai/types'
@@ -12,7 +12,8 @@ import { ME_CHANGED, MeContext } from './auth/me'
 import SettingsPage from './settings/SettingsPage'
 import BuildingCompare from './energy/BuildingCompare'
 import EnergyPage from './energy/EnergyPage'
-import { SCALES } from './heat'
+import { COMFORT, SCALES } from './heat'
+import { comfortOf, comfortText } from './comfort'
 import { setRoomSetpoint, summarize } from './mock'
 import AnomalyPanel from './panels/AnomalyPanel'
 import PowerTrend from './panels/PowerTrend'
@@ -27,7 +28,8 @@ import { usePoll } from './panels/usePoll'
 import Portfolio from './portfolio/Portfolio'
 import { FloorList, Layout } from './shell/Shell'
 import { href, parseRoute, type FloorSummary, type Tab } from './shell/route'
-import { TWIN_URL, onNeedBuilding, onTwinReady, onTwinControl, onTwinReport, onRoomSelected, onTwinChange, postState, postTheme, postUi, twinSrc, type TwinBuilding, type TwinData, type TwinKpi, type TwinReport } from './twin'
+import { TWIN_URL, onNeedBuilding, onTwinReady, onTwinControl, onTwinReport, onTwinSimAnswer, onRoomSelected, onTwinChange, postState, postTheme, postUi, sendTwin, twinSrc, type TwinBuilding, type TwinData, type TwinKpi, type TwinReport } from './twin'
+import { answerText, draftOf, parseWhatIf, pendingText, type WhatIf } from './whatif'
 import type { BuildingCard, Draft, Mode, Room, Status } from './types'
 import { Sk, SkFloors, SkKpis, SkPlan } from './skeleton/Skeleton'
 import CountUp from './motion/CountUp'
@@ -39,6 +41,7 @@ const MODES: { id: Mode; label: string }[] = [
   { id: 'temp', label: '온도' },
   { id: 'powerKw', label: '전력' },
   { id: 'humidity', label: '습도' },
+  { id: 'comfort', label: '쾌적도' },
   { id: 'anomaly', label: '이상 감지' },
 ]
 // 예시 질의 층: 건물의 맨 위층(교육관은 1F만 있음)
@@ -226,6 +229,19 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
     if (sim && flowOn) postUi(frame.current, 'flow:off')
     if (sim && pipesOn) postUi(frame.current, 'pipes')
   }, [sim, ops, persona, flowOn, pipesOn])
+  // 채팅 what-if: 트윈의 계산 결과를 '계산 중' 메시지 자리에 답변 + 설정온도 초안으로 바꿔 넣음
+  //   즉시(5R1C, 수십 ms) 답이 먼저 오고, 계산 서버가 있으면 정밀(EnergyPlus) 답이 한 번 더 와서 바꿈
+  const whatIfs = useRef(new Map<string, WhatIf>())
+  useEffect(() => onTwinSimAnswer((a) => {
+    const w = whatIfs.current.get(a.id)
+    if (!w) return
+    if (a.stage !== 'fast') whatIfs.current.delete(a.id)
+    // 즉시 답이 이미 있는데 정밀 계산만 실패했으면 즉시 답을 그대로 둠
+    if (!a.ok && a.stage === 'final') { setMessages((ms) => ms.map((m) => (m.id !== a.id || m.draft ? m : { ...m, text: answerText(w, a) }))); return }
+    setMessages((ms) => ms.map((m) => (m.id !== a.id ? m : a.ok && a.window
+      ? { ...m, text: answerText(w, a), draft: draftOf(w, a), draftState: m.draftState === 'saved' || m.draftState === 'closed' ? m.draftState : 'pending' as const }
+      : { ...m, text: answerText(w, a) })))
+  }), [])
 
   // 대화 기록: 서버(로그인 사용자·건물별), 실패하면 이 화면에만 기록
   useEffect(() => {
@@ -246,7 +262,8 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
   // 선택된 층이 현재 건물의 층 목록에서 사라지면 건물 보기로 돌아감
   if (status && floor && !floors.includes(floor)) setFloor('')
   // 트윈 화면이 없으면 빈 층(새로고침 직후 빈 도면) 대신 첫 층 표시
-  if (!twinOn && !floor && floors.length) setFloor(floors[0])
+  // 판단 대기(twinWait) 중에는 고르지 않음: 트윈 건물이면 건물 보기(빈 층)로 시작해야 트윈과 앱 층이 일치
+  if (!twinOn && !twinWait && !floor && floors.length) setFloor(floors[0])
   // 새 AI 결과: 대화에 추가, 이전 초안 닫기, 대상 호실 강조, 초안 대상 층으로 이동
   if (ai.result !== seen) {
     setSeen(ai.result)
@@ -347,6 +364,18 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
   function send(q: string) {
     setError('')
     setMessages((ms) => [...ms, { id: uid(), fresh: true, role: 'user', text: q }])
+    // "3층 강의실 18도로 낮추면?" 같은 what-if는 3D 트윈의 EnergyPlus 계산으로 답함 (서버 AI에는 아직 이 도구가 없음)
+    const w = TWIN_URL ? parseWhatIf(q, all, uid) : null
+    if (w && w.roomIds.length) {
+      reset(); setSeen(null)
+      whatIfs.current.set(w.id, w)
+      setMessages((ms) => [...ms.map((m) => (m.draftState === 'pending' ? { ...m, draftState: 'closed' as const } : m)),
+        { id: w.id, fresh: true, role: 'assistant', text: pendingText(w), highlight: w.roomIds }])
+      setFocus(w.roomIds)
+      if (w.floor !== 'all' && floors.includes(w.floor)) setFloor(w.floor)
+      sendTwin(frame.current, { type: 'simAsk', id: w.id, rooms: w.roomIds, setpoint: w.setpoint, hours: w.hours })
+      return
+    }
     ask(q)
   }
 
@@ -420,7 +449,11 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
               <div className="main-col">
                 <section className="card twin" aria-label={`${scope} ${sim ? '운전 시뮬레이션' : '3D 도면'}`}>
                   <div className="twin-head">
-                    <h2>{scope} {sim ? '운전 시뮬레이션' : '3D 도면'}</h2>
+                    {/* 층·호실 보기에서 건물 전체로 돌아가는 경로(트윈 자체 상단 경로 표시는 앱 안에서 숨김). 앱 층을 비우면 트윈이 건물 보기로 이동 */}
+                    <div className="twin-title">
+                      {twinOn && floor && <button className="twin-back" onClick={() => { setFloor(''); setSelected(null) }}><ArrowLeft size={18} aria-hidden />건물 전체</button>}
+                      <h2>{scope} {sim ? '운전 시뮬레이션' : '3D 도면'}</h2>
+                    </div>
                     {ops && <div className="modes" role="tablist" aria-label="표시 지표">
                       {MODES.map((m) => (
                         <button key={m.id} role="tab" aria-selected={mode === m.id} className={mode === m.id ? 'pill on' : 'pill'} onClick={() => setMode(m.id)}>{m.label}</button>
@@ -432,7 +465,7 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
                     <FlowModal flow={report.flow} persona={report.ui.persona} onPersona={(k) => postUi(frame.current, `persona:${k}`)} onClose={() => postUi(frame.current, 'flow:off')} />
                   )}
                   {twinWait ? <div className="embed"><SkPlan /></div> : twinOn ? (
-                    <iframe ref={frame} className="embed" src={src} title="3D 디지털트윈" onLoad={() => { postTheme(frame.current); postState(frame.current, building, floor, mode, rooms, highlight, twinData) }} />
+                    <iframe ref={frame} className="embed" allow="fullscreen" src={src} title="3D 디지털트윈" onLoad={() => { postTheme(frame.current); postState(frame.current, building, floor, mode, rooms, highlight, twinData) }} />
                   ) : sim ? (
                     <p className="embed sim-none">이 건물은 3D 트윈 도면이 없어 운전 시뮬레이션을 사용할 수 없습니다.</p>
                   ) : floor ? (
@@ -499,6 +532,11 @@ function Legend({ mode, status }: { mode: Mode; status: Status | null }) {
     <div className="legend">
       {mode === 'anomaly' ? (
         <span><i className="sw bad" />설정온도 미도달 HVAC, 회색은 정지</span>
+      ) : mode === 'comfort' ? (
+        <span>
+          {COMFORT.colors.map((c) => <i key={c} className="sw" style={{ background: c }} />)}
+          쾌적도 PMV 추움 −1.5 · 쾌적 ±0.5 · 더움 +1.5 (ISO 7730)
+        </span>
       ) : (
         <span>
           {SCALES[mode].colors.map((c) => <i key={c} className="sw" style={{ background: c }} />)}
@@ -523,6 +561,7 @@ function RoomDetail({ r }: { r: Room }) {
         <dt>설정온도</dt><dd>{r.setpoint}℃</dd>
         <dt>실내온도</dt><dd>{r.temp}℃</dd>
         <dt>습도</dt><dd>{r.humidity}%</dd>
+        <dt>쾌적도</dt><dd>{comfortText(comfortOf(r))}</dd>
         <dt>전력</dt><dd>{r.powerKw}kW</dd>
         <dt>재실</dt><dd>{r.occupants}명</dd>
       </dl>
