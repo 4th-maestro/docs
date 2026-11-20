@@ -94,6 +94,7 @@
 
   /* 3D 무대: 앱 3D 도면(.t3)과 같은 surface-soft 바탕 */
   #stage{position:absolute;inset:0;overflow:hidden;background:var(--scene-bot)}
+  body.hosted.appearance-preview #actions, body.appearance-preview #introTitle{display:none !important}
   #gl{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
   .scene-transition{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 
@@ -217,9 +218,8 @@
   #planWrap{flex:1;min-height:0;margin:0 12px;border-radius:var(--r-sm);background:var(--paper);box-shadow:inset 0 0 0 1px var(--hairline);overflow:hidden;position:relative}
   #plan{width:100%;height:100%;display:block}
   body.dk #plan .tint{mix-blend-mode:normal;fill-opacity:.24;stroke:var(--c);stroke-opacity:.9;stroke-width:3.5}
-  body.dk #plan .tint:hover{fill-opacity:.36;stroke:var(--ink)}
   #plan .tint{mix-blend-mode:multiply;fill-opacity:.6;cursor:pointer;transition:fill .6s ease, fill-opacity .2s;stroke:transparent;stroke-width:5}
-  #plan .tint:hover{fill-opacity:.78;stroke:var(--ink)}
+  #plan .room-hover{fill:var(--chart-cur);fill-opacity:.17;stroke:var(--chart-cur);stroke-width:2.5;vector-effect:non-scaling-stroke;pointer-events:none}
   /* 강조 호실: 선택 객체 규칙(디자인 시스템 표 6.1)대로 primary 외곽선, 깜빡임 없음 */
   #plan .tint.hl, body.dk #plan .tint.hl{stroke:var(--primary);stroke-opacity:1;stroke-width:8}
   @keyframes tintIn{from{opacity:0}}
@@ -242,6 +242,13 @@
 
   /* 툴팁: 앱 3D 도면 툴팁(.t3-tip)과 같은 면 */
   #tip{position:absolute;pointer-events:none;border-radius:var(--r-sm);padding:10px 12px;font-size:14px;line-height:1.5;z-index:7;display:none;min-width:200px}
+  #tip[data-editable]{pointer-events:auto;max-width:min(320px,calc(100% - 16px))}
+  #tip button{min-height:34px;padding:5px 9px;border:1px solid var(--hairline);border-radius:var(--r-sm);background:var(--canvas);color:var(--ink);cursor:pointer}
+  #tip form{display:grid;gap:8px}
+  #tip input{width:100%;min-height:36px;padding:4px 8px;border:1px solid var(--hairline);border-radius:var(--r-sm);color:var(--ink);background:var(--canvas);font:inherit}
+  #tip .tip-buttons{display:flex;gap:6px;margin-top:6px}
+  #tip .tip-error{color:var(--error)}
+  .room-hit{fill:transparent;cursor:pointer}
   #tip b{font-size:15px;font-weight:600;display:block;margin-bottom:4px}
   #tip .row{display:flex;justify-content:space-between;gap:16px;color:var(--body)}
   #tip .row span:last-child{color:var(--ink);font-variant-numeric:tabular-nums;font-weight:600}
@@ -269,6 +276,16 @@
   #roomLegend .g i{position:absolute;top:-3px;bottom:-3px;width:3px;margin-left:-1.5px;border-radius:2px;background:var(--ink);z-index:1;transition:left .6s}
   #roomLegend .g.hum{background:var(--surface-strong)}
   #roomLegend .g.off{visibility:hidden}
+  #roomLegend .rl-head{display:flex;align-items:center;gap:8px;margin:-6px -8px -2px 0}
+  #roomLegend .rl-head b{flex:1;min-width:0;font-size:15px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums}
+  #roomLegend .rl-tg{display:inline-flex;align-items:center;justify-content:center;gap:2px;min-width:44px;min-height:44px;padding:0 6px;border:0;border-radius:var(--r-sm);background:none;color:var(--muted);font:inherit;font-size:14px;font-weight:600;cursor:pointer}
+  #roomLegend .rl-tg:hover{color:var(--ink);background:var(--surface-soft)}
+  #roomLegend .rl-tg:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+  #roomLegend .rl-tg svg{width:16px;height:16px;transition:transform .2s}
+  #roomLegend[data-open="0"]{gap:0;min-width:0;max-width:calc(100% - 32px)}
+  #roomLegend[data-open="0"] > div:not(.rl-head){display:none}
+  #roomLegend[data-open="0"] .rl-head{margin-bottom:-6px}
+  #roomLegend[data-open="0"] .rl-tg svg{transform:rotate(180deg)}
   #roomLegend .g.hum::after{content:'';position:absolute;left:40%;width:20%;top:0;bottom:0;background:color-mix(in srgb,var(--ok) 55%,transparent)}
   #roomLegend small{font-size:14px;color:var(--muted);font-variant-numeric:tabular-nums}
   #inspector{position:absolute;right:16px;top:16px;bottom:16px;width:340px;z-index:6;border-radius:var(--r-md);display:none;flex-direction:column;overflow:auto;padding:16px}
@@ -352,9 +369,13 @@
     #inspector{left:8px;right:8px;width:auto;top:auto;height:62%;bottom:8px}
     #roomTitle{display:none !important}
     #roomTools button{padding:0 8px;font-size:14px}
-    /* 방 상태 카드: 아래 보기 도구와 겹치지 않게 위쪽(뒤로·정보 버튼 아래), 막대 축소 */
-    #roomLegend{top:68px;bottom:auto;left:8px;right:8px;min-width:0;padding:10px 12px;gap:6px}
+    /* 방 상태 카드: 단독 화면은 아래 보기 도구와 겹치지 않게 위쪽(뒤로·정보 버튼 아래), 막대 축소. 임베드는 보기 도구가 없어 왼쪽 아래 유지 */
+    body:not(.hosted) #roomLegend{top:68px;bottom:auto;left:8px;right:8px;min-width:0;padding:10px 12px;gap:6px}
     #roomLegend .g{width:64px}
+    /* 좁은 3D 영역(대시보드 임베드, 브라우저 확대 포함): 값 줄만 표시, 범위·근거 줄은 막대와 접힌 요약으로 대체 */
+    #roomLegend{min-width:0;gap:6px;padding:10px 12px}
+    #roomLegend .tx small{display:none}
+    #roomLegend .tx b{font-size:15px}
   }
   @media (prefers-reduced-motion: reduce){ #plan .tint, #introTitle, .ftag{transition:none} #plan.intro .tint, #plan.intro .chip, #plan.intro .idu{animation:none} }
   /* 앱 안에 임베드된 상태: 연동 상태 칩(오른쪽 아래). 앱에서 바꾼 값은 1.8초 외곽선 표시 후 원래대로(반복 없음) */
@@ -362,6 +383,8 @@
   #hostLink{position:absolute;left:50%;transform:translateX(-50%);bottom:16px;white-space:nowrap;z-index:9;display:none;align-items:center;gap:8px;min-height:36px;padding:4px 14px;border-radius:var(--r-full);font-size:14px;font-weight:500;color:var(--muted);pointer-events:none;transition:box-shadow .3s,color .3s}
   body.hosted #hostLink{display:flex}
   body.v-room #hostLink{bottom:76px}
+  /* 임베드 방 보기: 보기 도구가 없어 연동 상태 칩을 오른쪽 아래로(왼쪽 아래 방 상태 카드와 겹침 방지) */
+  body.hosted.v-room #hostLink{left:auto;right:16px;transform:none;bottom:16px}
   body.hosted.v-floor #floorView{padding-bottom:64px}
   body.hosted #metrics{display:none}      /* 지표 버튼은 앱 패널의 것(온도·전력·습도·이상 감지)을 사용 */
   /* 앱 안 좁은 화면: 층 선택은 앱 왼쪽 층 목록을 사용, 지표 줄이 없어 평면도 위 여백 축소 */
@@ -569,7 +592,8 @@
     </section>
     <div id="floorPicker" class="glass"></div>
     <div id="legend" class="glass"></div>
-    <div id="roomLegend" class="glass" role="group" aria-label="호실 상태">
+    <div id="roomLegend" class="glass" role="group" aria-label="호실 상태" data-open="1">
+      <div class="rl-head"><b id="rlSum">호실 상태</b><button id="rlToggle" class="rl-tg" type="button" aria-expanded="true" aria-controls="roomLegend"><span id="rlToggleTx">접기</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></div>
       <div><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"/></svg><span class="tx"><b id="rlTempV"></b><small id="rlTempS"></small></span><span class="g" id="rlTemp"><i id="rlTempMk"></i></span></div>
       <div><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12.8 19.6A2 2 0 1 0 14 16H2"/><path d="M17.5 8a2.5 2.5 0 1 1 2 4H2"/><path d="M9.8 4.4A2 2 0 1 1 11 8H2"/></svg><span class="tx"><b id="rlWindV"></b><small id="rlWindS"></small></span><span class="g wind" id="rlWind"></span></div>
       <div><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/></svg><span class="tx"><b id="rlHum"></b><small>적정 범위 40~60%</small></span><span class="g hum"><i id="rlHumMk"></i></span></div>
@@ -591,6 +615,8 @@
 </div>
 
 <script type="module">
+import { resolveAppearance } from './pipeline/appearance.js';
+import { createPeopleWalk } from './pipeline/people-walk.js';
 import * as THREE from 'three';
 import { iduFields, iduShape, iduSymbolSvg, IDU_NAME } from './pipeline/idu-shapes.js';   // 실내기 유형(cls)별 3D 형상
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -606,6 +632,8 @@ import { foldedRoofGeometry } from './pipeline/folded-roof.js';
 
 /* ═════════════════════════ config ═════════════════════════ */
 const params = new URLSearchParams(location.search);
+const appearancePreview = params.get('appearancePreview') === '1';
+if (appearancePreview) document.body.classList.add('appearance-preview');
 if (params.get('theme')) document.documentElement.dataset.theme = params.get('theme');
 // 테마 동기화: 앱(부모 창)이 {source:'maestro', type:'theme', theme} 메시지로 전달, 부모 창 메시지만 수락
 // - 부팅 전에 받으면 토큰만 바꾸고, 3D 바탕은 부팅 때 새 토큰으로 생성
@@ -682,6 +710,9 @@ const foldedExterior = BD.building?.facade?.roofProfile?.length > 2;
 const taperedExterior = BD.floors.some(f => f.shellFootprint?.length);
 const exteriorFirst = foldedExterior || taperedExterior || !!BD.building?.facade?.dome;
 const mappedExterior = exteriorFirst || BD.floors.some(f => f.footprint?.length);
+const appearanceBuilding = { ...BD.building, size:BD.building?.size ?? { w:48, d:35 } };
+let appearance = resolveAppearance(appearanceBuilding, BD.appearance);
+let polishedExterior = mappedExterior || !!BD.appearance || appearancePreview;
 const CFG = {
   buildingName: BD.building?.name || '건물',
   allowedOrigin: params.get('origin') || null,
@@ -1027,7 +1058,7 @@ function alertOf(r){
   else if (r.hum >= 65) items.push([1, `습도 높음 ${Math.round(r.hum)}%`]);
   const err = r.acs.filter(a => a.status === 'fault');
   if (err.length) items.push([2, `실내기 에러 ${err.map(a => a.error).join(', ')}`]);
-  if (r.idle && r.emptyOn >= 20) items.push([1, `${r.occSrc === 'wifi' || r.occSrc === 'sensor' ? `빈 방(${r.occSrc === 'wifi' ? '와이파이' : '재실 센서'} 0명)` : r.scheduled ? '수업 없음' : '운영시간 외'} ${modeKo()} ${Math.round(r.emptyOn)}분째`]);
+  if (r.idle && r.emptyOn >= 20) items.push([1, `${r.occSrc === 'wifi' || r.occSrc === 'sensor' || r.occSrc === 'status' ? `빈 방(${OCC_SRC[r.occSrc]} 0명)` : r.scheduled ? '수업 없음' : '운영시간 외'} ${modeKo()} ${Math.round(r.emptyOn)}분째`]);
   // 사용 중인데 ISO 7730 C등급(|PMV| 0.7) 밖이면 알림, 1.5 넘으면 심각
   const c = r.cmf;
   if (r.inUse && c && Math.abs(c.pmv) >= .7) items.push([Math.abs(c.pmv) >= 1.5 ? 2 : 1, `${c.pmv > 0 ? '더움' : '추움'} PMV ${pmvTxt(c.pmv)} · 불만족 ${Math.round(c.ppd)}%`]);
@@ -1042,7 +1073,9 @@ function roomsOf(s, m){
   const w = s.wifi && WM ? OCCM.occupancyFromWifi(WM, s.wifi, priorAt(m)) : null, out = {};
   for (const r of ROOMS) {
     const sen = s.rooms?.[r.id]?.occupancy, x = {};
-    if (typeof sen === 'number') { x.occ = sen; x.src = 'sensor'; } else if (w && r.id in w) { x.occ = w[r.id]; x.src = 'wifi'; }
+    if (typeof sen === 'number' && !s.rooms[r.id].fromStatus) { x.occ = sen; x.src = 'sensor'; }
+    else if (w && r.id in w) { x.occ = w[r.id]; x.src = 'wifi'; }
+    else if (typeof sen === 'number') { x.occ = sen; x.src = 'status'; }
     const vs = r.acs.map(a => s.idus?.[a.id]).filter(Boolean);
     if (vs.length) { x.on = avg(vs.map(v => v.onFrac ?? (v.power === 'on' ? 1 : 0))); x.kw = vs.reduce((t, v) => t + (+v.kw || 0), 0);
       const sp = vs.filter(v => typeof v.setTemp === 'number'); if (sp.length) x.set = avg(sp.map(v => v.setTemp)); }
@@ -1070,7 +1103,9 @@ function ingest(snap){
   // BMS 추세 기록(자정~지금 시간별 평균)이 오면 오늘 기록으로 채움
   if (snap.trend?.hours && (!snap.trend.date || snap.trend.date === simDate)) for (const t of snap.trend.hours) { delete HIST.hours[t.h]; histAdd(t.h, t.minutes || 60, t.outdoor, roomsOf(t, t.h * 60 + 30)); }
   if (snap.wifi) { MEAS.wifi = snap.wifi; MEAS.wifiAt = LIVE.count; }
-  if (snap.rooms) for (const [id, v] of Object.entries(snap.rooms)) MEAS.rooms[id] = { ...MEAS.rooms[id], ...v };
+  if (snap.rooms) for (const [id, v] of Object.entries(snap.rooms)) {
+    if (v && typeof v === 'object') MEAS.rooms[id] = { ...MEAS.rooms[id], ...v, ...('occupancy' in v ? { fromStatus:v.fromStatus === true } : {}) };
+  }
   const RS = roomsOf({ ...snap, wifi:MEAS.wifi, rooms:MEAS.rooms }, simMin);
   for (const [id, v] of Object.entries(snap.idus)) {
     const a = IDUS.find(x => x.id === id); if (!a) continue;
@@ -1089,7 +1124,7 @@ function ingest(snap){
     const vs = r.acs.filter(a => typeof a.temp === 'number');
     if (vs.length) { r.temp = avg(vs.map(a => a.temp)); const hs = vs.filter(a => typeof a.hum === 'number'); if (hs.length) r.hum = avg(hs.map(a => a.hum)); r.setpoint = +avg(vs.map(a => a.set ?? 24)).toFixed(1); }
     r.acPower = r.power = r.acs.reduce((t, a) => t + (a.power || 0), 0);
-    const on = r.acs.some(a => a.status === 'on'), meas = r.occSrc === 'wifi' || r.occSrc === 'sensor';
+    const on = r.acs.some(a => a.status === 'on'), meas = r.occSrc === 'wifi' || r.occSrc === 'sensor' || r.occSrc === 'status';
     r.inUse = !!r.cls || on || (meas && r.occ > 0);
     // 빈 방 냉방: 실측 재실이 있으면 '사람 0명인데 켜짐', 없으면 '수업 없음/운영시간 외인데 켜짐'
     r.idle = on && (meas ? r.occ < 1 : !r.cls && (r.scheduled || !inOperation(simMin)));
@@ -1149,7 +1184,7 @@ function onThemeChange(){
   isDarkNow = isDark();
   for (const grp of floorGroups) { const pm = grp.userData.planMat; pm.map = planTexture(grp.userData.floor); pm.color.set(isDarkNow ? 0xffffff : 0xc4ccd8); pm.needsUpdate = true;
     grp.userData.slabMat.color.set(isDarkNow ? 0x5b5e63 : 0xc1c1c1); }
-  roof.userData.mat.color.set(isDarkNow ? 0x3a3c40 : 0xdddddd);
+  applyAppearanceMaterials();
   if (state.view === 'floor' && state.floor) { buildPlanSvg(state.floor); updatePlanSvg(); }
 }
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (!document.documentElement.dataset.theme) onThemeChange(); });
@@ -1408,6 +1443,7 @@ for (const f of FLOORS) {
   const shellMat = f.below
     ? new THREE.MeshStandardMaterial({ color:isDark() ? 0x5d636e : 0x9aa1ab, transparent:true, opacity:.16, roughness:.95, metalness:0, depthWrite:false, side:THREE.BackSide })
     : new THREE.MeshPhysicalMaterial({ color:facade?.glassColor ?? 0xaecbff, transparent:true, opacity:exteriorFirst ? .2 : facade?.glassOpacity ?? .06, roughness:facade?.roughness ?? (exteriorFirst ? .38 : .05), metalness:facade?.metalness ?? 0, envMapIntensity:exteriorFirst ? .65 : 1.2, depthWrite:false, side:f.top || exteriorFirst ? THREE.DoubleSide : THREE.BackSide });
+  if (!f.below && !f.open) grp.userData.shellMat = shellMat;
   const lineMat = new THREE.LineBasicMaterial({ color:facade?.mullionColor ?? 0x9fb3cf, transparent:true, opacity:diagrid ? .5 : .22 }), seg = [], frameSeg = [];
   const pushLoop = (l, y, out) => l.forEach(([x0, y0], i) => { const [x1, y1] = l[(i + 1) % l.length], a = toWorld(x0, y0), b = toWorld(x1, y1); out.push(a.x, y, a.z, b.x, y, b.z); });
   if (f.open) {
@@ -1455,6 +1491,9 @@ for (const f of FLOORS) {
   bScene.add(grp); floorGroups.push(grp);
 }
 const totalH = floorY(FLOORS.length - 1) + FH;
+const overviewSpan = Math.max(W,D,totalH+(BD.building?.facade?.dome?.height || 0));
+camera.far = Math.max(camera.far, overviewSpan * 6);
+camera.updateProjectionMatrix();
 const topFloor = FLOORS.at(-1);
 const roofOutline = topFloor.top || topFloor.footprint;
 const roofY = floorY(topFloor.index) + (topFloor.top ? FH + GAP - .6 : FH - .1);
@@ -1470,7 +1509,7 @@ const soil = NB ? (() => {
   bScene.add(g); return g;
 })() : null;
 // roof + outdoor units with spinning fans
-const roof = new THREE.Group(); bScene.add(roof);
+const roof = new THREE.Group(), roofMaterials = []; bScene.add(roof);
 // 지붕: 맨 위층 윗 윤곽(곡면 외피면 topFootprint) 모양 · 맨 위층이 지붕 정원(open)이면 따로 덮지 않음
 if (!topFloor.open) {
   const facade = BD.building?.facade, roofColor = facade?.roofColor ?? (exteriorFirst ? facade?.glassColor : undefined);
@@ -1480,10 +1519,10 @@ if (!topFloor.open) {
     const covering = new THREE.Mesh(folded.roof, new THREE.MeshStandardMaterial({ color:roofTint, roughness:.64, metalness:.24, side:THREE.DoubleSide, ...translucent }));
     const sides = new THREE.Mesh(folded.sides, new THREE.MeshStandardMaterial({ color:facade.glassColor ?? roofTint, roughness:.55, side:THREE.DoubleSide, ...translucent }));
     covering.position.y = sides.position.y = roofY + .3;
-    roof.add(covering,sides);
+    roof.add(covering,sides); roofMaterials.push(covering.material, sides.material);
   } else {
     const slab = new THREE.Mesh(slabGeometry(!USER.floors, .3, .3, roofOutline), new THREE.MeshStandardMaterial({ color:roofTint, roughness:.7, metalness:0, envMapIntensity:.25, transparent:true, opacity:exteriorFirst ? .32 : roofColor ? .78 : isDark() ? .5 : .45, depthWrite:false }));
-    slab.position.y = roofY + .3; roof.add(slab);
+    slab.position.y = roofY + .3; roof.add(slab); roofMaterials.push(slab.material);
     const re = new THREE.LineSegments(new THREE.EdgesGeometry(slab.geometry), new THREE.LineBasicMaterial({ color:0xa9b8cc, transparent:true, opacity:.5 })); re.position.copy(slab.position); roof.add(re);
   }
   const dome = facade?.dome;
@@ -1492,7 +1531,33 @@ if (!topFloor.open) {
     const cap = new THREE.Mesh(new THREE.LatheGeometry(profile, 64),
       new THREE.MeshStandardMaterial({ color:roofColor ?? 0xb8bec8, roughness:.6, metalness:.12, ...translucent }));
     cap.position.copy(toWorld(dome.x, dome.y, roofY + .3));
-    roof.add(cap);
+    roof.add(cap); roofMaterials.push(cap.material);
+  }
+}
+function applyAppearanceMaterials(){
+  if (polishedExterior) {
+    for (const { userData:{ shellMat } } of floorGroups) if (shellMat) {
+      shellMat.color.set(appearance.facadeColor);
+      shellMat.side = THREE.DoubleSide;
+      shellMat.needsUpdate = true;
+    }
+    for (const material of roofMaterials) {
+      material.color.set(appearance.roofColor);
+      material.opacity = appearance.roofOpacity;
+    }
+    sun.intensity = 1.1 * appearance.lighting;
+    rim.intensity = .5 * appearance.lighting;
+  } else if (!BD.building?.facade?.roofColor) {
+    for (const material of roofMaterials) material.color.set(isDarkNow ? 0x3a3c40 : 0xdddddd);
+  }
+}
+function applyAppearance(saved){
+  const next = resolveAppearance(appearanceBuilding, saved), turn = next.cameraAngle !== appearance.cameraAngle;
+  appearance = next; polishedExterior = true;
+  applyAppearanceMaterials();
+  if (turn && state.view === 'building' && !explodeF) {
+    controls.autoRotate = false;
+    flyTo(homePos(), HOME.target, 380, undefined, FOV0);
   }
 }
 const fanMat = new THREE.MeshStandardMaterial({ color:0x3a4250, roughness:.5 });
@@ -1587,7 +1652,12 @@ evShaft.position.copy(toWorld(evC.x, evC.y, (roofY + 1.2 + bottomY) / 2));
 const evCab = new THREE.Mesh(new THREE.BoxGeometry(EV.x1 - EV.x0 - .35, 2.3, EV.y1 - EV.y0 - .35), new THREE.MeshStandardMaterial({ color:0xf2c14e, emissive:0xf2a01f, emissiveIntensity:.35, roughness:.4 }));
 if (!USER.floors) bScene.add(evShaft, evCab);
 const fitK = () => clamp(1.55 / camera.aspect, 1, 3) * SC;
-const homePos = () => HOME.target.clone().add(HOME.pos.clone().sub(HOME.target).multiplyScalar(fitK()));
+const homePos = () => {
+  if (!polishedExterior) return HOME.target.clone().add(HOME.pos.clone().sub(HOME.target).multiplyScalar(fitK()));
+  const angle = THREE.MathUtils.degToRad(appearance.cameraAngle);
+  const fit = clamp(1.3 / camera.aspect, 1, 2.8);
+  return HOME.target.clone().add(new THREE.Vector3(Math.sin(angle)*1.4, .62, Math.cos(angle)*1.4).multiplyScalar(overviewSpan*fit));
+};
 let hoverFloor = null, introStart = null, isDarkNow = isDark();
 
 // holographic scan sweep (intro reveal + periodic pass)
@@ -1702,7 +1772,8 @@ let scanY = null, explodeF = null, roofLift = 0;
 function updateBuilding(t, dt){
   if (introStart == null) introStart = t;
   const it = reduceMotion ? 99 : t - introStart, hlOn = performance.now() < HL.until, pulse = 1;   // 깜빡임 금지: 강조는 고정 밝기
-  const showArchitecture = exteriorFirst && !explodeF && !state.pipes;
+  const showArchitecture = polishedExterior && !explodeF && !state.pipes;
+  const interior = showArchitecture ? appearance.interiorBrightness : 1;
   if (soil) soil.visible = !showArchitecture;
   { // scan sweep: 처음 한 번만 건물을 훑으며 드러냄 (10초마다 반복하던 훑기는 화면이 번쩍여 보여 뺌)
     const top = roofY + 1.5, ph = (it - 1.2) / 2.6, on = !reduceMotion && ph > 0 && ph < 1 && !state.pipes && !showArchitecture;
@@ -1720,6 +1791,9 @@ function updateBuilding(t, dt){
     grp.userData.fade = lerp(grp.userData.fade, explodeF ? (f === explodeF ? 1 : up ? 0 : .1) : hoverFloor && !hot && !showArchitecture ? .28 : 1, explodeF ? .08 : .15);
     grp.position.y = floorY(f.index) + grp.userData.lift + (1 - e) * 22;
     const fade = grp.userData.fade * e;
+    if (polishedExterior && grp.userData.shellMat) {
+      grp.userData.shellMat.opacity = fade * (showArchitecture ? appearance.facadeOpacity : Math.min(appearance.facadeOpacity, .17));
+    }
     grp.userData.frame.material.color.set(hot ? (isDarkNow ? 0xe6e6e3 : 0x222222) : 0x8b99ad);
     grp.userData.frame.material.opacity = (hot ? 1 : showArchitecture ? .16 : .4) * e;
     if (grp.userData.mullMat) grp.userData.mullMat.opacity = (hot ? .45 : showArchitecture ? .13 : .2) * fade;   // 지하층은 멀리언 없음
@@ -1729,18 +1803,18 @@ function updateBuilding(t, dt){
       grp.userData.boost = lerp(grp.userData.boost ?? 1.6, hot || explodeF === f ? 2.4 : 1.6, 1 - Math.exp(-dt * 6));
       nm.color.copy(grp.userData.neonS);
       if (grp.userData.crit) nm.color.lerp(_c.setHex(0xb91c1c), .35 + .45 * pulse);
-      nm.color.multiplyScalar(grp.userData.boost); nm.opacity = (hot || explodeF === f ? 1 : showArchitecture ? .5 : .85) * fade; }
-    grp.userData.planMat.opacity = fade * (state.pipes ? .3 : showArchitecture && !f.open ? .85 : 1);   // 반투명 외피 안으로 층 평면·방이 보이게
+      nm.color.multiplyScalar(grp.userData.boost); nm.opacity = (hot || explodeF === f ? 1 : showArchitecture ? .13 + interior*.24 : .85) * fade; }
+    grp.userData.planMat.opacity = fade * (state.pipes ? .3 : showArchitecture && !f.open ? interior * .42 : 1);   // 반투명 외피 안으로 층 평면·방이 보이게
     grp.userData.planMat.visible = grp.userData.planMat.opacity > .01;
-    grp.userData.slabMat.opacity = e * (explodeF ? grp.userData.fade : showArchitecture && !f.open ? .7 : 1);
+    grp.userData.slabMat.opacity = e * (explodeF ? grp.userData.fade : showArchitecture && !f.open ? .32 + interior*.32 : 1);
     grp.visible = grp.userData.fade > .01 && (!showArchitecture || !f.below);
     grp.userData.coreMat.visible = !showArchitecture;
     grp.userData.coreMat.opacity = .92 * fade * (state.pipes ? .3 : 1);
-    const blockK = state.pipes ? .18 : 1;
+    const blockK = state.pipes ? .18 : interior;
     const grow = clamp((it - f.index * .22 - .6) / .8, 0, 1);
     const sweep = scanY == null ? 0 : 1;
     for (const bk of grp.userData.blocks) {
-      bk.mesh.visible = bk.edges.visible = true;
+      bk.mesh.visible = bk.edges.visible = interior > 0;
       bk.beacon.visible = bk.r.alert.level > 0;
       bk.beam.visible = bk.r.alert.level === 2;
       if (bk.tc) { bk.mesh.material.color.lerp(bk.tc, .08); bk.mesh.material.emissive.copy(bk.mesh.material.color); bk.edges.material.color.copy(bk.mesh.material.color).lerp(_c.setHex(0xffffff), .55); }
@@ -1750,13 +1824,14 @@ function updateBuilding(t, dt){
       bk.edges.material.opacity = .55 * fade * blockK;
       const hl = hlOn && HL.ids.has(bk.r.id);
       const sc = sweep ? Math.exp(-Math.pow((grp.position.y + CEIL / 2 - scanY) / 1.6, 2)) : 0;
-      bk.mesh.material.emissiveIntensity = (hl ? .5 + .6 * pulse : hot ? .32 : .18) + sc * .9;
+      bk.mesh.material.emissiveIntensity = (hl ? .5 + .6 * pulse : (hot ? .32 : .18) * interior) + sc * .9;
       if (hl) bk.mesh.material.opacity = Math.max(bk.mesh.material.opacity, .8);
       if (bk.beacon.visible) { const s = 1.6; bk.beacon.scale.set(s, s, s); bk.beacon.material.opacity = fade; }
       if (bk.beam.visible) bk.beam.material.opacity = (.25 + .25 * pulse) * fade;
     }
     for (const { m } of grp.userData.idus) m.visible = state.pipes;
   }
+  updateFloorPeople(plan3d ? explodeF : null, reduceMotion ? 0 : dt);
   placeTags(it);
   for (const m of hud) { m.rotation.y += dt * m.userData.spd; m.material.opacity = (isDarkNow ? .5 : .35) * clamp(it / 2.5, 0, 1); }
   stars.visible = isDarkNow; starMat.uniforms.uTime.value = t; stars.rotation.y = t * .004;
@@ -1831,15 +1906,64 @@ function floorSurface(r){
   return { tex:tileTex(), tile:1.2 };
 }
 // 가구는 그리지 않는다. 재실자는 방 안 격자 위치(앞쪽부터)에 결정적으로 배치.
-function seatGrid(r){
-  const b = r.b, out = [], alongX = b.w >= b.h, step = r.kind === 'lecture' ? .95 : 1.2;
-  for (let d = 1.8; d <= (alongX ? b.w : b.h) - .6; d += step)
-    for (let s = .7; s <= (alongX ? b.h : b.w) - .7; s += .75) {
-      const x = alongX ? b.x + d : b.x + s, y = alongX ? b.y + s : b.y + d;
-      if (inPoly(x, y, r.poly) && !(r.poly.holes || []).some(h => inPoly(x, y, h))) out.push({ p:toWorld(x, y, 0), row:d, lat:Math.abs(s - (alongX ? b.h : b.w) / 2) });
-    }
-  out.sort((u, v) => u.row - v.row || u.lat - v.lat);
-  return out.map(o => o.p);
+function peopleMesh(group, limit, shadows = false){
+  const material = color => new THREE.MeshStandardMaterial({ color, roughness:.68 });
+  const make = (geometry, color, count) => {
+    const mesh = new THREE.InstancedMesh(geometry,material(color),count);
+    mesh.count = 0; mesh.frustumCulled = false; mesh.castShadow = shadows;
+    mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage); group.add(mesh); return mesh;
+  };
+  const bodies = make(new THREE.CapsuleGeometry(.17,.48,3,8),0x6b88aa,limit);
+  const heads = make(new THREE.SphereGeometry(.12,8,6),0xe1c4ad,limit);
+  const legs = make(new THREE.CapsuleGeometry(.065,.42,3,6),0x384b64,limit*2);
+  const dummy = new THREE.Object3D();
+  const shirts = [0x7398b6,0xc78168,0x82a093,0x957fa9,0xc4a266].map(color => new THREE.Color(color));
+  for (let i=0;i<limit;i++) bodies.setColorAt(i,shirts[i%shirts.length]);
+  return actors => {
+    bodies.count = heads.count = actors.length; legs.count = actors.length*2;
+    actors.forEach((actor,i) => {
+      const { x,y,angle,walking,phase } = actor;
+      const sway = walking ? Math.sin(phase) : 0, bob = Math.abs(sway)*.045;
+      dummy.position.set(x-W/2, 1.11+bob, y-D/2); dummy.rotation.set(0,angle,0);
+      dummy.updateMatrix(); bodies.setMatrixAt(i,dummy.matrix);
+      dummy.position.y = 1.61+bob; dummy.updateMatrix(); heads.setMatrixAt(i,dummy.matrix);
+      for (let leg=0;leg<2;leg++) {
+        const sign = leg ? 1 : -1, side = sign*.085;
+        const stride = sign*sway*.14;
+        dummy.position.set(x-W/2 + side*Math.cos(angle) + stride*Math.sin(angle),.33 + Math.max(0,sign*sway)*.065,
+          y-D/2 - side*Math.sin(angle) + stride*Math.cos(angle));
+        dummy.rotation.set(sign*sway*.4,angle,0,'YXZ'); dummy.updateMatrix(); legs.setMatrixAt(i*2+leg,dummy.matrix);
+      }
+    });
+    bodies.instanceMatrix.needsUpdate = heads.instanceMatrix.needsUpdate = legs.instanceMatrix.needsUpdate = true;
+  };
+}
+const FLOOR_PEOPLE_LIMIT = 120;
+let floorPeople, drawFloorPeople;
+const floorWalkers = new WeakMap();
+const occupantCount = room => Math.max(0, Math.floor(Number(room.occ) || 0));
+
+function updateFloorPeople(f, dt){
+  if (!f || state.pipes) { if (floorPeople) floorPeople.visible = false; return; }
+  const rooms = f.rooms.filter(r => occupantCount(r) > 0);
+  const total = rooms.reduce((n,r) => n+occupantCount(r),0);
+  if (!total) { if (floorPeople) floorPeople.visible = false; return; }
+  if (!floorPeople) { floorPeople = new THREE.Group(); drawFloorPeople = peopleMesh(floorPeople,FLOOR_PEOPLE_LIMIT); }
+  const group = floorGroups[f.index];
+  if (floorPeople.parent !== group) group.add(floorPeople);
+  floorPeople.visible = true;
+  let accumulated = 0, allotted = 0;
+  const actors = [];
+  for (const room of rooms) {
+    accumulated += occupantCount(room);
+    const target = Math.round(accumulated/total*Math.min(total,FLOOR_PEOPLE_LIMIT));
+    const count = target - allotted;
+    allotted = target;
+    if (!count) continue;
+    if (!floorWalkers.has(room)) floorWalkers.set(room,createPeopleWalk(room,f.partitions));
+    actors.push(...floorWalkers.get(room).update(count,dt));
+  }
+  drawFloorPeople(actors);
 }
 function buildRoom(r){
   const f = FLOOR[r.floorId], p = f.plan, b = r.b;
@@ -1864,7 +1988,6 @@ function buildRoom(r){
     for (let i = 0; i < pos.count; i++) surf?.tex ? uv.setXY(i, pos.getX(i) / surf.tile, pos.getZ(i) / surf.tile) : uv.setXY(i, (p.ox + pos.getX(i) * p.S) / p.w, 1 - (p.oy + pos.getZ(i) * p.S) / p.h); }
   fg.translate(-W/2, 0, -D/2);
   const floorMesh = new THREE.Mesh(fg, new THREE.MeshStandardMaterial(surf?.color ? { color:surf.color, roughness:.9, side:THREE.DoubleSide } : { map: surf ? surf.tex : planTexture(f), roughness:.9, side:THREE.DoubleSide })); floorMesh.receiveShadow = true; root.add(floorMesh);
-  const furn = { seats:seatGrid(r) };
   const base = new THREE.ExtrudeGeometry(shapeOf(r.poly), { depth:.3, bevelEnabled:false });
   base.rotateX(-Math.PI/2); base.translate(-W/2, -.33, -D/2);       // 윗면을 바닥보다 3cm 아래로 (2mm였을 때 바닥과 겹쳐 깜빡임)
   const baseMesh = new THREE.Mesh(base, new THREE.MeshStandardMaterial({ color:0xc3cbd6, roughness:.5, metalness:.05 })); root.add(baseMesh);
@@ -2070,29 +2193,27 @@ function buildRoom(r){
     hgTex.needsUpdate = true;
   }
 
-  // occupants (abstract figures)
-  const MAXP = 120;
-  const bodies = new THREE.InstancedMesh(new THREE.CapsuleGeometry(.17, .62, 4, 10), new THREE.MeshStandardMaterial({ color:0x5d6b80, roughness:.6 }), MAXP);
-  const heads = new THREE.InstancedMesh(new THREE.SphereGeometry(.13, 14, 10), new THREE.MeshStandardMaterial({ color:0xd9dee6, roughness:.5 }), MAXP);
-  bodies.count = heads.count = 0; bodies.castShadow = heads.castShadow = true; root.add(bodies, heads);
-  const seated = furn.seats.length > 0;
-  const seats = seated ? furn.seats : Array.from({ length:MAXP }, () => { const [x, y] = randIn(); return toWorld(clamp(x, b.x + .6, b.x + b.w - .6), clamp(y, b.y + .6, b.y + b.h - .6)); });
-  let shownOcc = -1; const pPos = [];
-  function placePeople(){
-    const n = Math.min(r.occ, MAXP, seats.length);
-    if (n === shownOcc) return;
-    shownOcc = n; pPos.length = 0;
-    for (let i = 0; i < n; i++) pPos.push(seats[i].clone());
-    bodies.count = heads.count = n;
+  const maxPeople = 120, drawPeople = peopleMesh(root,maxPeople,true);
+  let walkers, lastPeopleHeat = -Infinity, lastPeopleCount = -1;
+  function updateOccupants(dt,t){
+    const count = Math.min(occupantCount(r),maxPeople);
+    walkers ??= count > 0 ? createPeopleWalk(r,f.partitions) : null;
+    const actors = walkers?.update(count,dt) ?? [];
+    drawPeople(actors);
+    if (actors.length === lastPeopleCount && t-lastPeopleHeat < 2) return;
+    lastPeopleHeat = t; lastPeopleCount = actors.length;
     personHeat.fill(0);
-    for (let i = 0; i < N; i++) {
-      if (vy[i] > 2.6) continue;
-      let hsum = 0;
-      for (const q of pPos) { const dx = vx[i] - q.x, dz = vz[i] - q.z, dy = vy[i] - (q.y + 1.0); const d2 = dx*dx + dz*dz + dy*dy; if (d2 < 4) hsum += Math.exp(-d2 / .9); }
-      personHeat[i] = Math.min(hsum * .55, 2.2);
+    for (let i=0;i<N;i++) {
+      if (vy[i]>2.6) continue;
+      let heat=0;
+      for (const actor of actors) {
+        const dx=vx[i]-actor.x+W/2, dz=vz[i]-actor.y+D/2, dy=vy[i]-1;
+        const d2=dx*dx+dy*dy+dz*dz;
+        if (d2<4) heat += Math.exp(-d2/.9);
+      }
+      personHeat[i]=Math.min(heat*.55,2.2);
     }
   }
-  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sv = new THREE.Vector3(), pv = new THREE.Vector3(), one = new THREE.Vector3(1,1,1);
   const tmpC = new THREE.Color();
   const winD = new Float32Array(N);
   for (let i = 0; i < N; i++) {
@@ -2113,7 +2234,7 @@ function buildRoom(r){
     root.scale.y = Math.max(.02, 1 - (1 - growth) ** 3);
     airMat.uniforms.uTime.value = t;
     volMat.uniforms.uCam.value.copy(camera.position).sub(vol.position);
-    placePeople();
+    updateOccupants(reduceMotion ? 0 : dt,t);
     if (!baseD) { baseD = new Float32Array(N); for (let i = 0; i < N; i++) baseD[i] = .55 * (vy[i] - 1.35) + 1.6 * Math.exp(-winD[i] / 1.2); }
     // vane angle: LG auto-swing between ~25° and ~60° below horizontal
     for (const o of acObjs) {
@@ -2218,14 +2339,6 @@ function buildRoom(r){
     });
 
     { const hv = Math.round(r.hum); if (hv !== hgShown) { hgShown = hgShown < 0 ? hv : hgShown + Math.sign(hv - hgShown); drawHumGauge(hgShown); } hgMat.opacity = vis * (state.rv.hum ? 1 : 0); }
-
-    for (let i = 0; i < bodies.count; i++) {
-      const bob = Math.sin(t * 1.4 + i * 1.7) * .015;
-      const by0 = pPos[i].y;
-      pv.copy(pPos[i]).setY(by0 + (seated ? .74 : .55) + bob); m4.compose(pv, q, one); bodies.setMatrixAt(i, m4);
-      pv.setY(by0 + (seated ? 1.25 : 1.12) + bob); m4.compose(pv, q, one); heads.setMatrixAt(i, m4);
-    }
-    bodies.instanceMatrix.needsUpdate = heads.instanceMatrix.needsUpdate = true;
 
     for (const { a, rings } of apObjs) rings.forEach((m, k) => {
       const ph = (t * .45 + k / 3) % 1, sc = .2 + ph * 3.4; m.scale.set(sc, sc, sc);
@@ -2353,6 +2466,7 @@ function enterPlan3d(f, animate = true){
 }
 function setPlan3d(on){
   if (plan3d === on && !planAnim) return;
+  hideTip();
   const wasPlan = !plan3d && !planAnim;
   plan3d = on; if (on) document.body.classList.add('plan3d');
   try { localStorage.setItem('twin:plan3d', on ? '1' : '0'); } catch {}
@@ -2401,8 +2515,8 @@ function goBuilding(animate = true){
   setBodyView('building'); state.floor = null; state.room = null; explodeF = null; hoverFloor = null;
   lockCamera();
   const settle = () => {
-    controls.enabled = true; controls.autoRotate = !reduceMotion; controls.autoRotateSpeed = .45;
-    controls.minDistance = 20; controls.maxDistance = 240 * SC;
+    controls.enabled = true; controls.autoRotate = !reduceMotion && !appearancePreview; controls.autoRotateSpeed = .45;
+    controls.minDistance = 20; controls.maxDistance = Math.max(240 * SC, overviewSpan * 5);
   };
   if (initial && !reduceMotion) {
     const k = fitK();
@@ -2552,6 +2666,8 @@ function buildPlanSvg(f, intro = false){
   let html = `<defs><clipPath id="planClip"><path clip-rule="evenodd" d="${clipD}"/></clipPath></defs><image href="${isDark() ? p.srcDark : p.src}" x="0" y="0" width="${p.w}" height="${p.h}" clip-path="url(#planClip)"/>`;
   const dly = r => `animation-delay:${(120 + (r.b.cx / W) * 520 + (r.b.cy / D) * 160).toFixed(0)}ms`;
   const RS = f.rooms.filter(r => r.acs.length);
+  html += '<g>' + f.rooms.filter(r => r.type === 'room' && !r.acs.length).map(r =>
+    `<path class="room-hit" data-id="${esc(r.id)}" fill-rule="evenodd" d="${[r.poly,...(r.poly.holes || [])].map(l=>'M'+l.map(P).join('L')+'Z').join('')}"/>`).join('') + '</g>';
   html += '<g>' + RS.map(r => `<path class="tint" data-id="${r.id}" style="${dly(r)}" fill-rule="evenodd" d="${[r.poly, ...(r.poly.holes || [])].map(l => 'M' + l.map(P).join('L') + 'Z').join('')}"/>`).join('') + '</g>';
   // 실내기 유형(cls)이 있으면 유형별 기호, 없으면(이전 데이터) 원
   html += '<g>' + f.rooms.flatMap(r => r.acs.map(a => a.cls ? iduSymbolSvg(a, p.ox + a.x*p.S, p.oy + a.y*p.S)
@@ -2563,7 +2679,7 @@ function buildPlanSvg(f, intro = false){
     return (showChip ? `<g class="chip" data-id="${r.id}" style="animation-delay:${(500 + (r.b.cx / W) * 520).toFixed(0)}ms" transform="translate(${cx},${cy})"><rect rx="8" ry="8"/><text text-anchor="middle" dominant-baseline="central"></text></g>` : '') + `
             <g class="badge" data-id="${r.id}" transform="translate(${bx},${by})" style="display:none"><circle r="13"/><text text-anchor="middle" dominant-baseline="central" y="1">!</text></g>`;
   }).join('') + '</g>';
-  svg.innerHTML = html;
+  svg.innerHTML = html + '<path class="room-hover" fill-rule="evenodd" aria-hidden="true"/>';
   planRefs = RS.map(r => ({ r, tint:svg.querySelector(`.tint[data-id="${r.id}"]`), chip:svg.querySelector(`.chip[data-id="${r.id}"]`), badge:svg.querySelector(`.badge[data-id="${r.id}"]`),
     idus:r.acs.map(a => [a, svg.querySelector(`.idu[data-a="${a.id}"]`)]) }));
 }
@@ -2584,7 +2700,7 @@ function updatePlanSvg(){
     tint.classList.toggle('hl', hlOn && HL.ids.has(r.id));
     const narrow = r.b.w < 9.5;
     const parts = [['temp', `${r.temp.toFixed(1)}°`], ['hum', `${Math.round(r.hum)}%`], ['power', `${r.power.toFixed(1)}kW`]];
-    if (r.cls || r.occSrc === 'wifi' || r.occSrc === 'sensor') parts.push(['occ', `${r.occ}명`]);
+    if (r.cls || r.occSrc === 'wifi' || r.occSrc === 'sensor' || r.occSrc === 'status') parts.push(['occ', `${r.occ}명`]);
     if (m === 'comfort' && r.cmf) parts.unshift(['comfort', `PMV ${pmvTxt(r.cmf.pmv)}`]);
     const show = narrow ? parts.filter(([k]) => k === (m === 'alert' ? 'temp' : m)) : parts;
     if (chip) {
@@ -2599,9 +2715,13 @@ function updatePlanSvg(){
     for (const [a, el] of idus) el.style.fill = STATUS_CSS[a.status];
   }
 }
-svg.addEventListener('pointermove', e => { const id = e.target.dataset && e.target.dataset.id; if (!id) return hideTip(); showRoomTip(ROOM[id], e); });
-svg.addEventListener('pointerleave', hideTip);
-svg.addEventListener('click', e => { const id = e.target.dataset && e.target.dataset.id; if (id) goRoom(ROOM[id]); });
+svg.addEventListener('pointermove', e => {
+  const room = ROOM[e.target.dataset?.id];
+  if (room) showRoomTip(room,e);
+  else leaveRoomTip();
+});
+svg.addEventListener('pointerleave', leaveRoomTip);
+svg.addEventListener('click', e => { const room = ROOM[e.target.dataset?.id]; if (room) goRoom(room); });
 
 /* ═════════════════════════ floor tabs / stats ═════════════════════════ */
 function floorAgg(rs){
@@ -2993,8 +3113,8 @@ const ICON = { temp:'<path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"/>', hu
   ok:'<circle cx="12" cy="12" r="10"/><path d="m16 9-5.5 5.5L8 12"/>' };
 const ico = k => `<span class="ic">${svgI(ICON[k])}</span>`;
 // 재실 인원 출처 표시: 와이파이(AP 접속 수) / 재실 센서 / 학사 시간표
-const OCC_SRC = { wifi:'와이파이', sensor:'재실 센서', schedule:'시간표' };
-const occKind = (rs = ROOMS) => rs.some(r => r.occSrc === 'wifi') ? 'wifi' : rs.some(r => r.occSrc === 'sensor') ? 'sensor' : 'schedule';
+const OCC_SRC = { status:'대시보드', wifi:'와이파이', sensor:'재실 센서', schedule:'시간표' };
+const occKind = (rs = ROOMS) => rs.some(r => r.occSrc === 'wifi') ? 'wifi' : rs.some(r => r.occSrc === 'sensor') ? 'sensor' : rs.some(r => r.occSrc === 'status') ? 'status' : 'schedule';
 const occName = (rs = ROOMS) => occKind(rs) === 'schedule' ? '수업 인원' : '재실 인원';
 const KPI_SET = {
   owner:    [['power', '건물 전력'], ['kwh', '오늘 누적 사용량'], ['won', '오늘 전기요금 (추정)'], ['save', '지금 절감 가능'], ['occ', '수업 인원 (시간표)']],
@@ -3133,6 +3253,17 @@ const HUM_HEX = { ok:'#3cc995', warn:'#f2b134', bad:'#5b8cff' };
 const RC_ICON = { ok:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>',
   warn:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>' };
 RC_ICON.bad = RC_ICON.warn;
+// 방 상태 카드 펼침: 사용자 선택 우선, 선택 전에는 3D 영역이 작으면(높이 520px 이하 또는 너비 480px 이하, 브라우저 확대 포함) 접힘
+const RL_SMALL = matchMedia('(max-height: 520px), (max-width: 480px)');
+const RL = { user:null };
+function applyRoomCardOpen(){
+  const open = RL.user ?? !RL_SMALL.matches, el = $('#roomLegend');
+  el.dataset.open = open ? '1' : '0';
+  $('#rlToggle').setAttribute('aria-expanded', open); $('#rlToggleTx').textContent = open ? '접기' : '펼치기';
+  if (state.room) renderRoomCard(state.room);
+}
+RL_SMALL.addEventListener('change', applyRoomCardOpen);
+$('#rlToggle').addEventListener('click', () => { RL.user = $('#roomLegend').dataset.open !== '1'; applyRoomCardOpen(); });
 // 방 상태 카드: 선택 방의 현재 값(온도·설정, 기류 유무, 습도 판정, 실내기 대수, 재실)
 function renderRoomCard(r){
   const T = SCALES.temp, on = r.acs.filter(a => a.status === 'on'), fault = r.acs.filter(a => a.status === 'fault');
@@ -3152,11 +3283,14 @@ function renderRoomCard(r){
   const meas = r.occSrc && r.occSrc !== 'schedule';
   $('#rlOcc').textContent = r.occSrc ? `${meas ? '재실' : '수업 인원'} ${r.occ}명` : '재실 정보 없음';
   $('#rlOccS').textContent = r.occSrc ? `${OCC_SRC[r.occSrc]} 기준${r.cap ? `, 정원 ${r.cap}명` : ''}` : '';
+  // 머리 줄: 펼침은 제목, 접힘은 한 줄 요약(온도, 기류, 습도 판정, 고장)
+  $('#rlSum').textContent = $('#roomLegend').dataset.open === '1' ? '호실 상태'
+    : [`${r.temp.toFixed(1)}°C`, on.length ? '기류 있음' : '기류 없음', `습도 ${Math.round(r.hum)}% ${lv.t}`, fault.length ? `고장 ${fault.length}` : ''].filter(Boolean).join(', ');
 }
 function renderRoomTitle(){
   const r = state.room; if (!r) return;
   renderRoomCard(r);
-  $('#roomTitle').innerHTML = `<b>${esc(r.name)}</b><small>${esc(CFG.buildingName)} · ${r.floorId} · <span class="num">${r.temp.toFixed(1)}°C · ${Math.round(r.hum)}%${r.cls ? ` · ${esc(r.cls.course)}` : ''}${r.occSrc === 'wifi' || r.occSrc === 'sensor' ? ` · 재실 ${r.occ}명` : r.cls ? ` ${r.occ}명` : r.scheduled ? ' · 수업 없음' : ''}</span></small>`;
+  $('#roomTitle').innerHTML = `<b>${esc(r.name)}</b><small>${esc(CFG.buildingName)} · ${r.floorId} · <span class="num">${r.temp.toFixed(1)}°C · ${Math.round(r.hum)}%${r.cls ? ` · ${esc(r.cls.course)}` : ''}${r.occSrc === 'wifi' || r.occSrc === 'sensor' || r.occSrc === 'status' ? ` · 재실 ${r.occ}명` : r.cls ? ` ${r.occ}명` : r.scheduled ? ' · 수업 없음' : ''}</span></small>`;
 }
 insp.addEventListener('click', e => { if (e.target.closest('[data-close]')) setInspector(false); });
 $('#roomTools').addEventListener('click', e => { const bt = e.target.closest('[data-rv]'); if (!bt) return;
@@ -3235,27 +3369,140 @@ $('#back').addEventListener('click', () => state.view === 'room' ? goFloor(state
 $('#roomBack').addEventListener('click', () => goFloor(state.floor));
 
 const tip = $('#tip');
+let tipRoom = null, tipAnchor = null, tipExit, renameSequence = 0, renameRequest = null;
+let roomHoverMark = null;
+function markHoveredRoom(room){
+  const outline = svg.querySelector('.room-hover');
+  if (roomHoverMark) {
+    roomHoverMark.removeFromParent();
+    dispose(roomHoverMark);
+    roomHoverMark = null;
+  }
+  if (!room) { outline?.removeAttribute('d'); return; }
+  if (!plan3d) {
+    const path = svg.querySelector(`path[data-id="${CSS.escape(room.id)}"]`);
+    if (path && outline) outline.setAttribute('d', path.getAttribute('d'));
+    return;
+  }
+  if (!room.poly?.length) return;
+  const tint = cssVar('--chart-cur') || '#3987e5';
+  const base = new THREE.ShapeGeometry(shapeOf(room.poly));
+  base.rotateX(-Math.PI/2);
+  base.translate(-W/2,.036,-D/2);
+  const fill = new THREE.Mesh(base, new THREE.MeshBasicMaterial({ color:tint, transparent:true, opacity:.19, depthWrite:false, side:THREE.DoubleSide }));
+  const segments = [], top = room.type === 'room' && room.acs.length ? CEIL + .06 : .06;
+  for (const loop of [room.poly, ...(room.poly.holes || [])]) {
+    for (let i=0; i<loop.length; i++) {
+      const a = toWorld(...loop[i]), b = toWorld(...loop[(i+1)%loop.length]);
+      segments.push(a.x,top,a.z,b.x,top,b.z);
+      if (top > 1) segments.push(a.x,.04,a.z,b.x,.04,b.z);
+    }
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(segments,3));
+  const edges = new THREE.LineSegments(geometry, new THREE.LineBasicMaterial({ color:tint, transparent:true, depthTest:false, depthWrite:false }));
+  edges.renderOrder = 8;
+  roomHoverMark = new THREE.Group();
+  roomHoverMark.add(fill,edges);
+  floorGroups[room.floorIndex].add(roomHoverMark);
+}
+const localRename = window.parent === window && !params.has('building') && !params.has('data') && DATA_FROM.building === '직접 넣은 파일';
+const canRenameRoom = r => r.type === 'room' && (localRename || HOST.canRename && HOST.renameRooms.has(r.id));
+function leaveRoomTip(){
+  clearTimeout(tipExit);
+  if (!tip.dataset.editing && !tip.contains(document.activeElement)) tipExit = setTimeout(hideTip,180);
+}
+tip.addEventListener('pointerenter', () => clearTimeout(tipExit));
+tip.addEventListener('pointerleave', leaveRoomTip);
+tip.addEventListener('keydown', e => { if (e.key === 'Escape') hideTip(); });
+stage.addEventListener('pointerdown', e => { if (tip.dataset.editing && !tip.contains(e.target)) hideTip(); });
+tip.addEventListener('click', e => {
+  if (e.target.closest('[data-rename-cancel]')) { hideTip(); return; }
+  if (!e.target.closest('[data-room-rename]') || !tipRoom || !canRenameRoom(tipRoom)) return;
+  tip.dataset.editing = '1';
+  tip.innerHTML = '<form aria-label="방 이름 수정"><label for="tip-room-name">방 이름</label><input id="tip-room-name" type="text" maxlength="40" required><div class="tip-buttons"><button type="submit">저장</button><button type="button" data-rename-cancel>취소</button></div><div class="tip-error" role="alert"></div></form>';
+  const input = tip.querySelector('input');
+  input.value = tipRoom.name; input.focus(); input.select();
+});
+tip.addEventListener('submit', e => {
+  e.preventDefault();
+  if (!tipRoom || !canRenameRoom(tipRoom) || renameRequest) return;
+  const input = tip.querySelector('input'), name = input.value.trim(), r = tipRoom;
+  if (!name) { tip.querySelector('.tip-error').textContent = '방 이름을 입력하세요.'; return; }
+  if (name === r.name) { hideTip(); return; }
+  const request = ++renameSequence;
+  const timer = setTimeout(() => finishRoomRename({ request,id:r.id,error:'응답이 지연되고 있습니다. 잠시 뒤 다시 시도하세요.' }),12000);
+  renameRequest = { request, id:r.id, timer };
+  tip.querySelector('button[type="submit"]').disabled = true;
+  tip.querySelector('.tip-error').textContent = '';
+  if (localRename) {
+    const source = BD.floors.find(f => f.id === r.floorId).rooms.find(room => room.id === r.id);
+    const old = source.name; source.name = name;
+    try {
+      sessionStorage.setItem('twin:building',JSON.stringify(BD));
+      finishRoomRename({ request,id:r.id,name });
+    } catch {
+      source.name = old;
+      finishRoomRename({ request,id:r.id,error:'방 이름을 저장하지 못했습니다.' });
+    }
+  } else emit('roomRename', { source:'twin',request,id:r.id,name });
+});
+function finishRoomRename(result){
+  if (!renameRequest || result.request !== renameRequest.request || result.id !== renameRequest.id) return;
+  clearTimeout(renameRequest.timer);
+  renameRequest = null;
+  if (result.error) {
+    if (tip.dataset.editing && tipRoom?.id === result.id) {
+      tip.querySelector('.tip-error').textContent = result.error;
+      tip.querySelector('button[type="submit"]').disabled = false;
+    }
+    return;
+  }
+  const r = ROOM[result.id];
+  if (typeof result.name !== 'string' || !r) return;
+  r.name = result.name;
+  const f = FLOOR[r.floorId];
+  f.plan = drawPlan(f);
+  for (const key of [f.id,f.id+':d']) { texCache[key]?.dispose(); delete texCache[key]; }
+  floorGroups[f.index].userData.planMat.map = planTexture(f);
+  if (state.view === 'floor' && state.floor === f) {
+    svg.__key = null; buildPlanSvg(f); updatePlanSvg();
+    if (!plan3d && !planAnim) renderBackdrop(f);
+  }
+  if (state.room === r) { renderCrumbs(); renderRoomTitle(); }
+  hideTip();
+}
 function placeTip(e){
   const rc = stage.getBoundingClientRect();
   let x = e.clientX - rc.left + 14, y = e.clientY - rc.top + 14;
   if (x + tip.offsetWidth > rc.width - 8) x = e.clientX - rc.left - tip.offsetWidth - 14;
   if (y + tip.offsetHeight > rc.height - 8) y = e.clientY - rc.top - tip.offsetHeight - 14;
-  tip.style.left = x + 'px'; tip.style.top = y + 'px';
+  tip.style.left = Math.max(8,x) + 'px'; tip.style.top = Math.max(8,y) + 'px';
 }
 function showRoomTip(r, e){
+  clearTimeout(tipExit);
+  if (tip.dataset.editing) return;
+  if (tipRoom !== r) markHoveredRoom(r);
+  const editable = canRenameRoom(r);
+  if (editable && tipRoom === r && tipAnchor && Math.hypot(e.clientX-tipAnchor.x,e.clientY-tipAnchor.y) < 48) return;
+  tipRoom = r; tipAnchor = { x:e.clientX, y:e.clientY };
+  tip.toggleAttribute('data-editable',editable);
   const on = r.acs.filter(a => a.status === 'on').length, fault = r.acs.filter(a => a.status === 'fault').length;
   tip.innerHTML = `<b>${esc(r.name)}</b>
-    <div class="row"><span>온도 · 습도</span><span>${r.temp.toFixed(1)}°C · ${Math.round(r.hum)}%</span></div>
-    <div class="row"><span>전력</span><span>${r.power.toFixed(2)} kW</span></div>
-    ${r.occSrc === 'wifi' || r.occSrc === 'sensor' ? `<div class="row"><span>재실 (${OCC_SRC[r.occSrc]})</span><span>${r.occ}명${r.cap ? ` / ${r.cap}` : ''}</span></div>` : ''}
+    <div class="row"><span>층 · 면적</span><span>${esc(r.floorId)} · ${r.area.toFixed(1)} m²</span></div>
+    ${LIVE.count ? `<div class="row"><span>온도 · 습도</span><span>${r.temp.toFixed(1)}°C · ${Math.round(r.hum)}%</span></div>
+    <div class="row"><span>전력</span><span>${r.power.toFixed(2)} kW</span></div>` : '<div class="row">운전 데이터 대기 중</div>'}
+    ${r.occSrc === 'wifi' || r.occSrc === 'sensor' || r.occSrc === 'status' ? `<div class="row"><span>재실 (${OCC_SRC[r.occSrc]})</span><span>${r.occ}명${r.cap ? ` / ${r.cap}` : ''}</span></div>` : ''}
     ${r.scheduled ? `<div class="row"><span>학사 시간표</span><span>${r.cls ? `${esc(r.cls.course)} · ${r.occ}명` : r.next ? `다음 ${r.next.start} ${esc(r.next.course)}` : '오늘 수업 끝'}</span></div>` : ''}
     ${r.cmf ? `<div class="row"><span>쾌적도 PMV</span><span>${pmvTxt(r.cmf.pmv)} · 불만족 ${Math.round(r.cmf.ppd)}%</span></div>` : ''}
     ${r.acs.length ? `<div class="row"><span>실내기</span><span>${on}/${r.acs.length} 가동${fault ? ` · 고장 ${fault}` : ''} · ${r.setpoint}°</span></div>` : ''}
     ${r.alert.items.map(([lv, m]) => `<div class="al" style="color:${lv === 2 ? 'var(--danger)' : 'var(--caution)'}">${lv === 2 ? IC.alert : IC.alertCircle}${esc(m)}</div>`).join('')}
     ${(actionsByRoom().get(r.id) || []).filter(i => !r.alert.items.some(([, m]) => m === i.title)).map(i => `<div class="al" style="color:${i.lv === 2 ? 'var(--danger)' : 'var(--caution)'}">${i.lv === 2 ? IC.alert : IC.alertCircle}${esc(i.title)}</div><div class="act-d">${i.d}</div>`).join('')}`;
+  if (editable) tip.insertAdjacentHTML('beforeend','<div class="tip-buttons"><button type="button" data-room-rename>이름 수정</button></div>');
   tip.style.display = 'block'; placeTip(e);
 }
 function showFloorTip(f, e){
+  tipRoom = null; tip.removeAttribute('data-editable');
   const rs = f.rooms.filter(r => r.type === 'room');
   const avgT = rs.reduce((s, r) => s + r.temp, 0) / rs.length, pw = f.rooms.reduce((s, r) => s + r.power, 0);
   const occ = f.rooms.reduce((s, r) => s + r.occ, 0), al = f.rooms.filter(r => r.alert.level).length;
@@ -3264,7 +3511,12 @@ function showFloorTip(f, e){
     ${al ? `<div class="al" style="color:var(--danger)">${IC.alert}이상 ${al}개 실</div>` : ''}`;
   tip.style.display = 'block'; placeTip(e);
 }
-function hideTip(){ tip.style.display = 'none'; }
+function hideTip(){
+  clearTimeout(tipExit);
+  if (tipRoom || roomHoverMark) markHoveredRoom(null);
+  tip.style.display = 'none'; tipRoom = null; tipAnchor = null;
+  delete tip.dataset.editing; tip.removeAttribute('data-editable');
+}
 
 /* picking */
 const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
@@ -3278,20 +3530,33 @@ function pick(e){
 }
 canvas.addEventListener('pointerdown', e => { downAt = [e.clientX, e.clientY]; controls.autoRotate = false; });
 canvas.addEventListener('pointermove', e => {
-  if (state.view !== 'building' || tween) return;
+  if (appearancePreview || tween) return;
+  if (state.view === 'floor' && plan3d && !planAnim) {
+    const room = e.buttons ? null : pickRoom(e);
+    canvas.style.cursor = room ? 'pointer' : 'grab';
+    if (room) showRoomTip(room,e);
+    else leaveRoomTip();
+    return;
+  }
+  if (state.view !== 'building') return;
   const f = pick(e);
   if (f !== hoverFloor) { hoverFloor = f; renderFloorPicker(); }
   canvas.style.cursor = f ? 'pointer' : 'grab';
   f ? showFloorTip(f, e) : hideTip();
 });
-canvas.addEventListener('pointerleave', () => { if (state.view === 'building') { hoverFloor = null; hideTip(); renderFloorPicker(); } });
+canvas.addEventListener('pointerleave', () => { if (state.view === 'floor') leaveRoomTip(); if (state.view === 'building') { hoverFloor = null; hideTip(); renderFloorPicker(); } });
 function pickRoom(e){
   const grp = floorGroups.find(g => g.userData.floor === state.floor); if (!grp) return null;
   const rc = canvas.getBoundingClientRect();
   ndc.set((e.clientX - rc.left) / rc.width * 2 - 1, -(e.clientY - rc.top) / rc.height * 2 + 1);
   ray.setFromCamera(ndc, camera);
   const meshes = grp.userData.blocks.map(bk => bk.mesh), hit = ray.intersectObjects(meshes, false)[0];
-  return hit ? grp.userData.blocks.find(bk => bk.mesh === hit.object).r : null;
+  if (hit) return grp.userData.blocks.find(bk => bk.mesh === hit.object).r;
+  const plane = new THREE.Plane(new THREE.Vector3(0,1,0),-grp.position.y);
+  const point = ray.ray.intersectPlane(plane,new THREE.Vector3());
+  if (!point) return null;
+  const x = point.x+W/2, y = point.z+D/2;
+  return state.floor.rooms.find(r => r.type === 'room' && inPoly(x,y,r.poly) && !r.poly.holes?.some(h => inPoly(x,y,h))) ?? null;
 }
 canvas.addEventListener('pointerup', e => {
   if (downAt && state.view === 'floor' && plan3d && !tween) {
@@ -3299,7 +3564,7 @@ canvas.addEventListener('pointerup', e => {
     if (moved < 6) { const r = pickRoom(e); if (r) goRoom(r); }
     return;
   }
-  if (!downAt || state.view !== 'building' || (tween && explodeF)) return;
+  if (!downAt || appearancePreview || state.view !== 'building' || (tween && explodeF)) return;
   const moved = Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]); downAt = null;
   if (moved < 6) { const f = pick(e); if (f) goFloor(f); }
 });
@@ -3333,7 +3598,7 @@ function frame(now){
     // 단독 화면은 왼쪽 패널만큼 모델을 오른쪽으로 비킴. 앱에 넣으면(hosted) 버튼·정보가 앱 쪽에 있으므로 가운데
     const sw = stage.clientWidth, want = !explodeF && sw > 760 && !document.body.classList.contains('hosted') ? Math.min(340, sw * .3) / 2 : 0;
     shiftView(want, elapsed);
-    updateBuilding(t, dt); renderPass.scene = bScene; bloom.strength = exteriorFirst && !explodeF && !state.pipes ? .035 : isDarkNow ? .48 : .22; composer.render(); }
+    updateBuilding(t, dt); renderPass.scene = bScene; bloom.strength = polishedExterior && !explodeF && !state.pipes ? .035 : isDarkNow ? .48 : .22; composer.render(); }
   else if (state.view === 'floor' && (plan3d || planAnim)) {   // 층 3D: 건물 화면과 같은 장면을 그 층만 띄워서
     // 단독 화면은 오른쪽 정보 패널(372px)만큼 모델을 왼쪽으로 비킴(기울기 시작과 함께 천천히), 앱에 넣으면 가운데
     const want = plan3d && stage.clientWidth > 760 && !document.body.classList.contains('hosted') ? 186 : 0;
@@ -3393,7 +3658,7 @@ window.DigitalTwin = API;
    트윈 → 대시보드: {source:'twin', type:'roomSelected'|'floorSelected'|'modeSelected'} — 트윈에서 고르면 대시보드 버튼도 따라감 */
 const HOST_MODE = { temp:'temp', humidity:'hum', powerKw:'power', anomaly:'alert', comfort:'comfort' }, MODE_HOST = { temp:'temp', hum:'humidity', power:'powerKw', alert:'anomaly', comfort:'comfort' };
 const METRIC_KO = { temp:'온도', hum:'습도', power:'전력', alert:'이상 감지', comfort:'쾌적도' };
-const HOST = { on:false, last:null, applying:false, timer:0, since:0 };
+const HOST = { on:false, last:null, applying:false, timer:0, since:0, canRename:false, renameRooms:new Set() };
 // 앱 데이터를 받은 뒤에만 보고: 그 전 값은 트윈 자체 계산이라 앱 화면 값이 바뀌어 보임. 5초 안에 못 받으면 그대로 보고
 const hostReady = () => HOST.dataAt != null || performance.now() - HOST.since > 5000;
 function hostSay(text){
@@ -3406,13 +3671,17 @@ const hostRoom = id => ROOM[id] || ROOMS.find(r => r.num && String(id).includes(
 function hostSnapshot(d){
   const idus = {}, rooms = {};
   for (const w of d.rooms || []) { const r = hostRoom(w.id); if (!r) continue;
-    rooms[r.id] = { occupancy:w.occupants, temp:w.temp, hum:w.humidity };
+    rooms[r.id] = { occupancy:w.occupants, fromStatus:true, temp:w.temp, hum:w.humidity };
     for (const a of r.acs) idus[a.id] = { power:w.onOff ? 'on' : 'off', setTemp:w.setpoint, roomTemp:w.temp, roomHum:w.humidity, kw:w.onOff ? w.powerKw / r.acs.length : 0, mode:w.mode, error:w.anomaly || null }; }
-  return { schema:'twin.realtime/v1', source:d.mock ? '대시보드 (목업 데이터)' : '대시보드 (API)', time:d.time, ...(typeof d.outdoorTemp === 'number' ? { outdoor:{ hum:60, ...OUT, temp:d.outdoorTemp } } : {}), idus, rooms };
+  return { schema:'twin.realtime/v1', ...(d.wifi && Object.keys(d.wifi).length ? { wifi:d.wifi } : {}), source:d.mock ? '대시보드 (목업 데이터)' : '대시보드 (API)', time:d.time, ...(typeof d.outdoorTemp === 'number' ? { outdoor:{ hum:60, ...OUT, temp:d.outdoorTemp } } : {}), idus, rooms };
 }
 function syncHost(m){
   // 대시보드가 다른 건물을 고르면 그 건물로 다시 열기
   if (m.building && BUILDING_ID && m.building !== BUILDING_ID) { const p = new URLSearchParams(location.search); p.set('building', m.building); p.delete('data'); location.replace('?' + p); return; }
+  const canRename = m.canRename === true;
+  if (HOST.canRename && !canRename) hideTip();
+  HOST.canRename = canRename;
+  HOST.renameRooms = new Set(canRename && Array.isArray(m.rooms) ? m.rooms.map(room => room.id) : []);
   const first = !HOST.on;
   if (first) { HOST.on = true; HOST.since = performance.now(); document.body.classList.add('hosted'); if (state.persona === 'sim') setPersona('owner', true);
     document.body.append($('#viewTools')); }   // 숨겨지는 상단 바 밖으로 (돋보기·전체화면 유지)
@@ -3461,6 +3730,8 @@ window.addEventListener('message', e => {
   else if (m.type === 'twin:load') API.load(m.kind, m.data);
   else if (m.type === 'twin:highlight') API.highlight(m.rooms || [], m.seconds || 8);
   else if (m.type === 'twin:persona') API.setPersona(m.persona);
+  else if (appearancePreview && e.source === window.parent && m.source === 'maestro' && m.type === 'appearance') applyAppearance(m.appearance);
+  else if (e.source === window.parent && m.source === 'maestro' && m.type === 'roomRenameResult') finishRoomRename(m);
   else if (m.source === 'maestro' && m.type === 'state') syncHost(m);
   else if (m.source === 'maestro' && m.type === 'simRun' && !SIM.busy) { Object.assign(simForm(), m.form || {}); simRun(); }
   else if (m.source === 'maestro' && m.type === 'simAsk') simAsk(m);
@@ -3504,10 +3775,12 @@ booted = true; themeReady = true;
 if (!params.get('metric')) state.metric = PERSONA[state.persona].metric;
 setPersona(state.persona, true);
 renderLegend();
+applyRoomCardOpen();
 const startRoom = ROOM[params.get('room')], startFloor = FLOOR[params.get('floor')];
-goBuilding.done = !!(startRoom || startFloor);
+applyAppearanceMaterials();
+goBuilding.done = !!(startRoom || startFloor || appearancePreview);
 goBuilding(false);
-if (startRoom || startFloor || reduceMotion) introStart = -99;
+if (startRoom || startFloor || reduceMotion || appearancePreview) introStart = -99;
 else { const ti = $('#introTitle'); ti.querySelector('b').textContent = CFG.buildingName; setTimeout(() => ti.classList.add('on'), 600); setTimeout(() => ti.classList.remove('on'), 4600); setTimeout(() => ti.remove(), 6000); }
 if (startRoom) goRoom(startRoom, false);
 else if (startFloor) { setBodyView('floor'); state.floor = startFloor; controls.enabled = false; buildPlanSvg(startFloor); updatePlanSvg(); renderFloorStats(); renderCrumbs(); renderLegend(); requestAnimationFrame(() => plan3d ? enterPlan3d(startFloor, false) : renderBackdrop(startFloor)); }

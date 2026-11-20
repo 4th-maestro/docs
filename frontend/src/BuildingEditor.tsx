@@ -25,7 +25,7 @@ const wallPathOf = (room: PlanRoom, openings: Opening[]) => [room.polygon, ...(r
 const roomNameKey = (floor: string, room: string) => JSON.stringify([floor, room])
 
 // draft: 도면 변환 초안(수정 없이도 저장 가능), backgrounds: 층 id → 도면 이미지 주소(floors[].background 표시용)
-export default function BuildingEditor({ initial, floor, onSave, onCancel, draft, backgrounds }: { initial: Plan; floor: string; onSave(plan: Plan, level: string): void; onCancel(): void; draft?: boolean; backgrounds?: Record<string, string> }) {
+export default function BuildingEditor({ initial, floor, onSave, onCancel, onAppearance, draft, backgrounds }: { initial: Plan; floor: string; onSave(plan: Plan, level: string): void; onCancel(): void; onAppearance?(plan: Plan): void; draft?: boolean; backgrounds?: Record<string, string> }) {
   // 실외기 연결이 없는 실내기는 층별 서·동 실외기에 연결하고 실외기 기호 위치를 채움(트윈 설비 연결 화면과 같은 규칙)
   const [model, setModel] = useState(() => connectOdus(initial))
   const [history, setHistory] = useState<Plan[]>([])
@@ -354,7 +354,8 @@ export default function BuildingEditor({ initial, floor, onSave, onCancel, draft
             resetCursor()
           }} disabled={!history.length}>실행 취소</button>
           <button className="pill" onClick={goBack}>나가기</button>
-          <button className="primary" disabled={!draft && !unsaved} onClick={() => onSave(withPendingNames, level)}>저장</button>
+          {onAppearance && <button className="pill" onClick={() => onAppearance(withPendingNames)}>외관 다듬기</button>}
+          <button className="primary" disabled={!draft && !unsaved} onClick={() => onSave(withPendingNames, level)}>{draft ? '외관 다듬기' : '저장'}</button>
         </div>
       </header>
       <div className="edit-layout">

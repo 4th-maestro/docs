@@ -38,19 +38,19 @@ export function wifiModel(B, opt = {}){
 }
 export const coveredRooms = M => new Set(Object.keys(M?.perRoom || {}));
 
-// 접속 기기 수 {apId: n} → 재실 인원 {roomId: 명} (와이파이로 잡히는 방만)
+// 접속 기기 수 {apId: n} → 재실 인원 {roomId: 명} (이번에 응답한 AP가 잡는 방만)
 //   prior {roomId: 예상 인원} (선택): 학사 시간표처럼 '지금 이 방에 사람이 있을 것'이라는 정보 →
 //   한 AP를 여러 방이 나눌 때 수업 중인 방에 더 많이 나눠 줌 (가중치 × (1 + 4 × 예상/정원))
 export function occupancyFromWifi(M, wifi, prior = null){
   if (!M || !wifi) return {};
   const occ = {}, dpp = M.opt.devicesPerPerson;
-  for (const id of coveredRooms(M)) occ[id] = 0;
   for (const [ap, v] of Object.entries(wifi)) {
-    const n = typeof v === 'number' ? v : +(v?.clients ?? v?.count ?? 0), w = M.perAp[ap]; if (!w || !(n > 0)) continue;
+    const n = typeof v === 'number' ? v : Number(v?.clients ?? v?.count), w = M.perAp[ap];
+    if (!w || !Number.isFinite(n) || n < 0) continue;
     const people = Math.max(0, n - M.opt.background) / dpp;
     let ks = Object.entries(w);
     if (prior) { ks = ks.map(([id, k]) => [id, k * (1 + 4 * Math.min(1, (prior[id] || 0) / Math.max(M.rooms[id]?.cap || 10, 1)))]); const t = ks.reduce((a, x) => a + x[1], 0); ks = ks.map(([id, k]) => [id, k / t]); }
-    for (const [id, k] of ks) occ[id] += people * k;
+    for (const [id, k] of ks) occ[id] = (occ[id] ?? 0) + people * k;
   }
   for (const id in occ) { const cap = M.rooms[id]?.cap; occ[id] = Math.round(cap ? Math.min(occ[id], cap * 1.2) : occ[id]); }
   return occ;

@@ -303,6 +303,12 @@
       "type": "explanation"
     },
     {
+      "path": "docs/human/explanation/research/2026-11-21(대기업 고객 보안 요구와 현재 구성 점검).md",
+      "title": "대기업 고객 보안 요구와 현재 구성 점검: 기본 통제 구현, 보완 8항목",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
       "path": "docs/human/explanation/research/README.md",
       "title": "외부 조사 기록",
       "audience": "human",
@@ -461,6 +467,12 @@
     {
       "path": "docs/human/explanation/troubleshooting/2026-11-21(PDF 등록 건물 목록 누락).md",
       "title": "PDF 등록 건물 목록 누락",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/troubleshooting/2026-11-21(방 상태 카드 3D 가림).md",
+      "title": "방 상태 카드 3D 가림",
       "audience": "human",
       "type": "explanation"
     },

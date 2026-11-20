@@ -30,6 +30,7 @@ export type Building = {
 }
 
 export type Summary = { on: number; off: number; anomaly: number; powerKw: number }
+export type WifiCounts = Record<string, number | { clients?: number; count?: number }>
 
 export type Status = {
   generatedAt: string
@@ -40,6 +41,7 @@ export type Status = {
   floors: string[]
   summary: Summary
   rooms: Room[]
+  wifi?: WifiCounts
   mock?: boolean
 }
 

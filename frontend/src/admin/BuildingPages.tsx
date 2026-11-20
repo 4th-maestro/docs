@@ -3,6 +3,7 @@ import { ArrowLeft, FileBox, ImageIcon, Info } from 'lucide-react'
 import { buildingCreated, buildingsChanged, createBuilding, getCompany, getTwin, putTwin, type BuildingInput, type CompanyDetail } from '../api'
 import BuildingEditor from '../BuildingEditor'
 import PlanIngest from '../ingest/PlanIngest'
+import AppearanceEditor from '../ingest/AppearanceEditor'
 import type { Plan } from '../floor-edit'
 import { href, type AdminSub } from '../shell/route'
 import { SkRows, SkWrap } from '../skeleton/Skeleton'
@@ -86,10 +87,15 @@ export function TwinPipeline({ hidden, onRendered }: { hidden?: boolean; onRende
 function ImageStep({ company, building, name, back, file }: { company: string; building?: string; name: string; back: string; file?: boolean }) {
   const [jobId] = useState(() => building ?? newBuildingId())
   const [twin, setTwin] = useState<Twin | null>(null)
+  const [preview, setPreview] = useState<Plan | null>(null)
+  const appearanceDraft = useRef<Plan['appearance']>(undefined)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const rendered = useCallback((b: unknown) => {
-    try { setTwin(editablePlan(b) as Twin); setError('') } catch (e) { setError(msg(e)) }
+    try {
+      const plan = editablePlan(b)
+      setPreview({ ...plan, appearance: appearanceDraft.current ?? plan.appearance }); setError('')
+    } catch (e) { setError(msg(e)) }
   }, [])
 
   function done() {
@@ -123,6 +129,9 @@ function ImageStep({ company, building, name, back, file }: { company: string; b
   return (
     <>
       {error && <p key={error} className="error adm-error fade-in" role="alert">{error}</p>}
+      {preview && !twin && <AppearanceEditor plan={preview}
+        onBack={plan => { appearanceDraft.current = plan.appearance; setPreview(null) }}
+        onSave={plan => { appearanceDraft.current = plan.appearance; setTwin(plan as Twin); setPreview(null) }} />}
       {twin && info && (
         <section className="card adm-card fade-in" aria-labelledby="bld-ok">
           <h2 id="bld-ok">{building ? '도면 교체 확인' : '건물 정보 확인'}</h2>
@@ -143,7 +152,7 @@ function ImageStep({ company, building, name, back, file }: { company: string; b
       )}
       {file
         ? <div hidden={!!twin}><PlanIngest buildingId={jobId} onDone={() => undefined} onConfirm={(p) => { setTwin(p as Twin); setError('') }} /></div>
-        : <TwinPipeline hidden={!!twin} onRendered={rendered} />}
+        : <TwinPipeline hidden={!!twin || !!preview} onRendered={rendered} />}
     </>
   )
 }
@@ -151,6 +160,8 @@ function ImageStep({ company, building, name, back, file }: { company: string; b
 // 도면 편집: 서버 트윈(GET /buildings/{id}/twin, 없으면 404 안내) → BuildingEditor → 변환 → PUT /buildings/{id}/twin
 function EditPlan({ back, title, building }: { back: string; title: string; building: string }) {
   const [plan, setPlan] = useState<Plan | null>(null)
+  const [preview, setPreview] = useState<Plan | null>(null)
+  const appearanceDraft = useRef<Plan['appearance']>(undefined)
   const [error, setError] = useState('')
   const [missing, setMissing] = useState(false)
   const saving = useRef(false)
@@ -190,7 +201,11 @@ function EditPlan({ back, title, building }: { back: string; title: string; buil
         </section>
       )}
       {!plan && !missing && !error && <SkWrap label="도면을 불러오는 중입니다"><SkRows rows={4} /></SkWrap>}
-      {plan && <BuildingEditor initial={plan} floor="" onSave={save} onCancel={() => { location.hash = back }} />}
+      {plan && <div hidden={!!preview}>
+        <BuildingEditor initial={plan} floor="" onSave={p => save({ ...p, appearance: appearanceDraft.current ?? p.appearance })}
+          onAppearance={p => setPreview({ ...p, appearance: appearanceDraft.current ?? p.appearance })} onCancel={() => { location.hash = back }} />
+      </div>}
+      {preview && <AppearanceEditor plan={preview} onSave={save} onBack={p => { appearanceDraft.current = p.appearance; setPreview(null) }} />}
     </main>
   )
 }

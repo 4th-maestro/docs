@@ -27,7 +27,7 @@ import { usePoll } from './panels/usePoll'
 import Portfolio from './portfolio/Portfolio'
 import { FloorList, Layout } from './shell/Shell'
 import { href, parseRoute, type FloorSummary, type Tab } from './shell/route'
-import { TWIN_URL, onNeedBuilding, onTwinReady, onTwinControl, onTwinReport, onTwinSimAnswer, onRoomSelected, onTwinChange, postState, postTheme, postUi, sendTwin, twinSrc, type TwinBuilding, type TwinData, type TwinReport } from './twin'
+import { TWIN_URL, onNeedBuilding, onTwinReady, onTwinControl, onTwinReport, onTwinSimAnswer, onRoomSelected, onTwinRoomRename, onTwinChange, postState, postTheme, postUi, sendTwin, twinSrc, type TwinBuilding, type TwinData, type TwinReport } from './twin'
 import { answerText, draftOf, parseWhatIf, pendingText, type WhatIf } from './whatif'
 import type { BuildingCard, Draft, Mode, Room, Status } from './types'
 import { Sk, SkFloors, SkKpis, SkPlan } from './skeleton/Skeleton'
@@ -330,8 +330,7 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
   }), [all, floors, twin])
   const scope = floor || '건물 전체'
   const highlight = focus
-  const twinData: TwinData | null = useMemo(() => status && { time: status.generatedAt, outdoorTemp: status.outdoorTemp, mock: !!status.mock, rooms: status.rooms }, [status])
-  useEffect(() => postState(frame.current, building, floor, mode, rooms, highlight, twinData), [building, floor, mode, rooms, highlight, twinData, readyN])
+  const twinData: TwinData | null = useMemo(() => status && { time: status.generatedAt, outdoorTemp: status.outdoorTemp, mock: !!status.mock, rooms: status.rooms, wifi: status.wifi }, [status])
   // 기준 시각이 갱신 주기의 2배를 초과하면 지연 표시(디자인 시스템 6절)
   const stale = status ? loadedAt - new Date(status.generatedAt).getTime() > status.refreshSeconds * 2000 : false
   const room = rooms.find((r) => r.id === selected)
@@ -349,7 +348,17 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
   const me = useContext(MeContext)
   const canToggle = me ? me.role === 'admin' || me.role === 'manager' : isAdmin()
   // 호실 이름·용도 변경(운영 탭): 같은 역할(서버도 운영자 403). API 없음·목업 상태는 서버 호실이 아니라 숨김
-  const canEditRoom = ops && canToggle && HAS_API && !status?.mock
+  const canEditRoom = !!(ops && canToggle && HAS_API && status && !status.mock)
+  useEffect(() => postState(frame.current, building, floor, mode, rooms, highlight, twinData, canEditRoom), [building, floor, mode, rooms, highlight, twinData, readyN, canEditRoom])
+  useEffect(() => onTwinRoomRename(() => frame.current, async (id, value) => {
+    if (!canEditRoom || !all.some(room => room.id === id)) throw new Error('이 방의 이름을 수정할 권한이 없습니다.')
+    const name = value.trim()
+    if (!name || name.length > 40) throw new Error('방 이름을 1~40자로 입력하세요.')
+    const saved = await patchRoom(building, id, { name })
+    setReloadKey(key => key + 1)
+    setTimeout(() => setReloadKey(key => key + 1), 4000)
+    return saved.room.name
+  }), [all, building, canEditRoom])
   function roomSaved() {
     // 다른 서버 실행 환경은 변경 표시 확인(3초) 뒤 반영: 바로 한 번, 4초 뒤 한 번 더 조회(건물 목록 갱신과 같은 간격)
     load()
@@ -530,7 +539,7 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
                     <FlowModal flow={report.flow} persona={report.ui.persona} onPersona={(k) => postUi(frame.current, `persona:${k}`)} onClose={() => postUi(frame.current, 'flow:off')} />
                   )}
                   {twinWait ? <div className="embed"><SkPlan /></div> : twinOn ? (
-                    <iframe key={twinRev} ref={frame} className="embed" allow="fullscreen" src={src} title="3D 디지털트윈" onLoad={() => { postTheme(frame.current); postState(frame.current, building, floor, mode, rooms, highlight, twinData) }} />
+                    <iframe key={twinRev} ref={frame} className="embed" allow="fullscreen" src={src} title="3D 디지털트윈" onLoad={() => { postTheme(frame.current); postState(frame.current, building, floor, mode, rooms, highlight, twinData, canEditRoom) }} />
                   ) : sim ? (
                     <p className="embed sim-none">이 건물은 3D 트윈 도면이 없어 운전 시뮬레이션을 사용할 수 없습니다.</p>
                   ) : floor ? (

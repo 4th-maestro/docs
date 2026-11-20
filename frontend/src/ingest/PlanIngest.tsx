@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import { Circle, CircleAlert, CircleCheck, LoaderCircle, Upload } from 'lucide-react'
 import BuildingEditor from '../BuildingEditor'
+import AppearanceEditor from './AppearanceEditor'
 import type { Plan } from '../floor-edit'
 import { onBuildingRendered, pipelineSrc } from '../twin'
 import { ACCEPT, API_ON, convertFiles, detect, kindOf, pageFiles, saveTwin, type Convert, type Job, type Page } from './api'
@@ -23,10 +24,12 @@ export default function PlanIngest({ buildingId, onDone, onConfirm, convert }: {
   const [error, setError] = useState('')
   const [plans, setPlans] = useState<File[] | null>(null)
   const [draft, setDraft] = useState<Plan | null>(null)
+  const [preview, setPreview] = useState<Plan | null>(null)
   const [src] = useState(() => detectingSrc(pipelineSrc()))
   const frame = useRef<HTMLIFrameElement>(null)
   const loaded = useRef(false)
   const saving = useRef(false)
+  const appearanceDraft = useRef<Plan['appearance']>(undefined)
   const abort = useRef<AbortController | null>(null)
   // 층 id → 배경 이미지 주소(서버 페이지 URL 또는 파이프라인 보정 이미지 blob URL), blobs는 화면을 닫을 때 해제
   const [backgrounds, setBackgrounds] = useState<Record<string, string>>({})
@@ -109,7 +112,10 @@ export default function PlanIngest({ buildingId, onDone, onConfirm, convert }: {
         {warnings.length > 0 && <section className="banner" role="note" aria-label="변환 경고">
           <ul className="ingest-warn">{warnings.map((w, i) => <li key={i}>{w}</li>)}</ul>
         </section>}
-        <BuildingEditor initial={draft} floor="" draft backgrounds={backgrounds} onSave={confirm} onCancel={() => setDraft(null)} />
+        <div hidden={!!preview}>
+          <BuildingEditor initial={draft} floor="" draft backgrounds={backgrounds} onSave={p => setPreview({ ...p, appearance: appearanceDraft.current ?? p.appearance })} onCancel={() => setDraft(null)} />
+        </div>
+        {preview && <AppearanceEditor plan={preview} onSave={confirm} onBack={p => { appearanceDraft.current = p.appearance; setPreview(null) }} />}
       </> : (
         <section className="card ingest-up" aria-labelledby="ingest-title">
           <h2 id="ingest-title">도면 파일</h2>

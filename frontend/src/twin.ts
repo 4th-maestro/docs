@@ -1,6 +1,6 @@
 import { color, value } from './heat'
 import type { Plan } from './floor-edit'
-import type { Mode, Room } from './types'
+import type { Mode, Room, WifiCounts } from './types'
 
 // 3D 트윈(iframe) 연동 규약: docs/human/reference/twin-embed.md
 export const TWIN_URL = import.meta.env.VITE_TWIN_URL as string | undefined
@@ -45,12 +45,12 @@ export function editablePlan(data: unknown): Plan {
 }
 
 // data: 대시보드가 받은(또는 목업이 만든) 건물 전체 호실 상태 그대로. 트윈은 자체 생성 없이 이 값으로 그린다(화면 값 일치)
-export type TwinData = { time: string; outdoorTemp: number; mock: boolean; rooms: Room[] }
-export function postState(frame: HTMLIFrameElement | null, building: string, floor: string, mode: Mode, rooms: Room[], highlight: string[], data: TwinData | null) {
+export type TwinData = { time: string; outdoorTemp: number; mock: boolean; rooms: Room[]; wifi?: WifiCounts }
+export function postState(frame: HTMLIFrameElement | null, building: string, floor: string, mode: Mode, rooms: Room[], highlight: string[], data: TwinData | null, canRename = false) {
   if (!frame?.contentWindow || !TWIN_URL) return
   frame.contentWindow.postMessage(
     {
-      source: 'maestro', type: 'state', building, floor, mode, highlight,
+      source: 'maestro', type: 'state', building, floor, mode, highlight, canRename,
       rooms: rooms.map((r) => ({ id: r.id, color: color(mode, r), label: value(mode, r), onOff: r.onOff, anomaly: r.anomaly })),
       data,
     },
@@ -120,6 +120,25 @@ export function onNeedBuilding(frame: () => HTMLIFrameElement | null, get: (id: 
     if (!target || e.source !== target) return
     const id = String(e.data.id)
     get(id).catch(() => null).then((data) => target.postMessage({ source: 'maestro', type: 'buildingData', id, data }, twinOrigin()))
+  }
+  window.addEventListener('message', listener)
+  return () => window.removeEventListener('message', listener)
+}
+
+export function onTwinRoomRename(frame: () => HTMLIFrameElement | null, save: (id: string, name: string) => Promise<string>) {
+  const listener = async (event: MessageEvent) => {
+    if (!TWIN_URL || event.origin !== twinOrigin()) return
+    const target = frame()?.contentWindow
+    const data = event.data
+    if (!target || event.source !== target || data?.source !== 'twin' || data.type !== 'roomRename' ||
+        typeof data.id !== 'string' || typeof data.name !== 'string' || typeof data.request !== 'number') return
+    const reply = (result: { name: string } | { error: string }) => {
+      if (target === frame()?.contentWindow) target.postMessage(
+        { source: 'maestro', type: 'roomRenameResult', request: data.request, id: data.id, ...result }, twinOrigin(),
+      )
+    }
+    try { reply({ name: await save(data.id, data.name) }) }
+    catch (error) { reply({ error: error instanceof Error ? error.message : '방 이름을 저장하지 못했습니다.' }) }
   }
   window.addEventListener('message', listener)
   return () => window.removeEventListener('message', listener)

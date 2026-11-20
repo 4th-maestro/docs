@@ -1,4 +1,5 @@
 import { wallSpans as solidWallSpans } from '../twin/pipeline/wall-spans.js'
+import type { Appearance } from '../twin/pipeline/appearance.js'
 
 export { solidWallSpans }
 
@@ -26,6 +27,7 @@ export type IndoorUnit = { id: string; room: string; pos: Point; model?: string;
 export type OutdoorUnit = { id: string; model?: string; location?: string; serves?: string; mark?: Point; pos?: Point }
 export type Plan = {
   schema: 'twin.building/v1'
+  appearance?: Partial<Appearance>
   building: { name: string; size: { w: number; d: number } }
   floors: PlanFloor[]
   idus: IndoorUnit[]
