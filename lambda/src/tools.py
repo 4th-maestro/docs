@@ -3,19 +3,22 @@
 - LLM은 도구 이름과 인자만 생성, 층·용도·동작은 아래 목록 값만 허용
 - 층·용도 enum: 전체 건물의 합집합(도구 정의 1개 유지), 질의 건물에 없는 값은 run에서 거부
 - create_schedule은 초안만 반환하고 저장은 운영자 확인 후 POST /schedules
+- search_documents: Bedrock Knowledge Base(KB_ID) Retrieve 상위 4개. 화면 근거 목록은 view['sources'](문서별 1건)
+- comfort_index: 불쾌지수(기상청 식)와 PMV·PPD(ISO 7730)를 comfort.py로 계산. 가정값은 결과 assumptions에 포함
 - 그래프: 각 도구가 결과 데이터로 화면용 그래프 정의(chart)를 만듦. 숫자는 항상 도구 결과에서 가져오고 LLM은 view로 표시 방식만 제안
   - bar: {kind, title, unit, items: [{label, sub, value, id?}]}, line: {kind, title, unit, labels, series: [{name, role, values}]}
   - prefer=table이면 화면이 표를 먼저 표시
 """
 import datetime as dt
+import functools
+import os
 import re
 
 import buildings
+import comfort
 import energy
 import sim
 
-FLOORS = sorted({f for b in buildings.LIST for f in b['floors']})
-USES = sorted({r['use'] for b in buildings.LIST for r in buildings.rooms(b['id'])})
 METRICS = {'powerKw': '전력(kW)', 'temp': '실내온도(℃)', 'humidity': '습도(%)', 'setpoint': '설정온도(℃)'}
 # 묶음 합계 지표: (표시 이름, 단위, 계산)
 AGG = {
@@ -27,7 +30,12 @@ AGG = {
 PERIODS = {'day': ('오늘', '어제', '시간별'), 'week': ('이번 주', '지난주', '일별'), 'month': ('이번 달', '지난달', '일별')}
 VIEW = {'type': 'string', 'enum': ['auto', 'chart', 'table'], 'description': '표시 방식 제안. 보통 auto, 사용자가 표를 원하면 table'}
 
-TOOLS = [
+@functools.lru_cache(maxsize=4)
+def _definitions(version):
+    # 도구 enum(층·용도)은 전체 건물 합집합: 건물 데이터가 바뀌면(version) 다시 생성
+    FLOORS = sorted({f for b in buildings.LIST for f in b['floors']}, key=buildings._floor_key)
+    USES = sorted({r['use'] for b in buildings.LIST for r in buildings.rooms(b['id'])})
+    return FLOORS, USES, [
     {
         'name': 'query_spaces',
         'description': '층·용도로 호실을 골라 현재 지표 순으로 조회한다. 전력·온도·습도·설정온도 질문에 사용한다.',
@@ -91,12 +99,50 @@ TOOLS = [
             },
         },
     },
-]
+    {
+        'name': 'search_documents',
+        'description': '냉난방 기준 온도, 공공기관 에너지 규정, 불쾌지수·PMV 같은 쾌적 지표의 정의와 단계, 설비·요금 기준 문서를 검색한다. 규정·기준·이론 질문에 사용하고 호실 수치 조회에는 쓰지 않는다.',
+        'strict': True,
+        'input_schema': {
+            'type': 'object', 'additionalProperties': False, 'required': ['query'],
+            'properties': {'query': {'type': 'string', 'description': '검색 문장(한국어, 200자 이하)'}},
+        },
+    },
+    {
+        'name': 'comfort_index',
+        'description': '층·용도로 호실을 골라 현재 실내온도·습도로 불쾌지수(기상청 식)와 PMV·PPD(ISO 7730)를 계산해 불쾌지수 순으로 조회한다. "덥고 습한 곳", "불쾌지수", "쾌적도", "PMV" 질문에 사용한다.',
+        'strict': True,
+        'input_schema': {
+            'type': 'object', 'additionalProperties': False,
+            'required': ['floor', 'use', 'order', 'limit'],
+            'properties': {
+                'floor': {'type': 'string', 'enum': FLOORS + ['all']},
+                'use': {'type': 'string', 'enum': USES + ['all']},
+                'order': {'type': 'string', 'enum': ['desc', 'asc']},
+                'limit': {'type': 'integer'},
+                'view': VIEW,
+            },
+        },
+    },
+    ]
+
+
+def definitions():
+    return _definitions(buildings.version())[2]
+
+
+def __getattr__(name):
+    # 기존 코드 호환: tools.FLOORS, tools.USES, tools.TOOLS
+    if name in ('FLOORS', 'USES', 'TOOLS'):
+        return _definitions(buildings.version())[('FLOORS', 'USES', 'TOOLS').index(name)]
+    raise AttributeError(name)
 
 
 def chips(name, args):
     """도구 인자를 화면 조건 칩(한국어)으로 변환. 검증 전 값이라 없는 키는 건너뜀"""
     out = [args.get('floor') if args.get('floor') != 'all' else '전체 층', args.get('use') if args.get('use') != 'all' else '전체 용도']
+    if name == 'search_documents':
+        return ['기준 문서 검색', (args.get('query') or '')[:20]]
     if name == 'energy_trend':
         return [f"{PERIODS.get(args.get('period'), ('',))[0]} 추이", '이전 기간 비교']
     if name == 'query_spaces':
@@ -104,6 +150,8 @@ def chips(name, args):
         out += [metric and f"{metric} {'낮은' if args.get('order') == 'asc' else '높은'} 순", args.get('limit') and f"{args['limit']}곳"]
     elif name == 'aggregate_spaces':
         out += ['층별' if args.get('group_by') == 'floor' else '용도별', AGG.get(args.get('metric'), ('',))[0]]
+    elif name == 'comfort_index':
+        out += [f"불쾌지수 {'낮은' if args.get('order') == 'asc' else '높은'} 순", args.get('limit') and f"{args['limit']}곳"]
     elif name == 'create_schedule':
         action = {'off': '운전 OFF', 'on': '운전 ON'}.get(args.get('action')) or f"설정온도 {args.get('setpoint', 0):g}℃"
         out += [args.get('time') and f"{args['time']} 이후", '재실 없을 때' if args.get('condition') == 'unused' else None, action]
@@ -121,6 +169,8 @@ def run(name, args, t, schedules, bid=None):
     view = args.get('view', 'auto')
     if name == 'energy_trend':
         return _trend(args, t, bid, view)
+    if name == 'search_documents':
+        return _search(args)
     if args.get('floor') not in floors + ['all']:
         raise ValueError(f"floor는 {', '.join(floors)}, all 중 하나")
     if args.get('use') not in uses + ['all']:
@@ -156,6 +206,19 @@ def run(name, args, t, schedules, bid=None):
             'items': [{'label': g['group'], 'sub': f"호실 {g['rooms']}곳", 'value': g['value']} for g in groups],
         })
         return {'metric': f'{label}({unit})', 'at': t.isoformat(), 'groups': groups}, {'highlight': [s['id'] for s in states if s['anomaly']] if args['metric'] == 'anomaly' else [], 'chart': chart}
+    if name == 'comfort_index':
+        if args['order'] not in ('desc', 'asc'):
+            raise ValueError('order 값 오류')
+        limit = min(20, max(1, int(args['limit'])))
+        rows = [_comfort(sim.state(r, t, schedules)) for r in _pick(rooms, args['floor'], args['use'])]
+        rows.sort(key=lambda s: s['di'], reverse=args['order'] == 'desc')
+        rows = rows[:limit]
+        chart = _prefer(view, {
+            'kind': 'bar', 'title': f"{_where(args)} 불쾌지수 {'낮은' if args['order'] == 'asc' else '높은'} 순 {len(rows)}곳", 'unit': 'DI',
+            'items': [{'id': s['id'], 'label': s['name'], 'sub': f"{s['diStage']}, PMV {s['pmv']:+.2f}", 'value': s['di']} for s in rows],
+        })
+        return ({'at': t.isoformat(), 'assumptions': COMFORT_ASSUMPTIONS, 'rooms': [{k: v for k, v in s.items() if k != 'id'} for s in rows]},
+                {'highlight': [s['id'] for s in rows], 'chart': chart})
     if name == 'create_schedule':
         if args['action'] not in ('off', 'on', 'setpoint') or args['condition'] not in ('unused', 'always'):
             raise ValueError('action 또는 condition 값 오류')
@@ -183,6 +246,48 @@ def run(name, args, t, schedules, bid=None):
                 {'highlight': draft['roomIds'], 'draft': draft, 'chart': chart})
     raise ValueError(f'알 수 없는 도구: {name}')
 
+
+
+COMFORT_ASSUMPTIONS = '활동량 1.1met(사무), 착의량 냉방철 0.5clo·난방철 1.0clo, 기류 0.1m/s, 평균복사온도는 실내온도와 같음(가상 데이터)'
+
+
+def _comfort(s):
+    pmv, ppd = comfort.pmv_ppd(s['temp'], s['temp'], 0.1, s['humidity'], 1.1, 0.5 if s['mode'] == 'cooling' else 1.0)
+    di = comfort.discomfort_index(s['temp'], s['humidity'])
+    return {'id': s['id'], 'name': s['name'], 'floor': s['floor'], 'use': s['use'], 'occupants': s['occupants'], 'temp': s['temp'],
+            'humidity': s['humidity'], 'di': di, 'diStage': comfort.di_stage(di), 'pmv': pmv, 'ppd': ppd}
+
+
+_kb = None
+
+
+def _retrieve(query):
+    # boto3는 Lambda 런타임 기본 포함. KB_ID는 template.yaml이 주입, 없으면 모델에 오류로 알려 다른 방법 안내
+    global _kb
+    kb_id = os.environ.get('KB_ID')
+    if not kb_id:
+        raise ValueError('문서 검색이 설정되지 않음(KB_ID 없음)')
+    if _kb is None:
+        import boto3
+        _kb = boto3.client('bedrock-agent-runtime', region_name=os.environ.get('BEDROCK_REGION', 'ap-northeast-2'))
+    res = _kb.retrieve(knowledgeBaseId=kb_id, retrievalQuery={'text': query},
+                       retrievalConfiguration={'vectorSearchConfiguration': {'numberOfResults': 4}})
+    return res['retrievalResults']
+
+
+def _search(args):
+    q = (args.get('query') or '').strip()
+    if not 0 < len(q) <= 200:
+        raise ValueError('query는 1~200자')
+    docs, sources = [], {}
+    for r in _retrieve(q):
+        md = r.get('metadata') or {}
+        title = md.get('title') or str(md.get('x-amz-bedrock-kb-source-uri', '')).rsplit('/', 1)[-1]
+        docs.append({'title': title, 'effectiveDate': md.get('effective_date'), 'url': md.get('url'), 'text': r['content']['text'][:700]})
+        sources.setdefault(title, {'title': title, 'url': md.get('url', ''), 'date': md.get('effective_date', ''), 'checked': md.get('checked_date', '')})
+    if not docs:
+        return {'query': q, 'documents': [], 'note': '관련 문서 없음'}, {}
+    return {'query': q, 'documents': docs}, {'sources': list(sources.values())}
 
 def _where(args):
     floor = '전체 층' if args.get('floor', 'all') == 'all' else args['floor']

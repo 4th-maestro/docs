@@ -33,15 +33,25 @@ def _idle_on(room):
     return frozenset(range(h0 - 1, h1 + 3)) if on else frozenset()
 
 
-_ROOMS = {b['id']: buildings.rooms(b['id']) for b in buildings.LIST}
-_IDLE_ON = {r['id']: _idle_on(r) for rs in _ROOMS.values() for r in rs}
-_GROUPS = {bid: sorted({(r['floor'], r['use']) for r in rs}) for bid, rs in _ROOMS.items()}
+@functools.lru_cache(maxsize=4)
+def _meta(version):
+    # 건물별 호실, 호실별 운영 전후 가동 시간, 층·용도 묶음. 건물 데이터가 바뀌면(version) 다시 계산
+    rooms = {b['id']: buildings.rooms(b['id']) for b in buildings.LIST}
+    return rooms, {r['id']: _idle_on(r) for rs in rooms.values() for r in rs}, {bid: sorted({(r['floor'], r['use']) for r in rs}) for bid, rs in rooms.items()}
+
+
+def __getattr__(name):
+    # 기존 코드·테스트 호환: energy._ROOMS, _IDLE_ON, _GROUPS
+    if name in ('_ROOMS', '_IDLE_ON', '_GROUPS'):
+        return _meta(buildings.version())[('_ROOMS', '_IDLE_ON', '_GROUPS').index(name)]
+    raise AttributeError(name)
 
 
 def _compute(bid, day, schedules, until=None):
     # (층, 용도)별 시간 kWh 24칸. until이 있으면 그 시각까지(현재 시간은 경과분만)
     # - 재실 0명이고 빈 공간 운전 시간 밖이며 스케줄 대상이 아닌 호실은 sim.state 결과가 정지(0kW)라 호출 생략(1주 기준 호출 67% 감소)
-    out = {g: [0.0] * 24 for g in _GROUPS[bid]}
+    rooms_by, idle_on, groups = _meta(buildings.version())
+    out = {g: [0.0] * 24 for g in groups[bid]}
     for h in range(24):
         t0 = dt.datetime.combine(day, dt.time(h), sim.KST)
         frac = 1.0 if until is None else min(1.0, (until - t0).total_seconds() / 3600)
@@ -51,15 +61,15 @@ def _compute(bid, day, schedules, until=None):
         at = ts.isoformat()
         active = [s for s in schedules if s.get('createdAt', '') <= at]
         targeted = {i for s in active for i in s['roomIds']}
-        for r in _ROOMS[bid]:
-            if h not in _IDLE_ON[r['id']] and r['id'] not in targeted and sim.occupants(r, ts) == 0:
+        for r in rooms_by[bid]:
+            if h not in idle_on[r['id']] and r['id'] not in targeted and sim.occupants(r, ts) == 0:
                 continue
             out[(r['floor'], r['use'])][h] += sim.state(r, ts, active)['powerKw'] * frac
     return {g: tuple(v) for g, v in out.items()}
 
 
 @functools.lru_cache(maxsize=1024)
-def _past(bid, day, key):
+def _past(bid, day, key, version=None):
     # 건물 4개 × (이번 달 + 지난달 62일 + 히트맵 최대 56일) 이내라 1024개면 재계산 없음
     return _compute(bid, day, json.loads(key))
 
@@ -67,12 +77,12 @@ def _past(bid, day, key):
 def _groups(bid, day, schedules, now):
     # 지난 날짜는 캐시, 오늘은 현재 시각까지 계산, 미래는 0
     if day > now.date():
-        return {g: (0.0,) * 24 for g in _GROUPS[bid]}
+        return {g: (0.0,) * 24 for g in _meta(buildings.version())[2][bid]}
     mine = [s for s in schedules if s.get('buildingId', buildings.DEFAULT) == bid]
     if day == now.date():
         return _compute(bid, day, mine, now)
     end = dt.datetime.combine(day + dt.timedelta(days=1), dt.time(), sim.KST).isoformat()
-    return _past(bid, day, json.dumps([s for s in mine if s.get('createdAt', '') < end], sort_keys=True, default=str))
+    return _past(bid, day, json.dumps([s for s in mine if s.get('createdAt', '') < end], sort_keys=True, default=str), buildings.version())
 
 
 def _hourly(bid, day, schedules, now):

@@ -41,7 +41,7 @@ LLM 호출과 도구 실행은 query Lambda가 담당합니다. 모든 HTTP API�
 | 인증 | Amazon Cognito 사용자 풀(허용 목록 자체 가입, 가입 전 검사 signup Lambda), HTTP API JWT 권한 부여자, WebSocket REQUEST 권한 부여자(auth Lambda), 관리자 그룹 `admin`(사용자 관리 API `/admin/*`) | 허용된 운영자만 사용, 공개 API의 Bedrock 비용 위험 차단([허용 목록 회원가입](decisions/2026-11-20%28%ED%97%88%EC%9A%A9%20%EB%AA%A9%EB%A1%9D%20%ED%9A%8C%EC%9B%90%EA%B0%80%EC%9E%85%29.md)) |
 | 대화 저장 | DynamoDB 대화 테이블(기록 90일, 메모리 24시간 TTL), chat Lambda(`GET·DELETE /chat`) | 사용자·건물별 대화 기록, 후속 질문 해석용 메모리 |
 | 처리 | Lambda Python 3.12(arm64) 5개: api(조회·관리 18개 경로, 1769MB), query(AI 질의), ws(WebSocket), auth(연결 인증), signup(가입 전 검사). 기본 1024MB | 화면당 콜드 스타트 1회(2026-11-20 통합, 이전 9개 함수는 첫 호출 2.6~2.9초) |
-| 데이터 | DynamoDB(스케줄), 건물·호실 목록은 Lambda 패키지의 `buildings.json`, `rooms.json` | 서버리스, 소량 데이터 |
+| 데이터 | DynamoDB(스케줄), 건물·호실은 `maestro-twin` 스택 Buildings·Rooms 테이블(실행 환경별 60초 캐시), 도면은 S3 도면 버킷(`GET /buildings/{id}/plan`) | 판매사·고객사 구조에서 건물·도면을 화면으로 추가·수정(2026-11-20 1단계) |
 | 자연어 질의 | Bedrock Claude Sonnet 5.5(`global.anthropic.claude-sonnet-5-5`, bedrock-runtime global 추론 프로필) | 사용자 지정 상한, 템플릿에서 Haiku 5.5로만 하향 가능. Mantle은 Sonnet 5.5 미제공([장애 기록](troubleshooting/2026-11-20%28Bedrock%20Sonnet%205.5%20%EB%AA%A8%EB%8D%B8%20ID%20404%29.md)) |
 | 정의·배포 | AWS SAM(`lambda/template.yaml`) | 리소스 1개 파일 관리 |
 | RAG(다음 단계) | Bedrock Knowledge Bases | 벡터 저장소 비용 점검 후 결정 |

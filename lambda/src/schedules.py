@@ -13,7 +13,6 @@ import chat
 import common
 import sim
 
-ROOM_IDS = {b['id']: {r['id'] for r in buildings.rooms(b['id'])} for b in buildings.LIST}
 SCHEDULE_ID = re.compile(r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')
 
 
@@ -38,7 +37,7 @@ def handler(event, context):
     except ValueError as e:
         return common.bad_building(e)
     ids = d.get('roomIds') or []
-    if not isinstance(ids, list) or not ids or not all(isinstance(i, str) for i in ids) or not set(ids) <= ROOM_IDS[b['id']]:
+    if not isinstance(ids, list) or not ids or not all(isinstance(i, str) for i in ids) or not set(ids) <= {r['id'] for r in buildings.rooms(b['id'])}:
         return common.resp(400, {'error': f"roomIds가 비었거나 {b['name']}에 없는 호실 포함"})
     if d.get('action') not in ('off', 'on', 'setpoint') or d.get('condition') not in ('unused', 'always'):
         return common.resp(400, {'error': 'action 또는 condition 값 오류'})

@@ -13,6 +13,7 @@ import chat
 import common
 import energy
 import history
+import plan
 import portfolio
 import recommend
 import schedules
@@ -32,6 +33,9 @@ ROUTES = [
 
 
 def route(path):
+    # 건물 도면은 /buildings 하위 경로라 목록보다 먼저 확인
+    if path.startswith('/buildings/') and path.endswith('/plan'):
+        return plan.handler
     return next((fn for prefix, fn in ROUTES if path == prefix or path.startswith(prefix + '/')), None)
 
 

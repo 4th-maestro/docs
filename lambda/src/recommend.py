@@ -72,11 +72,11 @@ def _rule(room, t, schedules):
 
 def after_hours_days(room, t, schedules):
     # 지난 7일 판정: 오늘 날짜와 대상 스케줄이 같으면 결과가 같아 캐시(하루 1회 계산)
-    return _after_hours(room['id'], t.replace(hour=0, minute=0, second=0, microsecond=0).isoformat(), common.sched_key(schedules, [room['id']]))
+    return _after_hours(room['id'], t.replace(hour=0, minute=0, second=0, microsecond=0).isoformat(), common.sched_key(schedules, [room['id']]), buildings.version())
 
 
 @functools.lru_cache(maxsize=8192)
-def _after_hours(rid, today, key):
+def _after_hours(rid, today, key, version=None):
     room, schedules, t = buildings.BY_ROOM[rid], json.loads(key), dt.datetime.fromisoformat(today)
     h0, h1 = room.get('hours', (9, 18))
     days = 0

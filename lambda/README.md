@@ -4,7 +4,7 @@
 
 | 경로 | 내용 |
 |---|---|
-| `template.yaml` | API Gateway HTTP API, WebSocket API, Lambda 5개(조회·관리 API 통합, AI 질의, WebSocket, 연결 인증, 가입 전 검사), DynamoDB, Cognito, S3, CloudFront |
+| `template.yaml` | API Gateway HTTP API, WebSocket API, Lambda 5개(조회·관리 API 통합, AI 질의, WebSocket, 연결 인증, 가입 전 검사), DynamoDB, Cognito, S3, CloudFront, Bedrock Knowledge Base(S3 Vectors) |
 | `src/api.py` | 조회·관리 API 단일 진입점: 경로로 각 모듈 handler 호출(콜드 스타트 1회), 메모리 1769MB |
 | `src/status.py` | `GET /rooms/status?building=main&floor=1F` 건물 호실별 가상 상태, 건물 정보와 층 목록 |
 | `src/portfolio.py` | `GET /buildings` 건물별 현재 상태, 오늘 사용량, 절감 가능량, 점검 순서(전체 현황) |
@@ -15,11 +15,15 @@
 | `src/anomalies.py` | `GET /anomalies?building=&floor=` 설정온도 미도달 HVAC 상세, 기대 온도, 원인 후보(규칙 기반 추정) |
 | `src/history.py` | `GET /rooms/history?building=&floor=` 층 전력 시간별 평균(kW)과 사용량(kWh), 오늘 0시~현재와 어제 0~23시 |
 | `src/energy.py` | `GET /energy/compare·trend·heatmap·breakdown` 건물별 전력 사용량 비교, 기간 추이, 요일×시간 평균 kW, 층·용도 구성([설계](../docs/human/explanation/architecture.md) 11절) |
-| `src/tools.py` | LLM 도구 4종(호실 순위, 묶음 합계, 기간 추이, 스케줄 초안) 정의와 서버 검증(층·용도는 질의 건물 기준), 결과 그래프 정의(`chart`: 막대·선) 생성 |
-| `src/buildings.py`, `src/buildings.json` | 건물 4곳(본관 공개 IFC, 가상 3곳), 건물별 호실과 운영 프로필 |
+| `src/tools.py` | LLM 도구 6종(호실 순위, 묶음 합계, 기간 추이, 스케줄 초안, 기준 문서 검색, 쾌적 지표) 정의와 서버 검증(층·용도는 질의 건물 기준), 결과 그래프 정의(`chart`: 막대·선), 문서 근거(`sources`) 생성 |
+| `src/comfort.py` | 불쾌지수(기상청 식)와 단계, PMV·PPD(ISO 7730 반복 계산, 외부 패키지 없음) |
+| `kb/` | Knowledge Base 원본 문서(규정·쾌적 지표)와 `.md.metadata.json`(문서명, 원문 주소, 시행일, 원문 확인일). 근거는 [KB 문서 원문 확인](../docs/human/explanation/research/kb-sources.md) |
+| `tools/kb_sync.sh` | `kb/`를 KB 원본 버킷에 동기화하고 수집 작업 실행 후 완료 대기 |
+| `src/buildings.py`, `src/buildings.json` | 건물·호실 조회. 배포 환경은 `maestro-twin` 스택의 Buildings·Rooms 테이블(60초 캐시), 로컬·테스트는 `buildings.json`·`rooms.json` |
 | `src/sim.py`, `src/rooms.json` | 가상 HVAC 상태 생성, 본관 호실 137개(공개 IFC 의원 건물) |
 | `tools/demo_status.py` | Frontend 데모 상태 생성(`frontend/public/demo/<건물>.json`, `index.json`) |
 | `tools/build_floorplans.py` | 건물별 3D 도면 생성(`frontend/public/floorplans/<건물>.json`) |
+| `src/plan.py`, `tools/upload_plans.py` | 도면 API `GET /buildings/{id}/plan`(도면 버킷 `plans/<건물>/current.json`), 초기 적재(`--bucket <PlansBucketName>`) |
 | `src/chat.py` | `GET·DELETE /chat?building=` 사용자별 대화 기록(90일), 대화 메모리(24시간, 1KB 요약) 저장 |
 | `src/auth.py` | WebSocket 연결 인증(쿼리 token, Cognito 액세스 토큰 검증) |
 
@@ -53,6 +57,8 @@ git switch main && git pull --ff-only \
 ```
 
 주: 2026-11-20 작업 사본의 미커밋 변경 때문에 브랜치 전환이 실패한 상태에서 `sam build`가 이어 실행되어, 머지 전 코드가 약 3분간 배포되었습니다. 명령을 `&&`로 연결하고 브랜치·변경 확인을 앞에 둔 이유입니다.
+
+Knowledge Base 문서는 배포 후와 `kb/` 수정 후마다 `tools/kb_sync.sh`를 실행해 반영하십시오. 수집 결과(신규, 변경, 실패 문서 수)가 출력됩니다.
 
 모델은 bedrock-runtime global 추론 프로필 `global.anthropic.claude-sonnet-5-5`입니다. bedrock-mantle 엔드포인트는 Sonnet 5.5를 제공하지 않습니다(2026-11-20 확인). 출력값 `ApiUrl`을 Frontend의 `VITE_API_BASE_URL`에, `WsUrl`을 `VITE_WS_URL`에 넣고, `WebBucketName`에 Frontend 빌드를 올리십시오.
 

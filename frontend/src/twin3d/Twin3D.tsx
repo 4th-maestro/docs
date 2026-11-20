@@ -5,13 +5,14 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js'
 import { LineSegments2 } from 'three/addons/lines/LineSegments2.js'
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js'
+import { getPlan } from '../api'
 import { ANOMALY, SCALES, color, value } from '../heat'
 import type { Mode, Room } from '../types'
 import './twin3d.css'
 import { SkPlan } from '../skeleton/Skeleton'
 
 type Pt = [number, number]
-// public/floorplans/<건물>.json 형식(lambda/tools/build_floorplans.py 생성, IFC 평면 좌표, m)
+// 도면 형식(lambda/tools/build_floorplans.py 생성, IFC 평면 좌표, m): GET /buildings/{id}/plan, 실패 시 public/floorplans/<건물>.json
 type Plan = { floors: Record<string, { bounds: [number, number, number, number]; rooms: { id: string; polys: Pt[][]; hvac: Pt[] }[] }> }
 type Props = { building: string; floor: string; mode: Mode; rooms: Room[]; highlight: string[]; selectedId: string | null; onSelect: (id: string) => void; dark?: boolean }
 type RoomObj = {
@@ -82,11 +83,7 @@ export default function Twin3D({ building, floor, mode, rooms, highlight, select
 
   useEffect(() => {
     let alive = true
-    fetch(`/floorplans/${encodeURIComponent(building)}.json`)
-      .then((r) => {
-        if (!r.ok) throw new Error(String(r.status))
-        return r.json() as Promise<Plan>
-      })
+    getPlan<Plan>(building)
       .then((p) => { if (alive) setLoaded({ building, plan: p }) })
       .catch(() => { if (alive) setFailed(building) })
     return () => { alive = false }

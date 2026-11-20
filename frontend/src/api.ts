@@ -3,10 +3,10 @@ import { mockAnomalies, mockBuildings, mockCancelSchedule, mockHistory, mockReco
 import type { Anomalies, History, Recommendations, Schedules } from './panels/types'
 import { AUTH_ON, getAccessToken, signOut } from './auth/cognito'
 import type { Step } from './ai/types'
-import type { Chart, Draft, Portfolio, QueryResult, Status } from './types'
+import type { Chart, Draft, Portfolio, QueryResult, Source, Status } from './types'
 import { withCustom } from './custom'
 
-export type ChatRecord = { sk: string; role: 'user' | 'assistant'; text: string; steps?: Step[]; highlight?: string[]; draft?: Draft | null; charts?: Chart[] }
+export type ChatRecord = { sk: string; role: 'user' | 'assistant'; text: string; steps?: Step[]; highlight?: string[]; draft?: Draft | null; charts?: Chart[]; sources?: Source[] }
 
 const BASE = import.meta.env.VITE_API_BASE_URL as string | undefined
 
@@ -24,6 +24,19 @@ export async function call<T>(path: string, init?: RequestInit): Promise<T> {
   const data = await res.json()
   if (!res.ok) throw new Error(data.error ?? `요청 실패(${res.status})`)
   return data as T
+}
+
+// 건물 도면(내장 3D 형식): 도면 버킷 API(GET /buildings/{id}/plan), 실패하면 웹 번들의 public/floorplans(목업·API 없음)
+// 판매사·고객사 구조 1단계(2026-11-20): 도면을 웹 번들 대신 서버에서 관리
+export async function getPlan<T>(building: string): Promise<T> {
+  try {
+    return await call<T>(`/buildings/${encodeURIComponent(building)}/plan`)
+  } catch (e) {
+    if (e instanceof AuthRequired) throw e
+    const r = await fetch(`/floorplans/${encodeURIComponent(building)}.json`)
+    if (!r.ok) throw new Error(String(r.status))
+    return r.json() as Promise<T>
+  }
 }
 
 // 건물·층 쿼리: GET API는 building이 없으면 main(lambda/src/common.py)

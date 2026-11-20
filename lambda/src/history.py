@@ -38,7 +38,7 @@ def hourly(rooms, day, hours, schedules, until):
     for h in range(hours):
         start = day.replace(hour=h)
         done = until >= start + dt.timedelta(hours=1)
-        kw = _hour_kw(ids, start.isoformat(), key) if done else _kw(rooms, start, schedules, until)
+        kw = _hour_kw(ids, start.isoformat(), key, buildings.version()) if done else _kw(rooms, start, schedules, until)
         elapsed = min(3600.0, (until - start).total_seconds()) / 3600
         out.append({'hour': h, 'kw': round(kw, 1), 'kwh': round(kw * elapsed, 1)})
     return out
@@ -50,7 +50,7 @@ def _kw(rooms, start, schedules, until):
 
 
 @functools.lru_cache(maxsize=4096)
-def _hour_kw(ids, start, key):
+def _hour_kw(ids, start, key, version=None):
     s = dt.datetime.fromisoformat(start)
     return _kw([buildings.BY_ROOM[i] for i in ids], s, json.loads(key), s + dt.timedelta(hours=1))
 

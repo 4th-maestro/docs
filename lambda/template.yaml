@@ -14,6 +14,10 @@ Parameters:
   AllowedOrigin:
     Type: String
     Default: '*'
+  TwinPrefix:
+    Type: String
+    # 건물·호실 테이블: maestro-twin 스택(infra/twin/template.yaml)의 <Prefix>-Buildings, <Prefix>-Rooms
+    Default: maestro
 
 Globals:
   Function:
@@ -27,6 +31,8 @@ Globals:
       Variables:
         SCHEDULES_TABLE: !Ref SchedulesTable
         CHAT_TABLE: !Ref ChatTable
+        BUILDINGS_TABLE: !Sub '${TwinPrefix}-Buildings'
+        ROOMS_TABLE: !Sub '${TwinPrefix}-Rooms'
 
 Resources:
   Api:
@@ -160,8 +166,11 @@ Resources:
       MemorySize: 1769
       Timeout: 29
       Environment:
-        Variables: {ALLOW_TABLE: !Ref AllowTable, USER_POOL_ID: !Ref UserPool}
+        Variables: {ALLOW_TABLE: !Ref AllowTable, USER_POOL_ID: !Ref UserPool, PLANS_BUCKET: !Ref PlansBucket}
       Policies:
+        - DynamoDBReadPolicy: {TableName: !Sub '${TwinPrefix}-Buildings'}
+        - DynamoDBReadPolicy: {TableName: !Sub '${TwinPrefix}-Rooms'}
+        - S3ReadPolicy: {BucketName: !Ref PlansBucket}
         - DynamoDBCrudPolicy: {TableName: !Ref SchedulesTable}
         - DynamoDBCrudPolicy: {TableName: !Ref ChatTable}
         - DynamoDBCrudPolicy: {TableName: !Ref AllowTable}
@@ -173,6 +182,7 @@ Resources:
         Status: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /rooms/status, Method: GET}}
         History: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /rooms/history, Method: GET}}
         Buildings: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /buildings, Method: GET}}
+        Plan: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: '/buildings/{id}/plan', Method: GET}}
         Recommend: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /recommendations, Method: GET}}
         Anomalies: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /anomalies, Method: GET}}
         ListSchedules: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /schedules, Method: GET}}
@@ -195,8 +205,10 @@ Resources:
       Handler: query.handler
       Timeout: 30
       Environment:
-        Variables: {MODEL_ID: !Ref ModelId, BEDROCK_REGION: !Ref BedrockRegion}
+        Variables: {MODEL_ID: !Ref ModelId, BEDROCK_REGION: !Ref BedrockRegion, KB_ID: !Ref KnowledgeBase}
       Policies:
+        - DynamoDBReadPolicy: {TableName: !Sub '${TwinPrefix}-Buildings'}
+        - DynamoDBReadPolicy: {TableName: !Sub '${TwinPrefix}-Rooms'}
         - DynamoDBReadPolicy: {TableName: !Ref SchedulesTable}
         - DynamoDBCrudPolicy: {TableName: !Ref ChatTable}
         - Statement:
@@ -209,6 +221,9 @@ Resources:
                 - !Sub
                   - arn:aws:bedrock:*::foundation-model/${Base}
                   - Base: !Select [1, !Split ['global.', !Ref ModelId]]
+            - Effect: Allow
+              Action: bedrock:Retrieve
+              Resource: !GetAtt KnowledgeBase.KnowledgeBaseArn
       Events:
         Post: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /query, Method: POST}}
 
@@ -271,8 +286,10 @@ Resources:
       # 통합 응답 대기는 29초에서 끊기지만 함수는 계속 실행되어 이벤트 전송, 화면 제한 45초보다 길게 설정
       Timeout: 60
       Environment:
-        Variables: {MODEL_ID: !Ref ModelId, BEDROCK_REGION: !Ref BedrockRegion}
+        Variables: {MODEL_ID: !Ref ModelId, BEDROCK_REGION: !Ref BedrockRegion, KB_ID: !Ref KnowledgeBase}
       Policies:
+        - DynamoDBReadPolicy: {TableName: !Sub '${TwinPrefix}-Buildings'}
+        - DynamoDBReadPolicy: {TableName: !Sub '${TwinPrefix}-Rooms'}
         - DynamoDBReadPolicy: {TableName: !Ref SchedulesTable}
         - DynamoDBCrudPolicy: {TableName: !Ref ChatTable}
         - Statement:
@@ -284,8 +301,94 @@ Resources:
                   - arn:aws:bedrock:*::foundation-model/${Base}
                   - Base: !Select [1, !Split ['global.', !Ref ModelId]]
             - Effect: Allow
+              Action: bedrock:Retrieve
+              Resource: !GetAtt KnowledgeBase.KnowledgeBaseArn
+            - Effect: Allow
               Action: execute-api:ManageConnections
               Resource: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WsApi}/prod/POST/@connections/*
+
+  # 규정·쾌적성 문서 RAG(FR-18). 원본은 KbDocsBucket(lambda/kb, tools/kb_sync.sh로 동기화와 수집)
+  # 벡터 저장소는 S3 Vectors: OpenSearch Serverless 최소 월 약 214달러 대신 사용량 과금(2026-11-20 Seoul 단가 조회)
+  KbDocsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration: {BlockPublicAcls: true, BlockPublicPolicy: true, IgnorePublicAcls: true, RestrictPublicBuckets: true}
+
+  KbVectorBucket:
+    Type: AWS::S3Vectors::VectorBucket
+
+  KbIndex:
+    Type: AWS::S3Vectors::Index
+    Properties:
+      VectorBucketArn: !GetAtt KbVectorBucket.VectorBucketArn
+      DataType: float32
+      Dimension: 1024
+      DistanceMetric: cosine
+      MetadataConfiguration:
+        # Bedrock이 청크 원문과 메타데이터를 넣는 키는 필터 대상에서 제외(필터 메타데이터 크기 한도)
+        NonFilterableMetadataKeys: [AMAZON_BEDROCK_TEXT, AMAZON_BEDROCK_METADATA]
+
+  KbRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: {Service: bedrock.amazonaws.com}
+            Action: sts:AssumeRole
+            Condition: {StringEquals: {aws:SourceAccount: !Ref AWS::AccountId}}
+      Policies:
+        - PolicyName: kb
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: bedrock:InvokeModel
+                Resource: !Sub arn:aws:bedrock:${AWS::Region}::foundation-model/amazon.titan-embed-text-v2:0
+              - Effect: Allow
+                Action: [s3:GetObject, s3:ListBucket]
+                Resource: [!GetAtt KbDocsBucket.Arn, !Sub '${KbDocsBucket.Arn}/*']
+              - Effect: Allow
+                Action: [s3vectors:PutVectors, s3vectors:GetVectors, s3vectors:DeleteVectors, s3vectors:QueryVectors, s3vectors:GetIndex, s3vectors:ListVectors]
+                Resource: !GetAtt KbIndex.IndexArn
+
+  KnowledgeBase:
+    Type: AWS::Bedrock::KnowledgeBase
+    Properties:
+      Name: !Sub ${AWS::StackName}-docs
+      RoleArn: !GetAtt KbRole.Arn
+      KnowledgeBaseConfiguration:
+        Type: VECTOR
+        VectorKnowledgeBaseConfiguration:
+          EmbeddingModelArn: !Sub arn:aws:bedrock:${AWS::Region}::foundation-model/amazon.titan-embed-text-v2:0
+          EmbeddingModelConfiguration: {BedrockEmbeddingModelConfiguration: {Dimensions: 1024}}
+      StorageConfiguration:
+        Type: S3_VECTORS
+        S3VectorsConfiguration: {IndexArn: !GetAtt KbIndex.IndexArn}
+
+  KbDataSource:
+    Type: AWS::Bedrock::DataSource
+    Properties:
+      KnowledgeBaseId: !Ref KnowledgeBase
+      Name: docs
+      DataSourceConfiguration:
+        Type: S3
+        S3Configuration: {BucketArn: !GetAtt KbDocsBucket.Arn}
+      VectorIngestionConfiguration:
+        ChunkingConfiguration:
+          ChunkingStrategy: FIXED_SIZE
+          FixedSizeChunkingConfiguration: {MaxTokens: 300, OverlapPercentage: 20}
+
+  # 건물 도면(내장 3D 형식): plans/<건물>/current.json, v<번호>.json. 판매사·고객사 구조 1단계(2026-11-20)
+  PlansBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
 
   WebBucket:
     Type: AWS::S3::Bucket
@@ -344,6 +447,9 @@ Outputs:
     Value: !Sub https://${WebDistribution.DomainName}
   WebBucketName:
     Value: !Ref WebBucket
+  PlansBucketName:
+    Description: tools/upload_plans.py 도면 적재 대상
+    Value: !Ref PlansBucket
   WsUrl:
     Description: Frontend VITE_WS_URL 값
     Value: !Sub wss://${WsApi}.execute-api.${AWS::Region}.amazonaws.com/prod
@@ -351,3 +457,10 @@ Outputs:
     Value: !Ref UserPool
   UserPoolClientId:
     Value: !Ref UserPoolClient
+  KbId:
+    Value: !Ref KnowledgeBase
+  KbDataSourceId:
+    Value: !GetAtt KbDataSource.DataSourceId
+  KbDocsBucketName:
+    Description: tools/kb_sync.sh 문서 동기화 대상
+    Value: !Ref KbDocsBucket
