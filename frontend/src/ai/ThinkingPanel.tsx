@@ -42,7 +42,7 @@ function StepRow({ s, now }: { s: Row; now: number }) {
   const time = s.status === 'active' && s.at ? sec(Math.max(0, now - s.at)) : s.ms != null ? sec(s.ms) : ''
   return (
     <li className={`th-step ${s.status}`}>
-      <span className="th-icon"><Icon size={16} aria-hidden /></span>
+      <span className="th-icon"><span key={s.status} className={s.status === 'pending' ? undefined : 'pop-in'}><Icon size={16} aria-hidden /></span></span>
       <div className="th-body">
         <div className="th-line">
           <span className="th-label">{s.label}</span>

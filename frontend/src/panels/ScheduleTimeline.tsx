@@ -5,6 +5,7 @@ import { kstNow } from '../mock'
 import Panel from './Panel'
 import type { Schedule } from './types'
 import { usePoll } from './usePoll'
+import { Sk, SkRows } from '../skeleton/Skeleton'
 
 const ACTION = { off: '운전 OFF', on: '운전 ON', setpoint: '설정온도' }
 const TICKS = [0, 6, 12, 18, 24]
@@ -39,7 +40,7 @@ export default function ScheduleTimeline({ building, refreshKey, onLocate }: { b
   }
 
   return (
-    <Panel title="오늘 스케줄" mock={data?.mock} error={error || msg.err} loading={!data && !error}>
+    <Panel title="오늘 스케줄" mock={data?.mock} error={error || msg.err} loading={!data && !error} skeleton={<><Sk h={24} /><SkRows rows={2} action /></>}>
       {data && (
         <>
           <div className="pn-axis" role="img" aria-label={`0시부터 24시까지 스케줄 ${items.length}건, 현재 ${now}`}>
@@ -59,8 +60,8 @@ export default function ScheduleTimeline({ building, refreshKey, onLocate }: { b
             <p className="pn-empty">저장된 스케줄이 없습니다.</p>
           ) : (
             <ol className="pn-list">
-              {items.map((s) => (
-                <li key={s.id} className="pn-sched">
+              {items.map((s, idx) => (
+                <li key={s.id} className="pn-sched rise-in" style={{ '--i': idx } as React.CSSProperties}>
                   <span className="pn-time">{s.time}</span>
                   <span className="pn-sdesc">
                     <b>{act(s)}</b>

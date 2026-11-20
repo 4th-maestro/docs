@@ -21,6 +21,8 @@ import { FloorList, Layout } from './shell/Shell'
 import { href, parseRoute, type FloorSummary, type Tab } from './shell/route'
 import { TWIN_URL, onRoomSelected, postState } from './twin'
 import type { BuildingCard, Draft, Mode, Room, Status } from './types'
+import { SkFloors, SkKpis, SkPlan } from './skeleton/Skeleton'
+import CountUp from './motion/CountUp'
 
 // three.js 청크(약 620kB)는 3D 영역 표시 시점에 로드
 const Twin3D = lazy(() => import('./twin3d/Twin3D'))
@@ -153,7 +155,7 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
     const r = ai.result
     if (r) {
       setMessages((ms) => [...ms.map((m) => (m.draftState === 'pending' ? { ...m, draftState: 'closed' as const } : m)),
-        { id: uid(), role: 'assistant', text: r.answer, steps: r.steps, highlight: r.highlight, draft: r.draft, draftState: r.draft ? 'pending' : undefined, mock: r.mock }])
+        { id: uid(), fresh: true, role: 'assistant', text: r.answer, steps: r.steps, highlight: r.highlight, draft: r.draft, draftState: r.draft ? 'pending' : undefined, mock: r.mock }])
       setFocus(r.highlight.length ? r.highlight : NO_IDS)
       if (r.draft && floors.includes(r.draft.floor)) setFloor(r.draft.floor)
     }
@@ -188,13 +190,13 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
   function showDraft(d: Draft) {
     reset(); setSeen(null)
     setMessages((ms) => [...ms.map((m) => (m.draftState === 'pending' ? { ...m, draftState: 'closed' as const } : m)),
-      { id: uid(), role: 'assistant', text: `최적 제어 추천에서 만든 초안입니다. ${d.roomNames[0]}${d.roomIds.length > 1 ? ` 외 ${d.roomIds.length - 1}곳` : ''}이 대상입니다. 확인 후 저장하십시오.`, draft: d, draftState: 'pending', highlight: d.roomIds }])
+      { id: uid(), fresh: true, role: 'assistant', text: `최적 제어 추천에서 만든 초안입니다. ${d.roomNames[0]}${d.roomIds.length > 1 ? ` 외 ${d.roomIds.length - 1}곳` : ''}이 대상입니다. 확인 후 저장하십시오.`, draft: d, draftState: 'pending', highlight: d.roomIds }])
     setFocus(d.roomIds)
   }
 
   function send(q: string) {
     setError('')
-    setMessages((ms) => [...ms, { id: uid(), role: 'user', text: q }])
+    setMessages((ms) => [...ms, { id: uid(), fresh: true, role: 'user', text: q }])
     ask(q)
   }
 
@@ -205,7 +207,7 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
       const source = [...messages].reverse().find((x) => x.role === 'user')?.text ?? '최적 제어 추천'
       const r = await saveSchedule(d, source, building)
       setMessages((ms) => [...ms.map((x) => (x.id === m.id ? { ...x, draftState: 'saved' as const } : x)),
-        { id: uid(), role: 'assistant', note: true, text: r.mock ? `${d.time} ${ACTION[d.action]} 스케줄을 목업으로 저장했습니다. 서버에는 기록되지 않습니다.` : `${d.time} ${ACTION[d.action]} 스케줄을 저장했습니다. 시뮬레이션에만 반영됩니다.` }])
+        { id: uid(), fresh: true, role: 'assistant', note: true, text: r.mock ? `${d.time} ${ACTION[d.action]} 스케줄을 목업으로 저장했습니다. 서버에는 기록되지 않습니다.` : `${d.time} ${ACTION[d.action]} 스케줄을 저장했습니다. 시뮬레이션에만 반영됩니다.` }])
       setFocus(NO_IDS)
       setScheduleKey((k) => k + 1)
       load()
@@ -235,7 +237,7 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
 
   return (
     <Layout building={building} tab={tab} buildings={buildings} tools={tools}
-      side={ops && <FloorList floors={floorSummaries} floor={floor} onFloor={(f) => { setFloor(f); setSelected(null) }} />}>
+      side={ops && (status ? <FloorList floors={floorSummaries} floor={floor} onFloor={(f) => { setFloor(f); setSelected(null) }} /> : <SkFloors n={info?.floors.length ?? 2} />)}>
       <div className="page">
         {!ops && <EnergyPage building={building} />}
         {ops && (
@@ -251,6 +253,7 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
               </div>
             )}
             {error && <p className="error" role="alert">{error}</p>}
+            {!status && <SkKpis />}
             {status && (
               <section className="kpis" aria-label={`${floor} 요약`}>
                 <Kpi label="운전 중 HVAC" value={summary.on} unit="대" sub={`${floor} 전체 ${rooms.length}대 중`} />
@@ -274,7 +277,7 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
                   {TWIN_URL ? (
                     <iframe ref={frame} className="embed" src={TWIN_URL} title="3D 디지털트윈" onLoad={() => postState(frame.current, building, floor, mode, rooms, highlight)} />
                   ) : (
-                    <Suspense fallback={<div className="embed" aria-label="3D 도면 불러오는 중" />}>
+                    <Suspense fallback={<div className="embed"><SkPlan /></div>}>
                       <Twin3D building={building} floor={floor} mode={mode} rooms={rooms} highlight={highlight} selectedId={selected} onSelect={setSelected} dark={dark} />
                     </Suspense>
                   )}
@@ -307,7 +310,7 @@ function Kpi({ label, value, unit, sub, bad }: { label: string; value: number; u
   return (
     <div className="kpi">
       <span className="klabel">{label}</span>
-      <span className={bad ? 'kval bad' : 'kval'}>{value}<small>{unit}</small></span>
+      <span className={bad ? 'kval bad' : 'kval'}><CountUp value={value} /><small>{unit}</small></span>
       <span className="ksub">{sub}</span>
     </div>
   )

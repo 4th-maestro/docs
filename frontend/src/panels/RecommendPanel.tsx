@@ -5,6 +5,8 @@ import type { Draft } from '../types'
 import Panel from './Panel'
 import type { Rule } from './types'
 import { usePoll } from './usePoll'
+import { SkFigure, SkRows } from '../skeleton/Skeleton'
+import CountUp from '../motion/CountUp'
 
 // 규칙 3종(architecture.md 8절): 태그는 아이콘과 글자로 함께 표시
 const RULES: Record<Rule, { label: string; Icon: typeof UserX }> = {
@@ -19,21 +21,21 @@ export default function RecommendPanel({ building, floor, onDraft, onLocate }: {
   const { data, error, stale } = usePoll(load, floor)
   return (
     <Panel
-      title="최적 제어 추천" at={data?.generatedAt} mock={data?.mock} error={error} loading={!data && !error} stale={stale}
+      title="최적 제어 추천" at={data?.generatedAt} mock={data?.mock} error={error} loading={!data && !error} skeleton={<><SkFigure /><SkRows rows={3} action tall /></>} stale={stale}
       empty={data?.items.length === 0 && `${floor}에서 낭비 규칙에 해당하는 HVAC이 없습니다.`}
     >
       {data && (
         <>
           <div className="pn-stat">
             <span className="label">예상 절감 합계</span>
-            <strong>{data.totalSavingKwh}<small>kWh/일</small></strong>
+            <strong><CountUp value={data.totalSavingKwh} /><small>kWh/일</small></strong>
             <span className="sub">{floor} 추천 {data.items.length}건, 시뮬레이터 적용 전후 비교(가상)</span>
           </div>
           <ol className="pn-list">
-            {data.items.map((it) => {
+            {data.items.map((it, idx) => {
               const { label, Icon } = RULES[it.rule]
               return (
-                <li key={it.id}>
+                <li key={it.id} className="rise-in" style={{ '--i': idx } as React.CSSProperties}>
                   <div className="pn-row">
                     <div>
                       <span className="pn-tagline"><Icon size={14} aria-hidden />{label}</span>

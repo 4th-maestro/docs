@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { AtSign, Mail, Plus, ShieldCheck, Trash2 } from 'lucide-react'
 import { addAllow, listAllow, listUsers, removeAllow, type AllowEntry, type UserRow } from '../api'
 import './admin.css'
+import { SkRows, SkTable, SkWrap } from '../skeleton/Skeleton'
 
 // 회원 상태: Cognito UserStatus → 운영자용 표현
 const STATUS: Record<string, string> = {
@@ -76,14 +77,14 @@ export default function AdminPage() {
         </form>
         {!!value && !valid && <p className="adm-warn">이메일(kim@company.com) 또는 @로 시작하는 도메인(@company.com) 형식으로 입력하십시오.</p>}
         {msg && <p className="ok" role="status">{msg}</p>}
-        {entries === null && !error && <p className="muted">불러오는 중입니다.</p>}
+        {entries === null && !error && <SkWrap label="허용 목록을 불러오는 중입니다"><SkRows rows={3} action /></SkWrap>}
         {entries?.length === 0 && <p className="muted">허용 목록이 비어 있습니다. 지금은 아무도 회원가입할 수 없습니다.</p>}
         {!!entries?.length && (
           <ul className="adm-list">
-            {entries.map((a) => {
+            {entries.map((a, idx) => {
               const domain = a.entry.startsWith('@')
               return (
-                <li key={a.entry}>
+                <li key={a.entry} className="rise-in" style={{ '--i': idx } as React.CSSProperties}>
                   {domain ? <AtSign size={18} aria-hidden /> : <Mail size={18} aria-hidden />}
                   <span className="adm-entry">{a.entry}<small>{domain ? '도메인 전체' : '개별 이메일'}{a.note ? `, ${a.note}` : ''}{a.addedAt ? `, ${day(a.addedAt)} 추가` : ''}</small></span>
                   {confirmDel === a.entry ? (
@@ -103,7 +104,7 @@ export default function AdminPage() {
 
       <section className="card adm-card" aria-labelledby="adm-users">
         <h2 id="adm-users">가입한 사용자 {users ? `${users.length}명` : ''}</h2>
-        {users === null && !error && <p className="muted">불러오는 중입니다.</p>}
+        {users === null && !error && <SkWrap label="사용자 목록을 불러오는 중입니다"><SkTable rows={4} cols={3} /></SkWrap>}
         {!!users?.length && (
           <table className="adm-table">
             <thead><tr><th>이메일</th><th>상태</th><th>가입일</th></tr></thead>

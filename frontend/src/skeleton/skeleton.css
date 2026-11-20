@@ -1,0 +1,28 @@
+/* 스켈레톤: 정지 블록(애니메이션 없음), 색은 --skeleton(index.css, 두 테마) */
+.sk { display: block; flex: none; background: var(--skeleton); }
+.sk-wrap { position: relative; }
+.sk-body { display: contents; }
+.sk-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.sk-col { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.sk-line { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.sk-rows { display: flex; flex-direction: column; }
+.sk-row { display: flex; align-items: center; gap: 16px; padding: 14px 0; border-top: 1px solid var(--hairline-soft); }
+.sk-row > .sk-col { flex: 1; }
+.sk-row.tall { padding: 18px 0; }
+.sk-chart { position: relative; display: flex; flex-direction: column; justify-content: space-between; padding-bottom: 2px; }
+.sk-chart i { display: block; height: 1px; background: var(--hairline-soft); }
+.sk-bar { padding: 12px 0; border-top: 1px solid var(--hairline-soft); }
+.sk-heat { display: grid; grid-template-columns: repeat(24, minmax(0, 1fr)); gap: 3px; }
+.sk-heat .sk { aspect-ratio: 1; border-radius: 3px; }
+.sk-flow { display: grid; grid-template-columns: 14px 1fr 1fr; gap: 24%; height: 220px; }
+.sk-flow > .sk { height: 100%; }
+.sk-flow-mid, .sk-flow-end { height: 100%; justify-content: space-between; }
+.sk-flow-end .sk-line { justify-content: flex-start; align-items: center; }
+.sk-table { display: grid; gap: 14px 16px; padding-top: 8px; }
+.sk-bubbles { display: flex; flex-direction: column; gap: 14px; }
+.sk-bubble { width: 78%; display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border: 1px solid var(--hairline); border-radius: 14px 14px 14px 4px; background: var(--canvas); }
+.sk-floors { display: flex; flex-direction: column; gap: 8px; }
+.sk-floor { display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 1px solid var(--hairline); border-radius: var(--r-sm); }
+.sk-plan { height: 100%; display: grid; place-items: center; }
+.sk-plate { position: relative; width: 78%; aspect-ratio: 1.5; border-radius: var(--r-sm); background: var(--canvas); border: 1px solid var(--hairline-soft); transform: perspective(900px) rotateX(48deg) rotateZ(-32deg); }
+.sk-kpis .kpi { gap: 10px; }

@@ -5,6 +5,8 @@ import { usePoll } from '../panels/usePoll'
 import { getHeatmap, query } from './api'
 import { fmt, tipLeft, useWidth } from './util'
 import './energy.css'
+import { SkFigure, SkHeatmap } from '../skeleton/Skeleton'
+import CountUp from '../motion/CountUp'
 
 // 요일×시간 평균 전력 히트맵(최근 4주)
 // - 색: 0kW는 무채색, 0 초과는 최댓값 기준 5단계 순차 파랑(밝음→어두움, 어두운 화면은 반대). 운영 시간 밖에서 색이 있는 칸이 낭비 후보
@@ -60,14 +62,14 @@ export default function HeatmapPanel({ building }: { building: string }) {
 
   return (
     <Panel
-      title="최근 4주 요일·시간별 평균 전력" at={data?.generatedAt} mock={data?.mock} error={error} loading={!data && !error} stale={stale}
+      title="최근 4주 요일·시간별 평균 전력" at={data?.generatedAt} mock={data?.mock} error={error} loading={!data && !error} skeleton={<><SkFigure /><SkHeatmap /></>} stale={stale}
       empty={data !== null && max <= 0 && '전력 사용 기록이 없습니다.'}
     >
       {data && (
         <>
           <div className="pn-stat">
             <span className="label">운영 시간({hoursText}) 밖 사용 비율</span>
-            <strong>{fmt(share)}<small>%</small></strong>
+            <strong><CountUp value={Number(fmt(share).replace(/,/g, ''))} /><small>%</small></strong>
             <span className="sub">주당 {fmt(after, 0)}kWh{worst && worst.v > 0 ? `, 가장 큰 칸 ${DAYS[worst.d]} ${worst.h}시 ${fmt(worst.v)}kW` : ''}</span>
           </div>
           <div className="en-legend" aria-label="색 범례">
@@ -90,7 +92,7 @@ export default function HeatmapPanel({ building }: { building: string }) {
                 {DAYS.map((d, i) => <text key={d} x={0} y={TOP + i * ROW + ROW / 2} dy="0.32em">{d}</text>)}
                 {[0, 6, 12, 18, 23].map((h) => <text key={h} x={cx(h) + cw / 2} y={H - 8} textAnchor={h === 23 ? 'end' : 'middle'}>{h}시</text>)}
                 {cells.map((row, d) => row.map((v, h) => (
-                  <rect key={`${d}-${h}`} x={cx(h) + 1} y={TOP + d * ROW + 1} width={Math.max(0, cw - 2)} height={ROW - 2} rx={2} fill={`var(--en-${bin(v) || 'z'})`} />
+                  <rect key={`${d}-${h}`} x={cx(h) + 1} y={TOP + d * ROW + 1} width={Math.max(0, cw - 2)} height={ROW - 2} rx={2} className="en-cell" fill={`var(--en-${bin(v) || 'z'})`} />
                 )))}
                 <rect x={cx(open)} y={TOP} width={(close - open) * cw} height={days * ROW} fill="none" stroke="var(--ink)" strokeWidth={2} rx={3} />
                 <text className="en-ink" x={cx(open)} y={TOP - 10}>운영 {open}~{close}시</text>

@@ -11,6 +11,8 @@
 | `src/twin.ts` | 3D 트윈 iframe 연동([규약](../docs/human/reference/twin-embed.md)) |
 | `src/shell/` | 화면 틀: 상단바(로고, 건물 토글, 운영·전력 분석 탭, 로그아웃), 왼쪽 사이드바(전체 현황, 층 3F→1F와 층별 이상·전력), 휴대폰 메뉴 서랍. 해시 경로는 `route.ts` |
 | `src/auth/` | 로그인 화면과 Cognito 호출: 로그인, 회원가입(허용 목록 이메일), 이메일 인증 코드, 비밀번호 재설정, 첫 로그인 비밀번호 변경, 토큰 갱신. `VITE_COGNITO_CLIENT_ID`가 없으면 로그인 생략 |
+| `src/skeleton/` | 컴포넌트별 스켈레톤(수치 카드, 층 목록, 3D 바닥판, 그래프, 목록 행, 히트맵, 흐름도, 표, 말풍선), 정지 블록 |
+| `src/motion/` | 움직임: `motion.css`(넉터 6절 토큰: 누름 180ms, 이동 300ms, 등장 350ms, 페이드 160ms, 동작 줄이기 대응), `CountUp`(숫자 증가 460ms) |
 | `src/admin/` | 사용자 관리(`#/admin`, 관리자 그룹만 사이드바 표시): 가입 허용 목록(이메일, @도메인) 추가·삭제, 가입한 사용자 목록 |
 | `src/ai/ChatPanel.tsx` | AI 운영 도우미(말풍선 대화, 처리 단계 접기, 초안 카드, 대상 호실 3D 보기, 대화 지우기). 기록은 `GET /chat`, 실패 시 화면에만 기록 |
 | `src/twin3d/Twin3D.tsx` | Three.js 층 3D 트윈: `public/floorplans/<건물>.json` 호실 다각형, 지표 색, HVAC 운전·이상 표시, 호실 선택, 시점 초기화·위에서 보기 |

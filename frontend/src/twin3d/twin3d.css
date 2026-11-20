@@ -16,3 +16,4 @@
 @media (max-width: 743px) {
   .t3 { height: 420px; }
 }
+.t3-sk { position: absolute; inset: 0; pointer-events: none; }

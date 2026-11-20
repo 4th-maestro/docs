@@ -4,6 +4,7 @@ import { getAnomalies } from '../api'
 import Panel from './Panel'
 import type { Likelihood } from './types'
 import { hhmm, usePoll } from './usePoll'
+import { SkRows, SkTable } from '../skeleton/Skeleton'
 
 const LIKELY: Record<Likelihood, string> = { high: '높음', medium: '보통', low: '낮음' }
 const signed = (v: number) => `${v > 0 ? '+' : ''}${v}`
@@ -14,13 +15,13 @@ export default function AnomalyPanel({ building, floor, onLocate }: { building: 
   const { data, error, stale } = usePoll(load, floor)
   return (
     <Panel
-      title="이상 감지" at={data?.generatedAt} mock={data?.mock} error={error} loading={!data && !error} stale={stale}
+      title="이상 감지" at={data?.generatedAt} mock={data?.mock} error={error} loading={!data && !error} skeleton={<><SkRows rows={1} tall /><SkTable rows={3} cols={2} /></>} stale={stale}
       empty={data?.items.length === 0 && `${floor}에 설정온도 미도달 HVAC이 없습니다.`}
     >
       {data && (
         <ol className="pn-list">
-          {data.items.map((a) => (
-            <li key={a.roomId}>
+          {data.items.map((a, idx) => (
+            <li key={a.roomId} className="rise-in" style={{ '--i': idx } as React.CSSProperties}>
               <div>
                 <span className="pn-tagline bad"><AlertTriangle size={14} aria-hidden />설정온도 미도달</span>
                 <p className="pn-name">{a.roomName}<span>HVAC {a.idu}</span></p>

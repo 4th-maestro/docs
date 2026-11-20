@@ -7,6 +7,8 @@ import type { Period } from './api'
 import { Delta, LineKey } from './parts'
 import { NAMES, fmt, niceStep, tipLeft, useWidth } from './util'
 import './energy.css'
+import { SkChart, SkFigure } from '../skeleton/Skeleton'
+import CountUp from '../motion/CountUp'
 
 // 기간 추이 선 그래프(PowerTrend와 같은 규칙)
 // - 이번 기간: 실선(파랑), 지난 기간: 점선(회색, 비교 기준). 마지막 점은 집계 중인 현재 시간·날짜
@@ -55,14 +57,14 @@ export default function TrendPanel({ building, period }: { building: string; per
 
   return (
     <Panel
-      title="전력 사용량 추이" at={data?.generatedAt} mock={data?.mock} error={error} loading={!data && !error} stale={stale}
+      title="전력 사용량 추이" at={data?.generatedAt} mock={data?.mock} error={error} loading={!data && !error} skeleton={<><SkFigure /><SkChart h={240} /></>} stale={stale}
       empty={data !== null && ![...cur, ...prev].some((p) => p.kwh > 0) && '전력 사용 기록이 없습니다.'}
     >
       {data && (
         <>
           <div className="pn-stat">
             <span className="label">{names.cur} 누적 사용량</span>
-            <strong>{fmt(data.totalKwh)}<small>kWh</small></strong>
+            <strong><CountUp value={data.totalKwh} /><small>kWh</small></strong>
             <span className="sub en-sub"><Delta cur={data.totalKwh} prev={data.prevSameKwh} />{names.same} {fmt(data.prevSameKwh)}kWh 대비</span>
           </div>
           <div className="pn-keys">
@@ -88,7 +90,7 @@ export default function TrendPanel({ building, period }: { building: string; per
                   <text key={i} x={x(i)} y={H - 8} textAnchor={i === 0 && n > 7 ? 'start' : i === n - 1 && n > 7 ? 'end' : 'middle'}>{label(i)}</text>
                 ))}
                 <path d={path(prev)} fill="none" stroke="var(--en-prev)" strokeWidth={2} strokeDasharray="4 4" strokeLinejoin="round" />
-                <path d={path(cur)} fill="none" stroke="var(--en-cur)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                <path key={`${building}-${data.period}`} className="draw" pathLength={1} d={path(cur)} fill="none" stroke="var(--en-cur)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
                 {last >= 0 && <circle cx={x(last)} cy={y(cur[last].kwh)} r={4} fill="var(--en-cur)" stroke="var(--canvas)" strokeWidth={2} />}
                 {hover !== null && (
                   <g pointerEvents="none">

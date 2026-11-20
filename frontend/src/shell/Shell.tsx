@@ -8,6 +8,8 @@ import logo from '../../assets/ege.svg'
 import './shell.css'
 
 import { href, type FloorSummary, type Tab } from './route'
+import { Sk } from '../skeleton/Skeleton'
+import CountUp from '../motion/CountUp'
 
 // 화면 틀: 상단바(로고, 건물 토글, 운영·전력 분석 탭, 오른쪽 도구) + 왼쪽 사이드바(전체 현황, 층) + 본문
 // - 사이드바: 743px 이하에서 숨기고 상단바 메뉴 버튼으로 여닫음
@@ -80,12 +82,12 @@ function BuildingToggle({ buildings, current, tab }: { buildings: BuildingCard[]
     <div className="bt" ref={box}>
       <button className={`bt-btn ${cur?.level ?? ''}`} onClick={() => setOpen(!open)} aria-expanded={open} aria-haspopup="true">
         <Lv size={18} aria-hidden />
-        <span className="bt-cur">{cur?.name ?? (current ? current : '건물 선택')}</span>
+        <span className="bt-cur">{cur?.name ?? (current && !buildings.length ? <Sk w={56} h={18} /> : current ?? '건물 선택')}</span>
         {cur && <span className="bt-lv">{LEVEL[cur.level].text(cur)}</span>}
         <ChevronDown size={18} aria-hidden />
       </button>
       {open && (
-        <div className="bt-menu" role="menu" aria-label="건물 선택">
+        <div className="bt-menu fade-in" role="menu" aria-label="건물 선택">
           {buildings.map((b) => {
             const { Icon, text } = LEVEL[b.level]
             return (
@@ -112,9 +114,11 @@ export function FloorList({ floors, floor, onFloor }: { floors: FloorSummary[]; 
           <li key={f.floor}>
             <button className={f.floor === floor ? 'fl on' : 'fl'} aria-pressed={f.floor === floor} onClick={() => onFloor(f.floor)}>
               <span className="fl-name">{f.floor}</span>
-              <span className="fl-kw">{f.powerKw}kW</span>
+              <span className="fl-kw"><CountUp value={f.powerKw} />kW</span>
               <span className={f.anomaly ? 'fl-st bad' : 'fl-st'}>
-                {f.anomaly ? <><AlertTriangle size={16} aria-hidden />이상 {f.anomaly}</> : <><CheckCircle2 size={16} aria-hidden />정상</>}
+                {/* 상태가 바뀔 때만 아이콘 다시 등장(key) */}
+                <span key={f.anomaly ? 'bad' : 'ok'} className="pop-in">{f.anomaly ? <AlertTriangle size={16} aria-hidden /> : <CheckCircle2 size={16} aria-hidden />}</span>
+                {f.anomaly ? `이상 ${f.anomaly}` : '정상'}
               </span>
               <span className="fl-on">운전 {f.on}/{f.total}대</span>
             </button>

@@ -8,6 +8,7 @@ import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js
 import { ANOMALY, SCALES, color, value } from '../heat'
 import type { Mode, Room } from '../types'
 import './twin3d.css'
+import { SkPlan } from '../skeleton/Skeleton'
 
 type Pt = [number, number]
 // public/floorplans/<건물>.json 형식(lambda/tools/build_floorplans.py 생성, IFC 평면 좌표, m)
@@ -330,7 +331,7 @@ export default function Twin3D({ building, floor, mode, rooms, highlight, select
 
   const msg = noGL ? '3D 도면을 표시할 수 없습니다. WebGL을 지원하는 브라우저가 필요합니다.'
     : failed === building ? '도면 데이터를 불러오지 못했습니다.'
-    : !plan ? '도면을 불러오는 중입니다.'
+    : !plan ? ''
     : !plan.floors[floor] ? `${floor} 도면 데이터가 없습니다.`
     : ''
   const hovered = hover && rooms.find((r) => r.id === hover.id)
@@ -363,6 +364,7 @@ export default function Twin3D({ building, floor, mode, rooms, highlight, select
         </div>
       )}
       {msg && <p className="t3-msg">{msg}</p>}
+      {!plan && !failed && !noGL && <div className="t3-sk"><SkPlan /></div>}
     </div>
   )
 }

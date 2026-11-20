@@ -4,6 +4,8 @@ import { getHistory } from '../api'
 import Panel from './Panel'
 import type { HourPoint } from './types'
 import { hhmm, usePoll } from './usePoll'
+import { SkChart, SkFigure } from '../skeleton/Skeleton'
+import CountUp from '../motion/CountUp'
 
 // 시간별 전력 선 그래프(차트 라이브러리 없이 SVG)
 // - 오늘: 실선(파랑), 어제: 점선(회색, 비교 기준), 현재 시간 점과 값 직접 표시
@@ -77,14 +79,14 @@ export default function PowerTrend({ building, floor }: { building: string; floo
 
   return (
     <Panel
-      title="전력 추이" at={data?.generatedAt} mock={data?.mock} error={error} loading={!data && !error} stale={stale}
+      title="전력 추이" at={data?.generatedAt} mock={data?.mock} error={error} loading={!data && !error} skeleton={<><SkFigure /><SkChart h={200} /></>} stale={stale}
       empty={data !== null && ![...today, ...prev].some((p) => p.kw > 0) && `${floor}의 전력 기록이 없습니다.`}
     >
       {data && last && (
         <>
           <div className="pn-stat">
             <span className="label">오늘 누적 사용량</span>
-            <strong>{todayKwh}<small>kWh</small></strong>
+            <strong><CountUp value={todayKwh} /><small>kWh</small></strong>
             <span className="sub">어제 같은 시각 {prevSame}kWh 대비 {diff > 0 ? '+' : ''}{diff}%</span>
           </div>
           <div className="pn-keys">
@@ -108,7 +110,7 @@ export default function PowerTrend({ building, floor }: { building: string; floo
                 ))}
                 {[0, 6, 12, 18, 23].map((h) => <text key={h} x={x(h)} y={H - 8} textAnchor="middle">{h}시</text>)}
                 <path d={path(prev)} fill="none" stroke="var(--prev)" strokeWidth={2} strokeDasharray="4 4" strokeLinejoin="round" />
-                <path d={path(today)} fill="none" stroke="var(--today)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                <path key={`${building}-${floor}`} className="draw" pathLength={1} d={path(today)} fill="none" stroke="var(--today)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
                 <circle cx={x(nowH)} cy={y(last.kw)} r={4} fill="var(--today)" stroke="var(--canvas)" strokeWidth={2} />
                 <text className="now-label" x={x(nowH) + 10} y={y(last.kw)} dy="0.32em">지금 {last.kw}kW</text>
                 {hover !== null && (

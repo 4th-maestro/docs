@@ -6,6 +6,8 @@ import { getBreakdown, query } from './api'
 import type { Breakdown, Period } from './api'
 import { NAMES, fmt, tipLeft, useWidth } from './util'
 import './energy.css'
+import { SkFigure, SkFlow, SkTable } from '../skeleton/Skeleton'
+import CountUp from '../motion/CountUp'
 
 // 사용 구성 흐름도(건물 → 층 → 용도, Sankey 형식 SVG)
 // - 띠 두께는 kWh에 비례, 단일 색(파랑) 반투명 띠와 불투명 노드
@@ -95,14 +97,14 @@ export default function BreakdownPanel({ building, period }: { building: string;
 
   return (
     <Panel
-      title={`${names.cur} 사용 구성`} at={data?.generatedAt} mock={data?.mock} error={error} loading={!data && !error} stale={stale}
+      title={`${names.cur} 사용 구성`} at={data?.generatedAt} mock={data?.mock} error={error} loading={!data && !error} skeleton={<><SkFigure /><SkFlow /><SkTable rows={4} cols={3} /></>} stale={stale}
       empty={data !== null && data.totalKwh <= 0 && '전력 사용 기록이 없습니다.'}
     >
       {data && (
         <>
           <div className="pn-stat">
             <span className="label">{data.name} {names.cur} 사용량</span>
-            <strong>{fmt(data.totalKwh)}<small>kWh</small></strong>
+            <strong><CountUp value={data.totalKwh} /><small>kWh</small></strong>
             <span className="sub">{uses[0] ? `가장 큰 용도 ${uses[0].name} ${fmt(pct(uses[0].kwh))}%` : ''}</span>
           </div>
           <div className="pn-plotbox" ref={measure} style={{ height: L?.height ?? HEAD + SCALE }}>

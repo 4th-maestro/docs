@@ -4,6 +4,8 @@ import { hhmm } from '../panels/usePoll'
 import type { BuildingCard, Portfolio as Data } from '../types'
 import { LEVEL } from './level'
 import './portfolio.css'
+import { Sk, SkKpis, SkWrap } from '../skeleton/Skeleton'
+import CountUp from '../motion/CountUp'
 
 const fmt = new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 1 })
 const n = (v: number) => fmt.format(v)
@@ -34,23 +36,39 @@ export default function Portfolio({ data, error, compare }: { data: Data | null;
         </div>
       )}
       {error && !data && <p className="error" role="alert">건물 목록을 불러오지 못했습니다({error}).</p>}
-      {!data && !error && <ul className="pf-grid" aria-hidden>{[0, 1, 2, 3].map((i) => <li key={i} className="pf-card pf-skel" />)}</ul>}
+      {!data && !error && (
+        <>
+          <SkKpis />
+          <SkWrap label="건물 목록을 불러오는 중입니다">
+            <ul className="pf-grid">
+              {[0, 1, 2, 3].map((i) => (
+                <li key={i} className="pf-card">
+                  <div className="sk-line"><Sk w="40%" h={22} /><Sk w={64} h={24} r={12} /></div>
+                  <Sk w="36%" h={18} />
+                  {[0, 1, 2, 3, 4].map((j) => <div key={j} className="sk-line"><Sk w="30%" h={15} /><Sk w="40%" h={15} /></div>)}
+                  <Sk h={44} />
+                </li>
+              ))}
+            </ul>
+          </SkWrap>
+        </>
+      )}
       {data && (
         <>
           <section className="kpis" aria-label="전체 건물 요약">
             <div className="kpi">
               <span className="klabel">전체 이상</span>
-              <span className={anomaly ? 'kval bad' : 'kval'}>{anomaly}<small>건</small></span>
+              <span className={anomaly ? 'kval bad' : 'kval'}><CountUp value={anomaly} /><small>건</small></span>
               <span className="ksub">설정온도 미도달 HVAC</span>
             </div>
             <div className="kpi">
               <span className="klabel">오늘 사용량</span>
-              <span className="kval">{n0(sum((b) => b.todayKwh))}<small>kWh</small></span>
+              <span className="kval"><CountUp value={Math.round(sum((b) => b.todayKwh))} digits={0} /><small>kWh</small></span>
               <span className="ksub">0시부터 {hhmm(data.generatedAt)}까지</span>
             </div>
             <div className="kpi">
               <span className="klabel">절감 가능</span>
-              <span className="kval">{n0(sum((b) => b.savingKwh))}<small>kWh/일</small></span>
+              <span className="kval"><CountUp value={Math.round(sum((b) => b.savingKwh))} digits={0} /><small>kWh/일</small></span>
               <span className="ksub">추천 스케줄 적용 시(가상)</span>
             </div>
             <div className="kpi">
@@ -60,7 +78,7 @@ export default function Portfolio({ data, error, compare }: { data: Data | null;
             </div>
           </section>
           <h2>건물별 현황(점검 필요 순)</h2>
-          <ul className="pf-grid">{list.map((b) => <Card key={b.id} b={b} />)}</ul>
+          <ul className="pf-grid">{list.map((b, i) => <Card key={b.id} b={b} i={i} />)}</ul>
         </>
       )}
       {compare}
@@ -68,10 +86,10 @@ export default function Portfolio({ data, error, compare }: { data: Data | null;
   )
 }
 
-function Card({ b }: { b: BuildingCard }) {
+function Card({ b, i }: { b: BuildingCard; i: number }) {
   const { Icon, text } = LEVEL[b.level]
   return (
-    <li className="pf-card">
+    <li className="pf-card rise-in" style={{ '--i': i } as React.CSSProperties}>
       <div className="pf-title">
         <h3>
           {/* 카드 전체 누름 영역: 링크의 ::after가 카드를 덮음(카드 안 다른 링크는 위에 배치) */}

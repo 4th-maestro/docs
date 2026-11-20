@@ -6,6 +6,8 @@ import { getCompare, query } from './api'
 import { Delta, Seg } from './parts'
 import { NAMES, fmt } from './util'
 import './energy.css'
+import { Sk, SkBars } from '../skeleton/Skeleton'
+import CountUp from '../motion/CountUp'
 
 // 건물별 전력 사용량 비교: 가로 막대(이번 기간 kWh, 내림차순) + 지난 기간 같은 시점 눈금
 // - 막대 두께 16px, 끝만 4px 라운드, 같은 색(파랑) 1종. 지난 기간은 회색 세로 눈금(비교 기준)
@@ -20,7 +22,7 @@ export default function BuildingCompare({ onOpen }: { onOpen(buildingId: string)
   const w = (v: number) => `${((v / max) * 100).toFixed(2)}%`
 
   return (
-    <Panel title="건물별 전력 사용량" at={data?.generatedAt} mock={data?.mock} error={error} loading={!data && !error} stale={stale}>
+    <Panel title="건물별 전력 사용량" at={data?.generatedAt} mock={data?.mock} error={error} loading={!data && !error} skeleton={<><Sk w={240} h={44} /><SkBars rows={4} /></>} stale={stale}>
       <Seg label="비교 기간" options={[['day', '오늘'], ['month', '이번 달']]} value={period} onChange={setPeriod} />
       {data && (
         <>
@@ -35,9 +37,9 @@ export default function BuildingCompare({ onOpen }: { onOpen(buildingId: string)
             {items.map((i) => (
               <li key={i.buildingId}>
                 <button type="button" className="en-row" onClick={() => onOpen(i.buildingId)} aria-label={`${i.name} 상세 보기, ${names.cur} ${fmt(i.kwh)}kWh`}>
-                  <span className="en-row-head"><b>{i.name}</b><strong>{fmt(i.kwh)}<small>kWh</small></strong></span>
+                  <span className="en-row-head"><b>{i.name}</b><strong><CountUp value={i.kwh} /><small>kWh</small></strong></span>
                   <svg className="en-bar" width="100%" height="24" aria-hidden>
-                    <rect x="0" y="4" width={w(i.kwh)} height="16" rx="4" fill="var(--en-cur)" />
+                    <rect key={period} className="grow" x="0" y="4" width={w(i.kwh)} height="16" rx="4" fill="var(--en-cur)" />
                     <rect x="0" y="4" width={i.kwh > 0 ? 4 : 0} height="16" fill="var(--en-cur)" />
                     <line x1={w(i.prevKwh)} x2={w(i.prevKwh)} y1="0" y2="24" stroke="var(--en-prev)" strokeWidth="2" />
                   </svg>

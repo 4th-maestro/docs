@@ -12,7 +12,6 @@
 .pf-grid { list-style: none; margin: 0 0 24px; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(272px, 1fr)); gap: 16px; }
 .pf-card { position: relative; display: flex; flex-direction: column; gap: 12px; padding: 20px; border: 1px solid var(--hairline); border-radius: var(--r-md); background: var(--canvas); }
 .pf-card:hover { box-shadow: var(--shadow); }
-.pf-skel { height: 340px; border: 0; background: var(--surface-strong); }
 .pf-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .pf-title h3 { margin: 0; font-size: 21px; font-weight: 700; }
 .pf-title .tag { margin: 0; white-space: nowrap; }

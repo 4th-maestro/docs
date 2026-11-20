@@ -99,7 +99,7 @@ export default function LoginScreen({ onDone }: { onDone: () => void }) {
       <form className="lg-card" onSubmit={submit} noValidate>
         <div className="lg-brand"><img src={logo} alt="에게" /><span>에너지게이트</span></div>
         <h1>{TITLE[mode]}</h1>
-        {notice && <p className="lg-help" role="status">{notice}</p>}
+        {notice && <p key={notice} className="lg-help fade-in" role="status">{notice}</p>}
 
         {(mode === 'login' || mode === 'signup' || mode === 'forgot') &&
           field('lg-email', '이메일', <input id="lg-email" type="email" autoComplete="username" inputMode="email" value={email} onChange={(e) => setEmail(e.target.value)} autoFocus />)}
@@ -117,7 +117,7 @@ export default function LoginScreen({ onDone }: { onDone: () => void }) {
             <ul className="lg-rules" aria-label="비밀번호 조건">
               {RULES.map((r) => {
                 const ok = r.ok(password)
-                return <li key={r.label} className={ok ? 'ok' : ''}>{ok ? <Check size={16} aria-hidden /> : <Circle size={16} aria-hidden />}{r.label}<span className="lg-sr">{ok ? ' 충족' : ' 미충족'}</span></li>
+                return <li key={r.label} className={ok ? 'ok' : ''}><span key={String(ok)} className={ok ? 'pop-in' : undefined}>{ok ? <Check size={16} aria-hidden /> : <Circle size={16} aria-hidden />}</span>{r.label}<span className="lg-sr">{ok ? ' 충족' : ' 미충족'}</span></li>
               })}
             </ul>
             {field('lg-confirm', '비밀번호 확인', <input id="lg-confirm" type={show ? 'text' : 'password'} autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} aria-invalid={!!confirm && confirm !== password} />)}
@@ -125,7 +125,7 @@ export default function LoginScreen({ onDone }: { onDone: () => void }) {
           </>
         )}
 
-        {error && <p className="lg-error" role="alert">{error}</p>}
+        {error && <p key={error} className="lg-error shake" role="alert">{error}</p>}
         <button className="primary lg-submit" type="submit" disabled={busy || !ready}>
           {busy ? '확인 중' : { login: '로그인', signup: '인증 코드 받기', confirm: '인증하고 시작하기', forgot: '재설정 코드 받기', reset: '비밀번호 변경', newPassword: '비밀번호 변경' }[mode]}
         </button>

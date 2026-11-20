@@ -5,6 +5,7 @@ import type { Draft, Room } from '../types'
 import { ThinkingBadge, ThinkingPanel } from './ThinkingPanel'
 import type { AskState, Step } from './types'
 import './chat.css'
+import { SkBubbles } from '../skeleton/Skeleton'
 
 // 대화 메시지: 서버 기록(GET /chat)과 화면에서 추가한 메시지 공용
 // - draftState: pending(저장 대기, 초안 카드 표시), saved(저장됨), closed(닫음·지난 기록)
@@ -18,6 +19,8 @@ export type ChatMsg = {
   draftState?: 'pending' | 'saved' | 'closed'
   mock?: boolean
   note?: boolean
+  // 화면에서 방금 추가한 메시지: 아래에서 올라오며 등장
+  fresh?: boolean
 }
 
 const ACTION = { off: '운전 OFF', on: '운전 ON', setpoint: '설정온도 변경' }
@@ -78,7 +81,7 @@ export default function ChatPanel({ ai, messages, rooms, suggestions, busy, hist
       </div>
 
       <div className="chat-log" ref={log} role="log" aria-live="polite" aria-busy={running}>
-        {history === 'loading' && <p className="chat-empty">대화 기록을 불러오는 중입니다.</p>}
+        {history === 'loading' && <SkBubbles />}
         {history !== 'loading' && messages.length === 0 && !live && (
           <div className="chat-empty">
             <MessageSquareText size={28} aria-hidden />
@@ -91,7 +94,7 @@ export default function ChatPanel({ ai, messages, rooms, suggestions, busy, hist
           </div>
         )}
         {messages.map((m) => (m.role === 'user'
-          ? <div key={m.id} className="msg me"><p>{m.text}</p></div>
+          ? <div key={m.id} className={m.fresh ? 'msg me rise-in' : 'msg me'}><p>{m.text}</p></div>
           : <Assistant key={m.id} m={m} rooms={rooms} busy={busy} onSave={onSave} onClose={onClose} onFocus={onFocus} onSelect={onSelect} />))}
         {live && (
           <div className="msg ai">
@@ -124,7 +127,7 @@ function Assistant({ m, rooms, busy, onSave, onClose, onFocus, onSelect }: { m: 
   const targets = (m.highlight ?? []).map((id) => byId.get(id)).filter((r): r is Room => !!r)
   const d = m.draft
   return (
-    <div className={m.note ? 'msg ai note' : 'msg ai'}>
+    <div className={`msg ai${m.note ? ' note' : ''}${m.fresh ? ' rise-in' : ''}`}>
       {m.mock && <span className="tag">목업 응답</span>}
       {!!m.steps?.length && (
         <details className="msg-steps">
@@ -132,9 +135,9 @@ function Assistant({ m, rooms, busy, onSave, onClose, onFocus, onSelect }: { m: 
           <ThinkingPanel state={{ ...DONE, steps: m.steps }} />
         </details>
       )}
-      <p className="msg-text">{m.note && <Check size={16} aria-hidden />}{m.text}</p>
+      <p className="msg-text">{m.note && <span className="pop-in"><Check size={16} aria-hidden /></span>}{m.text}</p>
       {d && m.draftState === 'pending' && (
-        <div className="draft">
+        <div className="draft fade-in">
           <h3>스케줄 초안</h3>
           <dl>
             <dt>대상</dt><dd>{d.roomIds.length}곳({d.floor === 'all' ? '전체 층' : d.floor}, {d.use === 'all' ? '전체 용도' : d.use})</dd>
@@ -149,7 +152,7 @@ function Assistant({ m, rooms, busy, onSave, onClose, onFocus, onSelect }: { m: 
         </div>
       )}
       {d && m.draftState !== 'pending' && (
-        <p className="msg-draft">{m.draftState === 'saved' ? <Check size={16} aria-hidden /> : null}스케줄 초안 {d.time} {ACTION[d.action]}, {d.roomIds.length}곳({m.draftState === 'saved' ? '저장됨' : '닫음'})</p>
+        <p className="msg-draft fade-in">{m.draftState === 'saved' ? <span className="pop-in"><Check size={16} aria-hidden /></span> : null}스케줄 초안 {d.time} {ACTION[d.action]}, {d.roomIds.length}곳({m.draftState === 'saved' ? '저장됨' : '닫음'})</p>
       )}
       {targets.length > 0 && (
         <div className="msg-rooms">
