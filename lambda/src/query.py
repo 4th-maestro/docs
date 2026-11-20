@@ -6,6 +6,7 @@
 import json
 import logging
 import os
+import re
 import time
 
 from anthropic import AnthropicBedrock
@@ -21,6 +22,47 @@ client = AnthropicBedrock(aws_region=os.environ.get('BEDROCK_REGION', 'ap-northe
 MODEL = os.environ.get('MODEL_ID', 'global.anthropic.claude-sonnet-5-5')
 LABELS = {'understand': '요청 해석', 'query': '데이터 조회', 'review': '결과 검토', 'answer': '답변 작성'}
 REFUSAL = '이 요청은 처리할 수 없습니다. 질문을 바꿔 다시 입력하십시오.'
+# 구조화 응답: 결론·근거·조치 3칸, 칸마다 첫 문장만 표시해 3문장 이하 보장(2026-11-20, 프롬프트 지침만으로는 35문항 중 3~12건 초과)
+# - 스키마의 글자 수 제한(maxLength)은 API 미지원이라 문장 수만 서버에서 강제
+FIELDS = ('conclusion', 'detail', 'action')
+ANSWER_FORMAT = {'type': 'json_schema', 'schema': {
+    'type': 'object', 'additionalProperties': False, 'required': list(FIELDS),
+    'properties': {
+        'conclusion': {'type': 'string', 'description': '결론과 핵심 수치 1~2개, 1문장. 되묻기면 질문 1문장'},
+        'detail': {'type': 'string', 'description': '근거나 해석 1문장. 되묻기면 선택 후보. 없으면 빈 문자열'},
+        'action': {'type': 'string', 'description': '낭비를 줄일 다음 조치 1문장. 되묻기, 인사, 안내면 빈 문자열'},
+    }}}
+_FIELD = re.compile(r'"(conclusion|detail|action)"\s*:\s*"((?:[^"\\]|\\.)*)')
+_SENTENCE_END = re.compile(r'(?<=[가-힣)\]%][.?!])\s')
+
+
+# 층 미지정 제어 요청 검증: 범위(전체, 모든 층, 재실 0곳 등)를 말하지 않았는데 전체 층 초안을 요청하면 실행하지 않고 되묻게 함
+# - 프롬프트 지침만으로는 구조화 응답에서 층 추정 초안 발생(7차 평가 q22), 사용자 결정(2026-11-20 층 미지정은 되묻기)을 서버에서 강제
+SCOPE = re.compile(r'전체|모든|모두|전\s?층|재실\s?0|재실이?\s?없는')
+FLOOR_ASK = '층을 말하지 않은 제어 요청입니다. 초안을 만들지 말고 층 후보를 들어 되물으십시오.'
+
+
+def floor_given(text, memory):
+    """사용자가 전체 범위를 밝혔는지: 이번 질문, 직전 2턴 질문, 직전 초안(전체 층)"""
+    m = memory or {}
+    recent = [x.get('q', '') for x in (m.get('turns') or [])[-2:]]
+    return any(SCOPE.search(q) for q in [text, *recent]) or (m.get('draft') or {}).get('floor') == 'all'
+
+
+def _unescape(raw):
+    # 스트리밍 중 잘린 이스케이프(\, \u00) 제거 후 JSON 문자열로 해석
+    raw = re.sub(r'\\(u[0-9a-fA-F]{0,3})?$', '', raw)
+    try:
+        return json.loads(f'"{raw}"')
+    except ValueError:
+        return raw
+
+
+def render(text):
+    """구조화 응답(완성 또는 스트리밍 중 부분 JSON) → 칸마다 첫 문장, 줄바꿈으로 연결"""
+    vals = {k: _unescape(v).strip() for k, v in _FIELD.findall(text)}
+    lines = [vals[k][:m.start()] if (m := _SENTENCE_END.search(vals[k])) else vals[k] for k in FIELDS if vals.get(k)]
+    return '\n'.join(x.strip() for x in lines if x.strip())
 
 
 def system(b, memory=None, t=None):
@@ -40,7 +82,7 @@ def system(b, memory=None, t=None):
 - 화면이 도구 결과로 그래프와 표를 자동으로 그린다. 답변에 수치 목록을 길게 나열하지 말고 핵심 수치 1~2개와 해석만 쓴다. 사용자가 표를 원하면 view=table, 그 외에는 view=auto로 호출한다.
 - 대상 층이나 용도가 불분명하거나 이 건물에 없으면 도구를 쓰지 말고 후보를 들어 되묻는다. 시각과 달리 제어 요청의 층은 추정하지 않는다. 층을 말하지 않은 제어 요청('전체', '모든 층', '재실 0곳인 곳'처럼 범위를 밝힌 경우 제외)은 초안을 만들지 말고 층을 되묻는다. 되물을 때는 판단 이유나 지침을 쓰지 말고 질문 1문장과 후보만 쓴다.
 - 스케줄 저장 방법과 실제 설비 미제어 안내는 화면의 초안 카드가 표시하므로 답변에 쓰지 않는다. 실제 설비 제어는 하지 않는다.
-- 답변은 한국어 3문장 이하다. 1문장은 결론과 핵심 수치 1~2개, 1문장은 근거나 해석, 마지막 1문장은 낭비를 줄일 다음 조치 1개다. 호실 이름은 2개까지만 쓰고 나머지는 '외 N곳'으로 줄인다(전체 목록은 화면 그래프와 표가 표시). 다음 조치에 이유 문장을 덧붙이지 않는다. 인사와 사용 안내도 3문장 이하다.""" + (
+- 답변은 JSON 3칸(conclusion, detail, action)으로 쓰고 칸마다 한국어 1문장이다. conclusion은 결론과 핵심 수치 1~2개, detail은 근거나 해석, action은 낭비를 줄일 다음 조치 1개다. 되묻기는 conclusion에 질문, detail에 후보를 쓰고 action은 비운다. 인사와 사용 안내는 action을 비운다. 호실 이름은 2개까지만 쓰고 나머지는 '외 N곳'으로 줄인다(전체 목록은 화면 그래프와 표가 표시). 다음 조치에 이유 문장을 덧붙이지 않는다.""" + (
         f"\n- 이전 대화 메모리(JSON): {json.dumps(memory, ensure_ascii=False)}\n  turns는 최근 대화(오래된 순, 질문 q와 답변 a 앞부분)다. 사용자가 '그중', '방금 것', '아까 그 층'처럼 앞 대화를 가리키면 이 메모리로 해석한다. 직전 답변이 되물은 경우 사용자의 짧은 답(시각, 층, 용도)은 그 되묻기의 답이므로 처음 요청과 합쳐 처리한다. draft가 있으면 '15:30', '2층으로'처럼 짧은 답은 그 초안의 해당 값만 바꿔 create_schedule을 다시 호출한다. 메모리로 정할 수 없으면 되묻는다."
         if memory else '')
 
@@ -123,13 +165,18 @@ def run(text, emit, bid=None, memory=None):
         chips = []  # 이번 라운드 도구 인자 조건(병렬 호출은 합침)
         with client.messages.stream(
             model=MODEL, max_tokens=4096, system=prompt, tools=tools.TOOLS,
-            output_config={'effort': 'low'}, messages=messages,
+            output_config={'effort': 'low', 'format': ANSWER_FORMAT}, messages=messages,
         ) as stream:
+            buf, shown = '', ''  # 라운드별 부분 JSON, 화면에 보낸 칸 텍스트
             for ev in stream:
                 if ev.type == 'text':
                     if 'answer' not in started:
                         advance('answer')
-                    emit({'type': 'delta', 'text': ev.text})
+                    buf += ev.text
+                    now_text = render(buf)
+                    if len(now_text) > len(shown) and now_text.startswith(shown):  # 칸 순서가 바뀌면 done에서 교체
+                        emit({'type': 'delta', 'text': now_text[len(shown):]})
+                        shown = now_text
                 elif ev.type == 'content_block_stop' and ev.content_block.type == 'tool_use':
                     chips += [c for c in tools.chips(ev.content_block.name, ev.content_block.input) if c not in chips]
                     advance('query', chips=list(chips), detail=f'조건 {len(chips)}개를 반영하는 중입니다')
@@ -140,8 +187,13 @@ def run(text, emit, bid=None, memory=None):
             break
         messages.append({'role': 'assistant', 'content': res.content})
         results, found = [], set()
+        asked_floor = False
         for block in res.content:
             if block.type != 'tool_use':
+                continue
+            if block.name == 'create_schedule' and block.input.get('floor') == 'all' and not floor_given(text, memory):
+                results.append({'type': 'tool_result', 'tool_use_id': block.id, 'content': FLOOR_ASK, 'is_error': True})
+                asked_floor = True
                 continue
             try:
                 out, view = tools.run(block.name, block.input, t, schedules, b['id'])
@@ -154,10 +206,12 @@ def run(text, emit, bid=None, memory=None):
             except (ValueError, KeyError, TypeError) as e:
                 results.append({'type': 'tool_result', 'tool_use_id': block.id, 'content': str(e), 'is_error': True})
         messages.append({'role': 'user', 'content': results})
-        if all(r.get('is_error') for r in results):
+        if asked_floor and all(r.get('is_error') for r in results):
+            step('query', 'done', chips=list(chips), detail='층 확인 필요')
+        elif all(r.get('is_error') for r in results):
             step('query', 'error', chips=list(chips), detail='조회 실패')
         else:
             step('query', 'done', chips=list(chips), detail=f'{len(found)}곳')
         step('review', 'active')
-    answer = ''.join(b.text for b in res.content if b.type == 'text').strip()
+    answer = render(''.join(b.text for b in res.content if b.type == 'text'))
     return finish(answer or '응답을 만들지 못했습니다.')

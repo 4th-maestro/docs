@@ -1,0 +1,3608 @@
+{
+ "summary": {
+  "at": "2026-11-20T16:59:10",
+  "model": "global.anthropic.claude-sonnet-5-5",
+  "building": "main",
+  "total": 35,
+  "passed": 35,
+  "tokens": {
+   "input": 300169,
+   "output": 12607
+  },
+  "over3Sentences": [],
+  "jevReview": [
+   "q01",
+   "q03",
+   "q04",
+   "q05",
+   "q06",
+   "q09",
+   "q12",
+   "q13",
+   "q17",
+   "q19",
+   "q20",
+   "q22",
+   "q23",
+   "q25",
+   "q29",
+   "q30",
+   "q31",
+   "m01",
+   "m03",
+   "m04"
+  ]
+ },
+ "rows": [
+  {
+   "id": "q01",
+   "text": "지금 전력을 가장 많이 쓰는 곳 5곳 알려줘",
+   "expected": "query_spaces",
+   "calls": [
+    {
+     "name": "query_spaces",
+     "args": {
+      "floor": "all",
+      "use": "all",
+      "metric": "powerKw",
+      "order": "desc",
+      "limit": 5,
+      "view": "auto"
+     },
+     "result": {
+      "metric": "전력(kW)",
+      "at": "2026-11-20T16:56:06+09:00",
+      "rooms": [
+       {
+        "name": "Waiting / Activity Area",
+        "floor": "1F",
+        "use": "대기·휴게",
+        "onOff": true,
+        "occupants": 25,
+        "powerKw": 17.83
+       },
+       {
+        "name": "Central Waiting",
+        "floor": "1F",
+        "use": "대기·휴게",
+        "onOff": true,
+        "occupants": 3,
+        "powerKw": 7.73
+       },
+       {
+        "name": "Tech. Office",
+        "floor": "2F",
+        "use": "사무실",
+        "onOff": true,
+        "occupants": 8,
+        "powerKw": 6.6
+       },
+       {
+        "name": "Provider Cubicles",
+        "floor": "1F",
+        "use": "사무실",
+        "onOff": true,
+        "occupants": 5,
+        "powerKw": 4.89
+       },
+       {
+        "name": "Provider Cubicles",
+        "floor": "1F",
+        "use": "사무실",
+        "onOff": true,
+        "occupants": 7,
+        "powerKw": 4.83
+       }
+      ]
+     }
+    },
+    {
+     "name": "query_spaces",
+     "args": {
+      "floor": "all",
+      "use": "all",
+      "metric": "powerKw",
+      "order": "desc",
+      "limit": 5,
+      "view": "auto"
+     },
+     "result": {
+      "metric": "전력(kW)",
+      "at": "2026-11-20T16:56:06+09:00",
+      "rooms": [
+       {
+        "name": "Waiting / Activity Area",
+        "floor": "1F",
+        "use": "대기·휴게",
+        "onOff": true,
+        "occupants": 25,
+        "powerKw": 17.83
+       },
+       {
+        "name": "Central Waiting",
+        "floor": "1F",
+        "use": "대기·휴게",
+        "onOff": true,
+        "occupants": 3,
+        "powerKw": 7.73
+       },
+       {
+        "name": "Tech. Office",
+        "floor": "2F",
+        "use": "사무실",
+        "onOff": true,
+        "occupants": 8,
+        "powerKw": 6.6
+       },
+       {
+        "name": "Provider Cubicles",
+        "floor": "1F",
+        "use": "사무실",
+        "onOff": true,
+        "occupants": 5,
+        "powerKw": 4.89
+       },
+       {
+        "name": "Provider Cubicles",
+        "floor": "1F",
+        "use": "사무실",
+        "onOff": true,
+        "occupants": 7,
+        "powerKw": 4.83
+       }
+      ]
+     }
+    }
+   ],
+   "ok": true,
+   "why": "일치",
+   "answer": "지금 전력을 가장 많이 쓰는 곳은 1F Waiting / Activity Area로 17.83kW이고, 그다음은 1F Central Waiting으로 7.73kW입니다.\n상위 5곳 중 1F 대기·휴게 공간 2곳이 1~2위이며, 1위는 재실 25명으로 사용 인원이 많습니다.\n재실이 3명인 Central Waiting부터 설정온도와 운전 상태를 점검하세요.",
+   "charts": 2,
+   "sec": 5.8,
+   "sentences": 3,
+   "jev": {
+    "model": "jev-1.14.0",
+    "usage": {
+     "input_tokens": 1742,
+     "output_tokens": 108
+    },
+    "numbers": {
+     "choice": "consistent",
+     "confidence": 0.85,
+     "probabilities": {
+      "consistent": 0.9,
+      "inconsistent": 0.1,
+      "no_numbers": 0.0
+     }
+    },
+    "clarify": {
+     "choice": "appropriate",
+     "confidence": 0.97,
+     "probabilities": {
+      "appropriate": 0.98,
+      "missing": 0.02,
+      "unnecessary": 0.0
+     }
+    },
+    "clear": {
+     "choice": "clear",
+     "confidence": 0.26,
+     "probabilities": {
+      "clear": 0.63,
+      "unclear": 0.37
+     }
+    }
+   }
+  },
+  {
+   "id": "q02",
+   "text": "1층에서 가장 더운 호실 3곳",
+   "expected": "query_spaces",
+   "calls": [
+    {
+     "name": "query_spaces",
+     "args": {
+      "floor": "1F",
+      "use": "all",
+      "metric": "temp",
+      "order": "desc",
+      "limit": 3,
+      "view": "auto"
+     },
+     "result": {
+      "metric": "실내온도(℃)",
+      "at": "2026-11-20T16:56:12+09:00",
+      "rooms": [
+       {
+        "name": "Provider Cubicles",
+        "floor": "1F",
+        "use": "사무실",
+        "onOff": true,
+        "occupants": 5,
+        "temp": 24.5
+       },
+       {
+        "name": "Trmt Room",
+        "floor": "1F",
+        "use": "진료실",
+        "onOff": true,
+        "occupants": 1,
+        "temp": 24.3
+       },
+       {
+        "name": "Interaction Station",
+        "floor": "1F",
+        "use": "회의실",
+        "onOff": true,
+        "occupants": 2,
+        "temp": 24.3
+       }
+      ]
+     }
+    }
+   ],
+   "ok": true,
+   "why": "일치",
+   "answer": "1층에서 가장 더운 호실은 Provider Cubicles(24.5℃)이고, 그다음은 Trmt Room(24.3℃)입니다.\n세 번째인 Interaction Station도 24.3℃라서 상위 3곳의 온도 차는 0.2℃뿐입니다.\n세 곳 모두 냉난방이 켜져 있고 재실자가 있으니, 설정온도를 점검해 보세요.",
+   "charts": 1,
+   "sec": 3.9,
+   "sentences": 3,
+   "jev": {
+    "model": "jev-1.14.0",
+    "usage": {
+     "input_tokens": 1177,
+     "output_tokens": 108
+    },
+    "numbers": {
+     "choice": "consistent",
+     "confidence": 0.83,
+     "probabilities": {
+      "consistent": 0.89,
+      "inconsistent": 0.11,
+      "no_numbers": 0.0
+     }
+    },
+    "clarify": {
+     "choice": "appropriate",
+     "confidence": 0.98,
+     "probabilities": {
+      "appropriate": 0.99,
+      "missing": 0.01,
+      "unnecessary": 0.0
+     }
+    },
+    "clear": {
+     "choice": "clear",
+     "confidence": 0.96,
+     "probabilities": {
+      "clear": 0.98,
+      "unclear": 0.02
+     }
+    }
+   }
+  },
+  {
+   "id": "q03",
+   "text": "2층 회의실 중 습도가 높은 곳",
+   "expected": "query_spaces",
+   "calls": [
+    {
+     "name": "query_spaces",
+     "args": {
+      "floor": "2F",
+      "use": "회의실",
+      "metric": "humidity",
+      "order": "desc",
+      "limit": 5,
+      "view": "auto"
+     },
+     "result": {
+      "metric": "습도(%)",
+      "at": "2026-11-20T16:56:17+09:00",
+      "rooms": [
+       {
+        "name": "Conf. / Group Therapy",
+        "floor": "2F",
+        "use": "회의실",
+        "onOff": true,
+        "occupants": 6,
+        "humidity": 44.0
+       },
+       {
+        "name": "Library / Conf. Room",
+        "floor": "2F",
+        "use": "회의실",
+        "onOff": false,
+        "occupants": 0,
+        "humidity": 40.8
+       },
+       {
+        "name": "Conf. Room",
+        "floor": "2F",
+        "use": "회의실",
+        "onOff": false,
+        "occupants": 0,
+        "humidity": 39.1
+       }
+      ]
+     }
+    }
+   ],
+   "ok": true,
+   "why": "일치",
+   "answer": "2층 회의실 중 습도가 가장 높은 곳은 Conf. / Group Therapy로 44.0%입니다.\n2층 회의실은 3곳이고, Library / Conf. Room이 40.8%로 그다음입니다.\n재실이 0명인 Library / Conf. Room과 Conf. Room은 꺼져 있어 추가 조치가 필요 없습니다.",
+   "charts": 1,
+   "sec": 4.1,
+   "sentences": 3,
+   "jev": {
+    "model": "jev-1.14.0",
+    "usage": {
+     "input_tokens": 1169,
+     "output_tokens": 108
+    },
+    "numbers": {
+     "choice": "consistent",
+     "confidence": 0.73,
+     "probabilities": {
+      "consistent": 0.82,
+      "inconsistent": 0.18,
+      "no_numbers": 0.0
+     }
+    },
+    "clarify": {
+     "choice": "appropriate",
+     "confidence": 0.98,
+     "probabilities": {
+      "appropriate": 0.99,
+      "missing": 0.01,
+      "unnecessary": 0.0
+     }
+    },
+    "clear": {
+     "choice": "clear",
+     "confidence": 0.82,
+     "probabilities": {
+      "clear": 0.91,
+      "unclear": 0.09
+     }
+    }
+   }
+  },
+  {
+   "id": "q04",
+   "text": "설정온도가 제일 낮게 잡힌 방 어디야?",
+   "expected": "query_spaces",
+   "calls": [
+    {
+     "name": "query_spaces",
+     "args": {
+      "floor": "all",
+      "use": "all",
+      "metric": "setpoint",
+      "order": "asc",
+      "limit": 5,
+      "view": "auto"
+     },
+     "result": {
+      "metric": "설정온도(℃)",
+      "at": "2026-11-20T16:56:21+09:00",
+      "rooms": [
+       {
+        "name": "Central Waiting",
+        "floor": "1F",
+        "use": "대기·휴게",
+        "onOff": true,
+        "occupants": 3,
+        "setpoint": 20
+       },
+       {
+        "name": "Hk Break Room",
+        "floor": "1F",
+        "use": "대기·휴게",
+        "onOff": true,
+        "occupants": 1,
+        "setpoint": 20
+       },
+       {
+        "name": "Lounge",
+        "floor": "1F",
+        "use": "대기·휴게",
+        "onOff": true,
+        "occupants": 1,
+        "setpoint": 20
+       },
+       {
+        "name": "Pediatric Waiting",
+        "floor": "1F",
+        "use": "대기·휴게",
+        "onOff": true,
+        "occupants": 0,
+        "setpoint": 20
+       },
+       {
+        "name": "Reception",
+        "floor": "1F",
+        "use": "대기·휴게",
+        "onOff": false,
+        "occupants": 0,
+        "setpoint": 20
+       }
+      ]
+     }
+    }
+   ],
+   "ok": true,
+   "why": "일치",
+   "answer": "설정온도가 가장 낮은 방은 20℃로, Central Waiting과 Hk Break Room 등 1F 대기·휴게 공간 여러 곳이 같은 값입니다.\n하위 5곳이 모두 1F 대기·휴게 용도이고 20℃로 같아서 한 곳만 따로 낮지는 않습니다.\n재실이 0명인데 가동 중인 Pediatric Waiting은 설정온도 조정이나 끄기 스케줄을 검토해 보세요.",
+   "charts": 1,
+   "sec": 4.7,
+   "sentences": 3,
+   "jev": {
+    "model": "jev-1.14.0",
+    "usage": {
+     "input_tokens": 1319,
+     "output_tokens": 108
+    },
+    "numbers": {
+     "choice": "consistent",
+     "confidence": 0.92,
+     "probabilities": {
+      "consistent": 0.95,
+      "inconsistent": 0.05,
+      "no_numbers": 0.0
+     }
+    },
+    "clarify": {
+     "choice": "appropriate",
+     "confidence": 0.91,
+     "probabilities": {
+      "appropriate": 0.94,
+      "missing": 0.05,
+      "unnecessary": 0.01
+     }
+    },
+    "clear": {
+     "choice": "clear",
+     "confidence": 0.76,
+     "probabilities": {
+      "clear": 0.88,
+      "unclear": 0.12
+     }
+    }
+   }
+  },
+  {
+   "id": "q05",
+   "text": "1층 진료실 온도 낮은 순으로 보여줘",
+   "expected": "query_spaces",
+   "calls": [
+    {
+     "name": "query_spaces",
+     "args": {
+      "floor": "1F",
+      "use": "진료실",
+      "metric": "temp",
+      "order": "asc",
+      "limit": 10,
+      "view": "auto"
+     },
+     "result": {
+      "metric": "실내온도(℃)",
+      "at": "2026-11-20T16:56:26+09:00",
+      "rooms": [
+       {
+        "name": "Pharm. Office",
+        "floor": "1F",
+        "use": "진료실",
+        "onOff": false,
+        "occupants": 0,
+        "temp": 17.8
+       },
+       {
+        "name": "Fitting / Disp.",
+        "floor": "1F",
+        "use": "진료실",
+        "onOff": false,
+        "occupants": 0,
+        "temp": 17.9
+       },
+       {
+        "name": "Opt. Exam / Off.",
+        "floor": "1F",
+        "use": "진료실",
+        "onOff": false,
+        "occupants": 0,
+        "temp": 17.9
+       },
+       {
+        "name": "Scope Wash / Decon.",
+        "floor": "1F",
+        "use": "진료실",
+        "onOff": false,
+        "occupants": 0,
+        "temp": 17.9
+       },
+       {
+        "name": "Radiographic Room",
+        "floor": "1F",
+        "use": "진료실",
+        "onOff": false,
+        "occupants": 0,
+        "temp": 18.0
+       },
+       {
+        "name": "Trmt Rm. Dirty Proc.",
+        "floor": "1F",
+        "use": "진료실",
+        "onOff": false,
+        "occupants": 0,
+        "temp": 18.1
+       },
+       {
+        "name": "Wts & Meas. Room",
+        "floor": "1F",
+        "use": "진료실",
+        "onOff": false,
+        "occupants": 0,
+        "temp": 18.1
+       },
+       {
+        "name": "Pediatric Wts & Msrs",
+        "floor": "1F",
+        "use": "진료실",
+        "onOff": false,
+        "occupants": 0,
+        "temp": 18.2
+       },
+       {
+        "name": "Lab",
+        "floor": "1F",
+        "use": "진료실",
+        "onOff": true,
+        "occupants": 1,
+        "temp": 19.8
+       },
+       {
+        "name": "Ecg Test",
+        "floor": "1F",
+        "use": "진료실",
+        "onOff": true,
+        "occupants": 3,
+        "temp": 20.0
+       }
+      ]
+     }
+    },
+    {
+     "name": "query_spaces",
+     "args": {
+      "floor": "1F",
+      "use": "진료실",
+      "metric": "temp",
+      "order": "asc",
+      "limit": 10,
+      "view": "auto"
+     },
+     "result": {
+      "metric": "실내온도(℃)",
+      "at": "2026-11-20T16:56:26+09:00",
+      "rooms": [
+       {
+        "name": "Pharm. Office",
+        "floor": "1F",
+        "use": "진료실",
+        "onOff": false,
+        "occupants": 0,
+        "temp": 17.8
+       },
+       {
+        "name": "Fitting / Disp.",
+        "floor": "1F",
+        "use": "진료실",
+        "onOff": false,
+        "occupants": 0,
+        "temp": 17.9
+       },
+       {
+        "name": "Opt. Exam / Off.",
+        "floor": "1F",
+        "use": "진료실",
+        "onOff": false,
+        "occupants": 0,
+        "temp": 17.9
+       },
+       {
+        "name": "Scope Wash / Decon.",
+        "floor": "1F",
+        "use": "진료실",
+        "onOff": false,
+        "occupants": 0,
+        "temp": 17.9
+       },
+       {
+        "name": "Radiographic Room",
+        "floor": "1F",
+        "use": "진료실",
+        "onOff": false,
+        "occupants": 0,
+        "temp": 18.0
+       },
+       {
+        "name": "Trmt Rm. Dirty Proc.",
+        "floor": "1F",
+        "use": "진료실",
+        "onOff": false,
+        "occupants": 0,
+        "temp": 18.1
+       },
+       {
+        "name": "Wts & Meas. Room",
+        "floor": "1F",
+        "use": "진료실",
+        "onOff": false,
+        "occupants": 0,
+        "temp": 18.1
+       },
+       {
+        "name": "Pediatric Wts & Msrs",
+        "floor": "1F",
+        "use": "진료실",
+        "onOff": false,
+        "occupants": 0,
+        "temp": 18.2
+       },
+       {
+        "name": "Lab",
+        "floor": "1F",
+        "use": "진료실",
+        "onOff": true,
+        "occupants": 1,
+        "temp": 19.8
+       },
+       {
+        "name": "Ecg Test",
+        "floor": "1F",
+        "use": "진료실",
+        "onOff": true,
+        "occupants": 3,
+        "temp": 20.0
+       }
+      ]
+     }
+    }
+   ],
+   "ok": true,
+   "why": "일치",
+   "answer": "1층 진료실 중 가장 온도가 낮은 곳은 Pharm. Office로 17.8℃입니다.\n하위 8곳은 모두 꺼져 있고 재실 0명이며 17.8~18.2℃입니다.\n꺼진 진료실이 계속 비어 있다면 난방을 켜지 말고 그대로 두세요.",
+   "charts": 2,
+   "sec": 7.4,
+   "sentences": 3,
+   "jev": {
+    "model": "jev-1.14.0",
+    "usage": {
+     "input_tokens": 2273,
+     "output_tokens": 108
+    },
+    "numbers": {
+     "choice": "consistent",
+     "confidence": 0.66,
+     "probabilities": {
+      "consistent": 0.77,
+      "inconsistent": 0.23,
+      "no_numbers": 0.0
+     }
+    },
+    "clarify": {
+     "choice": "appropriate",
+     "confidence": 0.91,
+     "probabilities": {
+      "appropriate": 0.94,
+      "missing": 0.02,
+      "unnecessary": 0.04
+     }
+    },
+    "clear": {
+     "choice": "clear",
+     "confidence": 0.44,
+     "probabilities": {
+      "clear": 0.72,
+      "unclear": 0.28
+     }
+    }
+   }
+  },
+  {
+   "id": "q06",
+   "text": "사무실 전력 상위 10곳 표로 보여줘",
+   "expected": "query_spaces",
+   "calls": [
+    {
+     "name": "query_spaces",
+     "args": {
+      "floor": "all",
+      "use": "사무실",
+      "metric": "powerKw",
+      "order": "desc",
+      "limit": 10,
+      "view": "table"
+     },
+     "result": {
+      "metric": "전력(kW)",
+      "at": "2026-11-20T16:56:33+09:00",
+      "rooms": [
+       {
+        "name": "Tech. Office",
+        "floor": "2F",
+        "use": "사무실",
+        "onOff": true,
+        "occupants": 8,
+        "powerKw": 6.18
+       },
+       {
+        "name": "Provider Cubicles",
+        "floor": "1F",
+        "use": "사무실",
+        "onOff": true,
+        "occupants": 5,
+        "powerKw": 5.13
+       },
+       {
+        "name": "Provider Cubicles",
+        "floor": "1F",
+        "use": "사무실",
+        "onOff": true,
+        "occupants": 7,
+        "powerKw": 4.81
+       },
+       {
+        "name": "Bmet Work Station",
+        "floor": "1F",
+        "use": "사무실",
+        "onOff": true,
+        "occupants": 5,
+        "powerKw": 3.35
+       },
+       {
+        "name": "Tech. Work Station",
+        "floor": "1F",
+        "use": "사무실",
+        "onOff": true,
+        "occupants": 4,
+        "powerKw": 2.07
+       },
+       {
+        "name": "Computer Room",
+        "floor": "2F",
+        "use": "사무실",
+        "onOff": true,
+        "occupants": 3,
+        "powerKw": 2.0
+       },
+       {
+        "name": "Rmo Analyst",
+        "floor": "1F",
+        "use": "사무실",
+        "onOff": true,
+        "occupants": 3,
+        "powerKw": 1.85
+       },
+       {
+        "name": "Admin",
+        "floor": "2F",
+        "use": "사무실",
+        "onOff": true,
+        "occupants": 3,
+        "powerKw": 1.75
+       },
+       {
+        "name": "Tech. Work Room",
+        "floor": "1F",
+        "use": "사무실",
+        "onOff": true,
+        "occupants": 2,
+        "powerKw": 1.18
+       },
+       {
+        "name": "Sys. Analyst",
+        "floor": "2F",
+        "use": "사무실",
+        "onOff": true,
+        "occupants": 2,
+        "powerKw": 1.04
+       }
+      ]
+     }
+    }
+   ],
+   "ok": true,
+   "why": "일치",
+   "answer": "사무실 전력 1위는 2F Tech. Office로 6.18kW이고, 그다음은 1F Provider Cubicles로 5.13kW입니다.\n상위 10곳이 모두 가동 중이고 재실 인원도 있어, 상위 호실에 전력이 몰려 있습니다.\n퇴근 시간 이후 재실이 없으면 상위 사무실을 끄도록 스케줄을 잡아보세요.",
+   "charts": 1,
+   "sec": 4.4,
+   "sentences": 3,
+   "jev": {
+    "model": "jev-1.14.0",
+    "usage": {
+     "input_tokens": 1594,
+     "output_tokens": 108
+    },
+    "numbers": {
+     "choice": "consistent",
+     "confidence": 0.96,
+     "probabilities": {
+      "consistent": 0.97,
+      "inconsistent": 0.03,
+      "no_numbers": 0.0
+     }
+    },
+    "clarify": {
+     "choice": "appropriate",
+     "confidence": 0.98,
+     "probabilities": {
+      "appropriate": 0.99,
+      "missing": 0.01,
+      "unnecessary": 0.0
+     }
+    },
+    "clear": {
+     "choice": "clear",
+     "confidence": 0.54,
+     "probabilities": {
+      "clear": 0.77,
+      "unclear": 0.23
+     }
+    }
+   }
+  },
+  {
+   "id": "q07",
+   "text": "2층에서 전기 제일 적게 쓰는 곳",
+   "expected": "query_spaces",
+   "calls": [
+    {
+     "name": "query_spaces",
+     "args": {
+      "floor": "2F",
+      "use": "all",
+      "metric": "powerKw",
+      "order": "asc",
+      "limit": 5,
+      "view": "auto"
+     },
+     "result": {
+      "metric": "전력(kW)",
+      "at": "2026-11-20T16:56:38+09:00",
+      "rooms": [
+       {
+        "name": "Cl. Utl. / Kitchenet",
+        "floor": "2F",
+        "use": "기타",
+        "onOff": false,
+        "occupants": 0,
+        "powerKw": 0.0
+       },
+       {
+        "name": "Lounge",
+        "floor": "2F",
+        "use": "대기·휴게",
+        "onOff": false,
+        "occupants": 0,
+        "powerKw": 0.0
+       },
+       {
+        "name": "Reception",
+        "floor": "2F",
+        "use": "대기·휴게",
+        "onOff": false,
+        "occupants": 0,
+        "powerKw": 0.0
+       },
+       {
+        "name": "Waiting",
+        "floor": "2F",
+        "use": "대기·휴게",
+        "onOff": false,
+        "occupants": 0,
+        "powerKw": 0.0
+       },
+       {
+        "name": "Ceramic Lab",
+        "floor": "2F",
+        "use": "진료실",
+        "onOff": false,
+        "occupants": 0,
+        "powerKw": 0.0
+       }
+      ]
+     }
+    },
+    {
+     "name": "query_spaces",
+     "args": {
+      "floor": "2F",
+      "use": "all",
+      "metric": "powerKw",
+      "order": "asc",
+      "limit": 5,
+      "view": "auto"
+     },
+     "result": {
+      "metric": "전력(kW)",
+      "at": "2026-11-20T16:56:38+09:00",
+      "rooms": [
+       {
+        "name": "Cl. Utl. / Kitchenet",
+        "floor": "2F",
+        "use": "기타",
+        "onOff": false,
+        "occupants": 0,
+        "powerKw": 0.0
+       },
+       {
+        "name": "Lounge",
+        "floor": "2F",
+        "use": "대기·휴게",
+        "onOff": false,
+        "occupants": 0,
+        "powerKw": 0.0
+       },
+       {
+        "name": "Reception",
+        "floor": "2F",
+        "use": "대기·휴게",
+        "onOff": false,
+        "occupants": 0,
+        "powerKw": 0.0
+       },
+       {
+        "name": "Waiting",
+        "floor": "2F",
+        "use": "대기·휴게",
+        "onOff": false,
+        "occupants": 0,
+        "powerKw": 0.0
+       },
+       {
+        "name": "Ceramic Lab",
+        "floor": "2F",
+        "use": "진료실",
+        "onOff": false,
+        "occupants": 0,
+        "powerKw": 0.0
+       }
+      ]
+     }
+    }
+   ],
+   "ok": true,
+   "why": "일치",
+   "answer": "2층에서 전력을 가장 적게 쓰는 곳은 Cl. Utl. / Kitchenet과 Lounge 등 5곳으로, 모두 0kW입니다.\n이 호실들은 모두 꺼져 있고 재실도 0명이어서 지금 소비 전력이 없습니다.",
+   "charts": 2,
+   "sec": 5.1,
+   "sentences": 2,
+   "jev": {
+    "model": "jev-1.14.0",
+    "usage": {
+     "input_tokens": 1674,
+     "output_tokens": 108
+    },
+    "numbers": {
+     "choice": "consistent",
+     "confidence": 0.97,
+     "probabilities": {
+      "consistent": 0.98,
+      "inconsistent": 0.02,
+      "no_numbers": 0.0
+     }
+    },
+    "clarify": {
+     "choice": "appropriate",
+     "confidence": 0.92,
+     "probabilities": {
+      "appropriate": 0.95,
+      "missing": 0.03,
+      "unnecessary": 0.02
+     }
+    },
+    "clear": {
+     "choice": "clear",
+     "confidence": 0.86,
+     "probabilities": {
+      "clear": 0.93,
+      "unclear": 0.07
+     }
+    }
+   }
+  },
+  {
+   "id": "q08",
+   "text": "대기실 습도 순위",
+   "expected": "query_spaces",
+   "calls": [
+    {
+     "name": "query_spaces",
+     "args": {
+      "floor": "all",
+      "use": "대기·휴게",
+      "metric": "humidity",
+      "order": "desc",
+      "limit": 10,
+      "view": "auto"
+     },
+     "result": {
+      "metric": "습도(%)",
+      "at": "2026-11-20T16:56:43+09:00",
+      "rooms": [
+       {
+        "name": "Waiting / Activity Area",
+        "floor": "1F",
+        "use": "대기·휴게",
+        "onOff": true,
+        "occupants": 25,
+        "humidity": 61.3
+       },
+       {
+        "name": "Central Waiting",
+        "floor": "1F",
+        "use": "대기·휴게",
+        "onOff": true,
+        "occupants": 3,
+        "humidity": 43.7
+       },
+       {
+        "name": "Sec. Wait",
+        "floor": "2F",
+        "use": "대기·휴게",
+        "onOff": true,
+        "occupants": 2,
+        "humidity": 42.6
+       },
+       {
+        "name": "Reception",
+        "floor": "1F",
+        "use": "대기·휴게",
+        "onOff": true,
+        "occupants": 1,
+        "humidity": 41.9
+       },
+       {
+        "name": "Hk Break Room",
+        "floor": "1F",
+        "use": "대기·휴게",
+        "onOff": true,
+        "occupants": 1,
+        "humidity": 41.3
+       },
+       {
+        "name": "Wait / Ergom",
+        "floor": "2F",
+        "use": "대기·휴게",
+        "onOff": true,
+        "occupants": 1,
+        "humidity": 40.7
+       },
+       {
+        "name": "Pediatric Waiting",
+        "floor": "1F",
+        "use": "대기·휴게",
+        "onOff": true,
+        "occupants": 0,
+        "humidity": 40.6
+       },
+       {
+        "name": "Lounge",
+        "floor": "1F",
+        "use": "대기·휴게",
+        "onOff": true,
+        "occupants": 1,
+        "humidity": 40.5
+       },
+       {
+        "name": "Lounge",
+        "floor": "2F",
+        "use": "대기·휴게",
+        "onOff": false,
+        "occupants": 0,
+        "humidity": 40.1
+       },
+       {
+        "name": "Waiting",
+        "floor": "2F",
+        "use": "대기·휴게",
+        "onOff": false,
+        "occupants": 0,
+        "humidity": 40.1
+       }
+      ]
+     }
+    }
+   ],
+   "ok": true,
+   "why": "일치",
+   "answer": "대기·휴게 공간 중 습도가 가장 높은 곳은 1F Waiting / Activity Area로 61.3%입니다.\n재실 25명인 이 호실만 두드러지게 높고, 2위 Central Waiting은 43.7%입니다.\nWaiting / Activity Area의 환기와 제습 상태를 먼저 확인하세요.",
+   "charts": 1,
+   "sec": 5.1,
+   "sentences": 3,
+   "jev": {
+    "model": "jev-1.14.0",
+    "usage": {
+     "input_tokens": 1565,
+     "output_tokens": 108
+    },
+    "numbers": {
+     "choice": "consistent",
+     "confidence": 0.97,
+     "probabilities": {
+      "consistent": 0.98,
+      "inconsistent": 0.02,
+      "no_numbers": 0.0
+     }
+    },
+    "clarify": {
+     "choice": "appropriate",
+     "confidence": 0.96,
+     "probabilities": {
+      "appropriate": 0.97,
+      "missing": 0.02,
+      "unnecessary": 0.01
+     }
+    },
+    "clear": {
+     "choice": "clear",
+     "confidence": 0.94,
+     "probabilities": {
+      "clear": 0.97,
+      "unclear": 0.03
+     }
+    }
+   }
+  },
+  {
+   "id": "q09",
+   "text": "층별 전력 사용량 비교해줘",
+   "expected": "aggregate_spaces",
+   "calls": [
+    {
+     "name": "aggregate_spaces",
+     "args": {
+      "floor": "all",
+      "use": "all",
+      "group_by": "floor",
+      "metric": "powerKw",
+      "view": "auto"
+     },
+     "result": {
+      "metric": "전력 합계(kW)",
+      "at": "2026-11-20T16:56:48+09:00",
+      "groups": [
+       {
+        "group": "1F",
+        "value": 89.4,
+        "rooms": 76
+       },
+       {
+        "group": "2F",
+        "value": 50.5,
+        "rooms": 61
+       }
+      ]
+     }
+    }
+   ],
+   "ok": true,
+   "why": "일치",
+   "answer": "현재 1F가 89.4kW로 2F의 50.5kW보다 약 38.9kW 더 많이 쓰고 있습니다.\n1F는 호실 76곳, 2F는 61곳이라 1F의 전력 비중이 더 큽니다.\n1F에서 전력을 많이 쓰는 호실부터 확인해 불필요한 운전을 줄이세요.",
+   "charts": 1,
+   "sec": 9.0,
+   "sentences": 3,
+   "jev": {
+    "model": "jev-1.14.0",
+    "usage": {
+     "input_tokens": 1059,
+     "output_tokens": 108
+    },
+    "numbers": {
+     "choice": "consistent",
+     "confidence": 0.68,
+     "probabilities": {
+      "consistent": 0.79,
+      "inconsistent": 0.21,
+      "no_numbers": 0.0
+     }
+    },
+    "clarify": {
+     "choice": "appropriate",
+     "confidence": 0.94,
+     "probabilities": {
+      "appropriate": 0.96,
+      "missing": 0.04,
+      "unnecessary": 0.0
+     }
+    },
+    "clear": {
+     "choice": "clear",
+     "confidence": 0.98,
+     "probabilities": {
+      "clear": 0.99,
+      "unclear": 0.01
+     }
+    }
+   }
+  },
+  {
+   "id": "q10",
+   "text": "용도별로 운전 중인 HVAC 몇 대야?",
+   "expected": "aggregate_spaces",
+   "calls": [
+    {
+     "name": "aggregate_spaces",
+     "args": {
+      "floor": "all",
+      "use": "all",
+      "group_by": "use",
+      "metric": "running",
+      "view": "auto"
+     },
+     "result": {
+      "metric": "운전 중 HVAC(대)",
+      "at": "2026-11-20T16:56:58+09:00",
+      "groups": [
+       {
+        "group": "사무실",
+        "value": 58,
+        "rooms": 58
+       },
+       {
+        "group": "진료실",
+        "value": 31,
+        "rooms": 43
+       },
+       {
+        "group": "회의실",
+        "value": 10,
+        "rooms": 20
+       },
+       {
+        "group": "대기·휴게",
+        "value": 9,
+        "rooms": 15
+       },
+       {
+        "group": "기타",
+        "value": 0,
+        "rooms": 1
+       }
+      ]
+     }
+    }
+   ],
+   "ok": true,
+   "why": "일치",
+   "answer": "현재 운전 중인 HVAC는 사무실 58대로 가장 많고, 진료실 31대, 회의실 10대, 대기·휴게 9대, 기타 0대 순입니다.\n사무실은 58곳 전체가 가동 중이고, 진료실은 43곳 중 31곳, 회의실은 20곳 중 10곳이 가동 중입니다.\n사무실의 퇴근 이후 미사용 시간대에 끄기 스케줄을 잡아 보세요.",
+   "charts": 1,
+   "sec": 4.2,
+   "sentences": 3,
+   "jev": {
+    "model": "jev-1.14.0",
+    "usage": {
+     "input_tokens": 1164,
+     "output_tokens": 108
+    },
+    "numbers": {
+     "choice": "consistent",
+     "confidence": 0.91,
+     "probabilities": {
+      "consistent": 0.94,
+      "inconsistent": 0.06,
+      "no_numbers": 0.0
+     }
+    },
+    "clarify": {
+     "choice": "appropriate",
+     "confidence": 0.98,
+     "probabilities": {
+      "appropriate": 0.99,
+      "missing": 0.01,
+      "unnecessary": 0.0
+     }
+    },
+    "clear": {
+     "choice": "clear",
+     "confidence": 0.9,
+     "probabilities": {
+      "clear": 0.95,
+      "unclear": 0.05
+     }
+    }
+   }
+  },
+  {
+   "id": "q11",
+   "text": "이상 감지가 많은 층은?",
+   "expected": "aggregate_spaces",
+   "calls": [
+    {
+     "name": "aggregate_spaces",
+     "args": {
+      "floor": "all",
+      "use": "all",
+      "group_by": "floor",
+      "metric": "anomaly",
+      "view": "auto"
+     },
+     "result": {
+      "metric": "이상 감지(건)",
+      "at": "2026-11-20T16:57:02+09:00",
+      "groups": [
+       {
+        "group": "1F",
+        "value": 1,
+        "rooms": 76
+       },
+       {
+        "group": "2F",
+        "value": 0,
+        "rooms": 61
+       }
+      ]
+     }
+    }
+   ],
+   "ok": true,
+   "why": "일치",
+   "answer": "이상 감지가 많은 층은 1F로, 1건이 감지됐고 2F는 0건입니다.\n1F는 76개 호실 중 1건이며 2F는 61개 호실 모두 이상이 없습니다.\n1F에서 이상이 감지된 호실을 먼저 점검하세요.",
+   "charts": 1,
+   "sec": 3.9,
+   "sentences": 3,
+   "jev": {
+    "model": "jev-1.14.0",
+    "usage": {
+     "input_tokens": 1031,
+     "output_tokens": 108
+    },
+    "numbers": {
+     "choice": "consistent",
+     "confidence": 0.94,
+     "probabilities": {
+      "consistent": 0.96,
+      "inconsistent": 0.04,
+      "no_numbers": 0.0
+     }
+    },
+    "clarify": {
+     "choice": "appropriate",
+     "confidence": 0.97,
+     "probabilities": {
+      "appropriate": 0.98,
+      "missing": 0.02,
+      "unnecessary": 0.0
+     }
+    },
+    "clear": {
+     "choice": "clear",
+     "confidence": 0.98,
+     "probabilities": {
+      "clear": 0.99,
+      "unclear": 0.01
+     }
+    }
+   }
+  },
+  {
+   "id": "q12",
+   "text": "2층 용도별 평균 실내온도",
+   "expected": "aggregate_spaces",
+   "calls": [
+    {
+     "name": "aggregate_spaces",
+     "args": {
+      "floor": "2F",
+      "use": "all",
+      "group_by": "use",
+      "metric": "temp",
+      "view": "auto"
+     },
+     "result": {
+      "metric": "평균 실내온도(℃)",
+      "at": "2026-11-20T16:57:06+09:00",
+      "groups": [
+       {
+        "group": "사무실",
+        "value": 20.3,
+        "rooms": 30
+       },
+       {
+        "group": "진료실",
+        "value": 20.1,
+        "rooms": 21
+       },
+       {
+        "group": "대기·휴게",
+        "value": 18.9,
+        "rooms": 6
+       },
+       {
+        "group": "회의실",
+        "value": 18.8,
+        "rooms": 3
+       },
+       {
+        "group": "기타",
+        "value": 18.1,
+        "rooms": 1
+       }
+      ]
+     }
+    }
+   ],
+   "ok": true,
+   "why": "일치",
+   "answer": "2층 용도별 평균 실내온도는 사무실이 20.3℃로 가장 높고, 기타가 18.1℃로 가장 낮습니다.\n진료실은 20.1℃이고, 대기·휴게(18.9℃)와 회의실(18.8℃)은 상대적으로 낮아 용도별로 최대 2.2℃ 차이가 납니다.\n온도가 낮은 회의실과 대기·휴게 공간의 설정온도를 점검해 보세요.",
+   "charts": 1,
+   "sec": 4.9,
+   "sentences": 3,
+   "jev": {
+    "model": "jev-1.14.0",
+    "usage": {
+     "input_tokens": 1174,
+     "output_tokens": 108
+    },
+    "numbers": {
+     "choice": "consistent",
+     "confidence": 0.73,
+     "probabilities": {
+      "consistent": 0.82,
+      "inconsistent": 0.18,
+      "no_numbers": 0.0
+     }
+    },
+    "clarify": {
+     "choice": "appropriate",
+     "confidence": 0.98,
+     "probabilities": {
+      "appropriate": 0.99,
+      "missing": 0.01,
+      "unnecessary": 0.0
+     }
+    },
+    "clear": {
+     "choice": "clear",
+     "confidence": 0.98,
+     "probabilities": {
+      "clear": 0.99,
+      "unclear": 0.01
+     }
+    }
+   }
+  },
+  {
+   "id": "q13",
+   "text": "회의실이 층마다 전력을 얼마나 쓰는지 표로",
+   "expected": "aggregate_spaces",
+   "calls": [
+    {
+     "name": "aggregate_spaces",
+     "args": {
+      "floor": "all",
+      "use": "회의실",
+      "group_by": "floor",
+      "metric": "powerKw",
+      "view": "table"
+     },
+     "result": {
+      "metric": "전력 합계(kW)",
+      "at": "2026-11-20T16:57:11+09:00",
+      "groups": [
+       {
+        "group": "1F",
+        "value": 8.0,
+        "rooms": 17
+       },
+       {
+        "group": "2F",
+        "value": 1.6,
+        "rooms": 3
+       }
+      ]
+     }
+    },
+    {
+     "name": "aggregate_spaces",
+     "args": {
+      "floor": "all",
+      "use": "회의실",
+      "group_by": "floor",
+      "metric": "powerKw",
+      "view": "table"
+     },
+     "result": {
+      "metric": "전력 합계(kW)",
+      "at": "2026-11-20T16:57:11+09:00",
+      "groups": [
+       {
+        "group": "1F",
+        "value": 8.0,
+        "rooms": 17
+       },
+       {
+        "group": "2F",
+        "value": 1.6,
+        "rooms": 3
+       }
+      ]
+     }
+    }
+   ],
+   "ok": true,
+   "why": "일치",
+   "answer": "회의실 전력은 1F가 8.0kW, 2F가 1.6kW로 1F가 더 많습니다.\n1F 회의실은 17곳, 2F는 3곳이라 1F의 합계가 큽니다.\n1F 회의실 중 재실이 없는 곳부터 냉난방 종료 스케줄을 잡아 보세요.",
+   "charts": 2,
+   "sec": 6.0,
+   "sentences": 3,
+   "jev": {
+    "model": "jev-1.14.0",
+    "usage": {
+     "input_tokens": 1230,
+     "output_tokens": 108
+    },
+    "numbers": {
+     "choice": "consistent",
+     "confidence": 0.98,
+     "probabilities": {
+      "consistent": 0.99,
+      "inconsistent": 0.01,
+      "no_numbers": 0.0
+     }
+    },
+    "clarify": {
+     "choice": "appropriate",
+     "confidence": 0.89,
+     "probabilities": {
+      "appropriate": 0.93,
+      "missing": 0.06,
+      "unnecessary": 0.01
+     }
+    },
+    "clear": {
+     "choice": "clear",
+     "confidence": 0.72,
+     "probabilities": {
+      "clear": 0.86,
+      "unclear": 0.14
+     }
+    }
+   }
+  },
+  {
+   "id": "q14",
+   "text": "용도별 전력 합계 그래프로 보여줘",
+   "expected": "aggregate_spaces",
+   "calls": [
+    {
+     "name": "aggregate_spaces",
+     "args": {
+      "floor": "all",
+      "use": "all",
+      "group_by": "use",
+      "metric": "powerKw",
+      "view": "chart"
+     },
+     "result": {
+      "metric": "전력 합계(kW)",
+      "at": "2026-11-20T16:57:17+09:00",
+      "groups": [
+       {
+        "group": "사무실",
+        "value": 64.7,
+        "rooms": 58
+       },
+       {
+        "group": "진료실",
+        "value": 32.7,
+        "rooms": 43
+       },
+       {
+        "group": "대기·휴게",
+        "value": 31.9,
+        "rooms": 15
+       },
+       {
+        "group": "회의실",
+        "value": 9.6,
+        "rooms": 20
+       },
+       {
+        "group": "기타",
+        "value": 0.0,
+        "rooms": 1
+       }
+      ]
+     }
+    }
+   ],
+   "ok": true,
+   "why": "일치",
+   "answer": "현재 용도별 전력 합계는 사무실이 64.7kW로 가장 크고, 진료실이 32.7kW로 그 다음입니다.\n대기·휴게는 31.9kW, 회의실은 9.6kW이고 기타는 0kW입니다.\n사무실 중 사용하지 않는 호실부터 냉난방 종료 스케줄을 검토하세요.",
+   "charts": 1,
+   "sec": 4.5,
+   "sentences": 3,
+   "jev": {
+    "model": "jev-1.14.0",
+    "usage": {
+     "input_tokens": 1151,
+     "output_tokens": 108
+    },
+    "numbers": {
+     "choice": "consistent",
+     "confidence": 0.98,
+     "probabilities": {
+      "consistent": 0.99,
+      "inconsistent": 0.01,
+      "no_numbers": 0.0
+     }
+    },
+    "clarify": {
+     "choice": "appropriate",
+     "confidence": 0.94,
+     "probabilities": {
+      "appropriate": 0.96,
+      "missing": 0.04,
+      "unnecessary": 0.0
+     }
+    },
+    "clear": {
+     "choice": "clear",
+     "confidence": 0.9,
+     "probabilities": {
+      "clear": 0.95,
+      "unclear": 0.05
+     }
+    }
+   }
+  },
+  {
+   "id": "q15",
+   "text": "오늘 전력 추이 보여줘",
+   "expected": "energy_trend",
+   "calls": [
+    {
+     "name": "energy_trend",
+     "args": {
+      "period": "day",
+      "view": "auto"
+     },
+     "result": {
+      "period": "day",
+      "unit": "kWh",
+      "currentTotal": 1145.9,
+      "previousSamePoint": 1162.6,
+      "changePct": -1.4,
+      "previousTotal": 1359.8,
+      "current": [
+       {
+        "label": "0시",
+        "kwh": 0.0
+       },
+       {
+        "label": "1시",
+        "kwh": 0.0
+       },
+       {
+        "label": "2시",
+        "kwh": 0.0
+       },
+       {
+        "label": "3시",
+        "kwh": 0.0
+       },
+       {
+        "label": "4시",
+        "kwh": 0.0
+       },
+       {
+        "label": "5시",
+        "kwh": 0.0
+       },
+       {
+        "label": "6시",
+        "kwh": 0.0
+       },
+       {
+        "label": "7시",
+        "kwh": 0.0
+       },
+       {
+        "label": "8시",
+        "kwh": 23.0
+       },
+       {
+        "label": "9시",
+        "kwh": 159.9
+       },
+       {
+        "label": "10시",
+        "kwh": 147.2
+       },
+       {
+        "label": "11시",
+        "kwh": 146.2
+       },
+       {
+        "label": "12시",
+        "kwh": 134.6
+       },
+       {
+        "label": "13시",
+        "kwh": 137.3
+       },
+       {
+        "label": "14시",
+        "kwh": 133.3
+       },
+       {
+        "label": "15시",
+        "kwh": 131.2
+       },
+       {
+        "label": "16시",
+        "kwh": 133.2
+       }
+      ],
+      "previous": [
+       {
+        "label": "0시",
+        "kwh": 0.0
+       },
+       {
+        "label": "1시",
+        "kwh": 0.0
+       },
+       {
+        "label": "2시",
+        "kwh": 0.0
+       },
+       {
+        "label": "3시",
+        "kwh": 0.0
+       },
+       {
+        "label": "4시",
+        "kwh": 0.0
+       },
+       {
+        "label": "5시",
+        "kwh": 0.0
+       },
+       {
+        "label": "6시",
+        "kwh": 0.0
+       },
+       {
+        "label": "7시",
+        "kwh": 0.0
+       },
+       {
+        "label": "8시",
+        "kwh": 22.1
+       },
+       {
+        "label": "9시",
+        "kwh": 154.4
+       },
+       {
+        "label": "10시",
+        "kwh": 145.5
+       },
+       {
+        "label": "11시",
+        "kwh": 150.7
+       },
+       {
+        "label": "12시",
+        "kwh": 137.2
+       },
+       {
+        "label": "13시",
+        "kwh": 141.1
+       },
+       {
+        "label": "14시",
+        "kwh": 140.1
+       },
+       {
+        "label": "15시",
+        "kwh": 146.7
+       },
+       {
+        "label": "16시",
+        "kwh": 130.7
+       },
+       {
+        "label": "17시",
+        "kwh": 131.0
+       },
+       {
+        "label": "18시",
+        "kwh": 19.1
+       },
+       {
+        "label": "19시",
+        "kwh": 20.2
+       },
+       {
+        "label": "20시",
+        "kwh": 21.0
+       },
+       {
+        "label": "21시",
+        "kwh": 0.0
+       },
+       {
+        "label": "22시",
+        "kwh": 0.0
+       },
+       {
+        "label": "23시",
+        "kwh": 0.0
+       }
+      ]
+     }
+    }
+   ],
+   "ok": true,
+   "why": "일치",
+   "answer": "오늘 16시까지 전력 사용량은 1145.9kWh로, 어제 같은 시각(1162.6kWh)보다 1.4% 적습니다.\n9시 159.9kWh를 기록한 뒤 130~147kWh 수준에서 이어지고 있고, 어제는 18시 이후 20kWh 안팎으로 떨어졌습니다.\n퇴근 시간대에 맞춰 재실이 없는 호실의 냉난방 종료 스케줄을 잡으세요.",
+   "charts": 1,
+   "sec": 3.6,
+   "sentences": 3,
+   "jev": {
+    "model": "jev-1.14.0",
+    "usage": {
+     "input_tokens": 1925,
+     "output_tokens": 108
+    },
+    "numbers": {
+     "choice": "consistent",
+     "confidence": 0.8,
+     "probabilities": {
+      "consistent": 0.87,
+      "inconsistent": 0.13,
+      "no_numbers": 0.0
+     }
+    },
+    "clarify": {
+     "choice": "appropriate",
+     "confidence": 0.82,
+     "probabilities": {
+      "appropriate": 0.88,
+      "missing": 0.12,
+      "unnecessary": 0.0
+     }
+    },
+    "clear": {
+     "choice": "clear",
+     "confidence": 0.82,
+     "probabilities": {
+      "clear": 0.91,
+      "unclear": 0.09
+     }
+    }
+   }
+  },
+  {
+   "id": "q16",
+   "text": "어제보다 전기 많이 썼어?",
+   "expected": "energy_trend",
+   "calls": [
+    {
+     "name": "energy_trend",
+     "args": {
+      "period": "day",
+      "view": "auto"
+     },
+     "result": {
+      "period": "day",
+      "unit": "kWh",
+      "currentTotal": 1146.1,
+      "previousSamePoint": 1162.8,
+      "changePct": -1.4,
+      "previousTotal": 1359.8,
+      "current": [
+       {
+        "label": "0시",
+        "kwh": 0.0
+       },
+       {
+        "label": "1시",
+        "kwh": 0.0
+       },
+       {
+        "label": "2시",
+        "kwh": 0.0
+       },
+       {
+        "label": "3시",
+        "kwh": 0.0
+       },
+       {
+        "label": "4시",
+        "kwh": 0.0
+       },
+       {
+        "label": "5시",
+        "kwh": 0.0
+       },
+       {
+        "label": "6시",
+        "kwh": 0.0
+       },
+       {
+        "label": "7시",
+        "kwh": 0.0
+       },
+       {
+        "label": "8시",
+        "kwh": 23.0
+       },
+       {
+        "label": "9시",
+        "kwh": 159.9
+       },
+       {
+        "label": "10시",
+        "kwh": 147.2
+       },
+       {
+        "label": "11시",
+        "kwh": 146.2
+       },
+       {
+        "label": "12시",
+        "kwh": 134.6
+       },
+       {
+        "label": "13시",
+        "kwh": 137.3
+       },
+       {
+        "label": "14시",
+        "kwh": 133.3
+       },
+       {
+        "label": "15시",
+        "kwh": 131.2
+       },
+       {
+        "label": "16시",
+        "kwh": 133.4
+       }
+      ],
+      "previous": [
+       {
+        "label": "0시",
+        "kwh": 0.0
+       },
+       {
+        "label": "1시",
+        "kwh": 0.0
+       },
+       {
+        "label": "2시",
+        "kwh": 0.0
+       },
+       {
+        "label": "3시",
+        "kwh": 0.0
+       },
+       {
+        "label": "4시",
+        "kwh": 0.0
+       },
+       {
+        "label": "5시",
+        "kwh": 0.0
+       },
+       {
+        "label": "6시",
+        "kwh": 0.0
+       },
+       {
+        "label": "7시",
+        "kwh": 0.0
+       },
+       {
+        "label": "8시",
+        "kwh": 22.1
+       },
+       {
+        "label": "9시",
+        "kwh": 154.4
+       },
+       {
+        "label": "10시",
+        "kwh": 145.5
+       },
+       {
+        "label": "11시",
+        "kwh": 150.7
+       },
+       {
+        "label": "12시",
+        "kwh": 137.2
+       },
+       {
+        "label": "13시",
+        "kwh": 141.1
+       },
+       {
+        "label": "14시",
+        "kwh": 140.1
+       },
+       {
+        "label": "15시",
+        "kwh": 146.7
+       },
+       {
+        "label": "16시",
+        "kwh": 130.7
+       },
+       {
+        "label": "17시",
+        "kwh": 131.0
+       },
+       {
+        "label": "18시",
+        "kwh": 19.1
+       },
+       {
+        "label": "19시",
+        "kwh": 20.2
+       },
+       {
+        "label": "20시",
+        "kwh": 21.0
+       },
+       {
+        "label": "21시",
+        "kwh": 0.0
+       },
+       {
+        "label": "22시",
+        "kwh": 0.0
+       },
+       {
+        "label": "23시",
+        "kwh": 0.0
+       }
+      ]
+     }
+    }
+   ],
+   "ok": true,
+   "why": "일치",
+   "answer": "어제 같은 시각보다 1.4% 적게 썼습니다(오늘 1146.1kWh, 어제 같은 시점 1162.8kWh).\n오늘은 16시까지 집계된 값이라 어제 하루 전체(1359.8kWh)와 바로 비교하기는 어렵습니다.\n어제는 18시 이후에도 약 20kWh가 쓰였으니, 퇴근 후 미사용 호실의 냉난방 종료 스케줄을 잡아 보세요.",
+   "charts": 1,
+   "sec": 4.1,
+   "sentences": 3,
+   "jev": {
+    "model": "jev-1.14.0",
+    "usage": {
+     "input_tokens": 1923,
+     "output_tokens": 108
+    },
+    "numbers": {
+     "choice": "consistent",
+     "confidence": 0.86,
+     "probabilities": {
+      "consistent": 0.91,
+      "inconsistent": 0.09,
+      "no_numbers": 0.0
+     }
+    },
+    "clarify": {
+     "choice": "appropriate",
+     "confidence": 0.94,
+     "probabilities": {
+      "appropriate": 0.96,
+      "missing": 0.04,
+      "unnecessary": 0.0
+     }
+    },
+    "clear": {
+     "choice": "clear",
+     "confidence": 0.94,
+     "probabilities": {
+      "clear": 0.97,
+      "unclear": 0.03
+     }
+    }
+   }
+  },
+  {
+   "id": "q17",
+   "text": "이번 주 사용량 지난주랑 비교해줘",
+   "expected": "energy_trend",
+   "calls": [
+    {
+     "name": "energy_trend",
+     "args": {
+      "period": "week",
+      "view": "auto"
+     },
+     "result": {
+      "period": "week",
+      "unit": "kWh",
+      "currentTotal": 6602.4,
+      "previousSamePoint": 6595.5,
+      "changePct": 0.1,
+      "previousTotal": 7304.5,
+      "current": [
+       {
+        "label": "월",
+        "kwh": 1384.0
+       },
+       {
+        "label": "화",
+        "kwh": 1352.9
+       },
+       {
+        "label": "수",
+        "kwh": 1360.3
+       },
+       {
+        "label": "목",
+        "kwh": 1359.6
+       },
+       {
+        "label": "금",
+        "kwh": 1145.6
+       }
+      ],
+      "previous": [
+       {
+        "label": "월",
+        "kwh": 1365.3
+       },
+       {
+        "label": "화",
+        "kwh": 1390.2
+       },
+       {
+        "label": "수",
+        "kwh": 1351.7
+       },
+       {
+        "label": "목",
+        "kwh": 1355.3
+       },
+       {
+        "label": "금",
+        "kwh": 1330.6
+       },
+       {
+        "label": "토",
+        "kwh": 255.4
+       },
+       {
+        "label": "일",
+        "kwh": 256.0
+       }
+      ]
+     }
+    }
+   ],
+   "ok": true,
+   "why": "일치",
+   "answer": "이번 주 사용량은 금요일 오후 현재 6,602.4kWh로, 지난주 같은 시점(6,595.5kWh)보다 0.1% 많습니다.\n월~목은 지난주와 거의 같고, 금요일은 아직 하루가 끝나지 않아 1,145.6kWh입니다.\n퇴근 시간 이후 사용하지 않는 호실의 냉난방 종료 스케줄을 설정하세요.",
+   "charts": 1,
+   "sec": 4.3,
+   "sentences": 3,
+   "jev": {
+    "model": "jev-1.14.0",
+    "usage": {
+     "input_tokens": 1288,
+     "output_tokens": 108
+    },
+    "numbers": {
+     "choice": "consistent",
+     "confidence": 0.96,
+     "probabilities": {
+      "consistent": 0.97,
+      "inconsistent": 0.03,
+      "no_numbers": 0.0
+     }
+    },
+    "clarify": {
+     "choice": "appropriate",
+     "confidence": 0.58,
+     "probabilities": {
+      "appropriate": 0.72,
+      "missing": 0.27,
+      "unnecessary": 0.01
+     }
+    },
+    "clear": {
+     "choice": "clear",
+     "confidence": 0.82,
+     "probabilities": {
+      "clear": 0.91,
+      "unclear": 0.09
+     }
+    }
+   }
+  },
+  {
+   "id": "q18",
+   "text": "이번 달 전력 사용 추이",
+   "expected": "energy_trend",
+   "calls": [
+    {
+     "name": "energy_trend",
+     "args": {
+      "period": "month",
+      "view": "auto"
+     },
+     "result": {
+      "period": "month",
+      "unit": "kWh",
+      "currentTotal": 21454.8,
+      "previousSamePoint": 20367.7,
+      "changePct": 5.3,
+      "previousTotal": 32021.7,
+      "current": [
+       {
+        "label": "1일",
+        "kwh": 255.1
+       },
+       {
+        "label": "2일",
+        "kwh": 1355.1
+       },
+       {
+        "label": "3일",
+        "kwh": 1383.9
+       },
+       {
+        "label": "4일",
+        "kwh": 1365.2
+       },
+       {
+        "label": "5일",
+        "kwh": 1342.4
+       },
+       {
+        "label": "6일",
+        "kwh": 1339.2
+       },
+       {
+        "label": "7일",
+        "kwh": 254.6
+       },
+       {
+        "label": "8일",
+        "kwh": 252.2
+       },
+       {
+        "label": "9일",
+        "kwh": 1365.3
+       },
+       {
+        "label": "10일",
+        "kwh": 1390.2
+       },
+       {
+        "label": "11일",
+        "kwh": 1351.7
+       },
+       {
+        "label": "12일",
+        "kwh": 1355.3
+       },
+       {
+        "label": "13일",
+        "kwh": 1330.6
+       },
+       {
+        "label": "14일",
+        "kwh": 255.4
+       },
+       {
+        "label": "15일",
+        "kwh": 256.0
+       },
+       {
+        "label": "16일",
+        "kwh": 1384.0
+       },
+       {
+        "label": "17일",
+        "kwh": 1352.9
+       },
+       {
+        "label": "18일",
+        "kwh": 1360.3
+       },
+       {
+        "label": "19일",
+        "kwh": 1359.6
+       },
+       {
+        "label": "20일",
+        "kwh": 1145.8
+       }
+      ],
+      "previous": [
+       {
+        "label": "1일",
+        "kwh": 1376.3
+       },
+       {
+        "label": "2일",
+        "kwh": 1360.7
+       },
+       {
+        "label": "3일",
+        "kwh": 255.4
+       },
+       {
+        "label": "4일",
+        "kwh": 254.7
+       },
+       {
+        "label": "5일",
+        "kwh": 1376.7
+       },
+       {
+        "label": "6일",
+        "kwh": 1331.6
+       },
+       {
+        "label": "7일",
+        "kwh": 1374.1
+       },
+       {
+        "label": "8일",
+        "kwh": 1401.6
+       },
+       {
+        "label": "9일",
+        "kwh": 1342.1
+       },
+       {
+        "label": "10일",
+        "kwh": 254.3
+       },
+       {
+        "label": "11일",
+        "kwh": 254.2
+       },
+       {
+        "label": "12일",
+        "kwh": 1353.0
+       },
+       {
+        "label": "13일",
+        "kwh": 1364.2
+       },
+       {
+        "label": "14일",
+        "kwh": 1339.3
+       },
+       {
+        "label": "15일",
+        "kwh": 1385.7
+       },
+       {
+        "label": "16일",
+        "kwh": 1357.8
+       },
+       {
+        "label": "17일",
+        "kwh": 254.7
+       },
+       {
+        "label": "18일",
+        "kwh": 255.3
+       },
+       {
+        "label": "19일",
+        "kwh": 1321.0
+       },
+       {
+        "label": "20일",
+        "kwh": 1353.0
+       },
+       {
+        "label": "21일",
+        "kwh": 1358.9
+       },
+       {
+        "label": "22일",
+        "kwh": 1352.3
+       },
+       {
+        "label": "23일",
+        "kwh": 1324.2
+       },
+       {
+        "label": "24일",
+        "kwh": 254.9
+       },
+       {
+        "label": "25일",
+        "kwh": 254.7
+       },
+       {
+        "label": "26일",
+        "kwh": 1343.3
+       },
+       {
+        "label": "27일",
+        "kwh": 1299.0
+       },
+       {
+        "label": "28일",
+        "kwh": 1353.0
+       },
+       {
+        "label": "29일",
+        "kwh": 1332.0
+       },
+       {
+        "label": "30일",
+        "kwh": 1328.9
+       },
+       {
+        "label": "31일",
+        "kwh": 254.8
+       }
+      ]
+     }
+    }
+   ],
+   "ok": true,
+   "why": "일치",
+   "answer": "이번 달 20일까지 전력 사용량은 21,454.8kWh로, 지난달 같은 시점보다 5.3% 많습니다.\n평일에는 하루 약 1,350kWh를 쓰고 주말에는 약 255kWh를 써서, 평일 사용량이 전체 사용량을 좌우합니다.\n평일 진료 종료 후 재실이 없는 호실부터 냉난방 종료 스케줄을 적용해 보세요.",
+   "charts": 1,
+   "sec": 4.1,
+   "sentences": 3,
+   "jev": {
+    "model": "jev-1.14.0",
+    "usage": {
+     "input_tokens": 2219,
+     "output_tokens": 108
+    },
+    "numbers": {
+     "choice": "consistent",
+     "confidence": 0.83,
+     "probabilities": {
+      "consistent": 0.89,
+      "inconsistent": 0.11,
+      "no_numbers": 0.0
+     }
+    },
+    "clarify": {
+     "choice": "appropriate",
+     "confidence": 0.94,
+     "probabilities": {
+      "appropriate": 0.96,
+      "missing": 0.04,
+      "unnecessary": 0.0
+     }
+    },
+    "clear": {
+     "choice": "clear",
+     "confidence": 0.86,
+     "probabilities": {
+      "clear": 0.93,
+      "unclear": 0.07
+     }
+    }
+   }
+  },
+  {
+   "id": "q19",
+   "text": "지난주 대비 이번 주 일별 사용량 표로",
+   "expected": "energy_trend",
+   "calls": [
+    {
+     "name": "energy_trend",
+     "args": {
+      "period": "week",
+      "view": "table"
+     },
+     "result": {
+      "period": "week",
+      "unit": "kWh",
+      "currentTotal": 6602.7,
+      "previousSamePoint": 6595.8,
+      "changePct": 0.1,
+      "previousTotal": 7304.5,
+      "current": [
+       {
+        "label": "월",
+        "kwh": 1384.0
+       },
+       {
+        "label": "화",
+        "kwh": 1352.9
+       },
+       {
+        "label": "수",
+        "kwh": 1360.3
+       },
+       {
+        "label": "목",
+        "kwh": 1359.6
+       },
+       {
+        "label": "금",
+        "kwh": 1145.9
+       }
+      ],
+      "previous": [
+       {
+        "label": "월",
+        "kwh": 1365.3
+       },
+       {
+        "label": "화",
+        "kwh": 1390.2
+       },
+       {
+        "label": "수",
+        "kwh": 1351.7
+       },
+       {
+        "label": "목",
+        "kwh": 1355.3
+       },
+       {
+        "label": "금",
+        "kwh": 1330.6
+       },
+       {
+        "label": "토",
+        "kwh": 255.4
+       },
+       {
+        "label": "일",
+        "kwh": 256.0
+       }
+      ]
+     }
+    }
+   ],
+   "ok": true,
+   "why": "일치",
+   "answer": "이번 주 사용량은 금요일 16:57 기준 6,602.7kWh로, 지난주 같은 시점(6,595.8kWh)과 비교하면 0.1% 늘었습니다.\n월~목은 지난주와 거의 같고, 금요일은 아직 집계 중이라 1,145.9kWh로 지난주 금요일(1,330.6kWh)보다 적게 나옵니다.\n일별 비교는 화면 표에서 확인하고, 퇴근 시간대에 재실이 없는 호실의 냉난방 종료 스케줄을 검토하세요.",
+   "charts": 1,
+   "sec": 3.8,
+   "sentences": 3,
+   "jev": {
+    "model": "jev-1.14.0",
+    "usage": {
+     "input_tokens": 1334,
+     "output_tokens": 108
+    },
+    "numbers": {
+     "choice": "consistent",
+     "confidence": 0.89,
+     "probabilities": {
+      "consistent": 0.93,
+      "inconsistent": 0.07,
+      "no_numbers": 0.0
+     }
+    },
+    "clarify": {
+     "choice": "appropriate",
+     "confidence": 0.79,
+     "probabilities": {
+      "appropriate": 0.86,
+      "missing": 0.14,
+      "unnecessary": 0.0
+     }
+    },
+    "clear": {
+     "choice": "clear",
+     "confidence": 0.72,
+     "probabilities": {
+      "clear": 0.86,
+      "unclear": 0.14
+     }
+    }
+   }
+  },
+  {
+   "id": "q20",
+   "text": "2층 회의실 13시 이후 미사용이면 냉방 꺼줘",
+   "expected": "create_schedule",
+   "calls": [
+    {
+     "name": "create_schedule",
+     "args": {
+      "floor": "2F",
+      "use": "회의실",
+      "action": "off",
+      "time": "13:00",
+      "condition": "unused",
+      "setpoint": 0
+     },
+     "result": {
+      "targets": 3,
+      "rooms": [
+       "Conf. / Group Therapy",
+       "Conf. Room",
+       "Library / Conf. Room"
+      ],
+      "estimatedSavingKwh": 5.9
+     }
+    },
+    {
+     "name": "create_schedule",
+     "args": {
+      "floor": "2F",
+      "use": "회의실",
+      "action": "off",
+      "time": "13:00",
+      "condition": "unused",
+      "setpoint": 0
+     },
+     "result": {
+      "targets": 3,
+      "rooms": [
+       "Conf. / Group Therapy",
+       "Conf. Room",
+       "Library / Conf. Room"
+      ],
+      "estimatedSavingKwh": 5.9
+     }
+    },
+    {
+     "name": "create_schedule",
+     "args": {
+      "floor": "2F",
+      "use": "회의실",
+      "action": "off",
+      "time": "13:00",
+      "condition": "unused",
+      "setpoint": 0
+     },
+     "result": {
+      "targets": 3,
+      "rooms": [
+       "Conf. / Group Therapy",
+       "Conf. Room",
+       "Library / Conf. Room"
+      ],
+      "estimatedSavingKwh": 5.9
+     }
+    }
+   ],
+   "ok": true,
+   "why": "일치",
+   "answer": "응답을 만들지 못했습니다.",
+   "charts": 3,
+   "sec": 5.2,
+   "sentences": 1,
+   "jev": {
+    "model": "jev-1.14.0",
+    "usage": {
+     "input_tokens": 1180,
+     "output_tokens": 110
+    },
+    "numbers": {
+     "choice": "no_numbers",
+     "confidence": 1.0,
+     "probabilities": {
+      "consistent": 0.0,
+      "inconsistent": 0.0,
+      "no_numbers": 1.0
+     }
+    },
+    "clarify": {
+     "choice": "appropriate",
+     "confidence": 0.37,
+     "probabilities": {
+      "appropriate": 0.58,
+      "missing": 0.39,
+      "unnecessary": 0.03
+     }
+    },
+    "clear": {
+     "choice": "unclear",
+     "confidence": 0.74,
+     "probabilities": {
+      "clear": 0.13,
+      "unclear": 0.87
+     }
+    }
+   }
+  },
+  {
+   "id": "q21",
+   "text": "1층 사무실 18시에 전부 꺼",
+   "expected": "create_schedule",
+   "calls": [
+    {
+     "name": "create_schedule",
+     "args": {
+      "floor": "1F",
+      "use": "사무실",
+      "action": "off",
+      "time": "18:00",
+      "condition": "always",
+      "setpoint": 0
+     },
+     "result": {
+      "targets": 28,
+      "rooms": [
+       "Admin Work Statn.",
+       "Adp Equip Space",
+       "Appmts",
+       "Biomed Maint. Admin.",
+       "Bmet Work Station",
+       "Chief Aero Med.",
+       "Chief Log Office",
+       "Fac. Mgr. Office",
+       "Hk. Supv. Office",
+       "Lab Office"
+      ],
+      "estimatedSavingKwh": 17.5
+     }
+    }
+   ],
+   "ok": true,
+   "why": "일치",
+   "answer": "1층 사무실 28곳을 18:00에 끄는 스케줄 초안을 만들었고, 예상 절감량은 약 17.5kWh입니다.\n재실 여부와 관계없이 18:00에 일괄 적용하는 조건(always)으로 잡았습니다.\n퇴근 후 재실이 없을 때만 끄려면 조건을 '미사용 시'로 바꿔 다시 만드세요.",
+   "charts": 1,
+   "sec": 4.5,
+   "sentences": 3,
+   "jev": {
+    "model": "jev-1.14.0",
+    "usage": {
+     "input_tokens": 1081,
+     "output_tokens": 108
+    },
+    "numbers": {
+     "choice": "consistent",
+     "confidence": 0.97,
+     "probabilities": {
+      "consistent": 0.98,
+      "inconsistent": 0.02,
+      "no_numbers": 0.0
+     }
+    },
+    "clarify": {
+     "choice": "appropriate",
+     "confidence": 0.83,
+     "probabilities": {
+      "appropriate": 0.89,
+      "missing": 0.1,
+      "unnecessary": 0.01
+     }
+    },
+    "clear": {
+     "choice": "clear",
+     "confidence": 0.94,
+     "probabilities": {
+      "clear": 0.97,
+      "unclear": 0.03
+     }
+    }
+   }
+  },
+  {
+   "id": "q22",
+   "text": "진료실 설정온도 22도로 오후 3시부터",
+   "expected": null,
+   "calls": [],
+   "ok": true,
+   "why": "도구 호출 없음",
+   "answer": "진료실 설정온도를 22도로 맞추는 스케줄을 어느 층에 적용할까요?\n후보: 1F, 2F, 전체",
+   "charts": 0,
+   "sec": 1.2,
+   "sentences": 2,
+   "jev": {
+    "model": "jev-1.14.0",
+    "usage": {
+     "input_tokens": 832,
+     "output_tokens": 109
+    },
+    "numbers": {
+     "choice": "no_numbers",
+     "confidence": 1.0,
+     "probabilities": {
+      "consistent": 0.0,
+      "inconsistent": 0.0,
+      "no_numbers": 1.0
+     }
+    },
+    "clarify": {
+     "choice": "appropriate",
+     "confidence": 0.79,
+     "probabilities": {
+      "appropriate": 0.86,
+      "missing": 0.07,
+      "unnecessary": 0.07
+     }
+    },
+    "clear": {
+     "choice": "clear",
+     "confidence": 0.98,
+     "probabilities": {
+      "clear": 0.99,
+      "unclear": 0.01
+     }
+    }
+   }
+  },
+  {
+   "id": "q23",
+   "text": "2층 전체 저녁 7시 이후 끄기",
+   "expected": "create_schedule",
+   "calls": [
+    {
+     "name": "create_schedule",
+     "args": {
+      "floor": "2F",
+      "use": "all",
+      "action": "off",
+      "time": "19:00",
+      "condition": "unused",
+      "setpoint": 0
+     },
+     "result": {
+      "targets": 61,
+      "rooms": [
+       "Cl. Utl. / Kitchenet",
+       "Library / Classroom",
+       "Lounge",
+       "Reception",
+       "Sec. Wait",
+       "Wait / Ergom",
+       "Waiting",
+       "1St Sgt",
+       "Admin",
+       "Admin Office"
+      ],
+      "estimatedSavingKwh": 11.3
+     }
+    }
+   ],
+   "ok": true,
+   "why": "일치",
+   "answer": "2층 전체 61곳을 19:00 이후 재실이 없을 때 끄는 스케줄 초안을 만들었고, 예상 절감량은 약 11.3kWh입니다.\n대상에는 Lounge와 Reception 외 59곳이 들어 있습니다.\n19:00 이후에도 쓰는 호실이 있는지 확인하고 초안을 검토해 주세요.",
+   "charts": 1,
+   "sec": 4.8,
+   "sentences": 3,
+   "jev": {
+    "model": "jev-1.14.0",
+    "usage": {
+     "input_tokens": 1048,
+     "output_tokens": 108
+    },
+    "numbers": {
+     "choice": "consistent",
+     "confidence": 0.42,
+     "probabilities": {
+      "consistent": 0.61,
+      "inconsistent": 0.39,
+      "no_numbers": 0.0
+     }
+    },
+    "clarify": {
+     "choice": "appropriate",
+     "confidence": 0.52,
+     "probabilities": {
+      "appropriate": 0.68,
+      "missing": 0.19,
+      "unnecessary": 0.13
+     }
+    },
+    "clear": {
+     "choice": "clear",
+     "confidence": 0.82,
+     "probabilities": {
+      "clear": 0.91,
+      "unclear": 0.09
+     }
+    }
+   }
+  },
+  {
+   "id": "q24",
+   "text": "대기실 아침 8시부터 켜줘",
+   "expected": null,
+   "calls": [],
+   "ok": true,
+   "why": "도구 호출 없음",
+   "answer": "대기실 가동을 어느 층에 적용할까요?\n후보: 1F, 2F, 전체 층",
+   "charts": 0,
+   "sec": 1.1,
+   "sentences": 2,
+   "jev": {
+    "model": "jev-1.14.0",
+    "usage": {
+     "input_tokens": 816,
+     "output_tokens": 109
+    },
+    "numbers": {
+     "choice": "no_numbers",
+     "confidence": 1.0,
+     "probabilities": {
+      "consistent": 0.0,
+      "inconsistent": 0.0,
+      "no_numbers": 1.0
+     }
+    },
+    "clarify": {
+     "choice": "appropriate",
+     "confidence": 0.85,
+     "probabilities": {
+      "appropriate": 0.9,
+      "missing": 0.04,
+      "unnecessary": 0.06
+     }
+    },
+    "clear": {
+     "choice": "clear",
+     "confidence": 0.98,
+     "probabilities": {
+      "clear": 0.99,
+      "unclear": 0.01
+     }
+    }
+   }
+  },
+  {
+   "id": "q25",
+   "text": "1층 회의실 안 쓰면 오후 2시부터 꺼줘",
+   "expected": "create_schedule",
+   "calls": [
+    {
+     "name": "create_schedule",
+     "args": {
+      "floor": "1F",
+      "use": "회의실",
+      "action": "off",
+      "time": "14:00",
+      "condition": "unused",
+      "setpoint": 0
+     },
+     "result": {
+      "targets": 17,
+      "rooms": [
+       "Conf. Library",
+       "Group Is",
+       "Group Is",
+       "Interaction Station",
+       "Interaction Station",
+       "Interaction Station",
+       "Interaction Station",
+       "Interaction Station",
+       "Interaction Station",
+       "Interaction Station"
+      ],
+      "estimatedSavingKwh": 9.0
+     }
+    }
+   ],
+   "ok": true,
+   "why": "일치",
+   "answer": "1층 회의실 17곳을 14:00 이후 재실이 없을 때 끄는 스케줄 초안을 만들었고, 예상 절감량은 약 9.0kWh입니다.\n대상은 Conf. Library, Group Is 외 15곳이며, 현재 시각 16:58이 이미 14:00을 지나 오늘은 적용 시점이 지났습니다.\n오늘 바로 끄려면 현재 시각 기준으로 스케줄을 다시 만들어 적용하세요.",
+   "charts": 1,
+   "sec": 4.8,
+   "sentences": 3,
+   "jev": {
+    "model": "jev-1.14.0",
+    "usage": {
+     "input_tokens": 1072,
+     "output_tokens": 108
+    },
+    "numbers": {
+     "choice": "consistent",
+     "confidence": 0.62,
+     "probabilities": {
+      "consistent": 0.75,
+      "inconsistent": 0.25,
+      "no_numbers": 0.0
+     }
+    },
+    "clarify": {
+     "choice": "appropriate",
+     "confidence": 0.64,
+     "probabilities": {
+      "appropriate": 0.76,
+      "missing": 0.22,
+      "unnecessary": 0.02
+     }
+    },
+    "clear": {
+     "choice": "clear",
+     "confidence": 0.68,
+     "probabilities": {
+      "clear": 0.84,
+      "unclear": 0.16
+     }
+    }
+   }
+  },
+  {
+   "id": "q26",
+   "text": "사무실 난방 20도로 낮춰줘 9시부터",
+   "expected": null,
+   "calls": [],
+   "ok": true,
+   "why": "도구 호출 없음",
+   "answer": "사무실 난방을 20도로 낮출 층이 어디인지 알려주시겠어요?\n후보: 1F, 2F, 전체 층",
+   "charts": 0,
+   "sec": 1.2,
+   "sentences": 2,
+   "jev": {
+    "model": "jev-1.14.0",
+    "usage": {
+     "input_tokens": 831,
+     "output_tokens": 109
+    },
+    "numbers": {
+     "choice": "no_numbers",
+     "confidence": 0.96,
+     "probabilities": {
+      "consistent": 0.01,
+      "inconsistent": 0.02,
+      "no_numbers": 0.97
+     }
+    },
+    "clarify": {
+     "choice": "appropriate",
+     "confidence": 0.86,
+     "probabilities": {
+      "appropriate": 0.91,
+      "missing": 0.03,
+      "unnecessary": 0.06
+     }
+    },
+    "clear": {
+     "choice": "clear",
+     "confidence": 1.0,
+     "probabilities": {
+      "clear": 1.0,
+      "unclear": 0.0
+     }
+    }
+   }
+  },
+  {
+   "id": "q27",
+   "text": "에어컨 좀 꺼줘",
+   "expected": null,
+   "calls": [],
+   "ok": true,
+   "why": "도구 호출 없음",
+   "answer": "어느 층의 에어컨을 끌까요?\n후보: 1F, 2F (전체 층도 가능)",
+   "charts": 0,
+   "sec": 1.0,
+   "sentences": 2,
+   "jev": {
+    "model": "jev-1.14.0",
+    "usage": {
+     "input_tokens": 812,
+     "output_tokens": 109
+    },
+    "numbers": {
+     "choice": "no_numbers",
+     "confidence": 1.0,
+     "probabilities": {
+      "consistent": 0.0,
+      "inconsistent": 0.0,
+      "no_numbers": 1.0
+     }
+    },
+    "clarify": {
+     "choice": "appropriate",
+     "confidence": 0.91,
+     "probabilities": {
+      "appropriate": 0.94,
+      "missing": 0.02,
+      "unnecessary": 0.04
+     }
+    },
+    "clear": {
+     "choice": "clear",
+     "confidence": 0.98,
+     "probabilities": {
+      "clear": 0.99,
+      "unclear": 0.01
+     }
+    }
+   }
+  },
+  {
+   "id": "q28",
+   "text": "3층 회의실 꺼줘",
+   "expected": null,
+   "calls": [],
+   "ok": true,
+   "why": "도구 호출 없음",
+   "answer": "본관에는 3층이 없는데, 어느 층의 회의실을 끄시겠어요?\n선택 가능한 층은 1F, 2F입니다.",
+   "charts": 0,
+   "sec": 3.3,
+   "sentences": 2,
+   "jev": {
+    "model": "jev-1.14.0",
+    "usage": {
+     "input_tokens": 825,
+     "output_tokens": 109
+    },
+    "numbers": {
+     "choice": "no_numbers",
+     "confidence": 0.97,
+     "probabilities": {
+      "consistent": 0.01,
+      "inconsistent": 0.01,
+      "no_numbers": 0.98
+     }
+    },
+    "clarify": {
+     "choice": "appropriate",
+     "confidence": 1.0,
+     "probabilities": {
+      "appropriate": 1.0,
+      "missing": 0.0,
+      "unnecessary": 0.0
+     }
+    },
+    "clear": {
+     "choice": "clear",
+     "confidence": 1.0,
+     "probabilities": {
+      "clear": 1.0,
+      "unclear": 0.0
+     }
+    }
+   }
+  },
+  {
+   "id": "q29",
+   "text": "업무동 전력 알려줘",
+   "expected": null,
+   "calls": [],
+   "ok": true,
+   "why": "도구 호출 없음",
+   "answer": "'업무동'은 이 건물에 없어서 전력을 조회하지 못했습니다.\n후보: 본관 전체 전력 추이, 층별(1F, 2F) 전력, 용도별(사무실 등) 전력입니다.",
+   "charts": 0,
+   "sec": 1.6,
+   "sentences": 2,
+   "jev": {
+    "model": "jev-1.14.0",
+    "usage": {
+     "input_tokens": 847,
+     "output_tokens": 109
+    },
+    "numbers": {
+     "choice": "no_numbers",
+     "confidence": 0.97,
+     "probabilities": {
+      "consistent": 0.01,
+      "inconsistent": 0.01,
+      "no_numbers": 0.98
+     }
+    },
+    "clarify": {
+     "choice": "appropriate",
+     "confidence": 0.4,
+     "probabilities": {
+      "appropriate": 0.6,
+      "missing": 0.39,
+      "unnecessary": 0.01
+     }
+    },
+    "clear": {
+     "choice": "clear",
+     "confidence": 0.96,
+     "probabilities": {
+      "clear": 0.98,
+      "unclear": 0.02
+     }
+    }
+   }
+  },
+  {
+   "id": "q30",
+   "text": "안녕하세요",
+   "expected": null,
+   "calls": [],
+   "ok": true,
+   "why": "도구 호출 없음",
+   "answer": "안녕하세요, 본관 운영 도우미입니다.\n호실별 전력·온도 순위, 층·용도별 비교, 전력 사용 추이, 냉난방 스케줄 초안을 도와드립니다.",
+   "charts": 0,
+   "sec": 1.4,
+   "sentences": 2,
+   "jev": {
+    "model": "jev-1.14.0",
+    "usage": {
+     "input_tokens": 836,
+     "output_tokens": 109
+    },
+    "numbers": {
+     "choice": "no_numbers",
+     "confidence": 1.0,
+     "probabilities": {
+      "consistent": 0.0,
+      "inconsistent": 0.0,
+      "no_numbers": 1.0
+     }
+    },
+    "clarify": {
+     "choice": "appropriate",
+     "confidence": 0.98,
+     "probabilities": {
+      "appropriate": 0.99,
+      "missing": 0.01,
+      "unnecessary": 0.0
+     }
+    },
+    "clear": {
+     "choice": "clear",
+     "confidence": 0.38,
+     "probabilities": {
+      "clear": 0.69,
+      "unclear": 0.31
+     }
+    }
+   }
+  },
+  {
+   "id": "q31",
+   "text": "1층 사무실 지금 꺼줘",
+   "expected": "create_schedule",
+   "calls": [
+    {
+     "name": "create_schedule",
+     "args": {
+      "floor": "1F",
+      "use": "사무실",
+      "action": "off",
+      "time": "16:58",
+      "condition": "always",
+      "setpoint": 0
+     },
+     "result": {
+      "targets": 28,
+      "rooms": [
+       "Admin Work Statn.",
+       "Adp Equip Space",
+       "Appmts",
+       "Biomed Maint. Admin.",
+       "Bmet Work Station",
+       "Chief Aero Med.",
+       "Chief Log Office",
+       "Fac. Mgr. Office",
+       "Hk. Supv. Office",
+       "Lab Office"
+      ],
+      "estimatedSavingKwh": 52.3
+     }
+    }
+   ],
+   "ok": true,
+   "why": "일치",
+   "answer": "1층 사무실 28곳을 16:58에 끄는 스케줄 초안을 만들었고, 예상 절감량은 약 52.3kWh입니다.\n대상은 조건 없이(always) 적용되며 Admin Work Statn., Adp Equip Space 외 26곳이 포함됩니다.\n퇴근 시간대에 맞춰 매일 반복되는 종료 스케줄이 필요한지 확인하세요.",
+   "charts": 1,
+   "sec": 3.9,
+   "sentences": 3,
+   "jev": {
+    "model": "jev-1.14.0",
+    "usage": {
+     "input_tokens": 1069,
+     "output_tokens": 108
+    },
+    "numbers": {
+     "choice": "consistent",
+     "confidence": 0.86,
+     "probabilities": {
+      "consistent": 0.91,
+      "inconsistent": 0.09,
+      "no_numbers": 0.0
+     }
+    },
+    "clarify": {
+     "choice": "appropriate",
+     "confidence": 0.43,
+     "probabilities": {
+      "appropriate": 0.62,
+      "missing": 0.34,
+      "unnecessary": 0.04
+     }
+    },
+    "clear": {
+     "choice": "clear",
+     "confidence": 0.86,
+     "probabilities": {
+      "clear": 0.93,
+      "unclear": 0.07
+     }
+    }
+   }
+  },
+  {
+   "id": "m01",
+   "text": "전체 전력 추이를 확인해보고 현재 재실 0곳인 곳은 HVAC 꺼줘 → 지금 시각으로 꺼 → 15:30",
+   "expected": "create_schedule",
+   "calls": [
+    {
+     "name": "create_schedule",
+     "args": {
+      "floor": "all",
+      "use": "all",
+      "action": "off",
+      "time": "15:30",
+      "condition": "unused",
+      "setpoint": 0
+     },
+     "result": {
+      "targets": 137,
+      "rooms": [
+       "Central Waiting",
+       "Hk Break Room",
+       "Lounge",
+       "Pediatric Waiting",
+       "Reception",
+       "Reception",
+       "Reception",
+       "Waiting",
+       "Waiting / Activity Area",
+       "Admin Work Statn."
+      ],
+      "estimatedSavingKwh": 71.7
+     }
+    }
+   ],
+   "ok": true,
+   "why": "일치",
+   "answer": "재실이 없는 137곳(Central Waiting, Hk Break Room 외 135곳)의 HVAC를 15:30에 끄는 초안으로 바꿨고, 예상 절감량은 71.7kWh입니다.\n전체 층·전체 용도에서 15:30 이후 재실이 없을 때만 적용하며, 15:30은 현재 시각 16:58보다 이전입니다.\n초안의 적용 시각이 맞는지 확인하세요.",
+   "charts": 1,
+   "sec": 12.8,
+   "sentences": 3,
+   "jev": {
+    "model": "jev-1.14.0",
+    "usage": {
+     "input_tokens": 1346,
+     "output_tokens": 108
+    },
+    "numbers": {
+     "choice": "consistent",
+     "confidence": 0.85,
+     "probabilities": {
+      "consistent": 0.9,
+      "inconsistent": 0.1,
+      "no_numbers": 0.0
+     }
+    },
+    "clarify": {
+     "choice": "appropriate",
+     "confidence": 0.64,
+     "probabilities": {
+      "appropriate": 0.76,
+      "missing": 0.1,
+      "unnecessary": 0.14
+     }
+    },
+    "clear": {
+     "choice": "clear",
+     "confidence": 0.94,
+     "probabilities": {
+      "clear": 0.97,
+      "unclear": 0.03
+     }
+    }
+   }
+  },
+  {
+   "id": "m02",
+   "text": "회의실 냉방 꺼줘 → 2층 → 18시로 바꿔줘",
+   "expected": "create_schedule",
+   "calls": [
+    {
+     "name": "create_schedule",
+     "args": {
+      "floor": "2F",
+      "use": "회의실",
+      "action": "off",
+      "time": "18:00",
+      "condition": "always",
+      "setpoint": 0
+     },
+     "result": {
+      "targets": 3,
+      "rooms": [
+       "Conf. / Group Therapy",
+       "Conf. Room",
+       "Library / Conf. Room"
+      ],
+      "estimatedSavingKwh": 3.2
+     }
+    }
+   ],
+   "ok": true,
+   "why": "일치",
+   "answer": "2층 회의실 3곳(Conf. / Group Therapy 외 2곳)의 냉방을 18:00에 끄는 초안으로 바꿨습니다.\n적용 시각이 16:58에서 18:00으로 늦어져 예상 절감량은 약 3.2kWh입니다.\n초안의 대상 호실과 적용 시각을 확인해 주세요.",
+   "charts": 1,
+   "sec": 13.9,
+   "sentences": 3,
+   "jev": {
+    "model": "jev-1.14.0",
+    "usage": {
+     "input_tokens": 1159,
+     "output_tokens": 108
+    },
+    "numbers": {
+     "choice": "consistent",
+     "confidence": 0.91,
+     "probabilities": {
+      "consistent": 0.94,
+      "inconsistent": 0.06,
+      "no_numbers": 0.0
+     }
+    },
+    "clarify": {
+     "choice": "appropriate",
+     "confidence": 0.88,
+     "probabilities": {
+      "appropriate": 0.92,
+      "missing": 0.01,
+      "unnecessary": 0.07
+     }
+    },
+    "clear": {
+     "choice": "clear",
+     "confidence": 0.98,
+     "probabilities": {
+      "clear": 0.99,
+      "unclear": 0.01
+     }
+    }
+   }
+  },
+  {
+   "id": "m03",
+   "text": "사무실 설정온도 24도로 해줘 → 1층 → 아니 2층으로",
+   "expected": "create_schedule",
+   "calls": [
+    {
+     "name": "create_schedule",
+     "args": {
+      "floor": "2F",
+      "use": "사무실",
+      "action": "setpoint",
+      "time": "16:58",
+      "condition": "always",
+      "setpoint": 24
+     },
+     "result": {
+      "targets": 30,
+      "rooms": [
+       "1St Sgt",
+       "Admin",
+       "Admin Office",
+       "Bee Tech",
+       "Bee Tech",
+       "Cmdr Office",
+       "Computer Room",
+       "Copy / File",
+       "Credentials Mgr",
+       "Dental Surgeon Office"
+      ],
+      "estimatedSavingKwh": 0.0
+     }
+    }
+   ],
+   "ok": true,
+   "why": "일치",
+   "answer": "2층 사무실 30곳의 설정온도를 지금(16:58) 24도로 바꾸는 스케줄 초안으로 수정했습니다.\n대상에는 1St Sgt, Admin 외 28곳이 포함됩니다.\n초안 내용을 확인한 뒤 필요하면 적용 시각을 조정하세요.",
+   "charts": 1,
+   "sec": 12.7,
+   "sentences": 3,
+   "jev": {
+    "model": "jev-1.14.0",
+    "usage": {
+     "input_tokens": 1202,
+     "output_tokens": 108
+    },
+    "numbers": {
+     "choice": "consistent",
+     "confidence": 0.48,
+     "probabilities": {
+      "consistent": 0.65,
+      "inconsistent": 0.35,
+      "no_numbers": 0.0
+     }
+    },
+    "clarify": {
+     "choice": "appropriate",
+     "confidence": 0.83,
+     "probabilities": {
+      "appropriate": 0.89,
+      "missing": 0.05,
+      "unnecessary": 0.06
+     }
+    },
+    "clear": {
+     "choice": "clear",
+     "confidence": 0.96,
+     "probabilities": {
+      "clear": 0.98,
+      "unclear": 0.02
+     }
+    }
+   }
+  },
+  {
+   "id": "m04",
+   "text": "2층 회의실 꺼줘 → 3시 반부터로 해줘",
+   "expected": "create_schedule",
+   "calls": [
+    {
+     "name": "create_schedule",
+     "args": {
+      "floor": "2F",
+      "use": "회의실",
+      "action": "off",
+      "time": "15:30",
+      "condition": "always",
+      "setpoint": 0
+     },
+     "result": {
+      "targets": 3,
+      "rooms": [
+       "Conf. / Group Therapy",
+       "Conf. Room",
+       "Library / Conf. Room"
+      ],
+      "estimatedSavingKwh": 6.6
+     }
+    }
+   ],
+   "ok": true,
+   "why": "일치",
+   "answer": "2층 회의실 3곳을 15:30에 끄는 스케줄 초안으로 바꿨고, 예상 절감량은 약 6.6kWh입니다.\n대상은 Conf. / Group Therapy, Conf. Room 외 1곳이며 재실 여부와 상관없이 적용하는 조건입니다.\n현재 시각 16:59보다 앞선 시각이므로 의도한 시각이 맞는지 확인해 주세요.",
+   "charts": 1,
+   "sec": 10.2,
+   "sentences": 3,
+   "jev": {
+    "model": "jev-1.14.0",
+    "usage": {
+     "input_tokens": 1142,
+     "output_tokens": 108
+    },
+    "numbers": {
+     "choice": "consistent",
+     "confidence": 0.96,
+     "probabilities": {
+      "consistent": 0.97,
+      "inconsistent": 0.03,
+      "no_numbers": 0.0
+     }
+    },
+    "clarify": {
+     "choice": "appropriate",
+     "confidence": 0.56,
+     "probabilities": {
+      "appropriate": 0.71,
+      "missing": 0.08,
+      "unnecessary": 0.21
+     }
+    },
+    "clear": {
+     "choice": "clear",
+     "confidence": 0.92,
+     "probabilities": {
+      "clear": 0.96,
+      "unclear": 0.04
+     }
+    }
+   }
+  }
+ ]
+}

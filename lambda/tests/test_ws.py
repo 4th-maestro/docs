@@ -61,7 +61,13 @@ class FakeClient:
 
 
 QUERY = {'floor': '1F', 'use': 'all', 'metric': 'powerKw', 'order': 'desc', 'limit': 3}
-ANSWER = '1층 전력 상위 3곳을 표시했습니다. 재실 없는 호실은 OFF를 검토하십시오.'
+def answer(conclusion, detail='', action=''):
+    # 구조화 응답(output_config.format) 형식의 모델 출력
+    return json.dumps({'conclusion': conclusion, 'detail': detail, 'action': action}, ensure_ascii=False)
+
+
+ANSWER_JSON = answer('1층 전력 상위 3곳을 표시했습니다.', action='재실 없는 호실은 OFF를 검토하십시오.')
+ANSWER = '1층 전력 상위 3곳을 표시했습니다.\n재실 없는 호실은 OFF를 검토하십시오.'
 
 
 def steps(events):
@@ -74,8 +80,25 @@ class RunTest(unittest.TestCase):
         events = []
         return query.run(text, events.append), events
 
+    def test_floor_unspecified_schedule_is_rejected(self):
+        # 층을 말하지 않은 제어 요청의 전체 층 초안은 실행하지 않고 되묻기(7차 평가 q22)
+        args = {'floor': 'all', 'use': '진료실', 'action': 'setpoint', 'time': '15:00', 'condition': 'always', 'setpoint': 22}
+        client = FakeClient(msg('tool_use', tool('create_schedule', args)), msg('end_turn', text(answer('어느 층에 적용할까요?', '1F, 2F, 전체'))))
+        query.client = client
+        result = query.run('진료실 설정온도 22도로 오후 3시부터', lambda e: None)
+        self.assertIsNone(result['draft'])
+        sent = client.calls[1]['messages'][-1]['content'][0]
+        self.assertTrue(sent['is_error'] and sent['content'] == query.FLOOR_ASK)
+        self.assertEqual(result['answer'], '어느 층에 적용할까요?\n1F, 2F, 전체')
+
+    def test_floor_scope_words_and_memory_allow_all(self):
+        self.assertTrue(query.floor_given('현재 재실 0곳인 곳은 꺼줘', None))
+        self.assertTrue(query.floor_given('15:30', {'turns': [{'q': '전체 층 사무실 꺼줘'}, {'q': '지금'}]}))
+        self.assertTrue(query.floor_given('15:30', {'draft': {'floor': 'all'}}))
+        self.assertFalse(query.floor_given('사무실 꺼줘', {'turns': [{'q': '전체 현황'}, {'q': '1층'}, {'q': '회의실'}]}))
+
     def test_tool_round_event_order(self):
-        result, events = self.ask(msg('tool_use', tool('query_spaces', QUERY)), msg('end_turn', text(ANSWER)))
+        result, events = self.ask(msg('tool_use', tool('query_spaces', QUERY)), msg('end_turn', text(ANSWER_JSON)))
         self.assertEqual(steps(events), [
             ('understand', 'active'), ('understand', 'done'), ('query', 'active'), ('query', 'done'),
             ('review', 'active'), ('review', 'done'), ('answer', 'active'), ('answer', 'done'),
@@ -91,13 +114,13 @@ class RunTest(unittest.TestCase):
         self.assertEqual([(s['id'], s['status']) for s in result['steps']], [('understand', 'done'), ('query', 'done'), ('review', 'done'), ('answer', 'done')])
         self.assertTrue(all(isinstance(s['ms'], int) for s in result['steps']))
         call = query.client.calls[0]
-        self.assertEqual(call['output_config'], {'effort': 'low'})
+        self.assertEqual(call['output_config'], {'effort': 'low', 'format': query.ANSWER_FORMAT})
         self.assertNotIn('tool_choice', call)
         self.assertNotIn('temperature', call)
         self.assertEqual(len(query.client.calls), 2)
 
     def test_ask_back_without_tools(self):
-        result, events = self.ask(msg('end_turn', text('몇 층의 회의실인지 알려 주십시오.')), text='회의실 꺼줘')
+        result, events = self.ask(msg('end_turn', text(answer('몇 층의 회의실인지 알려 주십시오.'))), text='회의실 꺼줘')
         self.assertEqual(steps(events), [('understand', 'active'), ('understand', 'done'), ('answer', 'active'), ('answer', 'done')])
         self.assertEqual([s['id'] for s in result['steps']], ['understand', 'answer'])
         self.assertEqual(result['highlight'], [])
@@ -111,12 +134,12 @@ class RunTest(unittest.TestCase):
 
     def test_preamble_text_is_not_answer(self):
         # 도구 호출 앞 텍스트는 answer 기록에서 제외
-        result, _ = self.ask(msg('tool_use', text('조회하겠습니다.'), tool('query_spaces', QUERY)), msg('end_turn', text(ANSWER)))
+        result, _ = self.ask(msg('tool_use', text('조회하겠습니다.'), tool('query_spaces', QUERY)), msg('end_turn', text(ANSWER_JSON)))
         self.assertEqual(result['answer'], ANSWER)
         self.assertEqual([s['id'] for s in result['steps']], ['understand', 'query', 'review', 'answer'])
 
     def test_tool_error_marks_query_error(self):
-        result, events = self.ask(msg('tool_use', tool('query_spaces', {**QUERY, 'floor': '9F'})), msg('end_turn', text('층을 다시 알려 주십시오.')))
+        result, events = self.ask(msg('tool_use', tool('query_spaces', {**QUERY, 'floor': '9F'})), msg('end_turn', text(answer('층을 다시 알려 주십시오.'))))
         self.assertIn(('query', 'error'), steps(events))
         self.assertEqual(result['highlight'], [])
 
@@ -128,7 +151,7 @@ class RunTest(unittest.TestCase):
 
 class HttpTest(unittest.TestCase):
     def test_contract_unchanged(self):
-        query.client = FakeClient(msg('tool_use', tool('query_spaces', QUERY)), msg('end_turn', text(ANSWER)))
+        query.client = FakeClient(msg('tool_use', tool('query_spaces', QUERY)), msg('end_turn', text(ANSWER_JSON)))
         res = query.handler({'body': json.dumps({'text': '1층 전력 높은 곳'})}, None)
         self.assertEqual(res['statusCode'], 200)
         body = json.loads(res['body'])
@@ -172,14 +195,14 @@ class WsTest(unittest.TestCase):
         self.assertEqual(self.api.sent, [])
 
     def test_ask_events_carry_request_id(self):
-        query.client = FakeClient(msg('end_turn', text(ANSWER)))
+        query.client = FakeClient(msg('end_turn', text(ANSWER_JSON)))
         ws.handler(ws_event('ask', {'action': 'ask', 'requestId': 'r1', 'text': '전력 높은 곳'}), None)
         self.assertTrue(all(e['requestId'] == 'r1' for e in self.api.sent))
         self.assertEqual(self.api.sent[-1]['type'], 'done')
 
     def test_gone_stops_quietly(self):
         self.api.gone_after = 1
-        query.client = FakeClient(msg('tool_use', tool('query_spaces', QUERY)), msg('end_turn', text(ANSWER)))
+        query.client = FakeClient(msg('tool_use', tool('query_spaces', QUERY)), msg('end_turn', text(ANSWER_JSON)))
         self.assertEqual(ws.handler(ws_event('ask', {'action': 'ask', 'requestId': 'r1', 'text': '전력'}), None), {'statusCode': 200})
         self.assertEqual(len(query.client.calls), 1)
 
