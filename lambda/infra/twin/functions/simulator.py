@@ -6,6 +6,9 @@
 - 기록 주기: State는 매 실행 덮어쓰기, Timeseries·Occupancy는 HISTORY_EVERY_MIN분 정각마다 추가(ttl 30일)
 - 기준 시각: EventBridge 이벤트 time(UTC)을 KST 분 단위로 맞춤. 지연 실행·재실행도 같은 분이면 같은 키(중복 없음)
 - 비활성 호실(active=false, 도면 수정으로 지운 방)은 계산하지 않음
+- 건물 목록: 매 실행 buildings.forget()으로 캐시(60초)를 비우고 다시 읽음. 삭제된 건물을 캐시로 계속 기록하는 문제 방지(#34 미확인 항목)
+- 정리: CLEANUP_EVERY_MIN분 정각마다 State에서 이번 계산 대상이 아닌 행(삭제된 건물·호실, 비활성 호실) 삭제. 계산 대상이 0건이면 정리하지 않음
+  - Timeseries·Occupancy 이력은 지우지 않음(#34 방침, ttl 30일로 자동 삭제)
 - 로컬 확인(Lambda 폴더에서, DynamoDB에 쓰지 않음): python -X utf8 infra/twin/functions/simulator.py --dry-run
 """
 import datetime as dt
@@ -69,6 +72,14 @@ def is_history_minute(t, every):
     return every > 0 and t.minute % every == 0
 
 
+def stale_keys(existing, rows):
+    """State에 있지만 이번 계산 대상이 아닌 키 [(buildingId, roomId)]. 계산 대상이 비면 빈 목록(전체 삭제 방지)"""
+    if not rows:
+        return []
+    live = {(bid, s['id']) for bid, s in rows}
+    return sorted(k for k in existing if k not in live)
+
+
 def _write(table_name, rows, keys):
     import boto3
     table = boto3.resource('dynamodb').Table(table_name)
@@ -77,18 +88,49 @@ def _write(table_name, rows, keys):
             w.put_item(Item=row)
 
 
+def _scan_keys(table_name):
+    """State 테이블의 전체 키 [(buildingId, roomId)]"""
+    import boto3
+    table = boto3.resource('dynamodb').Table(table_name)
+    keys, kw = [], {'ProjectionExpression': 'buildingId, roomId'}
+    while True:
+        r = table.scan(**kw)
+        keys += [(i['buildingId'], i['roomId']) for i in r['Items']]
+        if 'LastEvaluatedKey' not in r:
+            return keys
+        kw['ExclusiveStartKey'] = r['LastEvaluatedKey']
+
+
+def _delete(table_name, keys):
+    import boto3
+    table = boto3.resource('dynamodb').Table(table_name)
+    with table.batch_writer() as w:
+        for bid, rid in keys:
+            w.delete_item(Key={'buildingId': bid, 'roomId': rid})
+
+
 def handler(event, context):
+    import buildings
     import common
     t0 = time.monotonic()
     t = at_minute(event)
     history = is_history_minute(t, int(os.environ.get('HISTORY_EVERY_MIN', '5')))
+    cleanup = is_history_minute(t, int(os.environ.get('CLEANUP_EVERY_MIN', '10')))
+    buildings.forget()  # 삭제·교체된 건물을 60초 캐시로 다시 기록하지 않도록 매번 새로 읽음
     rows = compute(t, common.list_schedules())
     out = items(rows, t, history)
     _write(os.environ['STATE_TABLE'], out['state'], ['buildingId', 'roomId'])
     if history:
         _write(os.environ['TIMESERIES_TABLE'], out['timeseries'], ['pk', 'ts'])
         _write(os.environ['OCCUPANCY_TABLE'], out['occupancy'], ['pk', 'ts'])
-    summary = {'at': t.isoformat(), 'rooms': len(rows), 'history': history, 'ms': round((time.monotonic() - t0) * 1000)}
+    removed = 0
+    if cleanup:
+        stale = stale_keys(_scan_keys(os.environ['STATE_TABLE']), rows)
+        if stale:
+            _delete(os.environ['STATE_TABLE'], stale)
+            log.info(json.dumps({'removedState': [f'{b}#{r}' for b, r in stale[:20]], 'count': len(stale)}, ensure_ascii=False))
+        removed = len(stale)
+    summary = {'at': t.isoformat(), 'rooms': len(rows), 'history': history, 'removed': removed, 'ms': round((time.monotonic() - t0) * 1000)}
     log.info(json.dumps(summary))
     return summary
 

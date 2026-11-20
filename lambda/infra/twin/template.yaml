@@ -169,12 +169,16 @@ Resources:
           TIMESERIES_TABLE: !Ref TimeseriesTable
           OCCUPANCY_TABLE: !Ref OccupancyTable
           HISTORY_EVERY_MIN: !Ref HistoryEveryMinutes
+          # 삭제된 건물·호실의 State 행 정리 주기(분 정각 기준)
+          CLEANUP_EVERY_MIN: '10'
           SCHEDULES_TABLE: !If [HasSchedules, !Ref SchedulesTableName, !Ref AWS::NoValue]
           OWNERS_TABLE: !If [HasOwners, !Ref OwnersTableName, !Ref AWS::NoValue]
       Policies:
         - DynamoDBReadPolicy: {TableName: !Ref BuildingsTable}
         - DynamoDBReadPolicy: {TableName: !Ref RoomsTable}
         - DynamoDBWritePolicy: {TableName: !Ref StateTable}
+        # 정리용 키 스캔(삭제는 BatchWriteItem으로 쓰기 정책에 포함)
+        - DynamoDBReadPolicy: {TableName: !Ref StateTable}
         - DynamoDBWritePolicy: {TableName: !Ref TimeseriesTable}
         - DynamoDBWritePolicy: {TableName: !Ref OccupancyTable}
         - !If [HasSchedules, {DynamoDBReadPolicy: {TableName: !Ref SchedulesTableName}}, !Ref AWS::NoValue]

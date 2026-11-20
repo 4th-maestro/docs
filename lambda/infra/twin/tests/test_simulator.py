@@ -74,21 +74,50 @@ class SimulatorTest(unittest.TestCase):
         t = simulator.at_minute({'time': '2026-11-20T06:41:37Z'})
         self.assertEqual(t.isoformat(), '2026-11-20T15:41:00+09:00')
 
+    ENV = {'STATE_TABLE': 'S', 'TIMESERIES_TABLE': 'T', 'OCCUPANCY_TABLE': 'O', 'HISTORY_EVERY_MIN': '5', 'CLEANUP_EVERY_MIN': '10'}
+
+    def _run(self, utc, existing=()):
+        """handler 1회 실행: (결과, 테이블별 쓰기 건수, 삭제 키, 스캔 여부)"""
+        writes, deleted, scanned = {}, [], []
+        with mock.patch.dict(os.environ, self.ENV), \
+                mock.patch.object(simulator, '_write', lambda name, rows, keys: writes.__setitem__(name, len(rows))), \
+                mock.patch.object(simulator, '_scan_keys', lambda name: scanned.append(name) or list(existing)), \
+                mock.patch.object(simulator, '_delete', lambda name, keys: deleted.extend(keys)):
+            r = simulator.handler({'time': utc}, None)
+        return r, writes, deleted, scanned
+
     def test_handler_writes_tables(self):
-        writes = {}
-        env = {'STATE_TABLE': 'S', 'TIMESERIES_TABLE': 'T', 'OCCUPANCY_TABLE': 'O', 'HISTORY_EVERY_MIN': '5'}
-        with mock.patch.dict(os.environ, env), \
-                mock.patch.object(simulator, '_write', lambda name, rows, keys: writes.__setitem__(name, len(rows))):
-            r = simulator.handler({'time': '2026-11-20T06:40:00Z'}, None)  # 15:40 KST, 이력 기록 분
+        r, writes, _, _ = self._run('2026-11-20T06:45:00Z')  # 15:45 KST: 이력 기록, 정리 안 함
         n = r['rooms']
         self.assertTrue(r['history'])
         self.assertEqual(writes, {'S': n, 'T': n, 'O': n})
-        with mock.patch.dict(os.environ, env), \
-                mock.patch.object(simulator, '_write', lambda name, rows, keys: writes.__setitem__(name, -1)):
-            writes.clear()
-            r = simulator.handler({'time': '2026-11-20T06:41:00Z'}, None)
+        r, writes, _, scanned = self._run('2026-11-20T06:41:00Z')
         self.assertFalse(r['history'])
         self.assertEqual(set(writes), {'S'})
+        self.assertEqual(scanned, [])
+
+    def test_cache_cleared_each_run(self):
+        # 매 실행 건물 캐시를 비워 삭제된 건물을 다시 기록하지 않음
+        with mock.patch.object(buildings, 'forget') as forget:
+            self._run('2026-11-20T06:41:00Z')
+        forget.assert_called_once()
+
+    def test_cleanup_removes_only_stale_rows(self):
+        live = ('main', buildings.rooms('main')[0]['id'])
+        existing = [live, ('b-deleted1', 'r-1'), ('main', 'removed-room')]
+        r, _, deleted, scanned = self._run('2026-11-20T06:40:00Z', existing)  # 15:40 KST: 정리 분
+        self.assertEqual(scanned, ['S'])
+        self.assertEqual(sorted(deleted), [('b-deleted1', 'r-1'), ('main', 'removed-room')])
+        self.assertEqual(r['removed'], 2)
+
+    def test_stale_keys_guard_when_no_rows(self):
+        # 계산 대상이 0건(건물 테이블 읽기 이상 등)이면 State를 지우지 않음
+        self.assertEqual(simulator.stale_keys([('main', 'x')], []), [])
+
+    def test_inactive_room_state_removed(self):
+        rows = simulator.compute(T)
+        bid, s = rows[0]
+        self.assertEqual(simulator.stale_keys([(bid, s['id'])], rows[1:]), [(bid, s['id'])])
 
 
 if __name__ == '__main__':
