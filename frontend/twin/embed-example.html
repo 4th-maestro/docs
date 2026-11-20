@@ -4,15 +4,22 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Twin Embed Example</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/sun-typeface/SUIT@2.0.5/fonts/variable/woff2/SUIT-Variable.css">
 <style>
-  body{margin:0;padding:16px;font:14px system-ui,"Malgun Gothic",sans-serif;background:#f5f6f8;color:#1b2130}
-  h1{font-size:18px;margin:0 0 12px}
-  .wrap{display:grid;grid-template-columns:1fr 280px;gap:16px}
-  iframe{width:100%;height:620px;border:0;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,.12);background:#e9edf3}
+  /* 임베드 예시(호스트 쪽): 앱 src/index.css 토큰과 같은 값, 시스템 설정 테마 */
+  :root{ --page:#f5f5f3; --canvas:#ffffff; --surface-soft:#f7f7f7; --hairline:#dddddd; --ink:#222222; --body:#3f3f3f; --muted:#6a6a6a; --r-sm:8px; --r-md:14px; color-scheme:light; }
+  @media (prefers-color-scheme: dark){ :root{ --page:#151618; --canvas:#1f2023; --surface-soft:#26282b; --hairline:#3a3c40; --ink:#e6e6e3; --body:#cfcfcb; --muted:#a2a29e; color-scheme:dark; } }
+  *{box-sizing:border-box}
+  body{margin:0;padding:24px;font:16px/1.5 'SUIT Variable',SUIT,-apple-system,system-ui,sans-serif;background:var(--page);color:var(--ink)}
+  h1{font-size:21px;font-weight:700;margin:0 0 16px}
+  .wrap{display:grid;grid-template-columns:1fr 320px;gap:24px}
+  iframe{width:100%;height:620px;border:1px solid var(--hairline);border-radius:var(--r-md);background:var(--surface-soft)}
   .ctl{display:flex;flex-direction:column;gap:8px}
-  button{padding:8px 10px;border-radius:8px;border:1px solid #ccd;background:#fff;cursor:pointer;text-align:left}
-  pre{background:#11151c;color:#cfe3ff;padding:10px;border-radius:8px;font-size:11px;height:240px;overflow:auto;margin:0}
-  @media (max-width:800px){.wrap{grid-template-columns:1fr}}
+  button{min-height:44px;padding:8px 14px;border-radius:var(--r-sm);border:1px solid var(--hairline);background:var(--canvas);color:var(--ink);font:inherit;font-size:15px;font-weight:600;cursor:pointer;text-align:left}
+  button:hover{background:var(--surface-soft)}
+  button:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+  pre{background:var(--canvas);color:var(--body);border:1px solid var(--hairline);padding:12px;border-radius:var(--r-sm);font-size:14px;height:240px;overflow:auto;margin:0}
+  @media (max-width:800px){ body{padding:16px} .wrap{grid-template-columns:1fr} }
 </style>
 </head>
 <body>

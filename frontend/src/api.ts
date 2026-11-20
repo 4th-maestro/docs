@@ -4,7 +4,6 @@ import type { Anomalies, History, Recommendations, Schedules } from './panels/ty
 import { AUTH_ON, getAccessToken, signOut } from './auth/cognito'
 import type { Step } from './ai/types'
 import type { Chart, Draft, Portfolio, QueryResult, Source, Status } from './types'
-import { withCustom } from './custom'
 
 export type ChatRecord = { sk: string; role: 'user' | 'assistant'; text: string; steps?: Step[]; highlight?: string[]; draft?: Draft | null; charts?: Chart[]; sources?: Source[] }
 
@@ -17,16 +16,15 @@ export const SUSPENDED = 'maestro:suspended'
 
 export async function call<T>(path: string, init?: RequestInit): Promise<T> {
   if (!BASE) throw new Error('VITE_API_BASE_URL 없음')
-  // '건물 추가'로 넣은 건물은 이 브라우저에만 있음 → 서버에 묻지 않고 목업 사용
-  if (/[?&]building=new-/.test(path)) throw new Error('추가한 건물')
   const token = await getAccessToken()
   if (AUTH_ON && !token) { signOut(); throw new AuthRequired('로그인이 필요합니다.') }
   const res = await fetch(`${BASE}${path}`, { ...init, headers: { 'content-type': 'application/json', ...(token ? { authorization: `Bearer ${token}` } : {}) } })
   if (res.status === 401) { signOut(); throw new AuthRequired('로그인이 필요합니다.') }
-  const data = await res.json()
+  // JSON이 아닌 오류 응답(게이트웨이 413 등)은 상태 코드 문구로 표시
+  const data = await res.json().catch(() => ({}))
   if (!res.ok) {
     if (data.code === 'COMPANY_SUSPENDED') window.dispatchEvent(new CustomEvent(SUSPENDED, { detail: data.error }))
-    throw new Error(data.error ?? `요청 실패(${res.status})`)
+    throw Object.assign(new Error(data.error ?? `요청 실패(${res.status})`), { status: res.status })
   }
   return data as T
 }
@@ -63,7 +61,12 @@ export const getChat = (building: string) =>
   call<{ messages: ChatRecord[] }>(`/chat${q(building)}`).then((r) => ({ ...r, server: true }), () => ({ messages: [] as ChatRecord[], server: false }))
 export const clearChat = (building: string) => call<{ deleted: number }>(`/chat${q(building)}`, { method: 'DELETE' }).catch(() => ({ deleted: 0 }))
 
-export const getBuildings = () => call<Portfolio>('/buildings').catch(() => mockBuildings()).then(withCustom)
+export const getBuildings = () => call<Portfolio>('/buildings').catch(() => mockBuildings())
+// 건물 목록 변경(판매사 건물 추가·수정·삭제·연결): 상단 건물 선택 목록 다시 조회
+export const BUILDINGS_CHANGED = 'maestro:buildings'
+export const buildingsChanged = () => window.dispatchEvent(new Event(BUILDINGS_CHANGED))
+// 트윈 building.json(관리자 또는 소속 기업 구성원), 없으면 404
+export const getTwin = (id: string) => call<unknown>(`/buildings/${encodeURIComponent(id)}/twin`)
 
 export async function ask(text: string, building: string): Promise<QueryResult> {
   try {
@@ -109,7 +112,7 @@ export type CompanyInput = Partial<Pick<Company, 'name' | 'contactName' | 'conta
 export type Member = { sub: string; email: string; role: Role; joinedAt: string }
 export type CompanyDetail = {
   company: Company
-  buildings: { id: string; name: string; use: string; floors: string[]; roomCount: number }[]
+  buildings: CompanyBuilding[]
   members: Member[]
 }
 export type AdminBuilding = { id: string; name: string; companyId: string | null; companyName: string | null }
@@ -127,24 +130,37 @@ export const assignBuilding = (buildingId: string, companyId: string | null) =>
   call<{ buildingId: string; companyId: string | null }>(`/admin/buildings/${encodeURIComponent(buildingId)}/company`, json('PUT', { companyId }))
 export const listUsers = () => call<{ users: UserRow[] }>('/admin/users')
 
+// 판매사 건물 관리: 추가(id는 브라우저 생성 b-xxxxxxxx), 정보 수정, 도면 교체·편집 저장, 영구 삭제
+// - 도면 저장 경로: PUT /buildings/{id}/twin(도면 변환 규약 docs/human/reference/plan-ingest.md 4절과 공용, 판매사 권한은 서버 판정)
+// - 도면 본문 한도 5MB(서버 413): 보내기 전에 확인
+const LIMIT = 5 * 1024 * 1024
+function upload(method: string, body: object): RequestInit {
+  const text = JSON.stringify(body)
+  if (new Blob([text]).size > LIMIT) throw new Error('도면 데이터가 5MB를 넘어 저장할 수 없습니다. 층 수나 도면 범위를 줄이십시오.')
+  return { method, body: text }
+}
+export type TwinUpload = { twin: unknown; rooms: unknown[]; plan: unknown }
+const adminBuilding = (id: string) => `/admin/buildings/${encodeURIComponent(id)}`
+export const createBuilding = (companyId: string, body: Required<BuildingInput> & TwinUpload & { id: string }) =>
+  call<{ building: CompanyBuilding }>(`${co(companyId)}/buildings`, upload('POST', body))
+export const putTwin = (id: string, body: TwinUpload) => call<{ building: CompanyBuilding; version: number }>(`/buildings/${encodeURIComponent(id)}/twin`, upload('PUT', body))
+export const patchBuilding = (id: string, body: BuildingInput) => call<{ building: CompanyBuilding }>(adminBuilding(id), json('PATCH', body))
+export const deleteBuilding = (id: string) => call<{ deleted: boolean }>(adminBuilding(id), json('DELETE'))
+
 // 기업 코드로 소속 연결(소속 기업 없음 화면): 400 코드 오류·만료, 409 이미 소속
 export const joinCompany = (code: string) => call<{ company: NonNullable<Me['company']>; role: Role }>('/me/join', json('POST', { code }))
 
-// 고객사 기업 설정(#/settings): 조회는 구성원 전체, 수정은 고객사 관리자
-// - code, codeExpiresAt, members는 고객사 관리자 응답에만 포함
-export type CompanyBuilding = { id: string; name: string; use: string; floors: string[]; roomCount: number; hours: [number, number]; weekend: boolean }
+// 고객사 기업 설정(#/settings): 구성원 조회 전용(기업 코드·구성원 미포함), 수정은 판매사 관리 화면
+// - hasTwin: 판매사 응답(GET /admin/companies/{id}, /admin/buildings)에만 포함, 트윈 building.json 저장 여부
+export type CompanyBuilding = { id: string; name: string; use: string; floors: string[]; roomCount: number; hours: [number, number]; weekend: boolean; hasTwin?: boolean }
 export type BuildingInput = Partial<Pick<CompanyBuilding, 'name' | 'use' | 'hours' | 'weekend'>>
 export type MyCompany = {
-  company: Omit<Company, 'code' | 'codeExpiresAt'> & { code?: string; codeExpiresAt?: string }
-  members?: Member[]
+  company: Omit<Company, 'code' | 'codeExpiresAt' | 'createdAt'>
   buildings: CompanyBuilding[]
 }
 export const getMyCompany = () => call<MyCompany>('/company')
-export const updateMyCompany = (body: CompanyInput) => call<{ company: Company }>('/company', json('PATCH', body))
-export const updateBuilding = (id: string, body: BuildingInput) => call<{ building: CompanyBuilding }>(`/buildings/${encodeURIComponent(id)}`, json('PATCH', body))
 
-// 구성원 역할·제외와 변경 이력: 고객사 관리자 '/company', 판매사 co(기업 id)가 같은 형식
-// - 마지막 고객사 관리자의 역할 변경·제외는 409
+// 구성원 역할·제외와 변경 이력: 판매사 co(기업 id), 고객사 변경 이력은 '/company'(조회만)
 export type AuditItem = { at: string; actor: { email: string; role: string }; action: string; target: string; detail?: Record<string, unknown> }
 const member = (base: string, sub: string) => `${base}/members/${encodeURIComponent(sub)}`
 export const setMemberRole = (base: string, sub: string, role: Role) => call<{ member: Member }>(member(base, sub), json('PATCH', { role }))

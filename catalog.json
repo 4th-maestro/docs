@@ -111,6 +111,12 @@
       "type": "explanation"
     },
     {
+      "path": "docs/human/explanation/decisions/2026-11-20(판매사 건물 관리와 고객사 관제 전용).md",
+      "title": "판매사 건물 관리와 고객사 관제 전용",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
       "path": "docs/human/explanation/decisions/2026-11-20(판매사·고객사 회원 구조).md",
       "title": "판매사·고객사 회원 구조",
       "audience": "human",
@@ -299,6 +305,12 @@
     {
       "path": "docs/human/reference/document-locations.md",
       "title": "원본 문서 위치",
+      "audience": "human",
+      "type": "reference"
+    },
+    {
+      "path": "docs/human/reference/plan-ingest.md",
+      "title": "도면 변환 규약",
       "audience": "human",
       "type": "reference"
     },

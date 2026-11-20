@@ -7,6 +7,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import * as P from '../pipeline/pipeline-core.js';
+import { expandFloorGroups, floorResultFor } from '../pipeline/plan-upload.js';
 import { decode, encodePng } from './image-io.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -36,7 +37,13 @@ for (const p of R.interior || []) for (const k of ['floorBox', 'wallBox']) if (p
 // 모델 예측 결과 파일
 if (R.acModel?.file) { const f = path.resolve(base, R.acModel.file); if (fs.existsSync(f)) R.acModel.result = JSON.parse(fs.readFileSync(f, 'utf8')); else console.log('  확인: 모델 결과 파일 없음', R.acModel.file); }
 
-const out = P.assemble(R, results);
+const { recipe, sources } = expandFloorGroups(R), expandedResults = {};
+for (const floor of recipe.floors) {
+  const src = sources.get(floor.id).id;
+  expandedResults[floor.id] = floorResultFor(results[src], src, floor.id);
+  rects[floor.id] = rects[src];
+}
+const out = P.assemble(recipe, expandedResults);
 fs.mkdirSync(path.dirname(outPath), { recursive:true });
 fs.writeFileSync(outPath, JSON.stringify(out.json, null, 1));
 if (out.json.site && R.site?.image) {          // 스카이뷰 사진을 데이터 폴더로 복사 (검증 그림·파이프라인 화면용)
@@ -54,7 +61,7 @@ for (const w of out.warn) console.log('  확인:', w);
 if (opt['model-input']) {
   const dir = path.resolve(root, opt['model-input']); fs.mkdirSync(dir, { recursive:true });
   // 모델 입력은 평면도 사진과 같은 좌표(스카이뷰 모양 보정 전)
-  const inp = P.modelInput(R, out.planFloors);
+  const inp = P.modelInput(recipe, out.planFloors);
   for (const f of out.planFloors) {
     const fl = inp.floors.find(x => x.id === f.id);
     if (rects[f.id]) fs.writeFileSync(path.join(dir, fl.plan), encodePng(rects[f.id])); else fl.plan = null;

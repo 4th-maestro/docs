@@ -1,4 +1,3 @@
-import { customStatus, isCustom } from './custom'
 import type { Draft, QueryResult, Room, Status } from './types'
 
 // API를 쓸 수 없을 때 대신 쓰는 목업(건물별 데모 상태 JSON 기반). 결과에는 mock 표시가 붙음
@@ -7,8 +6,6 @@ import type { Draft, QueryResult, Room, Status } from './types'
 // 건물별 public/demo/<id>.json(lambda/tools/demo_status.py 생성), 동시 요청이 한 번만 받도록 Promise 보관
 const cache = new Map<string, Promise<Status>>()
 export function demoStatus(building: string): Promise<Status> {
-  // 추가한 건물: 트윈에서 렌더링한 뒤에만 데이터가 있음
-  if (isCustom(building)) { const s = customStatus(building); return s ? Promise.resolve(s) : Promise.reject(new Error('도면을 넣고 트윈에서 렌더링하면 데이터가 생성됩니다.')) }
   let p = cache.get(building)
   if (!p) {
     p = fetch(`/demo/${encodeURIComponent(building)}.json`).then((r) => r.json() as Promise<Status>).catch(() => {

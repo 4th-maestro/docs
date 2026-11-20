@@ -16,7 +16,7 @@ Parameters:
     Default: '*'
   TwinPrefix:
     Type: String
-    # 건물·호실 테이블: maestro-twin 스택(infra/twin/template.yaml)의 <Prefix>-Buildings, <Prefix>-Rooms
+    # 트윈 테이블: maestro-twin 스택(infra/twin/template.yaml)의 <Prefix>-Buildings, -Rooms, -Equipment, -State. 이름으로만 참조
     Default: maestro
 
 Globals:
@@ -223,6 +223,7 @@ Resources:
   # 조회·관리 API 통합 함수(api.py): 화면 1개당 콜드 스타트 1회
   # - 메모리 1769MB(vCPU 1개): 전력 분석 월 비교 첫 호출(로컬 2.0초)과 전체 현황 계산
   # - 권한: 스케줄·대화·기업·구성원·건물 소속·변경 이력 테이블, 사용자 목록 조회(관리자 API·이메일 조회, 권한 판정은 tenant.py)
+  # - 판매사 건물 관리(admin.py): 트윈 테이블 Buildings·Rooms·Equipment·State 쓰기·삭제, 도면 버킷 plans/ 읽기·쓰기·삭제
   ApiFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -230,11 +231,16 @@ Resources:
       MemorySize: 1769
       Timeout: 29
       Environment:
-        Variables: {USER_POOL_ID: !Ref UserPool, PLANS_BUCKET: !Ref PlansBucket}
+        Variables:
+          USER_POOL_ID: !Ref UserPool
+          PLANS_BUCKET: !Ref PlansBucket
+          EQUIPMENT_TABLE: !Sub '${TwinPrefix}-Equipment'
+          STATE_TABLE: !Sub '${TwinPrefix}-State'
       Policies:
-        - DynamoDBReadPolicy: {TableName: !Sub '${TwinPrefix}-Buildings'}
-        - DynamoDBReadPolicy: {TableName: !Sub '${TwinPrefix}-Rooms'}
-        - S3ReadPolicy: {BucketName: !Ref PlansBucket}
+        - DynamoDBCrudPolicy: {TableName: !Sub '${TwinPrefix}-Buildings'}
+        - DynamoDBCrudPolicy: {TableName: !Sub '${TwinPrefix}-Rooms'}
+        - DynamoDBCrudPolicy: {TableName: !Sub '${TwinPrefix}-Equipment'}
+        - DynamoDBCrudPolicy: {TableName: !Sub '${TwinPrefix}-State'}
         - DynamoDBCrudPolicy: {TableName: !Ref SchedulesTable}
         - DynamoDBCrudPolicy: {TableName: !Ref ChatTable}
         - DynamoDBCrudPolicy: {TableName: !Ref CompaniesTable}
@@ -245,11 +251,21 @@ Resources:
             - Effect: Allow
               Action: [cognito-idp:ListUsers, cognito-idp:ListUsersInGroup]
               Resource: !GetAtt UserPool.Arn
+            # 목록 권한은 접두어 조건 없이 버킷 전체: 없는 키 조회가 403 대신 NoSuchKey(404)가 되려면 필요
+            - Effect: Allow
+              Action: s3:ListBucket
+              Resource: !GetAtt PlansBucket.Arn
+            - Effect: Allow
+              Action: [s3:GetObject, s3:PutObject, s3:DeleteObject]
+              Resource: !Sub '${PlansBucket.Arn}/plans/*'
       Events:
         Status: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /rooms/status, Method: GET}}
         History: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /rooms/history, Method: GET}}
         Buildings: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /buildings, Method: GET}}
         Plan: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: '/buildings/{id}/plan', Method: GET}}
+        Twin: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: '/buildings/{id}/twin', Method: GET}}
+        # 트윈 확정 저장(판매사 전용, admin.twin): 도면 변환 규약(plan-ingest.md 4절)과 같은 경로
+        SaveTwin: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: '/buildings/{id}/twin', Method: PUT}}
         Recommend: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /recommendations, Method: GET}}
         Anomalies: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /anomalies, Method: GET}}
         ListSchedules: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /schedules, Method: GET}}
@@ -270,11 +286,15 @@ Resources:
         CompanyCode: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: '/admin/companies/{id}/code', Method: POST}}
         AdminBuildings: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /admin/buildings, Method: GET}}
         AssignBuilding: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: '/admin/buildings/{id}/company', Method: PUT}}
+        # 판매사 건물 관리: 등록(트윈·도면·호실), 정보 수정, 영구 삭제
+        AdminCreateBuilding: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: '/admin/companies/{id}/buildings', Method: POST}}
+        AdminUpdateBuilding: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: '/admin/buildings/{id}', Method: PATCH}}
+        AdminDeleteBuilding: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: '/admin/buildings/{id}', Method: DELETE}}
         Me: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /me, Method: GET}}
         AdminUpdateMember: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: '/admin/companies/{id}/members/{sub}', Method: PATCH}}
         AdminRemoveMember: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: '/admin/companies/{id}/members/{sub}', Method: DELETE}}
         AdminCompanyAudit: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: '/admin/companies/{id}/audit', Method: GET}}
-        # 고객사 설정(customer.py): 기업 코드 가입, 기업 정보, 구성원, 변경 이력, 건물 정보 수정
+        # 고객사 설정(customer.py): 기업 코드 가입, 기업 정보·변경 이력 조회. 기업·구성원·건물 변경 경로는 구성원에게 403(판매사 전용)
         JoinCompany: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /me/join, Method: POST}}
         MyCompany: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /company, Method: GET}}
         UpdateMyCompany: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /company, Method: PATCH}}
@@ -473,6 +493,7 @@ Resources:
           FixedSizeChunkingConfiguration: {MaxTokens: 300, OverlapPercentage: 20}
 
   # 건물 도면(내장 3D 형식): plans/<건물>/current.json, v<번호>.json. 판매사·고객사 구조 1단계(2026-11-20)
+  # 트윈 확정본: plans/<건물>/building.json, building-v<번호>.json(판매사 건물 등록·트윈 확정 저장)
   PlansBucket:
     Type: AWS::S3::Bucket
     Properties:

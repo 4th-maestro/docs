@@ -20,6 +20,9 @@ export const forUpdate = (f: Form, c: Info) => { const base = toForm(c); return 
 export const badMail = (f: Form) => !!f.contactEmail.trim() && !EMAIL.test(f.contactEmail.trim())
 export const formOk = (f: Form) => !!f.name.trim() && !badMail(f)
 
+// 운영 시간 표시: 0~24시, 두 자리
+export const hh = (h: number) => String(h).padStart(2, '0')
+
 // 날짜 표시: 한국 시각 기준 YYYY-MM-DD
 export const day = (iso?: string) => (iso ? new Date(iso).toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' }) : '')
 export const msg = (e: unknown) => (e as Error).message

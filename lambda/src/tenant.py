@@ -2,6 +2,7 @@
 
 - 호출자: HTTP API는 JWT 권한 부여자 claims(sub, cognito:groups), WebSocket은 REQUEST 권한 부여자 context(sub, groups)
 - 역할: admin(판매사 총관리자, Cognito admin 그룹, 모든 건물), manager(고객사 관리자), operator(운영자). 고객사 역할은 MembersTable에서 읽음
+- 권한 분리(2026-11-20): 기업·구성원·건물·도면·트윈 변경은 admin 전용. 고객사 구성원(manager·operator)은 조회와 운영(AI 질의, 대화 기록, 스케줄 저장·취소)만
 - 건물 소속: BuildingOwnersTable(buildingId → companyId). 소속 기업이 없는 건물은 admin만 접근
 - 캐시: 실행 환경별 60초(구성원, 건물 소속, 기업 상태). 역할·소속·상태 변경은 최대 60초 뒤 다른 실행 환경에 반영
 - 중지 기업: 기업 status가 suspended면 구성원의 건물 API·/company API는 403(code COMPANY_SUSPENDED), GET /me는 허용, admin은 검사 안 함
@@ -67,7 +68,8 @@ def scan(env):
 
 
 def query(env, index, attr, value):
-    return _all(table(env).query, IndexName=index, KeyConditionExpression='#k = :v',
+    # index None: 기본 키(파티션 키) 조회
+    return _all(table(env).query, KeyConditionExpression='#k = :v', **({'IndexName': index} if index else {}),
                 ExpressionAttributeNames={'#k': attr}, ExpressionAttributeValues={':v': value})
 
 
@@ -204,14 +206,6 @@ def require_building(event, bid):
     allowed = allowed_buildings(caller(event))
     if allowed is not None and bid not in allowed:
         raise Forbidden()
-
-
-def can_edit(ctx, bid):
-    """건물·도면 수정 권한: admin, 또는 소속 기업의 고객사 관리자"""
-    if not enabled() or ctx['role'] == ADMIN:
-        return True
-    require_active(ctx)
-    return ctx['role'] == 'manager' and bool(ctx['companyId']) and owners().get(bid) == ctx['companyId']
 
 
 def email(sub):
