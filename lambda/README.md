@@ -12,6 +12,7 @@ Maestro API(Lambda, Python 3.12)와 AWS 리소스(SAM) 폴더입니다. 구조 �
 | `src/recommend.py` | `GET /recommendations?floor=1F` 낭비 규칙 3종 추천, 예상 절감량, 스케줄 초안 |
 | `src/anomalies.py` | `GET /anomalies?floor=1F` 설정온도 미도달 HVAC 상세, 기대 온도, 원인 후보(규칙 기반 추정) |
 | `src/history.py` | `GET /rooms/history?floor=1F` 층 전력 시간별 평균(kW)과 사용량(kWh), 오늘 0시~현재와 어제 0~23시 |
+| `src/energy.py` | `GET /energy/compare·trend·heatmap·breakdown` 건물별 전력 사용량 비교, 기간 추이, 요일×시간 평균 kW, 층·용도 구성([설계](../docs/human/explanation/architecture.md) 11절) |
 | `src/tools.py` | LLM 도구 정의와 서버 검증 |
 | `src/sim.py`, `src/rooms.json` | 가상 HVAC 상태 생성, 시연 호실 137개(공개 IFC 의원 건물) |
 | `tools/demo_status.py` | Frontend 데모용 상태 JSON 출력 |

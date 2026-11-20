@@ -13,6 +13,7 @@ Maestro 운영 대시보드(React, Vite, TypeScript)입니다. 디자인 기준�
 | `src/ai/ThinkingPanel.tsx` | AI 사고 과정 패널(단계, 조건 칩, 스트리밍 답변)과 진행 표시 `ThinkingBadge` |
 | `src/mock.ts` | 목업: 데모 상태, 정규식 기반 질의 해석, 스케줄 임시 저장 |
 | `src/panels/` | 운영 패널 4종: 최적 제어 추천, 이상 감지, 오늘 스케줄(취소), 전력 추이(오늘·어제 SVG 그래프). 60초마다 다시 조회 |
+| `src/energy/` | 에너지 분석: `BuildingCompare`(건물별 kWh·1㎡당·전기요금 막대), `EnergyPage`(일·주·월 추이, 사용 구성 흐름도, 최근 4주 요일×시간 히트맵). API 실패 시 `mock.ts` 목업([설계](../docs/human/explanation/architecture.md) 11절) |
 | `src/panels/mock.ts` | 운영 패널 목업: 데모 상태 기반 추천·이상 감지·전력 곡선, 브라우저 메모리 스케줄 저장소 |
 | `public/demo-status.json` | 데모 모드 상태(`python3 ../lambda/tools/demo_status.py`로 생성) |
 

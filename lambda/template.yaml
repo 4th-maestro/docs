@@ -176,6 +176,22 @@ Resources:
       Events:
         Get: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /rooms/history, Method: GET}}
 
+  # 건물별 전력 사용량 분석: 지난 날짜 시간별 kWh는 실행 환경 메모리에 캐시, 오늘만 요청마다 계산
+  EnergyFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: energy.handler
+      # CPU 할당은 메모리 비례(1,769MB에서 vCPU 1개). 512MB(약 0.3 vCPU)는 첫 호출 compare/month(건물 4개 × 최대 62일, 로컬 2.0초)가 8초 초과 예상
+      MemorySize: 1769
+      # 첫 호출 최악 대비 여유, HTTP API 통합 제한 30초 미만
+      Timeout: 29
+      Policies: [DynamoDBReadPolicy: {TableName: !Ref SchedulesTable}]
+      Events:
+        Compare: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /energy/compare, Method: GET}}
+        Trend: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /energy/trend, Method: GET}}
+        Heatmap: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /energy/heatmap, Method: GET}}
+        Breakdown: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /energy/breakdown, Method: GET}}
+
   WebBucket:
     Type: AWS::S3::Bucket
     Properties:
