@@ -21,6 +21,7 @@
 | `src/settings/SettingsPage.tsx` | 고객사 기업 정보(`#/settings`, 조회 전용): 기본 정보(기업 코드 미표시), 건물(용도, 층·호실 수, 운영 시간, 주말 운영), 변경 이력(최신 50건). 수정 기능 없음 |
 | `src/ai/ChartView.tsx` | AI 답변 그래프: 막대(한 색, 값 글자), 선(이번 기간 실선, 이전 기간 점선, 마우스·키보드 값 표시), 그래프·표 전환, 크게 보기 창(`<dialog>`) |
 | `src/ai/ChatPanel.tsx` | AI 운영 도우미(말풍선 대화, 처리 단계 접기, 초안 카드와 저장 안내, 근거 문서 목록(`sources`, http(s) 링크만, 새 탭), 대상 호실 3D 보기, 대화 지우기). 기록은 `GET /chat`, 실패 시 화면에만 기록 |
+| `src/ops/` | 자동 운영 화면: `OpsMessages.tsx`(AI 운영 도우미 대화 안 알림 카드와 마지막 상태 메시지의 ON/OFF 스위치), `types.ts`(응답 형식), `mock.ts`(API 없는 목업, 건물별 메모리). 규칙은 [자동 운영 화면 규약](../docs/human/reference/auto-operations.md) |
 | `src/twin3d/Twin3D.tsx` | Three.js 층 3D 트윈: 도면 API(`GET /buildings/{id}/plan`, 실패 시 `public/floorplans/<건물>.json`) 호실 다각형, 지표 색, HVAC 운전·이상 표시, 호실 선택, 시점 초기화·위에서 보기 |
 | `src/api.ts` | Lambda API 호출(모든 조회에 `building` 전달), 실패하면 목업으로 대체하고 화면에 목업 표시. `GET /me`, `POST /me/join`, 기업 정보 조회 API(`GET /company`, `GET /company/audit`), 트윈 조회(`GET /buildings/{id}/twin`), 판매사 관리 API(`/admin/companies`, `/admin/buildings`, `/admin/users`, 건물 추가 `POST /admin/companies/{id}/buildings`, 정보 수정 `PATCH /admin/buildings/{id}`, 삭제 `DELETE /admin/buildings/{id}`), 도면 교체·편집 저장(`PUT /buildings/{id}/twin`, 판매사 권한은 서버 판정)는 목업 대체 없이 오류 표시. 도면 본문이 5MB를 넘으면 보내기 전에 안내. 403 `COMPANY_SUSPENDED`는 서비스 중지 화면 전환 이벤트(`SUSPENDED`) 발생 |
 | `src/ai/useAsk.ts` | AI 질의 훅. `buildingId` 전송, WebSocket 단계 이벤트 수신, 연결 실패 시 `api.ts` 질의로 대체, 45초 제한 |

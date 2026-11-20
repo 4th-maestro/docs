@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
-import { CheckCircle2, Clock, LocateFixed, Power, PowerOff, Thermometer } from 'lucide-react'
+import { Bot, CheckCircle2, Clock, LocateFixed, Power, PowerOff, Thermometer } from 'lucide-react'
 import { cancelSchedule, listSchedules } from '../api'
 import { Seg } from '../energy/parts'
 import '../energy/energy.css'
@@ -10,6 +10,9 @@ import type { Room } from '../types'
 import Panel from './Panel'
 import type { Schedule } from './types'
 import { usePoll } from './usePoll'
+
+// 자동 운영이 저장한 끄기 스케줄(sourceText가 "자동 운영:"으로 시작, Lambda infra/ops)
+const isAuto = (s: { sourceText?: string }) => !!s.sourceText?.startsWith('자동 운영')
 
 const ACTION = { off: '운전 OFF', on: '운전 ON', setpoint: '설정온도' }
 const ICON = { off: PowerOff, on: Power, setpoint: Thermometer }
@@ -109,7 +112,7 @@ export default function ScheduleTimeline({ building, floor, floors, refreshKey, 
                         style={{ top, height: y(24 * 60) - top, '--i': i } as CSSProperties}
                         onClick={() => { setPicked(s.id); setConfirm(false); setMsg({ ok: '', err: '' }) }}
                         aria-pressed={sel?.id === s.id}
-                        aria-label={`${s.time}부터 ${act(s)}, ${target(s, byId, idsOf(s))}, ${s.condition === 'unused' ? '재실 없을 때만' : '항상'}, ${on ? '적용 중' : '적용 예정'}`}
+                        aria-label={`${isAuto(s) ? '자동 운영, ' : ''}${s.time}부터 ${act(s)}, ${target(s, byId, idsOf(s))}, ${s.condition === 'unused' ? '재실 없을 때만' : '항상'}, ${on ? '적용 중' : '적용 예정'}`}
                       >
                         {/* 글자 묶음은 시간표 스크롤 위치에 고정: 이른 시각에 시작한 긴 칸도 내용이 화면에 남음 */}
                         <span className="tt-in">
@@ -117,6 +120,7 @@ export default function ScheduleTimeline({ building, floor, floors, refreshKey, 
                           <span className="tt-act"><Icon size={18} aria-hidden />{act(s)}</span>
                           <span className="tt-target">{target(s, byId, idsOf(s))}</span>
                           <span className="tt-cond">{s.condition === 'unused' ? '재실 없을 때만' : '항상'}</span>
+                          {isAuto(s) && <span className="tt-auto"><Bot size={16} aria-hidden />자동 운영</span>}
                           <span className="tt-state">{on ? <><CheckCircle2 size={16} aria-hidden />적용 중</> : <><Clock size={16} aria-hidden />예정</>}</span>
                         </span>
                       </button>
@@ -133,7 +137,7 @@ export default function ScheduleTimeline({ building, floor, floors, refreshKey, 
           {sel && (
             <div className="tt-detail fade-in" key={sel.id}>
               <div className="tt-detail-head">
-                <b>{sel.time}부터 {act(sel)}</b>
+                <b>{sel.time}부터 {act(sel)}{isAuto(sel) && <span className="tt-auto"><Bot size={16} aria-hidden />자동 운영</span>}</b>
                 <span>{sel.time <= now ? '적용 중' : '적용 예정'}</span>
               </div>
               <p>{target(sel, byId, selIds)}, {sel.condition === 'unused' ? '재실이 없을 때만 적용' : '재실과 관계없이 적용'}</p>

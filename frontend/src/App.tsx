@@ -1,10 +1,11 @@
-import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, lazy, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { AlertTriangle, CalendarClock, Droplets, Info, Moon, RefreshCw, Sun, Zap } from 'lucide-react'
 import AdminPage from './admin/AdminPage'
 import ChatPanel, { type ChatMsg } from './ai/ChatPanel'
 import type { AskResult } from './ai/types'
 import { useAsk } from './ai/useAsk'
-import { BUILDINGS_CHANGED, clearChat, getBuildings, getChat, getMe, getStatus, getTwin, joinCompany, saveSchedule, SUSPENDED, type Me } from './api'
+import { actOps, BUILDINGS_CHANGED, clearChat, getBuildings, getChat, getMe, getOps, getStatus, getTwin, joinCompany, saveSchedule, setAutoApply, SUSPENDED, type Me } from './api'
+import type { Decision, OpsAction, OpsOverview } from './ops/types'
 import LoginScreen, { NoCompany, Suspended } from './auth/LoginScreen'
 import { AUTH_ON, currentEmail, isAdmin, onAuthChange, signedIn } from './auth/cognito'
 import { ME_CHANGED, MeContext } from './auth/me'
@@ -48,6 +49,8 @@ const hhmm = (iso: string) => iso.slice(11, 16)
 const LIVE_MS = 5_000
 const NO_ROOMS: Room[] = []
 const NO_IDS: string[] = []
+// 자동 운영 조회: 건물 id가 빈 값(운영 탭 아님)이면 조회하지 않음. usePoll 의존성 고정을 위해 모듈 수준 함수
+const fetchOps = (b: string) => (b ? getOps(b) : Promise.resolve(null))
 const uid = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`
 
 const STOPPED = '서비스가 중지된 기업입니다. 판매사에 문의하십시오.'
@@ -280,6 +283,52 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
   ]
 
   // 패널의 위치 버튼: 3D에서 선택하고 3D 영역을 화면 안으로 이동, 다른 층 호실이면 그 층으로 전환
+  // 자동 운영(AI 운영 도우미 대화 안 알림): 운영 탭에서 1분마다 조회, 처리 후 다시 조회
+  // - 스위치: 판매사 관리자·고객사 관리자만(운영자는 비활성, 서버도 403)
+  // - 처리 결과는 다음 조회 전까지 화면에 먼저 반영. 수락·되돌리기는 스케줄이 바뀌므로 시간표·상태도 다시 조회
+  const me = useContext(MeContext)
+  const canToggle = isAdmin() || me?.role === 'admin' || me?.role === 'manager'
+  const opsPoll = usePoll(fetchOps, ops ? building : '')
+  const [opsEdit, setOpsEdit] = useState<{ from: OpsOverview | null; value: OpsOverview } | null>(null)
+  const opsData = opsEdit && opsEdit.from === opsPoll.data ? opsEdit.value : opsPoll.data
+  const [opsBusy, setOpsBusy] = useState<string | null>(null)
+  const [opsNotice, setOpsNotice] = useState('')
+  useEffect(() => {
+    if (!opsNotice) return
+    const id = setTimeout(() => setOpsNotice(''), 6000)
+    return () => clearTimeout(id)
+  }, [opsNotice])
+  function opsFail(e: unknown) {
+    const s = (e as { status?: number }).status
+    setOpsNotice(s === 409 ? '이미 처리된 제안입니다. 목록을 다시 불러왔습니다.'
+      : s === 404 ? '제안을 찾을 수 없습니다. 목록을 다시 불러왔습니다.'
+        : s === 403 ? '권한이 없습니다. 자동 운영 설정은 판매사 관리자와 고객사 관리자만 바꿀 수 있습니다.'
+          : (e as Error).message)
+    opsPoll.reload()
+  }
+  async function opsAct(d: Decision, action: OpsAction) {
+    if (!opsData) return
+    setOpsBusy(d.decisionId)
+    setOpsNotice('')
+    try {
+      const nd = await actOps(building, d.decisionId, action)
+      const decisions = opsData.decisions.map((x) => (x.decisionId === nd.decisionId ? { ...x, ...nd } : x))
+      setOpsEdit({ from: opsPoll.data, value: { ...opsData, decisions, pendingCount: decisions.filter((x) => x.status === 'pending').length } })
+      if (action !== 'reject') { setScheduleKey((k) => k + 1); load() }
+      opsPoll.reload()
+    } catch (e) { opsFail(e) } finally { setOpsBusy(null) }
+  }
+  async function opsToggle(autoApply: boolean) {
+    if (!opsData) return
+    setOpsBusy('settings')
+    setOpsNotice('')
+    try {
+      const settings = await setAutoApply(building, autoApply)
+      setOpsEdit({ from: opsPoll.data, value: { ...opsData, settings } })
+      opsPoll.reload()
+    } catch (e) { opsFail(e) } finally { setOpsBusy(null) }
+  }
+
   function locate(id: string) {
     const r = all.find((x) => x.id === id)
     if (r && r.floor !== floor) setFloor(r.floor)
@@ -405,6 +454,7 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
                 {sim && twinOn && <SimPanel frame={() => frame.current} onLocate={locate} />}
                 {sim && import.meta.env.DEV && building === 'eng6' && <ExperimentPanel />}
                 {ops && <ChatPanel
+                  ops={opsData && { overview: opsData, canToggle, busy: opsBusy, notice: opsNotice, onAct: opsAct, onToggle: opsToggle, onLocate: (id) => { setFocus([id]); locate(id) } }}
                   ai={ai} messages={messages} rooms={rooms} suggestions={suggestions} busy={busy} history={history}
                   onSend={send} onClear={clear} onSave={save}
                   onClose={(m) => { setMessages((ms) => ms.map((x) => (x.id === m.id ? { ...x, draftState: 'closed' as const } : x))); setFocus(NO_IDS) }}

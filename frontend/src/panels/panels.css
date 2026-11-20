@@ -112,6 +112,8 @@
 .tt-act svg { color: var(--c); flex: none; }
 .tt-target { font-size: 16px; font-weight: 600; }
 .tt-cond, .tt-state { display: inline-flex; align-items: center; gap: 4px; font-size: 14px; color: var(--body); }
+/* 자동 운영 스케줄 라벨(아이콘 + 글자) */
+.tt-auto { display: inline-flex; align-items: center; gap: 4px; margin-left: 6px; padding: 0 8px; border-radius: var(--r-full); background: var(--surface-strong); font-size: 14px; font-weight: 600; color: var(--ink); vertical-align: middle; }
 /* 지금 선은 칸 뒤(z-index 1), 시각 열의 표시만 보임: 칸 글자를 가리지 않음 */
 .tt-now { position: absolute; left: 0; right: 0; height: 0; border-top: 3px solid var(--ink); z-index: 1; pointer-events: none; }
 /* 지금 표시: 선과 분리해 칸보다 앞(z-index 4) */
