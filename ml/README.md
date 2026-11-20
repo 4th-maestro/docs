@@ -9,7 +9,7 @@
 | `train.py` | SageMaker 학습 진입점. ultralytics YOLO11s 미세조정(이미지 1024px). 실제 도면 타일(`real` 채널)을 반복해 섞고, 합성·실제 테스트 결과를 `test_metrics.json`에 저장 |
 | `requirements.txt` | 학습 컨테이너 추가 패키지(ultralytics 8.4.200) |
 | `sagemaker.sh` | AWS CLI 실행: 역할·버킷 생성, 데이터 생성 처리 작업, 학습 작업, Registry 등록, 상태·로그 조회 |
-| `hvac_types.json` | 검출 클래스별 LG 실내기 예시 모델과 매뉴얼 링크(FR-19 표 조회). 확인하지 못한 값은 `null` |
+| `hvac_types.json` | 검출 클래스별 LG 실내기 예시 모델, 매뉴얼 링크, 국내 용량별 모델(`models`, FR-19 표 조회). 근거는 [국내 모델 조사](../docs/human/explanation/research/2026-11-21%28LG%20%EA%B5%AD%EB%82%B4%20%EC%8B%9C%EC%8A%A4%ED%85%9C%EC%97%90%EC%96%B4%EC%BB%A8%20%EB%AA%A8%EB%8D%B8%EA%B3%BC%20%ED%98%84%EC%97%85%20%EB%8C%80%EC%9D%91%20%EB%B0%A9%EC%8B%9D%29.md). 확인하지 못한 값은 `null` |
 | `test_synth.py` | 합성 단위 테스트 5건 |
 | `real_labels/` | 실제 설계도면 실내기 라벨(페이지 좌표, 출처 공고번호). 도면 파일은 저장소에 넣지 않음 |
 | `real_tiles.py` | 실제 도면 라벨과 PDF로 YOLO 타일 생성(1m당 80px, 1400px 타일) |
