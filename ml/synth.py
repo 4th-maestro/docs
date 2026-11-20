@@ -23,7 +23,7 @@ from PIL import Image, ImageDraw, ImageFont
 # 클래스 순서가 YOLO 클래스 번호. LG 모델 연결은 hvac_types.json
 CLASSES = ['cassette_4way', 'cassette_1way', 'wall_mounted', 'ceiling_duct', 'floor_standing', 'cassette_2way']
 ON_WALL = {2, 4}
-CLASS_WEIGHT = [1, 1, 1, 1, 2, 1]
+CLASS_WEIGHT = [1, 1, 1, 1, 2, 2]
 # 국내 CAD 도면 배관 색(냉매 주황, 드레인 초록, 제어선 빨강)
 PIPE = [(240, 110, 40), (40, 160, 70), (220, 50, 50)]
 SVG = '{http://www.w3.org/2000/svg}'
@@ -108,7 +108,7 @@ def place(rng, rooms, t):
         if 'Outdoor' in c or a < (8 * t) ** 2 or rng.random() > 0.75:
             continue
         for _ in range(1 + (a > (45 * t) ** 2)):
-            # 스탠드형은 실제 도면 재현율이 가장 낮아(v3 0.206) 2배 비중으로 합성(v4, 2026-11-20)
+            # 스탠드형(v3 재현율 0.206)과 2방향(v4 재현율 0.60)은 2배 비중으로 합성(v4, v5, 2026-11-20)
             k = rng.choices(range(len(CLASSES)), weights=CLASS_WEIGHT)[0]
             L, D = (s * t for s in SIZE[k](rng))
             xs, ys = [p[0] for p in pts], [p[1] for p in pts]
@@ -239,16 +239,21 @@ def draw_kr(d, k, box, side, ink, w):
         d.rectangle((x0 + i, y0 + i, x1 - i, y1 - i), outline=ink, width=w)
         d.rectangle((x0 + f, y0 + f, x1 - f, y1 - f), fill=ink)
     elif k == 5:
-        # I자: 긴 변과 평행한 막대 2개와 양 끝 가로선
-        a, b = (0.3, 0.15) if H >= W else (0.15, 0.3)
-        bars = [((x, y0 + H * b), (x, y1 - H * b)) for x in (x0 + W * a, x1 - W * a)] if H >= W else \
-               [((x0 + W * a, y), (x1 - W * a, y)) for y in (y0 + H * b, y1 - H * b)]
-        caps = [((x0 + W * 0.18, y), (x1 - W * 0.18, y)) for y in (y0 + H * b, y1 - H * b)] if H >= W else \
-               [((x, y0 + H * 0.18), (x, y1 - H * 0.18)) for x in (x0 + W * a, x1 - W * a)]
-        for p in bars:
-            line(d, list(p), ink, max(2, w * 2))
-        for p in caps:
-            line(d, list(p), ink, w)
+        # 실제 도면 2방향(v6): 검게 채운 본체에 흰 대괄호 2개([ ]). 긴 변과 평행한 흰 선과 양 끝 안쪽 가로선
+        # v3~v5는 흰 바탕에 검은 막대로 그려 실제와 색이 반대였고, 실제 2방향을 스탠드형으로 판정(v5 20대 전부)
+        d.rectangle(box, fill=ink)
+        white, lw = (255, 255, 255), max(1, round(m * 0.06))
+        for side_ in (-1, 1):
+            if H >= W:
+                x = cx + side_ * W * 0.3
+                line(d, [(x, y0 + H * 0.12), (x, y1 - H * 0.12)], white, lw)
+                for y in (y0 + H * 0.12, y1 - H * 0.12):
+                    line(d, [(x, y), (x - side_ * W * 0.14, y)], white, lw)
+            else:
+                y = cy + side_ * H * 0.3
+                line(d, [(x0 + W * 0.12, y), (x1 - W * 0.12, y)], white, lw)
+                for x in (x0 + W * 0.12, x1 - W * 0.12):
+                    line(d, [(x, y), (x, y - side_ * H * 0.14)], white, lw)
     elif k == 1:
         # 토출 쪽 긴 변을 따라 채운 띠
         if W >= H:
@@ -274,25 +279,26 @@ def draw_kr(d, k, box, side, ink, w):
 
 
 def standing_kr(d, box, side, ink, w):
-    """실제 도면 스탠드형(v4): 검게 채운 본체, 벽 쪽 흰 띠와 가운데 막대, 앞면에서 떨어진 가는 곡선 토출 화살표 3개."""
+    """실제 도면 스탠드형: 검게 채운 본체, 벽 쪽 가는 흰 선 2줄, 앞면에서 떨어진 가는 곡선 토출 화살표 3개.
+    v4는 흰 띠를 넓게 그려 실제 2방향 기호(굵은 테두리 안 흰 바탕과 막대)와 혼동(2방향 20대 중 14대를 스탠드형으로 판정). v5는 흰 선을 깊이의 8%로 좁힘"""
     x0, y0, x1, y1 = box
     dx, dy = INTO[side]
     d.rectangle(box, fill=ink)
     # 깊이 방향은 벽에서 방 쪽으로 0.2~0.55, 길이 방향은 0.12~0.88 구간을 흰 띠로 비움
+    # 벽에서 방 쪽 깊이의 25~33%, 42~50% 구간에 흰 선 2줄(길이 방향 12~88%)
+    for f0, f1 in ((0.25, 0.33), (0.42, 0.5)):
+        if dy:
+            a, b = (y0, y1) if dy > 0 else (y1, y0)
+            s0, s1 = sorted((a + (b - a) * f0, a + (b - a) * f1))
+            d.rectangle((x0 + (x1 - x0) * 0.12, s0, x1 - (x1 - x0) * 0.12, s1), fill=(255, 255, 255))
+        else:
+            a, b = (x0, x1) if dx > 0 else (x1, x0)
+            s0, s1 = sorted((a + (b - a) * f0, a + (b - a) * f1))
+            d.rectangle((s0, y0 + (y1 - y0) * 0.12, s1, y1 - (y1 - y0) * 0.12), fill=(255, 255, 255))
     if dy:
-        a, b = (y0, y1) if dy > 0 else (y1, y0)
-        s0, s1 = sorted((a + (b - a) * 0.2, a + (b - a) * 0.55))
-        slot = (x0 + (x1 - x0) * 0.12, s0, x1 - (x1 - x0) * 0.12, s1)
-        bar = [(slot[0], (s0 + s1) / 2), (slot[2], (s0 + s1) / 2)]
         L, fx, fy, ux, uy = x1 - x0, (x0 + x1) / 2, (y1 if dy > 0 else y0), 1, 0
     else:
-        a, b = (x0, x1) if dx > 0 else (x1, x0)
-        s0, s1 = sorted((a + (b - a) * 0.2, a + (b - a) * 0.55))
-        slot = (s0, y0 + (y1 - y0) * 0.12, s1, y1 - (y1 - y0) * 0.12)
-        bar = [((s0 + s1) / 2, slot[1]), ((s0 + s1) / 2, slot[3])]
         L, fx, fy, ux, uy = y1 - y0, (x1 if dx > 0 else x0), (y0 + y1) / 2, 0, 1
-    d.rectangle(slot, fill=(255, 255, 255))
-    line(d, bar, ink, max(1, round(min(slot[2] - slot[0], slot[3] - slot[1]) * 0.3)))
     n, gap = L * 0.45, L * 0.08
     for o, bend in ((-0.3, -1), (0, 0), (0.3, 1)):
         # 가운데는 직선, 양쪽은 바깥으로 휘는 3점 꺾은선
