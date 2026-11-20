@@ -1,7 +1,8 @@
 // 실내기 매핑 계산 자가 점검: node src/ingest/units.check.mjs (Node 23.6 이상, TypeScript 형식 제거 실행)
 // 범위: 기준점 변환, 호실 배정, 인식 결과 변환, 인식용 보정 해상도와 픽셀 → m 환산
 import assert from 'node:assert/strict'
-import { applyDetections, assignRoom, detectionsToUnits, fromPlan, similarity, toPlan } from './units.ts'
+import { applyDetections, assignRoom, connectOdus, detectionsToUnits, fromPlan, ODU_MARGIN, similarity, toPlan } from './units.ts'
+import { autoUnits } from './auto-units.ts'
 import { MARGIN, rectify } from '../../twin/pipeline/pipeline-core.js'
 import { detectRes } from '../../twin/pipeline/host-bridge.js'
 
@@ -65,3 +66,26 @@ near(toPlan([1 / res, 0, -MARGIN, 0, 1 / res, -MARGIN], [su / n, sv / n]), [400 
 const loose = applyDetections({ ...plan, floors: plan.floors.map(f => ({ ...f, detections: [] })), idus: [{ id: 'p1', room: '', floor: '2F', pos: [7, 2] }, { id: 'p2', room: '', floor: '2F', pos: [12, 2] }] })
 assert.deepEqual(loose.idus.map(u => [u.room, Boolean(u.review)]), [['B', false], ['B', true]])
 console.log('units.check: 통과')
+
+// 실외기 연결과 빈 호실 추정: 20×10m 건물, 1F에 실 3개(서측 60㎡ 실내기 없음, 동측 30㎡ 실내기 없음, 동측 실 실내기 1대), 복도 1개
+{
+  const sq = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]]
+  const plan = { schema: 'twin.building/v1', building: { name: 't', size: { w: 20, d: 10 } }, floors: [{ id: '1F', rooms: [
+    { id: 'A', name: 'A', type: 'room', polygon: sq(0, 0, 10, 6) }, { id: 'B', name: 'B', type: 'room', polygon: sq(10, 0, 15, 6) },
+    { id: 'C', name: 'C', type: 'room', polygon: sq(15, 0, 20, 6) }, { id: 'H', name: '복도', type: 'corridor', polygon: sq(0, 6, 20, 10) }] }],
+    idus: [{ id: 'u1', room: 'C', pos: [17, 3] }] }
+  const c = connectOdus(plan)
+  assert.equal(c.idus[0].odu, 'ODU-1F-E')
+  assert.deepEqual(c.odus.map(o => [o.id, o.serves, o.mark]), [['ODU-1F-E', '1F', [20 + ODU_MARGIN / 2, 5]]])
+  const { plan: a, added } = autoUnits(plan)
+  // A 60㎡ → 2대(4방향), B 30㎡ → 1대(1방향), C는 기존 1대 유지, 복도 제외
+  assert.equal(added, 3)
+  assert.deepEqual(a.idus.filter(u => u.source === 'estimate').map(u => [u.room, u.cls, u.review, u.odu]),
+    [['A', 'cassette_4way', true, 'ODU-1F-W'], ['A', 'cassette_4way', true, 'ODU-1F-W'], ['B', 'cassette_1way', true, 'ODU-1F-E']])
+  assert.deepEqual(a.odus.map(o => o.id).sort(), ['ODU-1F-E', 'ODU-1F-W'])
+  assert.ok(a.odus.every(o => o.mark[0] < 0 || o.mark[0] > 20), '실외기 기호는 평면 좌우 여백')
+  // 위치를 맞추지 않은 인식 결과가 있는 층은 추정하지 않음
+  assert.equal(autoUnits({ ...plan, floors: plan.floors.map(f => ({ ...f, detections: [{ cls: 'cassette_4way', conf: .9, box: [0, 0, 1, 1] }] })) }).added, 0)
+  console.log('실외기 연결, 빈 호실 추정 통과')
+}
+

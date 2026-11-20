@@ -33,9 +33,10 @@ export default function PlanIngest({ buildingId, onDone, onConfirm, convert }: {
   const blobs = useRef<string[]>([])
   const kind = kindOf(files)
 
-  function open(data: unknown, pages?: Page[]) {
+  async function open(data: unknown, pages?: Page[]) {
     try {
-      const plan = applyDetections(asPlan(data))
+      const { autoUnits } = await import('./auto-units')
+      const plan = autoUnits(applyDetections(asPlan(data))).plan
       if (pages) setBackgrounds(b => ({ ...b, ...Object.fromEntries(pages.map((p, i) => [p.floor ?? plan.floors[i]?.id, p.url]).filter(([f]) => f)) }))
       setDraft(plan)
       setError('')

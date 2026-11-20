@@ -9,6 +9,11 @@
 .sym-selected { stroke: var(--primary); }
 .sym-icon { width: 24px; height: 24px; flex: none; }
 .unit-mark { cursor: pointer; }
+.odu-mark { cursor: grab; }
+.odu-mark rect:not(.sym-selected), .odu-mark circle { fill: var(--canvas); stroke: var(--ink); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+.odu-mark text { fill: var(--ink); font-weight: 700; }
+.odu-line { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 4 3; vector-effect: non-scaling-stroke; }
+.odu-line.on { stroke: var(--ink); stroke-width: 2; stroke-dasharray: none; }
 .unit-bg { pointer-events: none; }
 .align-pt circle { stroke: var(--canvas); stroke-width: 2; vector-effect: non-scaling-stroke; }
 .align-pt.image circle { fill: var(--caution); }

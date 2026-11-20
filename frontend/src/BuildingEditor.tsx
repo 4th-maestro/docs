@@ -3,6 +3,7 @@ import { alignWallPoint, area, contains, distance, edges, floorBoundary, inRoom,
 import './building-editor.css'
 import { UnitLegend } from './ingest/UnitSymbol'
 import { useUnitTool } from './ingest/UnitTool'
+import { connectOdus, ODU_MARGIN } from './ingest/units'
 
 type Tool = 'select' | 'wall' | 'erase' | 'move' | 'cut' | 'partition' | 'unit' | 'align'
 const TOOLS: { id: Tool; label: string; hint: string }[] = [
@@ -22,7 +23,8 @@ const wallPathOf = (room: PlanRoom, openings: Opening[]) => [room.polygon, ...(r
 
 // draft: 도면 변환 초안(수정 없이도 저장 가능), backgrounds: 층 id → 도면 이미지 주소(floors[].background 표시용)
 export default function BuildingEditor({ initial, floor, onSave, onCancel, draft, backgrounds }: { initial: Plan; floor: string; onSave(plan: Plan, level: string): void; onCancel(): void; draft?: boolean; backgrounds?: Record<string, string> }) {
-  const [model, setModel] = useState(initial)
+  // 실외기 연결이 없는 실내기는 층별 서·동 실외기에 연결하고 실외기 기호 위치를 채움(트윈 설비 연결 화면과 같은 규칙)
+  const [model, setModel] = useState(() => connectOdus(initial))
   const [history, setHistory] = useState<Plan[]>([])
   const [level, setLevel] = useState(initial.floors.some(f => f.id === floor) ? floor : initial.floors[0].id)
   const [tool, setTool] = useState<Tool>('select')
@@ -37,6 +39,8 @@ export default function BuildingEditor({ initial, floor, onSave, onCancel, draft
   const { w, d } = model.building.size
   const room = current.rooms.find(r => r.id === selected)
   const scale = Math.max(w,d)
+  // 실외기가 있으면 평면 좌우에 실외기 기호 여백
+  const oduMargin = model.odus?.length ? ODU_MARGIN : 0
   const wallTolerance = Math.max(.3,scale*.013)
   const snapDistance = Math.min(.15,wallTolerance*.2)
   const anchorDistance = Math.min(.35,wallTolerance*.55)
@@ -345,7 +349,7 @@ export default function BuildingEditor({ initial, floor, onSave, onCancel, draft
           </div>
           <p className="muted">{TOOLS.find(t => t.id === tool)?.hint}</p>
           {unitTool.panel}
-          <svg ref={svg} aria-label={level+' 평면도'} className={'edit-plan '+tool} viewBox={[-1,-1,w+2,d+2].join(' ')}
+          <svg ref={svg} aria-label={level+' 평면도'} className={'edit-plan '+tool} viewBox={[-1-oduMargin,-1,w+2+2*oduMargin,d+2].join(' ')}
             onPointerDown={click} onPointerMove={e => { const p = pointAt(e); setCursor(p); if (p) unitTool.move(p) }} onPointerUp={unitTool.up} onPointerLeave={() => setCursor(null)}>
             {outer.map((polygon, i) => <polygon key={i} points={polygon.map(p => p.join(',')).join(' ')} className="edit-outline" />)}
             {current.rooms.map(r => {

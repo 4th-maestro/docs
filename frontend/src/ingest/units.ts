@@ -1,5 +1,5 @@
 import HVAC from './hvac-types.json' with { type: 'json' }
-import { distance, edges, inRoom, projection, type Affine, type Detection, type IndoorUnit, type Plan, type PlanFloor, type PlanRoom, type Point } from '../floor-edit.ts'
+import { distance, edges, inRoom, projection, type Affine, type Detection, type IndoorUnit, type OutdoorUnit, type Plan, type PlanFloor, type PlanRoom, type Point } from '../floor-edit.ts'
 
 // 실내기 매핑 계산(화면과 무관한 순수 함수). 규약: docs/human/reference/plan-ingest.md 3절
 // 유형표 hvac-types.json은 _maestro/ml/hvac_types.json의 복사본이며 원본은 ml 폴더입니다.
@@ -81,6 +81,30 @@ export function applyDetections(plan: Plan): Plan {
     return { ...f, detections: [] }
   })
   return { ...plan, floors, idus: idus.map(u => (u.cls && !u.type ? { ...u, ...typeFields(u.cls), ...(u.model ? { model: u.model } : {}), ...(u.manual ? { manual: u.manual } : {}) } : u)) }
+}
+
+// 2D 매핑 화면에서 평면 좌우 바깥에 실외기 기호를 두는 여백(m)
+export const ODU_MARGIN = 4
+// 층별 서·동 실외기 id: 트윈 파이프라인 placeIdus와 같은 규칙(실내기 x가 건물 폭의 절반 미만이면 서측)
+export const oduId = (floor: string, x: number, w: number) => `ODU-${floor}-${x < w / 2 ? 'W' : 'E'}`
+export const oduFloor = (o: OutdoorUnit) => o.serves ?? o.id.split('-')[1]
+// 실외기 연결: 실외기가 없는 실내기를 층별 서·동 실외기에 연결하고, 목록에 없는 실외기를 만들고, 기호 위치가 없으면 평면 좌우 여백에 둠
+export function connectOdus(plan: Plan): Plan {
+  const { w, d } = plan.building.size
+  const floorOf = new Map(plan.floors.flatMap(f => f.rooms.map(r => [r.id, f.id] as const)))
+  const idus = plan.idus.map(u => (u.odu || !floorOf.has(u.room) ? u : { ...u, odu: oduId(floorOf.get(u.room)!, u.pos[0], w) }))
+  const odus = [...(plan.odus ?? [])]
+  for (const u of idus) if (u.odu && !odus.some(o => o.id === u.odu)) {
+    odus.push({ id: u.odu, model: 'LG MULTI V 실외기', location: `옥상 ${u.odu.endsWith('-W') ? '서측' : '동측'}`, serves: floorOf.get(u.room) })
+  }
+  // 같은 층 같은 쪽 실외기는 가운데에서 위아래로 3m씩 벌려 둠
+  const placed: OutdoorUnit[] = []
+  for (const o of odus) {
+    const west = o.id.endsWith('-W'), k = placed.filter(p => oduFloor(p) === oduFloor(o) && p.id.endsWith('-W') === west).length
+    const y = Math.min(d - .5, Math.max(.5, d / 2 + (k % 2 ? -1 : 1) * Math.ceil(k / 2) * 3))
+    placed.push(o.mark ? o : { ...o, mark: [west ? -ODU_MARGIN / 2 : w + ODU_MARGIN / 2, r2(y)] })
+  }
+  return { ...plan, idus, odus: placed }
 }
 
 // 편집할 수 있는 twin.building/v1인지 확인(건물 크기, 층별 실 목록)

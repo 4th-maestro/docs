@@ -123,7 +123,7 @@ node src/admin/convert.check.mjs   # building.json 변환 자가 점검(접두�
 
 화면을 바꾸면 1440px와 390px 너비에서 버튼 높이·너비와 라벨 잘림을 확인하십시오.
 
-실내기 매핑 계산은 `node src/ingest/units.check.mjs`로 자가 점검합니다(Node 23.6 이상, 기준점 변환, 호실 배정, 인식 결과 변환, 인식용 보정 해상도).
+실내기 매핑 계산은 `node src/ingest/units.check.mjs`로 자가 점검합니다(Node 23.6 이상, 기준점 변환, 호실 배정, 인식 결과 변환, 인식용 보정 해상도, 실외기 연결, 빈 호실 추정).
 
 ## 배포
 

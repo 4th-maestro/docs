@@ -14,12 +14,15 @@ export type Detection = { cls: string; conf: number; box: [number, number, numbe
 export type PlanBackground = { key?: string; px: [number, number]; toPlan: Affine | null }
 export type PlanFloor = { id: string; rooms: PlanRoom[]; footprint?: Point[] | Point[][]; atrium?: boolean; openWalls?: Opening[]; partitions?: Segment[]; elevation?: number; background?: PlanBackground; detections?: Detection[] }
 export type IndoorUnit = { id: string; room: string; pos: Point; model?: string; type?: string; coolKw?: number; ratedKw?: number; source?: string; basis?: string
-  cls?: string; manual?: string; conf?: number; review?: boolean; rot?: number; size?: [number, number]; ref?: string; floor?: string }
+  cls?: string; manual?: string; conf?: number; review?: boolean; rot?: number; size?: [number, number]; ref?: string; floor?: string; odu?: string }
+// 실외기: serves 연결 층, mark 2D 매핑 화면의 기호 위치(평면 m), pos 3D 옥상 배치 위치(트윈, 없으면 자동 배치)
+export type OutdoorUnit = { id: string; model?: string; location?: string; serves?: string; mark?: Point; pos?: Point }
 export type Plan = {
   schema: 'twin.building/v1'
   building: { name: string; size: { w: number; d: number } }
   floors: PlanFloor[]
   idus: IndoorUnit[]
+  odus?: OutdoorUnit[]
   atrium?: { x0: number; y0: number; x1: number; y1: number }
   aps?: { room?: string; floor?: string; pos: Point }[]
   meta?: { ingest?: { jobId?: string; kind?: string; createdAt?: string; warnings?: string[] } }
