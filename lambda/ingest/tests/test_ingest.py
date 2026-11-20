@@ -95,6 +95,15 @@ class IfcTest(unittest.TestCase):
         self.assertEqual(units['wall_mounted']['room'], '1F-101')
         self.assertEqual(d['meta']['ingest']['kind'], 'ifc')
 
+    def test_pset_model_and_capacity(self):
+        make_ifc(TMP / 'pset.ifc', pset=True)
+        _, d = run(upload(TMP / 'pset.ifc'), 'ifc', ['pset.ifc'])
+        units = {u['cls']: u for u in d['idus']}
+        c = units['cassette_4way']
+        # 유형 속성의 ModelReference, 객체 속성의 NominalCoolingCapacity(W). 현열 능력(SensibleCoolingCapacity)은 제외
+        self.assertEqual((c['model'], c['modelMatch'], c['coolKw'], c['kwSource']), ('AM130FN4DEH', 'source', 13.0, 'ifc'))
+        self.assertEqual((units['wall_mounted']['modelMatch'], 'coolKw' in units['wall_mounted']), ('type', False))
+
     def test_door(self):
         make_ifc(TMP / 'door.ifc')
         _, d = run(upload(TMP / 'door.ifc'), 'ifc', ['door.ifc'])
@@ -139,6 +148,42 @@ class CadTest(unittest.TestCase):
                          {'a': [6.0, 4.0], 'b': [6.0, 3.0], 'side': 1, 'conf': 0.6, 'review': False})
         self.assertEqual(len(d['idus']), 2)  # 문 블록은 실내기 판정 제외
         self.assertEqual(len(d['floors'][0]['rooms']), 2)
+
+    def test_attrib_text_and_schedule(self):
+        make_dxf(TMP / '5층.dxf', labels=True)
+        _, d = run(upload(TMP / '5층.dxf'), 'cad', ['5층.dxf'])
+        self.assertEqual(d['meta']['ingest']['schedule'],
+                         [{'tag': 'FCU-1', 'name': None, 'model': 'AR07TXFCAWKN', 'kw': 7.2, 'maker': None, 'page': 1}])
+        units = {u['cls']: u for u in d['idus']}
+        # 블록 옆 문자 7.2kW·FCU-1, 장비 번호가 일람표 행과 맞아 일람표 모델·용량
+        w = units['wall_mounted']
+        self.assertEqual((w['tag'], w['coolKw'], w['kwSource'], w['model'], w['modelMatch']),
+                         ('FCU-1', 7.2, 'schedule', 'AR07TXFCAWKN', 'schedule'))
+        # 블록 속성 MODEL·TAG·CAP. 3.9m 떨어진 5.6kW 문자는 연결하지 않음
+        c = units['cassette_4way']
+        self.assertEqual((c['tag'], c['coolKw'], c['kwSource'], c['model'], c['modelMatch']),
+                         ('CAC-01', 14.5, 'cad-text', 'ARNU15GTRB4', 'source'))
+        self.assertEqual(d['floors'][0]['rooms'][0]['name'], '회의실 201')
+
+    # 실제 대응 표와 무관하게 '용량은 있으나 표가 빔 → 유형 예시'를 점검
+    @patch.dict(common.TYPES, {'cassette_4way': {**common.TYPES['cassette_4way'], 'models': []}})
+    def test_rendered_floor_texts_attach_to_detections(self):
+        make_dxf(TMP / 'lab.dxf', with_unit=False, labels=True)
+        s3 = upload(TMP / 'lab.dxf')
+        out, d = run(s3, 'cad', ['lab.dxf'])
+        T = d['floors'][0]['background']['toPlan']
+        self.assertEqual(d['meta']['ingest']['texts']['1F']['pxPerM'], 80)
+
+        def box(x, y):  # 평면 (x, y) 중심 40px 상자
+            u, v = (x - T[2]) / T[0], (y - T[5]) / T[4]
+            return [u - 20, v - 20, u + 20, v + 20]
+
+        dets = {'1F': [{'cls': 'wall_mounted', 'conf': 0.9, 'box': box(3.0, 0.2)},
+                       {'cls': 'cassette_4way', 'conf': 0.9, 'box': box(11.0, 5.5)}]}
+        app.handler({'op': 'merge', 'jobId': 'j', 'bucket': 'bk', 'draftKey': out['draftKey'], 'detections': dets}, None)
+        a, b = json.loads(s3.objects[out['draftKey']])['idus']
+        self.assertEqual((a['tag'], a['coolKw'], a['kwSource'], a['modelMatch']), ('FCU-1', 7.2, 'schedule', 'schedule'))
+        self.assertEqual((b.get('tag'), b['coolKw'], b['kwSource'], b['modelMatch']), (None, 5.6, 'cad-text', 'type'))
 
     def test_door_name(self):
         hits = {n: bool(cad.DOOR_NAME.search(n)) for n in ('DOOR_900', 'A-DOOR', 'DR1', 'SD_DR', '방화문', 'OUTDOOR_UNIT', 'DRAIN', '창문', '문자')}
@@ -201,7 +246,7 @@ class CadTest(unittest.TestCase):
         msp.add_lwpolyline([(-5000, -5000), (17000, -5000), (17000, 11000), (-5000, 11000)], close=True)  # 도면 틀
         msp.add_line((-2000, 0), (-2000, 6000), dxfattribs={'layer': 'DIM'})
         doc.saveas(TMP / 'frame.dxf')
-        rooms, _, _, _, warnings = cad.parse(TMP / 'frame.dxf')
+        rooms, _, _, _, warnings, _ = cad.parse(TMP / 'frame.dxf')
         self.assertEqual(sorted(r['poly'].bounds for r in rooms), [(0, 0, 6, 6), (6, 0, 12, 6)])
         self.assertIn('벽 레이어 없음', warnings[0])
 
@@ -241,6 +286,86 @@ class PdfTest(unittest.TestCase):
                                                         {'cls': 'door', 'conf': 0.7, 'box': [10, 10, 90, 90]}])
         self.assertEqual(d['idus'], [])
         self.assertNotIn('doors', d['floors'][0])
+
+
+    def test_text_layer_kw_tag_and_schedule(self):
+        # 12pt 문자(pt, 왼쪽 아래 원점). `E-`와 `4.5HP`는 나뉜 문자 객체. 오른쪽 아래는 영문 장비일람표
+        make_pdf(TMP / 'cap.pdf', [(50, 560, '2F PLAN S=1/200'), (100, 500, '13.0KW'), (100, 488, 'E-'), (113, 488, '4.5HP'),
+                                   (600, 300, 'TAG'), (660, 300, 'MODEL'), (760, 300, 'COOLING'),
+                                   (600, 285, 'E-4.5HP'), (660, 285, 'AM130FN4DEH'), (760, 285, '13.0')])
+        s3 = upload(TMP / 'cap.pdf')
+        out, d = run(s3, 'pdf', ['cap.pdf'])
+        ing = d['meta']['ingest']
+        self.assertEqual(ing['schedule'], [{'tag': 'E-4.5HP', 'name': None, 'model': 'AM130FN4DEH', 'kw': 13.0, 'maker': None, 'page': 1}])
+        self.assertEqual((ing['texts']['2F']['pxPerM'], [x[2] for x in ing['texts']['2F']['kw']]), (80.0, [13.0]))
+        # 1m당 80px: 용량 표기 중심 약 (684, 513)px. 첫 상자는 1.9m, 문 상자는 실내기가 아니라 제외, 둘째 상자는 먼 위치
+        dets = {'2F': [{'cls': 'cassette_4way', 'conf': 0.8, 'box': [640, 600, 760, 720]},
+                       {'cls': 'door', 'conf': 0.8, 'box': [600, 450, 700, 550]},
+                       {'cls': 'cassette_4way', 'conf': 0.8, 'box': [3000, 3000, 3100, 3100]}]}
+        ev = {'op': 'merge', 'jobId': 'j', 'bucket': 'bk', 'draftKey': out['draftKey'], 'detections': dets}
+        app.handler(ev, None)
+        d = json.loads(s3.objects[out['draftKey']])
+        self.assertEqual(d['floors'][0]['detections'], [{**dets['2F'][0], 'kw': 13.0, 'tag': 'E-4.5HP'}, dets['2F'][1], dets['2F'][2]])
+        # 2D 화면에서 위치를 맞춘(toPlan) 층을 다시 병합하면 실내기에 용량, 장비 번호, 일람표 모델이 들어감
+        d['floors'][0]['background']['toPlan'] = [1 / 80, 0, 0, 0, 1 / 80, 0]
+        s3.objects[out['draftKey']] = json.dumps(d).encode()
+        app.handler(ev, None)
+        a, b = json.loads(s3.objects[out['draftKey']])['idus']
+        self.assertEqual((a['tag'], a['coolKw'], a['kwSource'], a['model'], a['modelMatch']),
+                         ('E-4.5HP', 13.0, 'schedule', 'AM130FN4DEH', 'schedule'))
+        self.assertEqual((b['model'], b['modelMatch'], 'coolKw' in b), ('ARNU12GTRB4', 'type', False))
+
+
+class CapacityTest(unittest.TestCase):
+    MODELS = [{'kw': 5.6, 'model': 'K56', 'market': 'KR'}, {'kw': 13.0, 'model': 'G130', 'market': 'GLOBAL'},
+              {'kw': 13.0, 'model': 'K130', 'market': 'KR'}, {'kw': 14.5, 'model': 'K145', 'market': 'KR'}]
+
+    def test_capacity_text(self):
+        cases = {'13.0KW': 13.0, '5.2 kW': 5.2, '29KW': 29.0, '7.5kW,': 7.5, '139.2KW이상': None, '145 KW 이상': None,
+                 '15.0KW초과40.6KW이하': None, '~15.0KW이하': None, '~ 8kW': None, '10HP': None, '1234kW': None, 'kW': None,
+                 '00KW': None}
+        self.assertEqual({t: common.capacity(t) for t in cases}, cases)
+
+    def test_tag_and_labels(self):
+        cases = {'E-4.5HP': True, 'E-10HP': True, 'IU-1': True, 'CAC-01': True, 'FCU1': True,
+                 '01': False, 'X1': False, 'Y10': False, '13.0KW': False, 'E-10-003504호': False, 'fcu1': False}
+        self.assertEqual({t: bool(common.TAG.fullmatch(t)) for t in cases}, cases)
+        words = [('FCU-1 13.0 kW', 0, 0, 10, 2), ('회의실 B101', 20, 0, 30, 2), ('13.0KW', 0, 0, 10, 2)]
+        self.assertEqual(common.labels(words), {'kw': [[5.0, 1.0, 13.0]], 'tag': [[5.0, 1.0, 'FCU-1']]})  # 같은 위치 중복 1개
+
+    def test_pair_nearest_first_one_to_one(self):
+        # 표기 0은 두 실내기 모두에 가장 가깝지만 더 가까운 실내기 1에 연결. 실내기 0은 다음 표기 1, 2.5 초과 표기 2는 미연결
+        self.assertEqual(common.pair([(0, 0), (3, 0)], [(2, 0), (0, 2), (9, 9)], 2.5), {1: 0, 0: 1})
+        self.assertEqual(common.attach([(0, 0), (3, 0)], {'kw': [[2, 0, 7.1]], 'tag': [[3, 1, 'A-1']]}, 2.5, [{}, {'kw': 9.0}]),
+                         [{'kw': 7.1}, {'kw': 9.0, 'tag': 'A-1'}])
+
+    def test_schedule_from_words(self):
+        # 머리글 2줄(냉방용량은 윗줄, `형 식`은 글자를 띄움), 모델 칸 값은 품명, 아래 제어기 표(기호, 품명)에서 끝남
+        h = 6
+        w = lambda t, u, v: (t, u, v, u + len(t) * h, v + h)  # noqa: E731
+        words = [w('냉방용량', 300, 100), w('장비번호', 160, 110), w('형', 214, 110), w('식', 226, 110),
+                 w('5.2kW', 167, 125), w('E-1.5HP', 164, 132), w('천장카세트', 208, 128), w('2-WAY', 213, 136), w('5.2', 307, 132),
+                 w('E-4.5HP', 164, 152), w('ARNU15GTRB4', 208, 152), w('13.0', 305, 152),
+                 w('기호', 160, 200), w('품명', 200, 200), w('DMS2', 160, 215), w('3', 300, 215)]
+        self.assertEqual(common.schedule(words, 2), [
+            {'tag': 'E-1.5HP', 'name': '천장카세트 2-WAY', 'model': None, 'kw': 5.2, 'maker': None, 'page': 2},
+            {'tag': 'E-4.5HP', 'name': None, 'model': 'ARNU15GTRB4', 'kw': 13.0, 'maker': None, 'page': 2}])
+
+    def test_model_lookup_order(self):
+        rows = [{'tag': 'E-4.5HP', 'model': None, 'kw': 13.0}, {'tag': 'IU-1', 'model': 'AM130FN4DEH', 'kw': None}]
+        with patch.dict(common.TYPES, {'cassette_4way': {**common.TYPES['cassette_4way'], 'models': self.MODELS}}):
+            def m(**kw):
+                r = common.describe('cassette_4way', **kw)
+                return r['model'], r['modelMatch'], r.get('coolKw'), r.get('kwSource')
+            self.assertEqual(m(kw=13.05, kw_src='pdf-text'), ('K130', 'exact', 13.05, 'pdf-text'))  # 차이 0.05, 같은 용량은 국내 우선
+            self.assertEqual(m(kw=13.2, kw_src='pdf-text'), ('K145', 'nearest', 13.2, 'pdf-text'))  # 용량 이상 최소 모델
+            self.assertEqual(m(kw=20.0, kw_src='pdf-text'), ('K145', 'nearest', 20.0, 'pdf-text'))  # 없으면 최대 모델
+            self.assertEqual(m(), ('ARNU12GTRB4', 'type', None, None))
+            self.assertEqual(m(model='X1', kw=13.0, kw_src='ifc'), ('X1', 'source', 13.0, 'ifc'))
+            self.assertEqual(m(tag='E 4.5HP', schedule=rows), ('K130', 'exact', 13.0, 'schedule'))  # 일람표 용량으로 대응
+            self.assertEqual(m(tag='IU1', kw=5.6, kw_src='cad-text', schedule=rows), ('AM130FN4DEH', 'schedule', 5.6, 'cad-text'))
+        with patch.dict(common.TYPES, {'cassette_4way': {**common.TYPES['cassette_4way'], 'models': []}}):
+            self.assertEqual(m(kw=13.0, kw_src='pdf-text')[1], 'type')  # 대응 표가 비면 유형 예시
 
 
 class RuleTest(unittest.TestCase):

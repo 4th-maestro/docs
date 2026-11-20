@@ -32,7 +32,7 @@
 | `src/chat.py` | `GET·DELETE /chat?building=` 사용자별 대화 기록(90일), 대화 메모리(24시간, 1KB 요약) 저장 |
 | `src/auth.py` | WebSocket 연결 인증(쿼리 token, Cognito 액세스 토큰 검증), context에 sub·groups 전달 |
 | `src/tenant.py` | 기업 소속 검사(호출자 역할, 접근 가능 건물, 중지 기업), 기업 코드 형식, 기업·구성원·건물 소속·변경 이력 테이블 공용 함수, `GET /me` |
-| `src/customer.py` | 고객사 설정 API(기업 코드 가입, 기업 정보·변경 이력 조회). 기업·구성원·건물 변경 경로는 구성원에게 403 |
+| `src/customer.py` | 고객사 설정 API(기업 코드 가입, 기업 정보·변경 이력 조회). 기업·구성원·건물 변경 경로는 구성원에게 403. 호실 이름·용도 변경은 `src/admin.py`의 `room` |
 
 `building` 쿼리와 `buildingId` 본문 값이 없으면 `main`이고, 목록에 없는 건물은 400(`알 수 없는 건물: <id>`)입니다. 소속 기업 밖 건물은 403(`이 건물에 접근할 권한이 없습니다.`)이고, WebSocket `ask`는 모델 호출 없이 `error` 이벤트입니다. 중지 기업 구성원은 403(`code: 'COMPANY_SUSPENDED'`)입니다. 소속 규칙은 아래 "기업·회원" 절에 있습니다. 판정 기준과 응답 필드는 [시스템 설계](../docs/human/explanation/architecture.md) 2절, 8절, 9절에 있습니다.
 
@@ -104,21 +104,21 @@ aws cognito-idp admin-add-user-to-group --user-pool-id "$POOL" --username 관리
 |---|---|
 | `src/signup.py` | 가입 전 검사(PreSignUp): 기업 코드 확인 후 가입 대기 항목 저장, CLI 발급은 검사 생략, 그 밖의 가입 경로 거부 |
 | `src/confirm.py` | 가입 확인(PostConfirmation): 이메일 인증 후 구성원 등록, 기업 첫 구성원은 manager, 이후 operator |
-| `src/admin.py` | 판매사 관리 API(기업, 기업 코드, 구성원, 변경 이력, 건물 소속·등록·정보 수정·삭제, 트윈 확정 저장, 사용자 목록), `admin` 그룹 전용 |
+| `src/admin.py` | 판매사 관리 API(기업, 기업 코드, 구성원, 변경 이력, 건물 소속·등록·정보 수정·삭제, 트윈 확정 저장, 사용자 목록), `admin` 그룹 전용. 호실 이름·용도 변경(`room`)은 고객사 관리자도 허용 |
 | `tools/migrate_tenancy.py` | 2단계 이전: 데모 기업 생성, 기존 건물 4개 소속 지정, 기존 사용자 operator 등록 |
 
 ### 기업·회원
 
-역할 분리 기준은 2026-11-20 사용자 결정입니다. 판매사 총관리자가 기업, 구성원, 건물, 도면, 트윈 데이터를 관리합니다. 고객사 구성원은 소속 건물을 조회하고 운영합니다.
+역할 분리 기준은 2026-11-20 사용자 결정입니다. 판매사 총관리자가 기업, 구성원, 건물, 도면, 트윈 데이터를 관리합니다. 고객사 구성원은 소속 건물을 조회하고 운영합니다. 2026-11-21부터 고객사 관리자는 소속 건물의 호실 이름과 용도를 변경할 수 있습니다.
 
 | 역할 | 판정 | 접근 가능 건물 | 관리(변경) | 운영 |
 |---|---|---|---|---|
-| `admin`(판매사 총관리자) | Cognito `admin` 그룹 구성원(서버가 그룹 조회, 60초 캐시, 지정·해제 후 3초 안 반영). 사용자 풀이 없는 로컬·테스트는 액세스 토큰 `cognito:groups` | 전체(소속 없는 건물 포함) | 모든 기업·구성원·건물 정보, 기업 상태·코드, 건물 등록·트윈 확정 저장·삭제 | 전체 건물 |
-| `manager`(고객사 관리자) | MembersTable 역할, 기업 코드로 처음 가입한 구성원 | 소속 기업 건물 | 없음(변경 API 403) | 조회 API 전체, AI 질의, 대화 기록 조회·삭제, 스케줄 저장·취소 |
-| `operator`(운영자) | MembersTable 역할, 두 번째 가입자부터 | 소속 기업 건물 | 없음(변경 API 403) | `manager`와 같음 |
+| `admin`(판매사 총관리자) | Cognito `admin` 그룹 구성원(서버가 그룹 조회, 60초 캐시, 지정·해제 후 3초 안 반영). 사용자 풀이 없는 로컬·테스트는 액세스 토큰 `cognito:groups` | 전체(소속 없는 건물 포함) | 모든 기업·구성원·건물 정보, 기업 상태·코드, 건물 등록·트윈 확정 저장·삭제, 호실 이름·용도 | 전체 건물 |
+| `manager`(고객사 관리자) | MembersTable 역할, 기업 코드로 처음 가입한 구성원 | 소속 기업 건물 | 소속 건물 호실 이름·용도만(그 밖의 변경 API 403) | 조회 API 전체, AI 질의, 대화 기록 조회·삭제, 스케줄 저장·취소 |
+| `operator`(운영자) | MembersTable 역할, 두 번째 가입자부터 | 소속 기업 건물 | 없음(호실 이름·용도 포함 변경 API 403) | `manager`와 같음 |
 | 없음 | 구성원 항목 없음 | 없음(`GET /buildings`는 빈 목록, 그 밖의 건물 API는 403) | 없음 | 기업 코드 가입(`POST /me/join`)만 |
 
-주: `manager`와 `operator`는 권한이 같습니다. 역할 값은 판매사 화면의 구성원 구분과 이후 권한 확장용으로 유지합니다.
+주: `manager`는 `operator` 권한에 호실 이름·용도 변경(2026-11-21)과 자동 운영 스위치(`infra/ops/functions/ops_api.py`)가 추가됩니다.
 
 | 항목 | 규칙 |
 |---|---|
@@ -135,6 +135,12 @@ aws cognito-idp admin-add-user-to-group --user-pool-id "$POOL" --username 관리
 | 트윈 확정 저장 | 도면 `v<n>.json`·`current.json`과 트윈 `building-v<n>.json`·`building.json`(n은 기존 도면·트윈 버전 최댓값 + 1), Rooms·Equipment 덮어쓰기, 빠진 호실의 Rooms·Equipment·State 행 삭제. Buildings 항목은 `floors`와 출처 필드만 변경(이름, 용도, 운영 시간, `waste` 유지) |
 | 건물 삭제 | 영구 삭제. Buildings 항목, Rooms·Equipment·State 행, 도면 버킷 `plans/<id>/` 전체(도면·트윈 현재 파일과 버전), 소속 항목(`overrides` 포함), 그 건물 스케줄(`buildingId` 없는 이전 항목은 `main`) 삭제. 변경 이력만 남김 |
 | 건물 관리 캐시 | 처리한 실행 환경은 즉시, 다른 API 실행 환경은 3초 안(변경 표시), 시뮬레이터는 60초 안에 반영 |
+| 호실 변경 권한 | `admin`, 소속 건물의 `manager`. `operator`·다른 기업 403, 중지 기업 403(`COMPANY_SUSPENDED`) |
+| 호실 변경 검사 | `name`(앞뒤 공백 제거 후 1~40자), `use`(용도 키) 중 1개 이상, 위반 400. 호실은 Rooms 행 기준, 없으면 404 |
+| 호실 변경 저장 | 트윈 `building.json` 호실 `name`·`use`(키) 변경 후 `building-v<n>.json`과 함께 저장, Rooms 행 `name`·`use`(한국어) 변경 |
+| 호실 변경 예외 | 트윈 파일이 없는 건물은 Rooms 행만 변경. 같은 값이면 기록 안 함. `n`은 트윈 확정 저장과 같은 규칙 |
+| 호실 용도 키 | `lecture` 강의실, `lab` 실험실, `meeting` 회의실, `lounge`·`waiting` 대기·휴게, `admin` 사무실, `office` 연구실 |
+| 호실 용도 키(계속) | `retail` 상점, `restaurant` 식당. 한국어 용도는 가상 상태 재실 규칙 기준(트윈 `web-demo.js` `USE_KO`와 같음) |
 
 주: 구성원, 건물 소속, 기업 상태는 실행 환경별 60초 캐시입니다. 역할·소속·중지·건물 변경 요청은 도면 버킷의 변경 표시(`plans/_rev`)를 갱신하고(`tenant.changed`), 다른 실행 환경은 3초마다 표시를 확인해 캐시를 비웁니다. 변경한 실행 환경에는 즉시 반영됩니다. 환경 변수 `MEMBERS_TABLE`이 없으면(로컬·테스트) 소속 검사를 하지 않습니다.
 
@@ -144,7 +150,7 @@ aws cognito-idp admin-add-user-to-group --user-pool-id "$POOL" --username 관리
 | 코드 만료 | 기본 30일(`codeDays`·`days` 1~365). 재발급하면 이전 코드는 무효, 가입한 구성원은 유지 |
 | 가입 | 웹 SignUp의 `ClientMetadata.companyCode` 확인(존재, 기업 `active`, 만료 전). 실패 문구 `기업 코드가 올바르지 않거나 만료되었습니다.` |
 | 가입 대기 | MembersTable 키 `pending#<소문자 이메일>`, 2일 뒤 자동 삭제. 이메일 인증 전 만료되면 소속 없는 계정 |
-| 변경 이력 | AuditTable(기업별, 정렬 키 `<ISO 시각(밀리초)>#<uuid>`). `company.create`, `company.update`, `company.delete`, `company.code`, `building.assign`, `building.create`, `building.update`, `building.plan`, `building.delete`, `member.join`, `member.role`, `member.remove`. 소속 없는 건물의 변경은 기록 안 함 |
+| 변경 이력 | AuditTable(기업별, 정렬 키 `<ISO 시각(밀리초)>#<uuid>`). `company.create`, `company.update`, `company.delete`, `company.code`, `building.assign`, `building.create`, `building.update`, `building.plan`, `building.delete`, `room.update`, `member.join`, `member.role`, `member.remove`. 소속 없는 건물의 변경은 기록 안 함 |
 
 | API(로그인 필수) | 권한 | 응답 |
 |---|---|---|
@@ -155,6 +161,7 @@ aws cognito-idp admin-add-user-to-group --user-pool-id "$POOL" --username 관리
 | `GET /company/audit?limit=` | 구성원 | `{items: [{at, actor: {email, role}, action, target, detail}]}` 최신순. `limit` 기본 50, 최대 200, 1 미만·정수 아님은 400 |
 | `PATCH /buildings/{id}` | `admin` | `PATCH /admin/buildings/{id}`와 같은 처리(이전 경로 호환). 구성원 403 `판매사 관리자만 변경할 수 있습니다.` |
 | `GET /buildings/{id}/twin` | `admin`, 소속 기업 구성원 | `plans/<id>/building.json` 원문. 없으면 404 `트윈 데이터가 없습니다.` |
+| `PATCH /buildings/{id}/rooms/{roomId}` | `admin`, 소속 건물의 `manager` | 본문 `{name?, use?}` → `{room: {id, name, use(한국어)}, version}`. 트윈 변경이 없으면 `version` null |
 | `PUT /buildings/{id}/twin` | `admin` | 본문 `{twin, rooms, plan}`(이름·용도·운영 시간·주말은 무시) → `{building: 건물 카드, version}`. 기존 건물(`main` 등)도 대상. 구성원 403 `판매사 관리자만 변경할 수 있습니다.`. 경로와 키는 [도면 변환 규약](../docs/human/reference/plan-ingest.md) 4절과 같음 |
 | `GET /admin/companies` | `admin` | `{companies: [Company + buildingCount, memberCount]}` |
 | `POST /admin/companies` | `admin` | 본문 `{name(1~60자), contactName?, contactEmail?, phone?, address?, codeDays?}` → 201 `{company}` |

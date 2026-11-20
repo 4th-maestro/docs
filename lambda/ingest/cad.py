@@ -1,4 +1,4 @@
-"""CAD 파서: DXF(DWG는 dwg2dxf 변환 후)에서 벽 선으로 호실, 문자로 실 이름, 블록으로 실내기, 문 블록·호로 문을 읽습니다."""
+"""CAD 파서: DXF(DWG는 dwg2dxf 변환 후)에서 벽 선으로 호실, 문자로 실 이름·용량·장비 번호, 블록으로 실내기, 문 블록·호로 문을 읽습니다."""
 import math
 import pathlib
 import re
@@ -11,7 +11,7 @@ from PIL import Image, ImageDraw
 from shapely.geometry import LineString, Point, Polygon, box
 from shapely.ops import unary_union
 
-from common import DOOR_W, PX_PER_M, cap_scale, classify
+from common import DOOR_W, NEAR, PX_PER_M, attach, cap_scale, capacity, classify, labels
 
 WALL = re.compile(r'wall|벽|구조', re.I)
 NOT_WALL = re.compile(r'dim|text|txt|hatch|furn|equip|hvac|mech|치수|문자|해치|가구|설비|기계', re.I)
@@ -21,6 +21,7 @@ DOOR_NAME = re.compile(r'(?<![a-z])(door|dr(?![a-z]))|(?<!창)문(?!자)', re.I)
 GAP = 0.3  # 문 호의 경첩·닫힌 쪽 끝과 벽 선의 최대 거리(m)
 AREA_TEXT = re.compile(r'㎡|m2|m²', re.I)
 NUMBER = re.compile(r'^[A-Z]?\d{2,4}(-\d+)?[A-Z]?$', re.I)
+ATTR_TAG = re.compile(r'^(TAG|NO\.?|기호|장비\s*번호)$', re.I)  # 장비 번호 블록 속성 이름
 
 
 def dwg_to_dxf(src, out_dir):
@@ -120,7 +121,12 @@ def _doors(msp, walls, k):
 
 
 def parse(path):
-    """DXF 1개(1개 층)를 읽어 (호실, 실내기, 문, 렌더링용 선분 또는 None, 경고)를 돌려줍니다. 좌표는 m, y 위쪽입니다."""
+    """DXF 1개(1개 층)를 읽어 (호실, 실내기, 문, 렌더링용 선분 또는 None, 경고, 문자 단어)를 돌려줍니다. 좌표는 m, y 위쪽입니다.
+
+    실내기 모델은 블록 속성 MODEL·모델, 장비 번호는 속성 TAG·NO·기호·장비번호, 용량은 kW 표기가 있는 속성 값입니다.
+    속성이 없는 항목은 블록 외곽 중심에서 2.5m 이내 TEXT·MTEXT의 용량 표기와 장비 번호를 1:1로 연결합니다.
+    문자 단어는 [(문자, x0, -y1, x1, -y0)](m, 장비일람표·인식 결과 연결용 아래쪽 좌표)입니다.
+    """
     doc, _ = recover.readfile(str(path))
     name, warnings = pathlib.Path(path).name, []
     if not doc.units:
@@ -134,11 +140,17 @@ def parse(path):
     polys = _rooms(_lines(walls, k))
     texts = [(Point(e.dxf.insert.x * k, e.dxf.insert.y * k), (e.dxf.text if e.dxftype() == 'TEXT' else e.plain_text()).strip())
              for e in msp.query('TEXT MTEXT')]
+    words = []
+    for e in msp.query('TEXT MTEXT'):
+        t = (e.dxf.text if e.dxftype() == 'TEXT' else e.plain_text()).strip()
+        b = bbox.extents([e]) if t else None
+        if b and b.has_data:
+            words.append((t, b.extmin.x * k, -b.extmax.y * k, b.extmax.x * k, -b.extmin.y * k))
     rooms = []
     for p in polys:
         inside = [t for pt, t in texts if t and not AREA_TEXT.search(t) and p.contains(pt)]
         rooms.append({'name': ' '.join(inside[:2]), 'number': next((t for t in inside if NUMBER.match(t)), None), 'poly': p})
-    units = []
+    units, have = [], []
     for e in msp.query('INSERT'):
         attrs = {a.dxf.tag.upper(): a.dxf.text for a in e.attribs}
         cls = None if DOOR_NAME.search(e.dxf.name) else classify(e.dxf.name, *attrs.values())
@@ -148,9 +160,14 @@ def parse(path):
         if not b.has_data:
             continue
         units.append({'pt': (b.center.x * k, b.center.y * k), 'size': (b.size.x * k, b.size.y * k), 'cls': cls, 'conf': 1,
-                      'model': next((v for t, v in attrs.items() if 'MODEL' in t and v), None),
+                      'model': next((v for t, v in attrs.items() if ('MODEL' in t or '모델' in t) and v), None),
                       'ref': e.dxf.handle, 'source': 'cad', 'basis': 'CAD 블록 이름·속성 일치'})
-    return rooms, units, _doors(msp, walls, k), (None if units else _lines(list(msp), k)), warnings
+        tag = next((v.strip() for t, v in attrs.items() if ATTR_TAG.match(t) and v.strip()), None)
+        kw = next((x for x in map(capacity, attrs.values()) if x is not None), None)
+        have.append({x: v for x, v in (('tag', tag), ('kw', kw)) if v is not None})
+    for u, x in zip(units, attach([(u['pt'][0], -u['pt'][1]) for u in units], labels(words), NEAR, have)):
+        u.update(x, **({'kwSource': 'cad-text'} if 'kw' in x else {}))
+    return rooms, units, _doors(msp, walls, k), (None if units else _lines(list(msp), k)), warnings, words
 
 
 def render(lines, M):

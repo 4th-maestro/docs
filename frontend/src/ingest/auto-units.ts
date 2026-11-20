@@ -10,9 +10,10 @@ export function autoUnits(plan: Plan, floors?: string[]): { plan: Plan; added: n
   const target = plan.floors.filter(f => (!floors || floors.includes(f.id)) && !f.detections?.length)
     .map(f => ({ ...f, rooms: f.rooms.filter(r => r.type === 'room' && !has.has(r.id)) }))
   // 제어 주소(ctrlAddr)는 층마다 00부터 다시 매겨 기존 실내기와 겹칠 수 있어 넣지 않음
+  // 추정 용량으로 모델을 대응(exact, nearest). kwSource는 비움(용량 출처는 source estimate)
   const est: IndoorUnit[] = placeIdus(target, {}, plan.building.size.w).idus.map(u => ({
     id: u.id, room: u.room, pos: u.pos, coolKw: u.coolKw, ratedKw: u.ratedKw, odu: u.odu, source: u.source, basis: u.basis,
-    ...typeFields(/1WAY/.test(u.type) ? 'cassette_1way' : 'cassette_4way'), review: true,
+    ...typeFields(/1WAY/.test(u.type) ? 'cassette_1way' : 'cassette_4way', u.coolKw), review: true,
   }))
   return { plan: connectOdus({ ...plan, idus: [...plan.idus, ...est] }), added: est.length }
 }

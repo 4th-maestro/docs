@@ -117,7 +117,7 @@ export function Members({ base, members, onChange }: { base: string; members: Me
 const ACTION: Record<string, string> = {
   'company.create': '기업 생성', 'company.update': '기업 정보 수정', 'company.delete': '기업 삭제', 'company.code': '기업 코드 재발급',
   'building.assign': '건물 연결', 'building.update': '건물 정보 수정', 'building.create': '건물 추가', 'building.plan': '도면 교체', 'building.delete': '건물 삭제',
-  'member.join': '구성원 가입', 'member.role': '역할 변경', 'member.remove': '구성원 제외',
+  'member.join': '구성원 가입', 'member.role': '역할 변경', 'member.remove': '구성원 제외', 'room.update': '호실 이름·용도 변경',
 }
 // 기록 시각: 서버 정렬 키(시각#uuid) 형식도 허용
 const iso = (at: string) => at.split('#')[0]

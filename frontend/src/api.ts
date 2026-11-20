@@ -164,6 +164,13 @@ export const putTwin = (id: string, body: TwinUpload) => call<{ building: Compan
 export const patchBuilding = (id: string, body: BuildingInput) => call<{ building: CompanyBuilding }>(adminBuilding(id), json('PATCH', body))
 export const deleteBuilding = (id: string) => call<{ deleted: boolean }>(adminBuilding(id), json('DELETE'))
 
+// 호실 이름·용도 변경: 판매사 관리자, 소속 건물의 고객사 관리자(운영자 403). use는 트윈 용도 키, 응답 use는 한국어 용도
+// - version: 트윈 building.json 새 버전 번호, 트윈 변경이 없으면 null
+export type RoomInput = { name?: string; use?: string }
+export const patchRoom = (building: string, room: string, body: RoomInput) =>
+  call<{ room: { id: string; name: string; use: string }; version: number | null }>(
+    `/buildings/${encodeURIComponent(building)}/rooms/${encodeURIComponent(room)}`, json('PATCH', body))
+
 // 기업 코드로 소속 연결(소속 기업 없음 화면): 400 코드 오류·만료, 409 이미 소속
 export const joinCompany = (code: string) => call<{ company: NonNullable<Me['company']>; role: Role }>('/me/join', json('POST', { code }))
 

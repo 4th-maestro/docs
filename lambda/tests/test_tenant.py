@@ -793,6 +793,84 @@ class VendorBuildingTest(Tenancy):
             self.assertEqual(adm('DELETE /admin/buildings/{id}', path={'id': 'lab'})[0], 400)
         self.assertNotIn('lab', {a['target'] for a in self.audits('building.delete')})
 
+    def room(self, rid, body, sub='u-a', bid='b-abcd1234', **kw):
+        return call(http('PATCH /buildings/{id}/rooms/{roomId}', sub=sub, path={'id': bid, 'roomId': rid}, body=body, **kw))
+
+    def twin_rooms(self):
+        twin = json.loads(self.s3.objects['plans/b-abcd1234/building.json'])
+        return {r['id']: r for f in twin['floors'] for r in f['rooms']}
+
+    def create_with_twin_rooms(self):
+        body = upload('b-abcd1234', 2)
+        body['twin']['floors'] = [{'id': f, 'rooms': [{'id': r['id'], 'name': r['name'], 'type': 'room', 'use': 'office'} for r in body['rooms'] if r['floor'] == f]}
+                                  for f in ('1F', '2F')]
+        self.assertEqual(self.create(id='b-abcd1234', **body)[0], 201)
+
+    def test_manager_updates_room_name_and_use(self):
+        self.create_with_twin_rooms()
+        rid = 'b-abcd1234.R0'
+        code, body = self.room(rid, {'name': ' 회의실 A ', 'use': 'meeting', 'floor': '9F'})
+        self.assertEqual((code, body), (200, {'room': {'id': rid, 'name': '회의실 A', 'use': '회의실'}, 'version': 2}))
+        # 트윈: 새 버전과 현재 파일, 호실 use는 키. 다른 호실은 유지
+        self.assertEqual(self.s3.objects['plans/b-abcd1234/building-v2.json'], self.s3.objects['plans/b-abcd1234/building.json'])
+        rooms = self.twin_rooms()
+        self.assertEqual((rooms[rid]['name'], rooms[rid]['use'], rooms['b-abcd1234.R1']['name']), ('회의실 A', 'meeting', '호실 1'))
+        # Rooms 행: 이름, 한국어 용도만 변경(층, 면적, 실내기 유지). 상태 API(가상 상태 계산)에 반영
+        row = self.t['R'].items[('b-abcd1234', rid)]
+        self.assertEqual((row['name'], row['use'], row['floor'], row['idu']), ('회의실 A', '회의실', '1F', 'IDU-0'))
+        st = {r['id']: r for r in call(http('GET /rooms/status', query={'building': 'b-abcd1234'}))[1]['rooms']}
+        self.assertEqual((st[rid]['name'], st[rid]['use']), ('회의실 A', '회의실'))
+        a = self.audits('room.update')
+        self.assertEqual((len(a), a[0]['companyId'], a[0]['target'], a[0]['actor']['role'], a[0]['actor']['email']), (1, 'co-a', rid, 'manager', 'a@ga.com'))
+        self.assertEqual(a[0]['detail'], {'name': '회의실 A', 'before': {'name': '호실 0', 'use': '사무실'}, 'after': {'name': '회의실 A', 'use': '회의실'}})
+        # 같은 값은 기록 안 함. lounge→waiting은 Rooms 용도가 같아도 트윈 키 변경
+        self.assertEqual(self.room(rid, {'name': '회의실 A'})[1]['version'], None)
+        self.assertNotIn('plans/b-abcd1234/building-v3.json', self.s3.objects)
+        self.assertEqual(len(self.audits('room.update')), 1)
+        self.assertEqual(self.room(rid, {'use': 'lounge'})[1], {'room': {'id': rid, 'name': '회의실 A', 'use': '대기·휴게'}, 'version': 3})
+        self.assertEqual(self.room(rid, {'use': 'waiting'})[1]['version'], 4)
+        self.assertEqual((self.twin_rooms()[rid]['use'], self.t['R'].items[('b-abcd1234', rid)]['use']), ('waiting', '대기·휴게'))
+        # 판매사 관리자도 변경 가능
+        code, body = self.room(rid, {'name': '세미나실'}, sub='boss', groups='[admin]')
+        self.assertEqual((code, body['version']), (200, 5))
+        self.assertEqual(self.audits('room.update')[-1]['actor']['role'], 'admin')
+
+    def test_room_update_forbidden_and_invalid(self):
+        self.create_with_twin_rooms()
+        rid = 'b-abcd1234.R0'
+        self.t['M'].put_item({'sub': 'u-a2', 'companyId': 'co-a', 'email': 'a2@ga.com', 'role': 'operator'})
+        self.t['M'].put_item({'sub': 'u-b2', 'companyId': 'co-b', 'email': 'b2@da.com', 'role': 'manager'})
+        files = set(self.s3.objects)
+        self.assertEqual(self.room(rid, {'name': 'x'}, sub='u-a2'), (403, {'error': admin.MANAGER_ONLY}))
+        for sub in ('u-b', 'u-b2', 'nobody'):
+            self.assertEqual(self.room(rid, {'name': 'x'}, sub=sub), (403, {'error': tenant.FORBIDDEN}), sub)
+        for body in ({}, {'floor': '1F'}, {'name': ''}, {'name': '  '}, {'name': 'x' * 41}, {'name': 3}, {'use': 'kitchen'}, {'use': '회의실'},
+                     {'use': ['meeting']}, {'use': None}, {'name': '좋은 이름', 'use': 'kitchen'}, ['x']):
+            self.assertEqual(self.room(rid, body)[0], 400, body)
+        self.assertEqual(self.room('b-abcd1234.nope', {'name': 'x'}), (404, {'error': '없는 호실입니다.'}))
+        self.assertEqual(self.room('R0', {'name': 'x'})[0], 404)  # 접두어 없는 id는 저장된 호실 id와 다름
+        self.assertEqual(self.room(rid, {'name': 'x'}, bid='nope')[0], 400)
+        self.assertEqual(self.room(rid, {'name': 'x'}, bid='edu')[0], 403)  # 다른 기업 건물
+        self.assertEqual((set(self.s3.objects), self.audits('room.update')), (files, []))
+        self.assertEqual(self.room(rid, {'name': 'x' * 40})[0], 200)
+        self.assertEqual(self.twin_rooms()[rid]['name'], 'x' * 40)
+        # 중지 기업 관리자: 403(COMPANY_SUSPENDED). 고객사 건물 정보 변경 차단은 유지
+        self.t['C'].items['co-a']['status'] = 'suspended'
+        tenant.forget()
+        self.assertEqual(self.room(rid, {'name': 'y'})[1]['code'], 'COMPANY_SUSPENDED')
+        self.t['C'].items['co-a']['status'] = 'active'
+        tenant.forget()
+        self.assertEqual(call(http('PATCH /buildings/{id}', path={'id': 'main'}, body={'name': 'x'})), VENDOR_ONLY)
+
+    def test_room_update_without_twin_file(self):
+        # 초기 적재 건물(트윈 파일 없음): Rooms 행만 변경. IFC GUID의 '$'는 %24로 전달 가능
+        rid = next(r['id'] for r in buildings.rooms('main') if '$' in r['id'])
+        code, body = self.room(rid.replace('$', '%24'), {'use': 'office'}, bid='main')
+        self.assertEqual((code, body['room']['use'], body['version']), (200, '연구실', None))
+        self.assertEqual(self.t['R'].items[('main', rid)]['use'], '연구실')
+        self.assertFalse([k for k in self.s3.objects if k.startswith('plans/main/')])
+        self.assertEqual(self.audits('room.update')[0]['companyId'], 'co-a')
+
 
 class AdminMemberTest(Tenancy):
     def test_role_remove_and_audit(self):

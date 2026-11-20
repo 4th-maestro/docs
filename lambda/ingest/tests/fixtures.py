@@ -6,16 +6,21 @@ import ifcopenshell.api.aggregate
 import ifcopenshell.api.context
 import ifcopenshell.api.geometry
 import ifcopenshell.api.project
+import ifcopenshell.api.pset
 import ifcopenshell.api.root
 import ifcopenshell.api.spatial
+import ifcopenshell.api.type
 import ifcopenshell.api.unit
 import numpy as np
 from ifcopenshell.util.shape_builder import ShapeBuilder
 from PIL import Image
 
 
-def make_ifc(path, units=True):
-    """층 1개, 호실 2개(10×5m, 5×5m), 문 1개, 4방향 카세트 1대, 별칭 없는 스탠드형·벽걸이형 각 1대, 급기 디퓨저 1개"""
+def make_ifc(path, units=True, pset=False):
+    """층 1개, 호실 2개(10×5m, 5×5m), 문 1개, 4방향 카세트 1대, 별칭 없는 스탠드형·벽걸이형 각 1대, 급기 디퓨저 1개
+
+    pset: 카세트 유형에 Pset_ManufacturerTypeInformation(ModelReference AM130FN4DEH), 객체에 냉방 능력(W) 속성 추가
+    """
     f = ifcopenshell.api.project.create_file(version='IFC4')
     proj = ifcopenshell.api.root.create_entity(f, ifc_class='IfcProject', name='P')
     ifcopenshell.api.unit.assign_unit(f, length={'is_metric': True, 'raw': 'METRE'})
@@ -60,14 +65,23 @@ def make_ifc(path, units=True):
         el = ifcopenshell.api.root.create_entity(f, ifc_class=cls, name=name)
         ifcopenshell.api.spatial.assign_container(f, relating_structure=st, products=[el])
         solid(el, *box)
+        if pset and name == '4WAY CASSETTE':
+            t = ifcopenshell.api.root.create_entity(f, ifc_class='IfcUnitaryEquipmentType', name='CST')
+            ifcopenshell.api.type.assign_type(f, related_objects=[el], relating_type=t)
+            ps = ifcopenshell.api.pset.add_pset(f, product=t, name='Pset_ManufacturerTypeInformation')
+            ifcopenshell.api.pset.edit_pset(f, pset=ps, properties={'Manufacturer': 'Samsung', 'ModelReference': 'AM130FN4DEH'})
+            ps = ifcopenshell.api.pset.add_pset(f, product=el, name='EG_Capacity')
+            ifcopenshell.api.pset.edit_pset(f, pset=ps, properties={'SensibleCoolingCapacity': 9000.0, 'NominalCoolingCapacity': 13000.0})
     f.write(str(path))
 
 
-def make_dxf(path, with_unit=True):
+def make_dxf(path, with_unit=True, labels=False):
     """mm 단위 12×6m 건물을 내벽으로 나눈 호실 2개, 실 이름 문자, 벽걸이 블록 AC_WALL_MOUNT, 속성 TYPE·MODEL 블록 IDU
 
     문 2개: 외벽 0.9m 틈의 문 블록 DOOR_900(경첩 (2000, 0)), 내벽 1m 틈의 문 호(경첩 (6000, 2000)).
     문이 아닌 호 2개: 반지름 0.3m 호, 벽에서 떨어진 반지름 0.8m 호.
+    labels: 벽걸이 블록 옆 문자 7.2kW·FCU-1, 먼 문자 5.6kW, IDU 속성 TAG CAC-01·CAP 14.5kW,
+    건물 오른쪽 장비일람표(기호, 모델, 냉방능력 머리글과 FCU-1 행, 왼쪽 정렬)
     """
     doc = ezdxf.new(units=4)
     msp = doc.modelspace()
@@ -96,16 +110,27 @@ def make_dxf(path, with_unit=True):
         idu.add_lwpolyline([(-400, -400), (400, -400), (400, 400), (-400, 400)], close=True)
         idu.add_attdef('TYPE', (0, 0))
         idu.add_attdef('MODEL', (0, -200))
-        msp.add_blockref('IDU', (9000, 4000)).add_auto_attribs({'TYPE': '4WAY', 'MODEL': 'ARNU15GTRB4'})
+        attrs = {'TYPE': '4WAY', 'MODEL': 'ARNU15GTRB4'}
+        if labels:
+            idu.add_attdef('TAG', (0, -400))
+            idu.add_attdef('CAP', (0, -600))
+            attrs.update(TAG='CAC-01', CAP='14.5kW')
+        msp.add_blockref('IDU', (9000, 4000)).add_auto_attribs(attrs)
+    if labels:
+        for t, x, y in (('7.2kW', 3500, 5200), ('FCU-1', 3500, 4900), ('5.6kW', 11000, 500),
+                        ('기호', 20000, 3000), ('모델', 22000, 3000), ('냉방능력', 26000, 3000),
+                        ('FCU-1', 20000, 2400), ('AR07TXFCAWKN', 22000, 2400), ('7.2', 26000, 2400)):
+            msp.add_text(t, dxfattribs={'insert': (x, y), 'height': 200})
     doc.saveas(str(path))
 
 
 def make_pdf(path, text=None):
-    """A4 가로 1쪽 PDF. text를 주면 해당 문자를 텍스트 객체로 넣습니다(Helvetica, ASCII만)."""
+    """A4 가로 1쪽 PDF. text(문자열 또는 [(x pt, y pt, 문자)])를 텍스트 객체로 넣습니다(Helvetica 12pt, ASCII만)."""
     if text is None:
         Image.new('RGB', (842, 595), 'white').save(path, 'PDF')
         return
-    content = f'BT /F1 12 Tf 50 50 Td ({text}) Tj ET'.encode()
+    items = [(50, 50, text)] if isinstance(text, str) else text
+    content = ' '.join(f'BT /F1 12 Tf {x} {y} Td ({t}) Tj ET' for x, y, t in items).encode()
     objs = [b'<< /Type /Catalog /Pages 2 0 R >>',
             b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
             b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 842 595] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>',

@@ -86,7 +86,7 @@ def _ifc(job, building, files, paths, opts, pages):
             with Image.open(p) as im:
                 drawings.append((key, list(im.size), opts.get('pxPerM'), common.floor_hint(p.stem)))
         elif p.suffix.lower() == '.pdf':
-            for img, ppm, hint, _ in pdf.pages(p, opts.get('scale')):
+            for img, ppm, hint, *_ in pdf.pages(p, opts.get('scale')):
                 drawings.append((pages.put(img), list(img.size), ppm, hint or common.floor_hint(p.stem)))
     with_units = {u['floor'] for u in draft['idus']}
     detect = []
@@ -106,22 +106,24 @@ def _ifc(job, building, files, paths, opts, pages):
 
 
 def _cad(job, building, files, paths, pages, tmp):
-    floors, lines, warnings = [], [], []
+    floors, lines, labs, schedule, warnings = [], [], [], [], []
     cads = [p for _, p in paths if p.suffix.lower() in ('.dxf', '.dwg')]
     if not cads:
         raise ValueError('DXF·DWG 파일이 없습니다.')
     for i, p in enumerate(cads, 1):
-        rooms, units, doors, ln, w = cad.parse(cad.dwg_to_dxf(p, tmp) if p.suffix.lower() == '.dwg' else p)
+        rooms, units, doors, ln, w, words = cad.parse(cad.dwg_to_dxf(p, tmp) if p.suffix.lower() == '.dwg' else p)
         warnings += w
+        schedule += common.schedule(words, i)
+        labs.append(common.labels(words))
         fid = common.floor_hint(p.stem) or f'{i}F'
         if any(f['id'] == fid for f in floors):
             warnings.append(f'{p.name}: 층 {fid}이 겹쳐 P{i}로 지정')
             fid = f'P{i}'
         floors.append({'id': fid, 'level': common.level(fid, i), 'rooms': rooms, 'units': units, 'doors': doors})
         lines.append(ln)
-    draft, M = common.build(job, building, 'cad', files, floors, warnings)
-    detect = []
-    for f, ln in zip(draft['floors'], lines):
+    draft, M = common.build(job, building, 'cad', files, floors, warnings, schedule=schedule)
+    detect, texts = [], {}
+    for f, ln, lab in zip(draft['floors'], lines, labs):
         if ln is None:
             continue
         if not ln:
@@ -131,17 +133,30 @@ def _cad(job, building, files, paths, pages, tmp):
         key = pages.put(img)
         f['background'] = {'key': key, 'px': list(img.size), 'toPlan': to_plan}
         detect.append({'floor': f['id'], 'imageKey': key, 'pxPerM': ppm, 'toPlan': to_plan})
+        px = _to_px(lab, M, to_plan)  # merge에서 인식 상자와 연결
+        if px['kw'] or px['tag']:
+            texts[f['id']] = {'pxPerM': ppm, **px}
+    if texts:
+        draft['meta']['ingest']['texts'] = texts
     return draft, detect
 
 
+def _to_px(lab, M, T):
+    """CAD 문자 위치(x, 아래쪽 -y, m)를 평면 좌표(M)를 거쳐 렌더링 화소(toPlan 역변환)로 바꿉니다."""
+    a, b, d, e, xo, yo = M
+    return {k: [[round((a * x - b * v + xo - T[2]) / T[0], 1), round((d * x - e * v + yo - T[5]) / T[4], 1), val]
+                for x, v, val in items] for k, items in lab.items()}
+
+
 def _pdf(job, building, files, paths, opts, pages):
-    floors, backgrounds, warnings = [], [], []
+    floors, backgrounds, warnings, schedule, texts = [], [], [], [], {}
     pdfs = [p for _, p in paths if p.suffix.lower() == '.pdf']
     if not pdfs:
         raise ValueError('PDF 파일이 없습니다.')
     for p in pdfs:
-        for no, (img, ppm, hint, scale) in enumerate(pdf.pages(p, opts.get('scale')), 1):
+        for no, (img, ppm, hint, scale, words) in enumerate(pdf.pages(p, opts.get('scale')), 1):
             key = pages.put(img)
+            schedule += common.schedule(words, pages.n)
             fid = hint or f'P{pages.n}'
             if any(f['id'] == fid for f in floors):
                 warnings.append(f'{p.name} {no}쪽: 층 {fid}이 겹쳐 P{pages.n}로 지정')
@@ -150,7 +165,12 @@ def _pdf(job, building, files, paths, opts, pages):
                 warnings.append(f'{p.name} {no}쪽: 축척 문자 없음, 2D 화면에서 기준 치수 입력 필요')
             floors.append({'id': fid, 'level': common.level(fid, pages.n), 'rooms': [], 'units': []})
             backgrounds.append((key, list(img.size), ppm))
-    draft, _ = common.build(job, building, 'pdf', files, floors, warnings)
+            lab = common.labels(words)
+            if lab['kw'] or lab['tag']:
+                texts[fid] = {'pxPerM': ppm, **lab}
+    draft, _ = common.build(job, building, 'pdf', files, floors, warnings, schedule=schedule)
+    if texts:
+        draft['meta']['ingest']['texts'] = texts
     detect = []
     for f, (key, px, ppm) in zip(draft['floors'], backgrounds):
         f['background'] = {'key': key, 'px': px, 'toPlan': None}

@@ -4,7 +4,7 @@ import AdminPage from './admin/AdminPage'
 import ChatPanel, { type ChatMsg } from './ai/ChatPanel'
 import type { AskResult } from './ai/types'
 import { useAsk } from './ai/useAsk'
-import { actOps, BUILDINGS_CHANGED, clearChat, getBuildings, getChat, getHistory, getMe, getOps, getStatus, getTwin, joinCompany, saveSchedule, setAutoApply, SUSPENDED, type Me } from './api'
+import { actOps, BUILDINGS_CHANGED, clearChat, getBuildings, getChat, getHistory, getMe, getOps, getStatus, getTwin, HAS_API, joinCompany, patchRoom, saveSchedule, setAutoApply, SUSPENDED, type Me } from './api'
 import type { Decision, OpsAction, OpsOverview } from './ops/types'
 import LoginScreen, { NoCompany, Suspended } from './auth/LoginScreen'
 import { AUTH_ON, currentEmail, isAdmin, onAuthChange, signedIn } from './auth/cognito'
@@ -35,6 +35,7 @@ import { Sk, SkFloors, SkKpis, SkPlan } from './skeleton/Skeleton'
 import CountUp from './motion/CountUp'
 import { UnitIcon } from './ingest/UnitSymbol'
 import { TYPES } from './ingest/units'
+import { USE_KO } from '../twin/pipeline/web-demo.js'
 
 // three.js 청크(약 620kB)는 3D 영역 표시 시점에 로드
 const Twin3D = lazy(() => import('./twin3d/Twin3D'))
@@ -61,6 +62,10 @@ const fetchPrice = (q: string) => (q ? getCompare(q) : Promise.resolve(null))
 const uid = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`
 
 const STOPPED = '서비스가 중지된 기업입니다. 판매사에 문의하십시오.'
+// 호실 용도 선택지: 값은 트윈 호실 use 키(pipeline-core.js LOAD, 서버 admin.ROOM_USES), 이름은 상태 API 용도(web-demo.js USE_KO)
+// lounge·waiting은 상태 API 용도가 같아 3D 트윈 표기(휴게·카페, 대합실)로 구분
+const ROOM_USES = ['lecture', 'lab', 'meeting', 'lounge', 'admin', 'office', 'retail', 'restaurant', 'waiting']
+  .map((key) => ({ key, label: USE_KO[key] + (key === 'lounge' ? '(휴게·카페)' : key === 'waiting' ? '(대합실)' : '') }))
 
 // 테마: index.html 인라인 스크립트가 첫 표시 전에 data-theme 지정, 여기서는 전환과 저장만 처리
 // - 트윈 iframe(운영 탭 3D, 판매사 도면 파이프라인)에도 전환을 전달
@@ -220,10 +225,12 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
   const twinOn = Boolean(TWIN_URL) && !!info && info.hasTwin !== false && !missing
   const hasTwin = info?.hasTwin
   const prefetch = useMemo(() => (TWIN_URL && !twinWait && hasTwin !== false ? getTwin(building).catch(() => null) : null), [building, twinWait, hasTwin])
-  useEffect(() => onNeedBuilding(() => frame.current, (id) => ((id === building && prefetch) || getTwin(id).catch(() => null)).then((d) => {
+  // 호실 이름·용도 변경 후 트윈 다시 읽기: twinRev를 올려 iframe을 다시 열고, 미리 받은 값 대신 새 building.json 조회
+  const [twinRev, setTwinRev] = useState(0)
+  useEffect(() => onNeedBuilding(() => frame.current, (id) => ((id === building && !twinRev && prefetch) || getTwin(id).catch(() => null)).then((d) => {
     if (!d) setMissing(true)
     return d
-  })), [building, prefetch])
+  })), [building, prefetch, twinRev])
   // 트윈 준비 완료 때 테마·상태 다시 전송(iframe 로드 시점에는 트윈이 아직 메시지를 받지 못할 수 있음)
   const [readyN, setReadyN] = useState(0)
   useEffect(() => onTwinReady(() => frame.current, () => { postTheme(frame.current); setReadyN((n) => n + 1) }), [])
@@ -323,6 +330,14 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
   // - 처리 결과는 다음 조회 전까지 화면에 먼저 반영. 수락·되돌리기는 스케줄이 바뀌므로 시간표·상태도 다시 조회
   const me = useContext(MeContext)
   const canToggle = me ? me.role === 'admin' || me.role === 'manager' : isAdmin()
+  // 호실 이름·용도 변경(운영 탭): 같은 역할(서버도 운영자 403). API 없음·목업 상태는 서버 호실이 아니라 숨김
+  const canEditRoom = ops && canToggle && HAS_API && !status?.mock
+  function roomSaved() {
+    // 다른 서버 실행 환경은 변경 표시 확인(3초) 뒤 반영: 바로 한 번, 4초 뒤 한 번 더 조회(건물 목록 갱신과 같은 간격)
+    load()
+    setTimeout(load, 4000)
+    if (twinOn) setTwinRev((n) => n + 1)
+  }
   const opsPoll = usePoll(fetchOps, ops ? building : '')
   const [opsEdit, setOpsEdit] = useState<{ from: OpsOverview | null; value: OpsOverview } | null>(null)
   const opsData = opsEdit && opsEdit.from === opsPoll.data ? opsEdit.value : opsPoll.data
@@ -490,7 +505,7 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
                     <FlowModal flow={report.flow} persona={report.ui.persona} onPersona={(k) => postUi(frame.current, `persona:${k}`)} onClose={() => postUi(frame.current, 'flow:off')} />
                   )}
                   {twinWait ? <div className="embed"><SkPlan /></div> : twinOn ? (
-                    <iframe ref={frame} className="embed" allow="fullscreen" src={src} title="3D 디지털트윈" onLoad={() => { postTheme(frame.current); postState(frame.current, building, floor, mode, rooms, highlight, twinData) }} />
+                    <iframe key={twinRev} ref={frame} className="embed" allow="fullscreen" src={src} title="3D 디지털트윈" onLoad={() => { postTheme(frame.current); postState(frame.current, building, floor, mode, rooms, highlight, twinData) }} />
                   ) : sim ? (
                     <p className="embed sim-none">이 건물은 3D 트윈 도면이 없어 운전 시뮬레이션을 사용할 수 없습니다.</p>
                   ) : floor ? (
@@ -500,7 +515,7 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
                   ) : <div className="embed" />}
                   {/* 시뮬레이션 역할은 예상 실온을 같은 온도 척도로 칠함 */}
                   <Legend mode={sim ? 'temp' : mode} status={status} units={twinOn ? report?.ui.idu : undefined} />
-                  {room ? <RoomDetail r={room} /> : <p className="muted pick-hint">{floor ? '호실을 누르면 HVAC 상태가 여기에 표시됩니다.' : '층을 선택하면 평면도가 표시됩니다.'}</p>}
+                  {room ? <RoomDetail key={room.id} r={room} building={building} canEdit={canEditRoom} onSaved={roomSaved} /> : <p className="muted pick-hint">{floor ? '호실을 누르면 HVAC 상태가 여기에 표시됩니다.' : '층을 선택하면 평면도가 표시됩니다.'}</p>}
                 </section>
                 {/* 트윈 건물은 층이 비어 있을 수 있음: 빈 층이면 시간표는 전체 층 보기(2026-11-20 결정) */}
                 {ops && <ScheduleTimeline building={building} floor={floor || 'all'} floors={floors} refreshKey={scheduleKey} rooms={all} onLocate={locate} />}
@@ -565,13 +580,19 @@ function Legend({ mode, status, units }: { mode: Mode; status: Status | null; un
   )
 }
 
-function RoomDetail({ r }: { r: Room }) {
+// 호실 상세: 고객사 관리자·판매사 관리자는 이름·용도 변경 폼을 열 수 있음(key로 호실마다 상태 초기화)
+function RoomDetail({ r, building, canEdit, onSaved }: { r: Room; building: string; canEdit: boolean; onSaved: () => void }) {
+  const [edit, setEdit] = useState(false)
+  const [notice, setNotice] = useState('')
   return (
     <div className="room">
       <div className="room-head">
         <h3>{r.name}</h3>
         <span className="muted">{r.floor}, {r.use}, {r.areaM2}㎡, HVAC {r.idu}</span>
+        {canEdit && !edit && <button className="secondary room-edit-open" type="button" onClick={() => { setEdit(true); setNotice('') }}>이름·용도 변경</button>}
       </div>
+      {edit && <RoomEdit r={r} building={building} onClose={() => setEdit(false)} onSaved={() => { setEdit(false); setNotice('호실 이름과 용도를 저장했습니다.'); onSaved() }} />}
+      {notice && <p className="ok fade-in" role="status">{notice}</p>}
       {r.anomaly && <p className="bad-line"><AlertTriangle size={16} aria-hidden />설정온도 미도달: 운전 중 실내온도가 설정온도와 3℃ 이상 차이</p>}
       <dl className="kv">
         <dt>운전</dt><dd>{r.onOff ? `${r.mode === 'cooling' ? '냉방' : '난방'} 운전` : 'OFF'}</dd>
@@ -583,5 +604,49 @@ function RoomDetail({ r }: { r: Room }) {
         <dt>재실</dt><dd>{r.occupants}명</dd>
       </dl>
     </div>
+  )
+}
+
+// 호실 이름(1~40자)·용도 변경 폼: 바뀐 항목만 전송, 실패는 서버 문구 표시
+// - 현재 용도가 선택지 1개와 맞으면 그 값, 아니면(대기·휴게, 진료실, 기타 등) '현재 용도 유지'로 시작하고 용도는 보내지 않음
+function RoomEdit({ r, building, onClose, onSaved }: { r: Room; building: string; onClose: () => void; onSaved: () => void }) {
+  const same = ROOM_USES.filter((u) => USE_KO[u.key] === r.use)
+  const init = same.length === 1 ? same[0].key : ''
+  const [name, setName] = useState(r.name)
+  const [use, setUse] = useState(init)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const trimmed = name.trim()
+  const body = { ...(trimmed !== r.name ? { name: trimmed } : {}), ...(use !== init ? { use } : {}) }
+  const ready = !!trimmed && Object.keys(body).length > 0
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault()
+    if (!ready) return
+    setBusy(true); setError('')
+    try {
+      await patchRoom(building, r.id, body)
+      onSaved()
+    } catch (err) {
+      setError((err as Error).message)
+      setBusy(false)
+    }
+  }
+  return (
+    <form className="room-edit fade-in" onSubmit={save} aria-label={`${r.name} 이름·용도 변경`}>
+      <label>호실 이름<input value={name} maxLength={40} autoComplete="off" onChange={(e) => setName(e.target.value)} aria-required aria-invalid={!trimmed || undefined} /></label>
+      <label>용도
+        <select value={use} onChange={(e) => setUse(e.target.value)}>
+          {!init && <option value="">현재 용도 유지({r.use})</option>}
+          {ROOM_USES.map((u) => <option key={u.key} value={u.key}>{u.label}</option>)}
+        </select>
+      </label>
+      {!trimmed && <p className="error" role="alert">호실 이름을 입력하십시오.</p>}
+      {error && <p key={error} className="error fade-in" role="alert">{error}</p>}
+      <div className="btns">
+        <button className="primary" type="submit" disabled={busy || !ready}>{busy ? '저장 중' : '저장'}</button>
+        <button className="secondary" type="button" onClick={onClose}>취소</button>
+      </div>
+    </form>
   )
 }

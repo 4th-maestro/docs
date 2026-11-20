@@ -6,12 +6,13 @@
 - 건물 소속: GET /admin/buildings(소속 없는 건물 포함), PUT /admin/buildings/{id}/company {companyId | null}
 - 건물 관리: POST /admin/companies/{id}/buildings(등록), PUT /buildings/{id}/twin(트윈·도면·호실 확정 저장, twin 함수),
   PATCH /admin/buildings/{id}(이름, 용도, 운영 시간, 주말 운영), DELETE /admin/buildings/{id}(영구 삭제, 변경 이력만 남김)
+- 호실 이름·용도: PATCH /buildings/{id}/rooms/{roomId}(room 함수, 고객사 관리자도 허용, 2026-11-21)
 - 사용자: GET /admin/users(가입한 사용자 sub, 이메일, 상태, 판매사 관리자 여부, 소속 기업, 가입일),
   PUT /admin/users/{sub}/admin {admin: bool}(판매사 관리자 지정·해제, 자기 계정 해제는 409, 2026-11-21)
 - 관리자 판정: Cognito admin 그룹 구성원(tenant.admins, 변경 후 3초 안 반영). 사용자 풀이 없는 로컬·테스트는 토큰 cognito:groups 클레임
 - 공용 함수: 기업 상세, 변경 이력 조회, 건물 정보 수정은 고객사 설정 API(customer.py)도 사용
 - 변경 이력 action: company.create, company.update, company.delete, company.code, building.assign, building.create, building.update,
-  building.plan, building.delete, member.join, member.role, member.remove, user.admin(기업 id 대신 VENDOR_AUDIT에 기록)
+  building.plan, building.delete, room.update, member.join, member.role, member.remove, user.admin(기업 id 대신 VENDOR_AUDIT에 기록)
 """
 import json
 import math
@@ -20,6 +21,7 @@ import re
 import secrets
 import string
 from decimal import Decimal
+from urllib.parse import unquote
 
 import buildings
 import common
@@ -520,11 +522,15 @@ def _sync(env, sort, bid, rows=(), keep=None):
     return old
 
 
-def _save(bid, req):
-    """트윈·도면 파일과 Rooms·Equipment 기록, 빠진 호실의 State 삭제: (버전, 기존 호실 id 집합)"""
+def _next_version(bid):
     # 버전 번호: 도면 v<n>, 트윈 building-v<n> 중 가장 큰 값 + 1(다른 경로가 한쪽만 저장해도 덮어쓰지 않음)
     pat = re.compile(rf'plans/{re.escape(bid)}/(?:building-)?v(\d+)\.json')
-    n = 1 + max((int(m.group(1)) for k in plan.keys(f'plans/{bid}/') if (m := pat.fullmatch(k))), default=0)
+    return 1 + max((int(m.group(1)) for k in plan.keys(f'plans/{bid}/') if (m := pat.fullmatch(k))), default=0)
+
+
+def _save(bid, req):
+    """트윈·도면 파일과 Rooms·Equipment 기록, 빠진 호실의 State 삭제: (버전, 기존 호실 id 집합)"""
+    n = _next_version(bid)
     for key, body in ((f'building-v{n}', req['twin']), ('building', req['twin']), (f'v{n}', req['plan']), ('current', req['plan'])):
         plan.put(f'plans/{bid}/{key}.json', body)
     rooms = req['rooms']
@@ -628,6 +634,81 @@ def twin(event, context):
     if tenant.caller(event)['role'] != tenant.ADMIN:
         return common.resp(403, {'error': VENDOR_ONLY})
     return _stored(replace_twin)(event)
+
+
+# 호실 이름·용도 변경(2026-11-21): PATCH /buildings/{id}/rooms/{roomId} {name?, use?}
+# - 권한: 판매사 관리자, 건물 소속 기업의 고객사 관리자(manager). 운영자 403, 다른 기업·소속 없음 403, 중지 기업 403(COMPANY_SUSPENDED)
+# - 검사: name 1~40자(앞뒤 공백 제거), use는 ROOM_USES 키, 항목 1개 이상. 호실은 Rooms 테이블 기준(없으면 404)
+# - 저장: 트윈 building.json 호실 name·use(키) → building-v<n>.json·building.json(n은 _save와 같은 규칙), Rooms 행 name·use(한국어 용도)
+#   트윈 파일이 없는 건물(초기 적재 건물)은 Rooms 행만 변경. 같은 값이면 기록 안 함
+# - shortcut: building.json 읽기·쓰기 사이에 같은 건물 다른 호실 변경이 겹치면 마지막 저장만 남음(Rooms 행은 유지),
+#   동시 편집이 잦아지면 S3 조건부 쓰기(If-Match)로 교체
+
+# 트윈 호실 use 키(frontend twin/pipeline/pipeline-core.js LOAD) → Rooms 용도(web-demo.js USE_KO, sim.py 재실 규칙과 같은 이름)
+ROOM_USES = {'lecture': '강의실', 'lab': '실험실', 'meeting': '회의실', 'lounge': '대기·휴게', 'admin': '사무실',
+             'office': '연구실', 'retail': '상점', 'restaurant': '식당', 'waiting': '대기·휴게'}
+MANAGER_ONLY = '호실 이름과 용도는 고객사 관리자만 변경할 수 있습니다.'
+
+
+def room_fields(req):
+    """호실 변경 입력 검증: (정리한 필드, 오류 문구). 그 밖의 키는 무시"""
+    if not isinstance(req, dict):
+        return None, '요청 본문이 JSON 객체가 아닙니다.'
+    out = {}
+    if 'name' in req:
+        v = req['name'].strip() if isinstance(req['name'], str) else ''
+        if not 1 <= len(v) <= 40:
+            return None, '호실 이름은 1~40자로 입력하십시오.'
+        out['name'] = v
+    if 'use' in req:
+        if not (isinstance(req['use'], str) and req['use'] in ROOM_USES):
+            return None, f"호실 용도는 {', '.join(ROOM_USES)} 중 하나입니다."
+        out['use'] = req['use']
+    return (out, None) if out else (None, '수정할 항목이 없습니다.')
+
+
+def update_room(event):
+    try:
+        bid = buildings.get(path_id(event))['id']
+    except ValueError as e:
+        return common.bad_building(e)
+    tenant.require_building(event, bid)
+    ctx = tenant.caller(event)
+    if ctx['role'] not in (tenant.ADMIN, 'manager'):
+        return common.resp(403, {'error': MANAGER_ONLY})
+    fields, err = room_fields(common.body(event))
+    if err:
+        return common.resp(400, {'error': err})
+    # IFC GUID 호실 id의 '$'는 주소에서 %24로 전달될 수 있음(호실 id에 '%' 없음)
+    rid = unquote(str((event.get('pathParameters') or {}).get('roomId', '')))
+    rows = tenant.table('ROOMS_TABLE')
+    row = rows.get_item(Key={'buildingId': bid, 'roomId': rid}).get('Item')
+    if not row:
+        return common.resp(404, {'error': '없는 호실입니다.'})
+    after = {'name': fields.get('name', row['name']), 'use': ROOM_USES[fields['use']] if 'use' in fields else row['use']}
+    changed = {k: v for k, v in after.items() if row.get(k) != v}
+    twin_doc = plan.get(f'plans/{bid}/building.json')
+    t = next((r for f in (twin_doc or {}).get('floors', []) for r in f.get('rooms', []) if r.get('id') == rid), None)
+    n = None
+    # lounge·waiting은 Rooms 용도가 같아도 트윈 키가 달라 트윈만 바뀔 수 있음
+    if t is not None and any(t.get(k) != v for k, v in fields.items()):
+        t.update(fields)
+        n = _next_version(bid)
+        for key in (f'building-v{n}', 'building'):
+            plan.put(f'plans/{bid}/{key}.json', twin_doc)
+    if changed:
+        rows.put_item(Item=row | changed)
+    if changed or n:
+        _refresh()
+        if owner := tenant.owners().get(bid):
+            tenant.audit(owner, actor(event), 'room.update', rid,
+                         {'name': after['name'], 'before': {k: row.get(k) for k in after}, 'after': after})
+    return common.resp(200, {'room': {'id': rid, **after}, 'version': n})
+
+
+def room(event, context):
+    """PATCH /buildings/{id}/rooms/{roomId}"""
+    return _stored(update_room)(event)
 
 
 ROUTES = {

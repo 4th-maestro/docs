@@ -1,5 +1,5 @@
 import HVAC from './hvac-types.json' with { type: 'json' }
-import { distance, edges, inRoom, projection, type Affine, type Detection, type Door, type IndoorUnit, type OutdoorUnit, type Plan, type PlanFloor, type PlanRoom, type Point } from '../floor-edit.ts'
+import { distance, edges, inRoom, projection, type Affine, type Detection, type Door, type IndoorUnit, type OutdoorUnit, type Plan, type PlanFloor, type PlanRoom, type Point, type ScheduleRow } from '../floor-edit.ts'
 
 // 실내기 매핑 계산(화면과 무관한 순수 함수). 규약: docs/human/reference/plan-ingest.md 3절
 // 유형표 hvac-types.json은 _maestro/ml/hvac_types.json의 복사본이며 원본은 ml 폴더입니다.
@@ -22,10 +22,37 @@ export function similarity([p1, p2]: Point[], [q1, q2]: Point[]): Affine | null 
   return [a, -b, q1[0] - a * p1[0] + b * p1[1], b, a, q1[1] - b * p1[0] - a * p1[1]]
 }
 
-// 유형 표시 필드: 이름, LG 예시 모델, 매뉴얼. 목록에 없는 cls는 unknown
-export function typeFields(cls: string): Pick<IndoorUnit, 'cls' | 'type' | 'model' | 'manual'> {
+// 냉방 용량과 출처. 정격 소비전력은 냉방 용량의 31%(직접 추가, 트윈 파이프라인 placeIdus와 같음)
+export const kwFields = (coolKw: number, kwSource: IndoorUnit['kwSource']) => ({ coolKw, ratedKw: Math.round(coolKw * 31) / 100, kwSource })
+
+type ModelRow = { kw: number; model: string; market?: string; source?: string; manual?: string }
+type Match = Pick<IndoorUnit, 'model' | 'manual' | 'modelMatch' | 'coolKw' | 'ratedKw' | 'kwSource' | 'review'>
+const tagKey = (s: string) => s.replace(/\s+/g, '').toUpperCase()
+
+// 모델 대응(규약 3-5절): 장비 번호와 장비일람표(schedule) → 용량(exact, nearest) → 유형 예시(type)
+// - 원본 모델명(source)과 직접 입력(manual)은 호출하는 쪽에서 유지. 일람표 행의 용량은 도면 용량보다 우선
+// - 용량: types[].models에서 차이 0.05kW 이하는 exact, 아니면 용량 이상인 가장 작은 모델(없으면 가장 큰 모델)로 nearest와 review
+// - 매뉴얼은 유형 매뉴얼. models 항목에 manual이 있으면 그 값
+export function modelFor(cls: string, kw?: number, tag?: string, schedule: ScheduleRow[] = []): Match {
   const t = TYPES.find(x => x.class === cls)
-  return t ? { cls, type: t.name, model: t.exampleModel ?? undefined, manual: t.manual } : { cls: 'unknown', type: '유형 미확인', model: undefined, manual: undefined }
+  const row = tag ? schedule.find(r => tagKey(r.tag) === tagKey(tag)) : undefined
+  const cap = row?.kw ?? kw
+  const kwSet = row?.kw ? kwFields(row.kw, 'schedule') : {}
+  if (row?.model) return { model: row.model, manual: t?.manual, modelMatch: 'schedule', ...kwSet }
+  // 같은 용량은 JSON 순서(국내 모델 먼저)를 유지하는 안정 정렬
+  const models = [...((t as { models?: ModelRow[] } | undefined)?.models ?? [])].sort((a, b) => a.kw - b.kw)
+  if (cap && models.length) {
+    const exact = models.find(m => Math.abs(m.kw - cap) <= .05 + 1e-9)
+    const pick = exact ?? models.find(m => m.kw >= cap) ?? models[models.length - 1]
+    return { model: pick.model, manual: pick.manual ?? t?.manual, modelMatch: exact ? 'exact' : 'nearest', review: !exact, ...kwSet }
+  }
+  return { model: t?.exampleModel ?? undefined, manual: t?.manual, modelMatch: t?.exampleModel ? 'type' : undefined, ...kwSet }
+}
+
+// 유형 표시 필드: 이름과 모델 대응(modelFor). 목록에 없는 cls는 unknown
+export function typeFields(cls: string, kw?: number, tag?: string, schedule?: ScheduleRow[]): Pick<IndoorUnit, 'cls' | 'type'> & Match {
+  const t = TYPES.find(x => x.class === cls)
+  return { cls: t ? cls : 'unknown', type: t?.name ?? '유형 미확인', ...modelFor(cls, kw, tag, schedule) }
 }
 
 // cls가 없는 기존 데이터의 표시 유형: 3D 트윈의 1방향, 4방향 판정(type, model 문자열)과 같은 규칙
@@ -48,18 +75,19 @@ export function assignRoom(p: Point, rooms: PlanRoom[]): { room: PlanRoom; insid
   return best && { room: best, inside: false }
 }
 
-// 인식 결과(도면 이미지 픽셀 상자) → 실내기. 신뢰도 0.5 미만, unknown, 호실 밖이면 review. 문(cls door)은 제외
-export function detectionsToUnits(floor: PlanFloor, m: Affine, detections: Detection[] = floor.detections ?? []): IndoorUnit[] {
+// 인식 결과(도면 이미지 픽셀 상자) → 실내기. 신뢰도 0.5 미만, unknown, 호실 밖, 용량 근사 모델이면 review. 문(cls door)은 제외
+// - 상자 주변 용량 표기(kw)와 장비 번호(tag)로 모델 대응(modelFor). schedule은 meta.ingest.schedule
+export function detectionsToUnits(floor: PlanFloor, m: Affine, schedule: ScheduleRow[] = []): IndoorUnit[] {
   const scale = Math.hypot(m[0], m[3])
-  return detections.flatMap((d, i) => {
+  return (floor.detections ?? []).flatMap((d, i) => {
     if (d.cls === 'door') return []
     const [u0, v0, u1, v1] = d.box
     const pos = toPlan(m, [(u0 + u1) / 2, (v0 + v1) / 2])
     const hit = assignRoom(pos, floor.rooms)
     if (!hit) return []
-    const fields = typeFields(d.cls)
-    return [{ id: `IDU-${floor.id}-yolo-${i + 1}`, room: hit.room.id, pos: [r2(pos[0]), r2(pos[1])] as Point, ...fields, source: 'yolo', conf: r2(d.conf),
-      review: d.conf < .5 || fields.cls === 'unknown' || !hit.inside, size: [r2(Math.abs(u1 - u0) * scale), r2(Math.abs(v1 - v0) * scale)] as [number, number], ref: `det-${i + 1}` }]
+    const fields = typeFields(d.cls, d.kw, d.tag, schedule)
+    return [{ id: `IDU-${floor.id}-yolo-${i + 1}`, room: hit.room.id, pos: [r2(pos[0]), r2(pos[1])] as Point, ...(d.kw ? kwFields(d.kw, 'pdf-text') : {}), ...fields,
+      tag: d.tag, source: 'yolo', conf: r2(d.conf), review: d.conf < .5 || fields.cls === 'unknown' || !hit.inside || !!fields.review, size: [r2(Math.abs(u1 - u0) * scale), r2(Math.abs(v1 - v0) * scale)] as [number, number], ref: `det-${i + 1}` }]
   })
 }
 
@@ -99,8 +127,13 @@ export function detectionsToDoors(floor: PlanFloor, m: Affine, detections: Detec
 // 초안 정리: 위치를 맞춘 층(background.toPlan 있음)의 인식 결과를 실내기와 문(cls door)으로 바꾸고 detections를 비움
 // - 인식 결과가 1개 이상인 층은 파이프라인의 면적 추정 실내기(source estimate)를 뺌
 // - 호실이 없는 실내기(파서 결과의 floor만 있음)는 그 층에서 호실을 배정하고, 실 밖이면 review
-// - cls만 있는 실내기는 유형 이름, LG 예시 모델, 매뉴얼을 채움(원본 모델명은 유지)
+// - cls만 있는 실내기는 유형 이름, 모델, 매뉴얼을 채움. 원본 모델명은 유지(modelMatch source), 없으면 장비일람표, 용량, 유형 예시 순서로 대응
 export function applyDetections(plan: Plan): Plan {
+  const schedule = plan.meta?.ingest?.schedule
+  const fill = (u: IndoorUnit): IndoorUnit => {
+    const f: Partial<IndoorUnit> = u.model ? { ...typeFields(u.cls!), model: u.model, modelMatch: u.modelMatch ?? 'source' } : typeFields(u.cls!, u.coolKw, u.tag, schedule)
+    return { ...u, ...f, ...(u.manual ? { manual: u.manual } : {}), review: u.review || f.review }
+  }
   const rooms = new Set(plan.floors.flatMap(f => f.rooms.map(r => r.id)))
   let idus = plan.idus.map(u => {
     const floor = !rooms.has(u.room) && plan.floors.find(f => f.id === u.floor)
@@ -111,10 +144,10 @@ export function applyDetections(plan: Plan): Plan {
     const m = f.background?.toPlan
     if (!m || !f.detections?.length) return f
     const ids = new Set(f.rooms.map(r => r.id))
-    idus = [...idus.filter(u => !(ids.has(u.room) && u.source === 'estimate')), ...detectionsToUnits(f, m)]
+    idus = [...idus.filter(u => !(ids.has(u.room) && u.source === 'estimate')), ...detectionsToUnits(f, m, schedule)]
     return { ...f, detections: [], doors: [...(f.doors ?? []), ...detectionsToDoors(f, m)] }
   })
-  return { ...plan, floors, idus: idus.map(u => (u.cls && !u.type ? { ...u, ...typeFields(u.cls), ...(u.model ? { model: u.model } : {}), ...(u.manual ? { manual: u.manual } : {}) } : u)) }
+  return { ...plan, floors, idus: idus.map(u => (u.cls && !u.type ? fill(u) : u)) }
 }
 
 // 2D 매핑 화면에서 평면 좌우 바깥에 실외기 기호를 두는 여백(m)

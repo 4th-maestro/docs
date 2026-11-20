@@ -309,6 +309,8 @@ Resources:
         Twin: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: '/buildings/{id}/twin', Method: GET}}
         # 트윈 확정 저장(판매사 전용, admin.twin): 도면 변환 규약(plan-ingest.md 4절)과 같은 경로
         SaveTwin: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: '/buildings/{id}/twin', Method: PUT}}
+        # 호실 이름·용도 변경(admin.room): 판매사 관리자, 소속 건물의 고객사 관리자. 트윈 building.json 새 버전과 Rooms 행 변경
+        UpdateRoom: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: '/buildings/{id}/rooms/{roomId}', Method: PATCH}}
         Recommend: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /recommendations, Method: GET}}
         Anomalies: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /anomalies, Method: GET}}
         ListSchedules: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /schedules, Method: GET}}

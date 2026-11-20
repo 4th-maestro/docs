@@ -5,6 +5,7 @@
 - 판매사 관리자 판정: USER_POOL_ID가 있으면 Cognito admin 그룹 구성원 조회(admins, 60초 캐시), 없으면(로컬·테스트) 토큰 그룹 클레임.
   토큰 클레임은 발급 시점 값이라 지정·해제가 다시 로그인 전까지 반영되지 않음(2026-11-21 그룹 조회로 전환)
 - 권한 분리(2026-11-20): 기업·구성원·건물·도면·트윈 변경은 admin 전용. 고객사 구성원(manager·operator)은 조회와 운영(AI 질의, 대화 기록, 스케줄 저장·취소)만
+  - 예외(2026-11-21): 호실 이름·용도 변경은 소속 건물의 manager도 허용(admin.room)
 - 건물 소속: BuildingOwnersTable(buildingId → companyId). 소속 기업이 없는 건물은 admin만 접근
 - 캐시: 실행 환경별 60초(구성원, 건물 소속, 기업 상태, 판매사 관리자). 변경 요청은 changed()로 변경 표시를 갱신하고, 도면 버킷이 있는 실행 환경은 3초 안에 반영
 - 중지 기업: 기업 status가 suspended면 구성원의 건물 API·/company API는 403(code COMPANY_SUSPENDED), GET /me는 허용, admin은 검사 안 함

@@ -1,16 +1,20 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState, type KeyboardEvent as KeyEvent, type ReactNode } from 'react'
 import { distance, inRoom, type Affine, type IndoorUnit, type Plan, type PlanFloor, type Point } from '../floor-edit'
-import { clsOf, connectOdus, detectionsToDoors, detectionsToUnits, fromPlan, oduFloor, similarity, snapDoor, toPlan, TYPES, typeFields } from './units'
+import { clsOf, connectOdus, detectionsToDoors, detectionsToUnits, fromPlan, kwFields, modelFor, oduFloor, similarity, snapDoor, toPlan, TYPES, typeFields } from './units'
 import { UnitIcon, UnitSymbol } from './UnitSymbol'
 import './ingest.css'
 
 // 평면도 편집(BuildingEditor)의 실내기 도구와 도면 위치 맞춤 도구
-// - 실내기: 유형 6종 추가, 선택 후 끌어서 이동, 삭제, 유형 변경, 방향 회전, 확인 필요(review) 목록
+// - 실내기: 유형 6종 추가, 선택 후 끌어서 이동, 삭제, 유형 변경, 냉방 용량과 모델 수정, 방향 회전, 확인 필요(review) 목록
 // - 실외기: 층별 기호(평면 좌우 여백), 실내기 연결선, 끌어서 이동, 실내기를 고른 뒤 실외기를 눌러 연결 변경, 추가, 삭제
 // - 빈 호실 추정: 실내기가 없는 실에 면적 추정 실내기(40㎡당 1대)를 넣고 실외기에 연결
 // - 위치 맞춤: 도면 이미지 점 2개 → 평면 점 2개로 회전, 축척, 이동(toPlan)을 구하고 위치를 맞추지 않은 인식 결과를 실내기와 문(cls door)으로 변환
 // - 모든 변경은 BuildingEditor의 commit(실행 취소 기록)으로 반영
 const SOURCE: Record<string, string> = { ifc: 'IFC 객체', cad: 'CAD 블록', yolo: '도면 인식', manual: '직접 추가', estimate: '면적 추정', plan: '도면 표기', photo: '사진 대수', model: '위치 예측' }
+// 모델 대응 방식(modelMatch): docs/human/reference/plan-ingest.md 3-5절
+const MATCH: Record<string, string> = { source: '원본 모델명', schedule: '장비일람표', exact: '용량 일치', nearest: '용량 근사(확인 필요)', type: '유형 예시', manual: '직접 입력' }
+// 입력칸은 Enter나 포커스 이동 때 한 번만 반영(글자마다 실행 취소 기록을 남기지 않음)
+const blurOnEnter = (e: KeyEvent<HTMLInputElement>) => { if (e.key === 'Enter') e.currentTarget.blur() }
 const r2 = (v: number) => Math.round(v * 100) / 100
 // 위치를 맞추지 않은 도면 이미지는 건물 크기에 맞춰 왼쪽 위에 임시 배치
 const fit = ([w, h]: [number, number], size: { w: number; d: number }): Affine => { const s = Math.min(size.w / w, size.d / h); return [s, 0, 0, 0, s, 0] }
@@ -43,6 +47,33 @@ export function useUnitTool({ model, commit, level, current, tool, scale, backgr
   const patch = (id: string, change: Partial<IndoorUnit>) => commit({ ...model, idus: model.idus.map(u => (u.id === id ? { ...u, ...change } : u)) })
   const remove = (id: string) => { commit({ ...model, idus: model.idus.filter(u => u.id !== id) }); setSel(''); say('실내기를 삭제했습니다.') }
   const reset = () => { setSel(''); setDrag(null); setPts([]); setSelOdu(''); setOduDrag(null) }
+  const schedule = model.meta?.ingest?.schedule
+
+  // 유형 변경: 모델 다시 대응. 원본 모델명과 직접 입력한 모델은 유지
+  function changeType(u: IndoorUnit, cls: string) {
+    const keep = u.modelMatch === 'source' || u.modelMatch === 'manual'
+    const f = keep ? { ...typeFields(cls), model: u.model, modelMatch: u.modelMatch } : typeFields(cls, u.coolKw, u.tag, schedule)
+    patch(u.id, { ...f, review: !!f.review })
+  }
+  // 냉방 용량 수정: 용량으로 다시 대응(장비일람표보다 직접 입력 우선). 원본 모델명, 장비일람표, 직접 입력 모델은 유지
+  // 반환값은 입력칸에 다시 표시할 값(잘못된 값은 기존 값으로 되돌림)
+  function setCapacity(u: IndoorUnit, text: string): string {
+    const coolKw = Number(text), now = String(u.coolKw ?? '')
+    if (text === '' || coolKw === u.coolKw) return now
+    if (!Number.isFinite(coolKw) || coolKw < .5 || coolKw > 100) { say('냉방 용량을 0.5~100 kW로 입력하십시오.'); return now }
+    const keep = u.modelMatch === 'source' || u.modelMatch === 'schedule' || u.modelMatch === 'manual'
+    const f = keep ? {} : modelFor(clsOf(u), coolKw)
+    patch(u.id, { ...f, ...kwFields(coolKw, 'manual'), review: u.review || f.review })
+    return text
+  }
+  // 모델 직접 입력. 비우면 용량, 유형 예시 순서로 다시 대응
+  function setModel(u: IndoorUnit, text: string): string {
+    const v = text.trim()
+    if (v === (u.model ?? '')) return v
+    const f = v ? { model: v, modelMatch: 'manual' as const } : modelFor(clsOf(u), u.coolKw)
+    patch(u.id, { ...f, review: u.review || f.review })
+    return f.model ?? ''
+  }
 
   // 실외기 삭제: 연결된 실내기는 같은 층에서 가장 가까운 실외기로 옮김. 남는 실외기가 없으면 삭제하지 않음
   function removeOdu(id: string) {
@@ -82,6 +113,9 @@ export function useUnitTool({ model, commit, level, current, tool, scale, backgr
   })
 
   function down(p: Point) {
+    // 카드 입력칸을 고친 채 평면을 누르면 이 누름은 입력 반영만 함(pointerdown이 blur보다 먼저라 다른 변경이 입력을 덮어쓰지 않게)
+    const typing = document.activeElement
+    if (typing instanceof HTMLInputElement && typing.closest('.unit-card') && typing.value !== typing.defaultValue) { typing.blur(); return }
     if (tool === 'align') { alignAt(p); return }
     // 실외기: 실내기를 고른 상태면 연결 변경, 아니면 선택 후 끌기
     const hitOdu = odus.find(o => distance(p, o.mark!) < size * 1.6)
@@ -97,7 +131,7 @@ export function useUnitTool({ model, commit, level, current, tool, scale, backgr
     if (!room) { say('실내기를 설치할 방 안을 누르십시오.'); return }
     if (!Number.isFinite(coolKw) || coolKw < .5 || coolKw > 100) { say('냉방 용량을 0.5~100 kW로 입력하십시오.'); return }
     const id = 'IDU-edit-' + crypto.randomUUID()
-    commit(connectOdus({ ...model, idus: [...model.idus, { id, room: room.id, pos: [r2(p[0]), r2(p[1])], ...typeFields(addCls), coolKw, ratedKw: Math.round(coolKw * 31) / 100, source: 'manual', basis: '평면도 편집에서 추가' }] }))
+    commit(connectOdus({ ...model, idus: [...model.idus, { id, room: room.id, pos: [r2(p[0]), r2(p[1])], ...typeFields(addCls, coolKw), ...kwFields(coolKw, 'manual'), source: 'manual', basis: '평면도 편집에서 추가' }] }))
     setSel(id)
     say('실내기를 추가했습니다.')
   }
@@ -141,7 +175,7 @@ export function useUnitTool({ model, commit, level, current, tool, scale, backgr
     })
     const newDoors = detectionsToDoors(current, m)
     const floor: PlanFloor = { ...current, background: { ...bg, toPlan: m }, detections: [], doors: [...doors, ...newDoors] }
-    const added = detectionsToUnits(current, m)
+    const added = detectionsToUnits(current, m, schedule)
     const moved = model.idus.map(u => {
       if (!old || u.source !== 'yolo' || !current.rooms.some(r => r.id === u.room)) return u
       const pos = toPlan(m, fromPlan(old, u.pos)), room = roomAt(pos)
@@ -220,7 +254,8 @@ export function useUnitTool({ model, commit, level, current, tool, scale, backgr
       {unit && <section className="unit-card" aria-label="선택한 실내기">
         <h3>{unit.type ?? unit.model ?? '실내기'}</h3>
         <dl>
-          <dt>LG 모델</dt><dd>{unit.model ?? '모델 정보 없음'}</dd>
+          {unit.tag && <><dt>장비 번호</dt><dd>{unit.tag}</dd></>}
+          {unit.modelMatch && <><dt>모델 근거</dt><dd>{MATCH[unit.modelMatch]}</dd></>}
           <dt>매뉴얼</dt><dd>{unit.manual ? <a href={unit.manual} target="_blank" rel="noreferrer">매뉴얼 열기(PDF)</a> : '없음'}</dd>
           <dt>호실</dt><dd>{room?.name ?? unit.room}</dd>
           <dt>출처</dt><dd>{SOURCE[unit.source ?? ''] ?? unit.source ?? '미상'}{unit.conf != null ? `, 신뢰도 ${Math.round(unit.conf * 100)}%` : ''}</dd>
@@ -229,11 +264,16 @@ export function useUnitTool({ model, commit, level, current, tool, scale, backgr
           {!odus.some(o => o.id === unit.odu) && <option value={unit.odu ?? ''}>{unit.odu ?? '연결 없음'}</option>}
           {odus.map(o => <option key={o.id} value={o.id}>{o.id}</option>)}
         </select></label>
-        {unit.review && <p className="unit-review-note">확인 필요: {unit.cls === 'unknown' ? '유형을 고르십시오.' : (unit.conf ?? 1) < .5 ? '신뢰도가 낮습니다. 위치와 유형을 확인하십시오.' : '위치와 호실을 확인하십시오.'}</p>}
-        <label className="unit-type">유형 <select value={clsOf(unit)} onChange={e => patch(unit.id, { ...typeFields(e.target.value), review: false })}>
+        {unit.review && <p className="unit-review-note">확인 필요: {unit.cls === 'unknown' ? '유형을 고르십시오.' : (unit.conf ?? 1) < .5 ? '신뢰도가 낮습니다. 위치와 유형을 확인하십시오.'
+          : unit.modelMatch === 'nearest' ? '같은 용량의 모델이 없어 가까운 용량의 모델을 넣었습니다. 모델을 확인하십시오.' : '위치와 호실을 확인하십시오.'}</p>}
+        <label className="unit-type">유형 <select value={clsOf(unit)} onChange={e => changeType(unit, e.target.value)}>
           {unit.cls === 'unknown' && <option value="unknown">유형 미확인</option>}
           {TYPES.map(t => <option key={t.class} value={t.class}>{t.name}</option>)}
         </select></label>
+        <label className="unit-type">냉방 용량 (kW) <input key={`kw-${unit.id}-${unit.coolKw}`} type="number" min=".5" max="100" step=".1" defaultValue={unit.coolKw ?? ''}
+          onBlur={e => { e.target.value = setCapacity(unit, e.target.value) }} onKeyDown={blurOnEnter} /></label>
+        <label className="unit-type">모델 <input key={`m-${unit.id}-${unit.model}`} defaultValue={unit.model ?? ''} placeholder="모델 정보 없음"
+          onBlur={e => { e.target.value = setModel(unit, e.target.value) }} onKeyDown={blurOnEnter} /></label>
         <div className="unit-actions">
           <button type="button" className="pill" onClick={() => patch(unit.id, { rot: ((unit.rot ?? 0) + 90) % 360 })}>방향 90° 회전</button>
           {unit.review && unit.cls !== 'unknown' && <button type="button" className="pill" onClick={() => patch(unit.id, { review: false })}>확인 완료</button>}

@@ -1,7 +1,7 @@
 // 실내기 매핑 계산 자가 점검: node src/ingest/units.check.mjs (Node 23.6 이상, TypeScript 형식 제거 실행)
-// 범위: 기준점 변환, 호실 배정, 인식 결과 변환(실내기, 문), 인식용 보정 해상도와 픽셀 → m 환산
+// 범위: 기준점 변환, 호실 배정, 인식 결과 변환(실내기, 문), 인식용 보정 해상도와 픽셀 → m 환산, 실외기 연결, 빈 호실 추정, 모델 대응
 import assert from 'node:assert/strict'
-import { applyDetections, assignRoom, connectOdus, detectionsToDoors, detectionsToUnits, fromPlan, ODU_MARGIN, similarity, snapDoor, toPlan } from './units.ts'
+import { applyDetections, assignRoom, connectOdus, detectionsToDoors, detectionsToUnits, fromPlan, modelFor, ODU_MARGIN, similarity, snapDoor, toPlan, TYPES } from './units.ts'
 import { autoUnits } from './auto-units.ts'
 import { MARGIN, rectify } from '../../twin/pipeline/pipeline-core.js'
 import { detectRes } from '../../twin/pipeline/host-bridge.js'
@@ -114,3 +114,64 @@ console.log('units.check: 통과')
   console.log('실외기 연결, 빈 호실 추정 통과')
 }
 
+
+// 모델 대응(규약 3-5절): 시험용 용량표(정렬 안 됨, 7.2kW만 자체 매뉴얼). 실제 표가 들어와도 시험 결과가 같도록 덮어쓰고 끝에 되돌림
+{
+  // 시험용 용량표: 4방향은 고정 값, 1방향은 비움(실제 표와 무관하게 유형 예시 대체를 점검)
+  const t4 = TYPES.find(t => t.class === 'cassette_4way'), saved = t4.models
+  const t1 = TYPES.find(t => t.class === 'cassette_1way'), saved1 = t1.models
+  t1.models = []
+  const td = TYPES.find(t => t.class === 'ceiling_duct'), savedD = { models: td.models, exampleModel: td.exampleModel }
+  td.models = []; td.exampleModel = null
+  t4.models = [{ kw: 7.2, model: 'K-72', manual: 'https://m/72' }, { kw: 3.6, model: 'K-36' }, { kw: 5.6, model: 'K-56' }]
+  const pick = r => [r.model, r.modelMatch, Boolean(r.review)]
+  assert.deepEqual(pick(modelFor('cassette_4way', 7.2)), ['K-72', 'exact', false])
+  assert.equal(modelFor('cassette_4way', 7.2).manual, 'https://m/72')
+  assert.deepEqual(pick(modelFor('cassette_4way', 7.15)), ['K-72', 'exact', false], '차이 0.05kW는 exact')
+  assert.deepEqual(pick(modelFor('cassette_4way', 4)), ['K-56', 'nearest', true], '용량 이상인 가장 작은 모델')
+  assert.equal(modelFor('cassette_4way', 4).manual, t4.manual, '항목 매뉴얼이 없으면 유형 매뉴얼')
+  assert.deepEqual(pick(modelFor('cassette_4way', 20)), ['K-72', 'nearest', true], '용량 이상 모델이 없으면 가장 큰 모델')
+  assert.deepEqual(pick(modelFor('cassette_4way')), ['ARNU12GTRB4', 'type', false], '용량을 모르면 유형 예시')
+  assert.deepEqual(pick(modelFor('cassette_1way', 5.6)), ['ARNU07GTUA4', 'type', false], '용량표가 없는 유형은 유형 예시')
+  assert.deepEqual(pick(modelFor('ceiling_duct', 5.6)), [undefined, undefined, false], '예시 모델도 없으면 모델 없음')
+  // 장비일람표: 장비 번호는 공백, 대소문자 무시. 행의 용량이 도면 용량보다 우선. 모델 없는 행은 행 용량으로 대응
+  const schedule = [{ tag: 'FCU-1', model: 'RNW0721T2S', kw: 7.1 }, { tag: 'FCU-2', kw: 5.6 }]
+  assert.deepEqual(modelFor('cassette_4way', 3.6, 'fcu-1 ', schedule), { model: 'RNW0721T2S', manual: t4.manual, modelMatch: 'schedule', coolKw: 7.1, ratedKw: 2.2, kwSource: 'schedule' })
+  assert.deepEqual([...pick(modelFor('cassette_4way', 9, 'FCU-2', schedule)), modelFor('cassette_4way', 9, 'FCU-2', schedule).kwSource], ['K-56', 'exact', false, 'schedule'])
+  assert.deepEqual(pick(modelFor('cassette_4way', 3.6, 'FCU-9', schedule)), ['K-36', 'exact', false], '일람표에 없는 번호는 용량으로 대응')
+
+  // 인식 결과: 용량 표기와 장비 번호를 실내기로 옮김(kwSource pdf-text), 용량 근사는 review, 문은 제외
+  const f = { id: '2F', rooms, detections: [
+    { cls: 'cassette_4way', conf: .9, box: [40, 40, 60, 60], kw: 5.6, tag: 'AC-1' },
+    { cls: 'cassette_4way', conf: .9, box: [140, 20, 160, 30], kw: 6 },
+    { cls: 'door', conf: .8, box: [40, 60, 60, 80], kw: 7.2 },
+    { cls: 'cassette_4way', conf: .9, box: [140, 60, 160, 70], tag: 'FCU-1', kw: 3.6 },
+  ] }
+  const us = detectionsToUnits(f, scale, schedule)
+  assert.deepEqual(us.map(u => [u.ref, u.tag, u.coolKw, u.kwSource, u.model, u.modelMatch, u.review]), [
+    ['det-1', 'AC-1', 5.6, 'pdf-text', 'K-56', 'exact', false],
+    ['det-2', undefined, 6, 'pdf-text', 'K-72', 'nearest', true],
+    ['det-4', 'FCU-1', 7.1, 'schedule', 'RNW0721T2S', 'schedule', false],
+  ])
+  assert.equal(us[0].ratedKw, 1.74)
+
+  // 초안 정리: 원본 모델명 유지(source), 파서 용량(cad-text)으로 대응, meta.ingest.schedule의 장비 번호 대응
+  const out = applyDetections({ ...plan, meta: { ingest: { schedule } }, floors: [{ ...f, background: { px: [200, 120], toPlan: scale } }], idus: [
+    { id: 'ifc', room: 'A', pos: [1, 1], cls: 'cassette_4way', model: 'X-1', source: 'ifc' },
+    { id: 'cad', room: 'A', pos: [2, 1], cls: 'cassette_4way', coolKw: 3.6, kwSource: 'cad-text', source: 'cad' },
+    { id: 'tag', room: 'B', pos: [6, 1], cls: 'cassette_4way', tag: 'FCU-1', source: 'cad' },
+  ] })
+  assert.deepEqual(out.idus.slice(0, 3).map(u => [u.id, u.model, u.modelMatch, u.coolKw, u.kwSource]), [
+    ['ifc', 'X-1', 'source', undefined, undefined], ['cad', 'K-36', 'exact', 3.6, 'cad-text'], ['tag', 'RNW0721T2S', 'schedule', 7.1, 'schedule']])
+  assert.equal(out.idus.find(u => u.ref === 'det-4').model, 'RNW0721T2S')
+
+  // 빈 호실 추정(60㎡, 4방향): 추정 용량으로 대응, kwSource 없음, source estimate 유지
+  const big = { id: 'R', name: 'R', type: 'room', polygon: [[0, 0], [10, 0], [10, 6], [0, 6]] }
+  const est = autoUnits({ schema: 'twin.building/v1', building: { name: 't', size: { w: 10, d: 6 } }, floors: [{ id: '1F', rooms: [big] }], idus: [] }).plan.idus[0]
+  assert.deepEqual([est.source, est.kwSource, est.review, est.model, est.modelMatch], ['estimate', undefined, true, ...pick(modelFor('cassette_4way', est.coolKw)).slice(0, 2)])
+  assert.ok(est.coolKw > 0)
+  t4.models = saved
+  t1.models = saved1
+  Object.assign(td, savedD)
+  console.log('모델 대응 통과')
+}

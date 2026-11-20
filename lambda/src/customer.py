@@ -6,6 +6,7 @@
   - 관리는 판매사 관리 API(admin.py)로 이동. 이전 화면 호환을 위해 경로는 유지
   - admin의 PATCH /buildings/{id}는 PATCH /admin/buildings/{id}와 같은 처리
 - 구성원 허용 운영: AI 질의(query.py, ws.py), 대화 기록 조회·삭제(chat.py), 스케줄 저장·취소(schedules.py). 소속 건물 검사만 적용
+- 고객사 관리자 허용 변경: 호실 이름·용도(PATCH /buildings/{id}/rooms/{roomId}, admin.room, 2026-11-21). 운영자는 403
 - 중지 기업: /company*는 403(code COMPANY_SUSPENDED, tenant.require_active)
 """
 import admin

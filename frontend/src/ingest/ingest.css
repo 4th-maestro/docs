@@ -37,8 +37,10 @@
 .unit-card dd { margin: 0; overflow-wrap: anywhere; }
 .unit-card a { color: var(--ink); font-weight: 600; }
 .unit-review-note { margin: 0 0 10px; color: var(--caution); font-size: 15px; }
-.unit-type { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
-.unit-type select { height: 44px; min-width: 0; padding: 0 10px; color: var(--ink); background: var(--canvas); border: 1px solid var(--border-strong); border-radius: var(--r-sm); font: inherit; }
+.unit-type { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; white-space: nowrap; }
+.unit-type select, .unit-type input { height: 44px; min-width: 0; padding: 0 10px; color: var(--ink); background: var(--canvas); border: 1px solid var(--border-strong); border-radius: var(--r-sm); font: inherit; }
+.unit-type input { flex: 1; }
+.unit-type input[type="number"] { flex: none; width: 96px; font-variant-numeric: tabular-nums; }
 .unit-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; }
 .unit-delete { color: var(--danger); }
 .unit-step { margin: 0; }

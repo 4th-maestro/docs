@@ -42,9 +42,11 @@ ROUTES = [
 
 
 def route(path):
-    # 건물 도면(/plan), 트윈 조회·확정 저장(/twin), 건물 정보 수정(/buildings/{id})은 목록(/buildings)보다 먼저 확인
+    # 건물 도면(/plan), 트윈 조회·확정 저장(/twin), 호실 이름·용도 변경(/rooms/{roomId}), 건물 정보 수정(/buildings/{id})은 목록(/buildings)보다 먼저 확인
     if path.startswith('/buildings/'):
-        return plan.handler if path.endswith('/plan') else admin.twin if path.endswith('/twin') else customer.handler
+        if path.endswith('/plan'):
+            return plan.handler
+        return admin.twin if path.endswith('/twin') else admin.room if '/rooms/' in path else customer.handler
     return next((fn for prefix, fn in ROUTES if path == prefix or path.startswith(prefix + '/')), None)
 
 

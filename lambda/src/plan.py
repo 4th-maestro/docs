@@ -3,7 +3,7 @@
 - 형식: 도면은 내장 3D 도면(frontend/src/twin3d/Twin3D.tsx)의 floors·bounds·rooms(polys, hvac), 좌표 단위 m. 트윈은 트윈 파이프라인 building.json
 - 버킷(PLANS_BUCKET): plans/<건물>/ 아래 도면 current.json(현재)과 v<번호>.json(버전), 트윈 building.json(현재)과 building-v<번호>.json(버전)
   - 트윈 키는 도면 변환 규약(docs/human/reference/plan-ingest.md 4절)과 같음. 같은 저장의 도면·트윈 버전 번호는 같음
-- 기록: 판매사 건물 등록·트윈 확정 저장·삭제(admin.py)가 아래 저장 함수 사용. 초기 적재는 tools/upload_plans.py
+- 기록: 판매사 건물 등록·트윈 확정 저장·삭제, 호실 이름·용도 변경(admin.py)이 아래 저장 함수 사용. 초기 적재는 tools/upload_plans.py
 - 권한: admin, 또는 건물 소속 기업(사용 중)의 구성원(tenant.require_building)
 """
 import json
@@ -36,6 +36,14 @@ def bucket():
 def put(key, obj):
     _client().put_object(Bucket=bucket(), Key=key, Body=json.dumps(obj, ensure_ascii=False, separators=(',', ':')).encode(),
                          ContentType='application/json')
+
+
+def get(key):
+    """버킷 JSON 파일. 없으면 None"""
+    try:
+        return json.loads(_client().get_object(Bucket=bucket(), Key=key)['Body'].read())
+    except _client().exceptions.NoSuchKey:
+        return None
 
 
 def keys(prefix):

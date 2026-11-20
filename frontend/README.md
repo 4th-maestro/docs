@@ -6,6 +6,7 @@
 |---|---|
 | `src/App.tsx` | 해시 경로, 머리글(전체 현황 링크, 건물 선택, 층 탭), 건물 화면 탭(운영, 전력 분석), 밝은/어두운 화면 전환 |
 | `src/App.tsx` 운영 탭 | 상단: 운영 상태 카드(운전 중, 정지, 이상 감지, 재실 인원)와 전력·요금 카드(현재 전력, 오늘 누적 사용량, 오늘 전기요금 추정, 마지막 줄 전력 추이). 왼쪽 열: 3D 트윈, 선택 호실 HVAC 상태, 오늘 스케줄. 오른쪽 열: AI 응답, 이상 감지, 최적 제어 추천. 한 열 화면은 3D 다음에 오른쪽 열 |
+| `src/App.tsx` 호실 상세 | 선택 호실 카드의 `이름·용도 변경`(고객사 관리자·판매사 관리자만 표시): 이름 1~40자, 용도 9개 중 선택, 바뀐 항목만 `PATCH /buildings/{id}/rooms/{roomId}`. 아래 "호실 이름·용도 변경" 절 |
 | `src/portfolio/Portfolio.tsx` | 전체 현황: 전체 요약 4개, 건물 카드(점검 필요 순), 카드 아래 `compare` 영역 |
 | `src/heat.ts` | 지표별 순차 색 척도 |
 | `src/twin.ts` | 3D 트윈 iframe 연동([규약](../docs/human/reference/twin-embed.md)): 트윈·파이프라인 주소(`theme=light\|dark` 포함), 테마 전환 메시지 `{source:'maestro', type:'theme', theme}`(iframe 로드 시, 테마 전환 시), 서버 건물의 `needBuilding` 요청에 `GET /buildings/{id}/twin` 응답 전달(없으면 `null`) |
@@ -33,9 +34,9 @@
 | `src/BuildingEditor.tsx` | 평면도 편집: 방 이름, 벽 설치, 벽 삭제, 벽 이동, 칸막이, 실내기(`src/ingest/UnitTool.tsx`), 문(`src/ingest/DoorTool.tsx`), 위치 맞춤, 실행 취소 |
 | `src/ingest/PlanIngest.tsx` | 도면 업로드, 2D 실내기 매핑, 확정 저장 진입 컴포넌트(판매사 건물 화면에서 사용). 입력 IFC, DXF, DWG, PDF, PNG, JPG |
 | `src/ingest/api.ts` | 도면 변환 API(작업 생성, S3 업로드, 시작, 3초 상태 조회), 기호 인식, 확정 저장 어댑터 `saveTwin` |
-| `src/ingest/UnitTool.tsx` | 실내기 도구(유형 6종 추가, 끌어서 이동, 삭제, 유형 변경, 확인 필요 목록)와 도면 위치 맞춤(기준점 2쌍) |
+| `src/ingest/UnitTool.tsx` | 실내기 도구(유형 6종 추가, 끌어서 이동, 삭제, 유형 변경, 냉방 용량과 모델 수정, 확인 필요 목록)와 도면 위치 맞춤(기준점 2쌍) |
 | `src/ingest/DoorTool.tsx` | 문 도구(`floors[].doors`): 모든 도구에서 문 기호 표시, 벽 가까이 눌러 폭 0.9m 문 추가, 끌어서 가까운 호실 변으로 이동, 경첩 뒤집기, 열림 방향 뒤집기, 확인 완료, 삭제, 문 확인 필요 목록 |
-| `src/ingest/units.ts` | 기준점 2쌍 유사 변환, 인식 결과 → 실내기와 문, 문 구간 벽 맞춤(`snapDoor`), 호실 배정. 유형표 `hvac-types.json`은 `../ml/hvac_types.json` 복사본 |
+| `src/ingest/units.ts` | 기준점 2쌍 유사 변환, 인식 결과 → 실내기와 문, 문 구간 벽 맞춤(`snapDoor`), 호실 배정, 실내기 모델 대응(`modelFor`). 유형표 `hvac-types.json`은 `../ml/hvac_types.json` 복사본 |
 | `public/demo/<건물>.json` | 건물별 데모 상태와 건물 id 목록 `index.json`(`python3 tools/demo_status.py`를 `lambda` 폴더에서 실행해 생성) |
 | `public/floorplans/<건물>.json` | 건물별 3D 도면, API를 쓸 수 없을 때의 대체 파일. `python3 tools/build_floorplans.py`를 `lambda` 폴더에서 실행해 `public/floorplan.json`에서 생성. 운영 도면은 도면 버킷(`lambda/tools/upload_plans.py`) |
 
@@ -61,8 +62,22 @@
 |---|---|---|
 | 판매사 관리자(Cognito 그룹 `admin`) | 기업·구성원 관리, 건물 추가·정보 수정·도면 편집·도면 교체·연결·영구 삭제(`#/admin`), 모든 건물 화면 | 없음 |
 | 고객사 구성원(기업 코드 가입, 고객사 관리자·운영자 공통) | 대시보드 조회, AI 질의, 스케줄 저장·취소, 최적 제어 추천 적용, 운전 시뮬레이션, 트윈 설정온도 변경, 기업 정보 조회(`#/settings`) | 건물 추가, 도면 편집, 건물 삭제, 기업·구성원·건물 정보 수정(서버 403) |
+| 고객사 관리자(`manager`) 추가 권한 | 소속 건물 호실 이름·용도 변경(2026-11-21), 자동 운영 스위치 | 운영자(`operator`)에게는 버튼을 표시하지 않음(서버 403) |
 
 주: 2026-11-20 사용자 결정입니다. 건물 데이터는 서버에 저장하며 브라우저 저장(`localStorage`)은 사용하지 않습니다.
+
+## 호실 이름·용도 변경
+
+운영 탭 3D에서 호실을 선택하면 아래 호실 카드에 `이름·용도 변경` 버튼이 보입니다. 버튼은 `GET /me` 역할이 `manager` 또는 `admin`일 때만 표시합니다. 응답 전에는 ID 토큰의 `admin` 그룹으로 판정합니다(자동 운영 스위치와 같은 기준). 서버도 같은 규칙으로 판정합니다(운영자 403).
+
+| 항목 | 규칙 |
+|---|---|
+| 입력 | 호실 이름(앞뒤 공백 제거 후 1~40자), 용도 선택. 저장·취소 버튼 48px, 같은 줄 1:1 |
+| 용도 선택지 | 값은 트윈 용도 키(`pipeline-core.js` `LOAD`), 이름은 상태 API 용도(`web-demo.js` `USE_KO`). `lounge`·`waiting`은 이름 뒤 괄호로 구분 |
+| 현재 용도 | 선택지 1개와 이름이 같으면 그 값, 아니면(대기·휴게, 진료실, 기타 등) `현재 용도 유지`로 시작하고 용도는 보내지 않음 |
+| 전송 | 바뀐 항목만 `PATCH /buildings/{id}/rooms/{roomId}`(`src/api.ts` `patchRoom`). 실패는 서버 문구를 폼 안에 표시 |
+| 저장 후 | 상태 바로 한 번, 4초 뒤 한 번 더 조회. 트윈 화면이면 iframe을 다시 열고 `GET /buildings/{id}/twin`을 새로 조회 |
+| 목업 | API 주소가 없거나 상태가 목업이면 버튼 숨김(목업 호실은 서버에 없음) |
 
 ## 실행
 
@@ -114,6 +129,9 @@ npm run dev
 - 파이프라인은 보정 평면도마다 기호 인식을 요청하고(`detectRequest`), 대시보드가 `POST /plans/detect`로 처리합니다. 메시지 목록은 [twin/README.md](twin/README.md) "호스트 연동 메시지"에 있습니다.
 - 2D 매핑 화면은 평면도 편집의 **실내기**, **문**, **위치 맞춤** 도구입니다. 위치 맞춤은 도면 이미지 점 2개와 평면 점 2개로 회전, 축척, 이동을 구하고, 위치를 맞추지 않은 인식 결과(`floors[].detections`)를 실내기와 문으로 바꿉니다.
 - 인식 결과 중 `cls: door`는 실내기로 바꾸지 않습니다. 상자 중심에서 가장 가까운 호실 변(거리가 상자 긴 변 이하) 위에 폭이 상자 긴 변인 구간을 두고, 열리는 쪽은 상자 중심 쪽, 경첩은 `a`입니다. 맞는 변이 없거나 폭이 0.6~2.0m 밖이면 확인 필요입니다.
+- 실내기 모델은 [도면 변환 규약](../docs/human/reference/plan-ingest.md) 3-5절 순서로 정합니다. 순서는 원본 모델명(`source`), 장비 번호와 장비일람표(`meta.ingest.schedule`, `schedule`), 용량(`hvac-types.json` `types[].models`, `exact`, `nearest`), 유형 예시(`type`)입니다. 용량 근사(`nearest`)는 확인 필요입니다.
+- 인식 결과의 용량 표기(`kw`)와 장비 번호(`tag`)는 실내기 `coolKw`(`kwSource: pdf-text`), `tag`로 옮깁니다. 빈 호실 추정 실내기는 추정 용량으로 모델을 정하고 `kwSource`를 비웁니다.
+- 실내기 카드는 장비 번호, 모델 근거, 냉방 용량(kW), 모델을 표시합니다. 용량을 고치면 `kwSource: manual`로 저장하고 용량으로 모델을 다시 정합니다. 원본 모델명, 장비일람표, 직접 입력 모델은 용량을 고쳐도 유지합니다. 모델을 입력하면 `modelMatch: manual`, 비우면 용량 또는 유형 예시로 다시 정합니다. 유형을 바꾸면 원본 모델명과 직접 입력 모델만 유지합니다.
 - 문 기호는 경첩에서 문짝 선과 열리는 쪽 1/4 호입니다. `side: 1`은 `a`→`b` 기준 화면 왼쪽(평면 y 아래쪽)입니다. 확인 필요 문은 주황 점선 사각형과 "문 확인 필요 N개" 목록으로 표시합니다. 벽을 옮기거나 방을 나눠도 문 위치는 바뀌지 않으므로 문 도구로 다시 맞추십시오.
 - 3D 트윈(`twin/digital-twin.html`)은 `doors`가 있는 층에서 호실마다 임의로 만들던 문 대신 이 문을 평면도와 호실 3D 보기에 그립니다. 호실 문은 호실 다각형 변 위(중심 거리 0.3m 이내, 같은 방향)에 놓인 문입니다. 3D 벽은 자르지 않고 문 판을 벽 위에 겹쳐 그립니다.
 - 확정 저장은 `saveTwin(buildingId, twin, convert)`입니다. 호출 쪽이 변환 함수(`src/admin/convert.ts`)를 넘기면 `PUT /buildings/{id}/twin` `{twin, rooms, plan}`, 없으면 이 브라우저에만 저장합니다(데모).
@@ -128,7 +146,7 @@ node src/admin/convert.check.mjs   # building.json 변환 자가 점검(접두�
 
 화면을 바꾸면 1440px와 390px 너비에서 버튼 높이·너비와 라벨 잘림을 확인하십시오.
 
-실내기 매핑 계산은 `node src/ingest/units.check.mjs`로 자가 점검합니다(Node 23.6 이상, 기준점 변환, 호실 배정, 인식 결과 변환, 문 인식 결과 변환과 벽 맞춤, 인식용 보정 해상도, 실외기 연결, 빈 호실 추정).
+실내기 매핑 계산은 `node src/ingest/units.check.mjs`로 자가 점검합니다(Node 23.6 이상, 기준점 변환, 호실 배정, 인식 결과 변환, 문 인식 결과 변환과 벽 맞춤, 인식용 보정 해상도, 실외기 연결, 빈 호실 추정, 모델 대응).
 
 ## 배포
 

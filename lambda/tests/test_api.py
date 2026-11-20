@@ -14,7 +14,7 @@ class RouteTest(unittest.TestCase):
         tpl = (pathlib.Path(__file__).resolve().parent.parent / 'template.yaml').read_text()
         block = tpl[tpl.index('  ApiFunction:'):tpl.index('  QueryFunction:')]
         paths = [line.split('Path: ')[1].split(',')[0].strip("'") for line in block.splitlines() if 'Path: ' in line]
-        self.assertEqual(len(paths), 46)  # 도면 변환 보정본 확정 경로, 판매사 관리자 지정 경로 포함
+        self.assertEqual(len(paths), 47)  # 도면 변환 보정본 확정 경로, 판매사 관리자 지정 경로, 호실 이름·용도 변경 경로 포함
         for p in paths:
             self.assertIsNotNone(api.route(p), p)
 
@@ -30,6 +30,7 @@ class RouteTest(unittest.TestCase):
         self.assertIs(api.route('/buildings/{id}'), api.customer.handler)
         self.assertIs(api.route('/buildings/{id}/plan'), api.plan.handler)
         self.assertIs(api.route('/buildings/{id}/twin'), api.admin.twin)
+        self.assertIs(api.route('/buildings/{id}/rooms/{roomId}'), api.admin.room)
         self.assertIs(api.route('/admin/companies/{id}/buildings'), api.admin.handler)
         self.assertIs(api.route('/buildings'), api.portfolio.handler)
         self.assertIs(api.route('/plans/jobs/{jobId}/start'), api.plan_ingest.handler)

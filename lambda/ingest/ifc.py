@@ -1,5 +1,6 @@
 """IFC 파서: 층(IfcBuildingStorey), 호실(IfcSpace 바닥 다각형), 실내기(IfcUnitaryEquipment, 별칭 일치 객체), 문(IfcDoor)"""
 import math
+import re
 import statistics
 
 import ifcopenshell
@@ -10,12 +11,30 @@ import ifcopenshell.util.unit as uu
 from shapely.geometry import Polygon, box
 from shapely.ops import unary_union
 
-from common import classify, floor_hint, level
+from common import capacity, classify, floor_hint, level
 
 SETTINGS = ifcopenshell.geom.settings()
 SETTINGS.set('use-world-coords', True)
 # 별칭 검사 대상. 덕트(IfcFlowSegment)와 벽까지 검사하면 'duct', 'stand' 별칭이 덕트·Standard 객체를 실내기로 판정합니다.
 CANDIDATES = ('IfcEnergyConversionDevice', 'IfcFlowTerminal', 'IfcFlowMovingDevice', 'IfcBuildingElementProxy')
+# 냉방 능력 속성 이름. 현열·잠열 능력(SensibleCoolingCapacity)은 전체 능력이 아니라 제외합니다.
+COOL = re.compile(r'(?<![a-z])(Nominal)?Cooling\s*Capacity|냉방\s*(능력|용량)', re.I)
+
+
+def _cool_kw(psets):
+    """속성 집합(유형 속성 포함)에서 냉방 능력(kW)을 찾습니다. 숫자 100 이상은 W로 보고 kW로 바꿉니다.
+
+    shortcut: 프로젝트 전력 단위(IfcSIUnit POWERUNIT)를 읽지 않고 값 크기로 W·kW를 판정, kW 단위 100 이상 장비가 생기면 단위 환산
+    """
+    for props in psets.values():
+        for name, v in props.items():
+            if not COOL.search(name) or isinstance(v, bool):
+                continue
+            if isinstance(v, (int, float)) and v > 0:
+                return round(v / 1000 if v >= 100 else float(v), 2)
+            if isinstance(v, str) and capacity(v) is not None:
+                return capacity(v)
+    return None
 
 
 def _verts(el):
@@ -138,11 +157,12 @@ def parse(paths):
             st = _storey(el, z0, storeys)
             g = groups[round(elev[st], 1)]
             conf, basis = (1, 'IFC 이름 일치') if cls else (0.6, 'IFC 치수 판정')
-            ps = ue.get_psets(el).get('Pset_ManufacturerTypeInformation', {})
+            psets = ue.get_psets(el)  # 유형(IfcTypeObject) 속성을 상속하고 객체 속성이 우선합니다.
+            ps, kw = psets.get('Pset_ManufacturerTypeInformation', {}), _cool_kw(psets)
             g['units'].append({'pt': ((x0 + x1) / 2, (y0 + y1) / 2), 'size': (x1 - x0, y1 - y0),
                                'cls': cls or _by_size(x0, y0, x1, y1, z0, z1, elev[st], g['rooms']), 'conf': conf,
-                               'model': ps.get('ModelLabel') or ps.get('ModelReference'), 'ref': el.GlobalId,
-                               'source': 'ifc', 'basis': basis})
+                               'model': ps.get('ModelReference') or ps.get('ModelLabel'), 'ref': el.GlobalId,
+                               'kw': kw, 'kwSource': 'ifc' if kw is not None else None, 'source': 'ifc', 'basis': basis})
         if skipped:
             warnings.append(f'{path.name}: 형상이 없는 실내기 후보 {skipped}개 제외')
         k = uu.calculate_unit_scale(f)

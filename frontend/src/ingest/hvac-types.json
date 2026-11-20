@@ -1,6 +1,6 @@
 {
- "basis": "검출 클래스(synth.py CLASSES 순서)별 LG Multi V 실내기 예시 모델과 매뉴얼. 해외 LG 자료 기준이며 국내 판매 모델명은 미확인",
- "checked": "2026-11-20",
+ "basis": "검출 클래스(synth.py CLASSES 순서)별 LG 실내기. models는 LG전자 국내 MULTI V 실내기(RNW 계열) 용량별 모델로, lge.co.kr 제품 페이지와 국내 카탈로그(2022-23 시스템에어컨, 2026-07 B2B) 기준. exampleModel과 manual은 해외 LG 자료(ARNU 계열)이며 ceiling_duct, floor_standing의 exampleModel만 국내 모델. 근거는 docs/human/explanation/research/2026-11-21(LG 국내 시스템에어컨 모델과 현업 대응 방식).md",
+ "checked": "2026-11-21",
  "types": [
   {
    "class": "cassette_4way",
@@ -9,7 +9,86 @@
    "exampleModel": "ARNU12GTRB4",
    "modelSource": "https://www.lg.com/uk/business/hvac/commercial-solutions/vrf-system/multi-v-indoor-units/arnu12gtrb4/",
    "manual": "https://media.us.lg.com/m/77225649a9784fbc/original/EM_MultiV_CeilingCassette_wTA_IndoorUnits-pdf.pdf",
-   "aliases": "4\\s*-?\\s*way|4\\s*방향|사방향|four[\\s-]*way|round\\s*flow|360"
+   "aliases": "4\\s*-?\\s*way|4\\s*방향|사방향|four[\\s-]*way|round\\s*flow|360",
+   "models": [
+    {
+     "kw": 2.3,
+     "model": "RNW0230M2S",
+     "market": "KR",
+     "source": "https://www.lge.co.kr/kr/ebook/2026/july/B2B/catImage/652/20260708_b2b_catalogue.pdf#page=38",
+     "checked": "2026-11-21"
+    },
+    {
+     "kw": 3.2,
+     "model": "RNW0320M2S",
+     "market": "KR",
+     "source": "https://www.lge.co.kr/kr/ebook/2026/july/B2B/catImage/652/20260708_b2b_catalogue.pdf#page=38",
+     "checked": "2026-11-21"
+    },
+    {
+     "kw": 4.0,
+     "model": "RNW0400A2S",
+     "market": "KR",
+     "source": "https://www.lge.co.kr/kr/business/product/cooling/indoor-dualvane",
+     "checked": "2026-11-21"
+    },
+    {
+     "kw": 5.2,
+     "model": "RNW0520A2S",
+     "market": "KR",
+     "source": "https://www.lge.co.kr/kr/business/product/cooling/indoor-dualvane",
+     "checked": "2026-11-21"
+    },
+    {
+     "kw": 6.0,
+     "model": "RNW0600A2S",
+     "market": "KR",
+     "source": "https://www.lge.co.kr/kr/business/product/cooling/indoor-dualvane",
+     "checked": "2026-11-21"
+    },
+    {
+     "kw": 7.2,
+     "model": "RNW0720A2S",
+     "market": "KR",
+     "source": "https://www.lge.co.kr/kr/business/product/cooling/indoor-dualvane",
+     "checked": "2026-11-21"
+    },
+    {
+     "kw": 8.3,
+     "model": "RNW0830A2S",
+     "market": "KR",
+     "source": "https://www.lge.co.kr/kr/business/product/cooling/indoor-dualvane",
+     "checked": "2026-11-21"
+    },
+    {
+     "kw": 10.0,
+     "model": "RNW1000A2S",
+     "market": "KR",
+     "source": "https://www.lge.co.kr/kr/business/product/cooling/indoor-dualvane",
+     "checked": "2026-11-21"
+    },
+    {
+     "kw": 11.0,
+     "model": "RNW1100A2S",
+     "market": "KR",
+     "source": "https://www.lge.co.kr/kr/business/product/cooling/indoor-dualvane",
+     "checked": "2026-11-21"
+    },
+    {
+     "kw": 13.0,
+     "model": "RNW1300A2S",
+     "market": "KR",
+     "source": "https://www.lge.co.kr/kr/business/product/cooling/indoor-dualvane",
+     "checked": "2026-11-21"
+    },
+    {
+     "kw": 14.5,
+     "model": "RNW1450A2S",
+     "market": "KR",
+     "source": "https://www.lge.co.kr/kr/business/product/cooling/indoor-dualvane",
+     "checked": "2026-11-21"
+    }
+   ]
   },
   {
    "class": "cassette_1way",
@@ -18,7 +97,58 @@
    "exampleModel": "ARNU07GTUA4",
    "modelSource": "https://Manualslib.com/manual/2294675/Lg-Multi-V-Arnu07gtua4.html?page=9",
    "manual": "https://media.us.lg.com/m/77225649a9784fbc/original/EM_MultiV_CeilingCassette_wTA_IndoorUnits-pdf.pdf",
-   "aliases": "1\\s*-?\\s*way|1\\s*방향|one[\\s-]*way|일방향"
+   "aliases": "1\\s*-?\\s*way|1\\s*방향|one[\\s-]*way|일방향",
+   "models": [
+    {
+     "kw": 2.0,
+     "model": "RNW0200C2S",
+     "market": "KR",
+     "source": "https://www.lge.co.kr/kr/ebook/2026/july/B2B/catImage/652/20260708_b2b_catalogue.pdf#page=38",
+     "checked": "2026-11-21"
+    },
+    {
+     "kw": 2.3,
+     "model": "RNW0230C2S",
+     "market": "KR",
+     "source": "https://www.lge.co.kr/kr/ebook/2026/july/B2B/catImage/652/20260708_b2b_catalogue.pdf#page=38",
+     "checked": "2026-11-21"
+    },
+    {
+     "kw": 3.2,
+     "model": "RNW0320C2S",
+     "market": "KR",
+     "source": "https://www.lge.co.kr/kr/ebook/2026/july/B2B/catImage/652/20260708_b2b_catalogue.pdf#page=38",
+     "checked": "2026-11-21"
+    },
+    {
+     "kw": 4.0,
+     "model": "RNW0400C2S",
+     "market": "KR",
+     "source": "https://www.lge.co.kr/kr/ebook/2026/july/B2B/catImage/652/20260708_b2b_catalogue.pdf#page=38",
+     "checked": "2026-11-21"
+    },
+    {
+     "kw": 5.2,
+     "model": "RNW0520C2S",
+     "market": "KR",
+     "source": "https://www.lge.co.kr/kr/ebook/2026/july/B2B/catImage/652/20260708_b2b_catalogue.pdf#page=38",
+     "checked": "2026-11-21"
+    },
+    {
+     "kw": 6.0,
+     "model": "RNW0600C2S",
+     "market": "KR",
+     "source": "https://www.lge.co.kr/kr/ebook/2026/july/B2B/catImage/652/20260708_b2b_catalogue.pdf#page=38",
+     "checked": "2026-11-21"
+    },
+    {
+     "kw": 7.2,
+     "model": "RNW0720C2S",
+     "market": "KR",
+     "source": "https://www.lge.co.kr/kr/ebook/2026/july/B2B/catImage/652/20260708_b2b_catalogue.pdf#page=38",
+     "checked": "2026-11-21"
+    }
+   ]
   },
   {
    "class": "wall_mounted",
@@ -27,25 +157,199 @@
    "exampleModel": "ARNU07GSJN4",
    "modelSource": "https://lg.com/africa/business/vrf/lg-arnu07gsjn4",
    "manual": "https://media.us.lg.com/m/2bfdebb2dbac7442/original/EM_MultiV_Wall_Mounted_IndoorUnits-pdf.pdf",
-   "aliases": "wall\\s*-?\\s*mount|벽걸이|high\\s*wall|\\bwmu?\\b"
+   "aliases": "wall\\s*-?\\s*mount|벽걸이|high\\s*wall|\\bwmu?\\b",
+   "models": [
+    {
+     "kw": 2.3,
+     "model": "RNW0230R2S",
+     "market": "KR",
+     "source": "https://www.lge.co.kr/kr/business/product/cooling/indoor-wall",
+     "checked": "2026-11-21"
+    },
+    {
+     "kw": 3.2,
+     "model": "RNW0320R2S",
+     "market": "KR",
+     "source": "https://www.lge.co.kr/kr/business/product/cooling/indoor-wall",
+     "checked": "2026-11-21"
+    },
+    {
+     "kw": 4.0,
+     "model": "RNW0400R2S",
+     "market": "KR",
+     "source": "https://www.lge.co.kr/kr/ebook/2022/september/systemair/catImage/111/202223_catalogue_cac.pdf#page=251",
+     "checked": "2026-11-21"
+    },
+    {
+     "kw": 5.2,
+     "model": "RNW0520R2S",
+     "market": "KR",
+     "source": "https://www.lge.co.kr/kr/business/product/cooling/indoor-wall",
+     "checked": "2026-11-21"
+    }
+   ]
   },
   {
    "class": "ceiling_duct",
    "name": "천장 매립 덕트형",
    "lgTypeCode": "B8(고정압 덕트) 외 미확인",
-   "exampleModel": null,
-   "modelSource": null,
+   "exampleModel": "RNW0721B2S",
+   "modelSource": "https://www.lge.co.kr/kr/ebook/2022/september/systemair/catImage/111/202223_catalogue_cac.pdf#page=249",
    "manual": "https://media.us.lg.com/m/7134a43dfa1c5415/original/SM_MultiV_Ducted_IDU_MFL69041302rev-pdf.pdf",
-   "aliases": "duct|덕트|concealed|매립|ceiling\\s*hidden"
+   "aliases": "duct|덕트|concealed|매립|ceiling\\s*hidden",
+   "models": [
+    {
+     "kw": 2.3,
+     "model": "RNW0230L2S",
+     "market": "KR",
+     "source": "https://www.lge.co.kr/kr/ebook/2022/september/systemair/catImage/111/202223_catalogue_cac.pdf#page=248",
+     "checked": "2026-11-21"
+    },
+    {
+     "kw": 3.2,
+     "model": "RNW0320L2S",
+     "market": "KR",
+     "source": "https://www.lge.co.kr/kr/ebook/2022/september/systemair/catImage/111/202223_catalogue_cac.pdf#page=248",
+     "checked": "2026-11-21"
+    },
+    {
+     "kw": 4.0,
+     "model": "RNW0400L2S",
+     "market": "KR",
+     "source": "https://www.lge.co.kr/kr/ebook/2022/september/systemair/catImage/111/202223_catalogue_cac.pdf#page=248",
+     "checked": "2026-11-21"
+    },
+    {
+     "kw": 5.2,
+     "model": "RNW0521B2S",
+     "market": "KR",
+     "source": "https://www.lge.co.kr/kr/ebook/2022/september/systemair/catImage/111/202223_catalogue_cac.pdf#page=249",
+     "checked": "2026-11-21"
+    },
+    {
+     "kw": 6.0,
+     "model": "RNW0601B2S",
+     "market": "KR",
+     "source": "https://www.lge.co.kr/kr/ebook/2022/september/systemair/catImage/111/202223_catalogue_cac.pdf#page=249",
+     "checked": "2026-11-21"
+    },
+    {
+     "kw": 7.2,
+     "model": "RNW0721B2S",
+     "market": "KR",
+     "source": "https://www.lge.co.kr/kr/ebook/2022/september/systemair/catImage/111/202223_catalogue_cac.pdf#page=249",
+     "checked": "2026-11-21"
+    },
+    {
+     "kw": 8.3,
+     "model": "RNW0831B2S",
+     "market": "KR",
+     "source": "https://www.lge.co.kr/kr/ebook/2022/september/systemair/catImage/111/202223_catalogue_cac.pdf#page=249",
+     "checked": "2026-11-21"
+    },
+    {
+     "kw": 10.0,
+     "model": "RNW1001B2S",
+     "market": "KR",
+     "source": "https://www.lge.co.kr/kr/ebook/2022/september/systemair/catImage/111/202223_catalogue_cac.pdf#page=249",
+     "checked": "2026-11-21"
+    },
+    {
+     "kw": 11.0,
+     "model": "RNW1101B2S",
+     "market": "KR",
+     "source": "https://www.lge.co.kr/kr/ebook/2022/september/systemair/catImage/111/202223_catalogue_cac.pdf#page=249",
+     "checked": "2026-11-21"
+    },
+    {
+     "kw": 13.0,
+     "model": "RNW1301B2S",
+     "market": "KR",
+     "source": "https://www.lge.co.kr/kr/ebook/2022/september/systemair/catImage/111/202223_catalogue_cac.pdf#page=249",
+     "checked": "2026-11-21"
+    },
+    {
+     "kw": 14.5,
+     "model": "RNW1451B2S",
+     "market": "KR",
+     "source": "https://www.lge.co.kr/kr/ebook/2022/september/systemair/catImage/111/202223_catalogue_cac.pdf#page=249",
+     "checked": "2026-11-21"
+    },
+    {
+     "kw": 23.0,
+     "model": "RNW2300B2S",
+     "market": "KR",
+     "source": "https://www.lge.co.kr/kr/ebook/2022/september/systemair/catImage/111/202223_catalogue_cac.pdf#page=249",
+     "checked": "2026-11-21"
+    },
+    {
+     "kw": 29.0,
+     "model": "RNW2900B2S",
+     "market": "KR",
+     "source": "https://www.lge.co.kr/kr/ebook/2022/september/systemair/catImage/111/202223_catalogue_cac.pdf#page=249",
+     "checked": "2026-11-21"
+    }
+   ]
   },
   {
    "class": "floor_standing",
    "name": "스탠드형",
    "lgTypeCode": "미확인",
-   "exampleModel": null,
-   "modelSource": null,
+   "exampleModel": "RNW1450P2S",
+   "modelSource": "https://www.lge.co.kr/kr/business/product/cooling/indoor-stand",
    "manual": "https://media.us.lg.com/m/5e10b60c54bde5ac/original/EM_MultiV_FloorStanding_IndoorUnits-pdf.pdf",
-   "aliases": "stand|스탠드|floor\\s*-?\\s*stand|바닥\\s*설치|console"
+   "aliases": "stand|스탠드|floor\\s*-?\\s*stand|바닥\\s*설치|console",
+   "models": [
+    {
+     "kw": 2.3,
+     "model": "RNW0230H2S",
+     "market": "KR",
+     "source": "https://www.lge.co.kr/kr/business/product/cooling/indoor-floor",
+     "checked": "2026-11-21"
+    },
+    {
+     "kw": 3.2,
+     "model": "RNW0320H2S",
+     "market": "KR",
+     "source": "https://www.lge.co.kr/kr/business/product/cooling/indoor-floor",
+     "checked": "2026-11-21"
+    },
+    {
+     "kw": 4.0,
+     "model": "RNW0400H2S",
+     "market": "KR",
+     "source": "https://www.lge.co.kr/kr/business/product/cooling/indoor-floor",
+     "checked": "2026-11-21"
+    },
+    {
+     "kw": 5.2,
+     "model": "RNW0520H2S",
+     "market": "KR",
+     "source": "https://www.lge.co.kr/kr/business/product/cooling/indoor-floor",
+     "checked": "2026-11-21"
+    },
+    {
+     "kw": 7.2,
+     "model": "RNW0720H2S",
+     "market": "KR",
+     "source": "https://www.lge.co.kr/kr/business/product/cooling/indoor-floor",
+     "checked": "2026-11-21"
+    },
+    {
+     "kw": 14.5,
+     "model": "RNW1450P2S",
+     "market": "KR",
+     "source": "https://www.lge.co.kr/kr/business/product/cooling/indoor-stand",
+     "checked": "2026-11-21"
+    },
+    {
+     "kw": 29.0,
+     "model": "RNW2900P2S",
+     "market": "KR",
+     "source": "https://www.lge.co.kr/kr/business/product/cooling/indoor-stand",
+     "checked": "2026-11-21"
+    }
+   ]
   },
   {
    "class": "cassette_2way",
@@ -54,7 +358,30 @@
    "exampleModel": "ARNU12GTSC4",
    "modelSource": "https://www.lg.com/uk/business/hvac/commercial-solutions/vrf-system/multi-v-indoor-units/arnu12gtsc4/",
    "manual": "https://www.lg.com/content/dam/channel/wcms/ph/business/download/airsolution/2021%29_CST2WAY_spec_20210928_161346565_.pdf",
-   "aliases": "2\\s*-?\\s*way|2\\s*방향|two[\\s-]*way|양방향"
+   "aliases": "2\\s*-?\\s*way|2\\s*방향|two[\\s-]*way|양방향",
+   "models": [
+    {
+     "kw": 5.2,
+     "model": "RNW0521G2S",
+     "market": "KR",
+     "source": "https://www.lge.co.kr/kr/business/product/cooling/indoor-ceiling-2way",
+     "checked": "2026-11-21"
+    },
+    {
+     "kw": 6.0,
+     "model": "RNW0601G2S",
+     "market": "KR",
+     "source": "https://www.lge.co.kr/kr/business/product/cooling/indoor-ceiling-2way",
+     "checked": "2026-11-21"
+    },
+    {
+     "kw": 7.2,
+     "model": "RNW0721G2S",
+     "market": "KR",
+     "source": "https://www.lge.co.kr/kr/business/product/cooling/indoor-ceiling-2way",
+     "checked": "2026-11-21"
+    }
+   ]
   }
  ],
  "aliasNote": "aliases: IFC 객체 이름·ObjectType, CAD 블록 이름·속성에 적용하는 정규식(대소문자 무시). 일반 카세트(방향 표기 없음)는 4방향으로 판정. 판정 규칙 원본은 docs/human/reference/plan-ingest.md 2절"
