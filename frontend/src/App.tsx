@@ -5,6 +5,10 @@ import type { AskResult } from './ai/types'
 import { useAsk } from './ai/useAsk'
 import { getStatus, saveSchedule } from './api'
 import { ANOMALY, SCALES } from './heat'
+import AnomalyPanel from './panels/AnomalyPanel'
+import PowerTrend from './panels/PowerTrend'
+import RecommendPanel from './panels/RecommendPanel'
+import ScheduleTimeline from './panels/ScheduleTimeline'
 import { TWIN_URL, onRoomSelected, postState } from './twin'
 import type { Draft, Mode, Room, Status } from './types'
 
@@ -48,9 +52,12 @@ export default function App() {
   const [text, setText] = useState('')
   const [asked, setAsked] = useState('')
   const [busy, setBusy] = useState(false)
-  const { state: ai, ask } = useAsk()
+  const { state: ai, ask, reset } = useAsk()
   const [seen, setSeen] = useState<AskResult | null>(null)
   const [draft, setDraft] = useState<Draft | null>(null)
+  // 추천 초안의 대상 호실 강조(AI 결과 강조보다 우선)
+  const [pinned, setPinned] = useState<string[] | null>(null)
+  const [scheduleKey, setScheduleKey] = useState(0)
   const [saved, setSaved] = useState('')
   const [selected, setSelected] = useState<string | null>(null)
   const [loadedAt, setLoadedAt] = useState(0)
@@ -72,20 +79,31 @@ export default function App() {
   }
   const result = ai.result
   const rooms = status?.rooms ?? NO_ROOMS
-  const highlight = result?.highlight ?? NO_IDS
+  const highlight = pinned ?? result?.highlight ?? NO_IDS
   useEffect(() => postState(frame.current, floor, mode, rooms, highlight), [floor, mode, rooms, highlight])
   // 기준 시각이 갱신 주기의 2배를 넘으면 지연 표시(디자인 시스템 6절)
   const stale = status ? loadedAt - new Date(status.generatedAt).getTime() > status.refreshSeconds * 2000 : false
   const room = rooms.find((r) => r.id === selected)
   const watch = useMemo(() => {
     const ids = new Set(highlight)
-    const picked = rooms.filter((r) => ids.has(r.id) || r.anomaly)
-    return (picked.length ? picked : [...rooms].sort((a, b) => b.powerKw - a.powerKw)).slice(0, 6)
+    return rooms.filter((r) => ids.has(r.id)).slice(0, 8)
   }, [rooms, highlight])
+
+  // 패널의 위치 버튼: 3D에서 선택하고 3D 영역을 화면 안으로 이동
+  function locate(id: string) {
+    setSelected(id)
+    document.querySelector('.twin')?.scrollIntoView({ block: 'nearest' })
+  }
+
+  // 추천 초안: 이전 AI 결과를 지우고 초안 카드로 표시
+  function showDraft(d: Draft) {
+    reset(); setSeen(null)
+    setAsked(''); setSaved(''); setDraft(d); setPinned(d.roomIds)
+  }
 
   function submit(q = text) {
     if (!q.trim() || ai.status === 'running') return
-    setError(''); setSaved(''); setAsked(q); setDraft(null)
+    setError(''); setSaved(''); setAsked(q); setDraft(null); setPinned(null)
     ask(q)
   }
 
@@ -94,7 +112,8 @@ export default function App() {
     try {
       const r = await saveSchedule(draft, asked)
       setSaved(r.mock ? `${draft.time} ${ACTION[draft.action]} 스케줄을 목업으로 저장했습니다. 서버에는 기록되지 않습니다.` : `${draft.time} ${ACTION[draft.action]} 스케줄을 저장했습니다. 시뮬레이션에만 반영됩니다.`)
-      setDraft(null)
+      setDraft(null); setPinned(null)
+      setScheduleKey((k) => k + 1)
       load()
     } catch (e) {
       setError((e as Error).message)
@@ -168,41 +187,49 @@ export default function App() {
             </Suspense>
           )}
           <Legend mode={mode} status={status} />
+          {room ? <RoomDetail r={room} /> : <p className="muted pick">호실을 누르면 HVAC 상태가 여기에 표시됩니다.</p>}
         </section>
 
         <aside className="rail">
           <section className="card">
             <h2>AI 응답</h2>
-            {ai.status === 'idle' && (
+            {ai.status === 'idle' && !draft && (
               <ul className="suggest">
                 {SUGGESTIONS.map(({ icon: Icon, text: q }) => (
-                  <li key={q}><button onClick={() => { setText(q); submit(q) }}><Icon size={16} aria-hidden />{q}</button></li>
+                  <li key={q}><button onClick={() => { setText(q); submit(q) }}><Icon size={18} aria-hidden />{q}</button></li>
                 ))}
               </ul>
             )}
             {(result?.mock || (ai.transport === 'mock' && ai.status === 'done')) && <span className="tag">목업 응답</span>}
             <ThinkingPanel state={ai} query={asked} />
-            {draft && <DraftCard d={draft} busy={busy} onCancel={() => setDraft(null)} onSave={() => confirm(draft)} />}
+            {draft && <DraftCard d={draft} busy={busy} onCancel={() => { setDraft(null); setPinned(null) }} onSave={() => confirm(draft)} />}
             {saved && <p className="ok">{saved}</p>}
+            {watch.length > 0 && (
+              <div className="watch">
+                <h3>대상 호실 {highlight.length}곳</h3>
+                <ul>
+                  {watch.map((r) => (
+                    <li key={r.id}>
+                      <button onClick={() => setSelected(r.id)}>
+                        <span className="name">{r.anomaly && <AlertTriangle size={16} color={ANOMALY} aria-label="이상" />}{r.name}</span>
+                        <span className="num">{r.onOff ? `${r.powerKw}kW` : 'OFF'}</span>
+                        <span className="muted">{r.use}, {r.idu}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </section>
-          {room && <RoomCard r={room} />}
+          <AnomalyPanel floor={floor} onLocate={(id) => { setMode('anomaly'); locate(id) }} />
+          <RecommendPanel key={`${floor}-${scheduleKey}`} floor={floor} onDraft={showDraft} onLocate={locate} />
         </aside>
-
-        <section className="card watch">
-          <h2>{highlight.length ? '질의 결과 호실' : '확인할 호실'}</h2>
-          <ul>
-            {watch.map((r) => (
-              <li key={r.id}>
-                <button onClick={() => setSelected(r.id)}>
-                  <span className="name">{r.anomaly && <AlertTriangle size={14} color={ANOMALY} aria-label="이상" />}{r.name}</span>
-                  <span className="num">{r.onOff ? `${r.powerKw}kW` : 'OFF'}</span>
-                  <span className="muted">{r.use}, {r.idu}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
       </main>
+
+      <div className="row2">
+        <PowerTrend floor={floor} />
+        <ScheduleTimeline refreshKey={scheduleKey} onLocate={locate} />
+      </div>
     </div>
   )
 }
@@ -252,11 +279,14 @@ function DraftCard({ d, busy, onCancel, onSave }: { d: Draft; busy: boolean; onC
   )
 }
 
-function RoomCard({ r }: { r: Room }) {
+function RoomDetail({ r }: { r: Room }) {
   return (
-    <section className="card">
-      <h2>{r.name}</h2>
-      <p className="muted">{r.floor}, {r.use}, {r.areaM2}㎡, {r.idu}</p>
+    <div className="room">
+      <div className="room-head">
+        <h3>{r.name}</h3>
+        <span className="muted">{r.floor}, {r.use}, {r.areaM2}㎡, HVAC {r.idu}</span>
+      </div>
+      {r.anomaly && <p className="bad-line"><AlertTriangle size={16} aria-hidden />설정온도 미도달: 운전 중 실내온도가 설정온도와 3℃ 이상 차이</p>}
       <dl className="kv">
         <dt>운전</dt><dd>{r.onOff ? `${r.mode === 'cooling' ? '냉방' : '난방'} 운전` : 'OFF'}</dd>
         <dt>설정온도</dt><dd>{r.setpoint}℃</dd>
@@ -265,7 +295,6 @@ function RoomCard({ r }: { r: Room }) {
         <dt>전력</dt><dd>{r.powerKw}kW</dd>
         <dt>재실</dt><dd>{r.occupants}명</dd>
       </dl>
-      {r.anomaly && <p className="bad-line"><AlertTriangle size={14} />설정온도 미도달: 운전 중 실내온도가 설정온도와 3℃ 이상 차이</p>}
-    </section>
+    </div>
   )
 }
