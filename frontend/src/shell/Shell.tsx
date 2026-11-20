@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { AlertTriangle, BarChart3, Building2, CheckCircle2, ChevronDown, LayoutDashboard, LogOut, Menu, X } from 'lucide-react'
-import { AUTH_ON, currentEmail, signOut } from '../auth/cognito'
+import { AlertTriangle, BarChart3, Building2, CheckCircle2, ChevronDown, LayoutDashboard, LogOut, Menu, UserCog, X } from 'lucide-react'
+import { AUTH_ON, currentEmail, isAdmin, signOut } from '../auth/cognito'
 import { LEVEL } from '../portfolio/level'
 import type { BuildingCard } from '../types'
 import logo from '../../assets/ege.svg'
@@ -11,8 +11,8 @@ import { href, type FloorSummary, type Tab } from './route'
 
 // 화면 틀: 상단바(로고, 건물 토글, 운영·전력 분석 탭, 오른쪽 도구) + 왼쪽 사이드바(전체 현황, 층) + 본문
 // - 사이드바: 743px 이하에서 숨기고 상단바 메뉴 버튼으로 여닫음
-export function Layout({ building, tab, buildings, tools, side, children }: {
-  building: string | null; tab: Tab; buildings: BuildingCard[]; tools: ReactNode; side?: ReactNode; children: ReactNode
+export function Layout({ building, tab, buildings, tools, side, admin, children }: {
+  building: string | null; tab: Tab; buildings: BuildingCard[]; tools: ReactNode; side?: ReactNode; admin?: boolean; children: ReactNode
 }) {
   const [drawer, setDrawer] = useState(false)
   // 주소(건물·층·탭) 변경 시 열린 메뉴 닫기
@@ -43,10 +43,16 @@ export function Layout({ building, tab, buildings, tools, side, children }: {
       </header>
       <div className="body">
         <aside id="side" className={drawer ? 'side open' : 'side'} aria-label="이동">
-          <a className={building ? 'side-link' : 'side-link on'} href="#/" aria-current={building ? undefined : 'page'} onClick={() => setDrawer(false)}>
+          <a className={building || admin ? 'side-link' : 'side-link on'} href="#/" aria-current={building || admin ? undefined : 'page'} onClick={() => setDrawer(false)}>
             <LayoutDashboard size={20} aria-hidden />전체 현황
           </a>
           {side}
+          {/* 관리자 메뉴: 표시만 ID 토큰 그룹 기준, 권한은 admin API가 판정 */}
+          {AUTH_ON && isAdmin() && (
+            <a className={admin ? 'side-link on side-admin' : 'side-link side-admin'} href="#/admin" aria-current={admin ? 'page' : undefined} onClick={() => setDrawer(false)}>
+              <UserCog size={20} aria-hidden />사용자 관리
+            </a>
+          )}
         </aside>
         {drawer && <div className="scrim" onClick={() => setDrawer(false)} aria-hidden />}
         <div className="content">{children}</div>

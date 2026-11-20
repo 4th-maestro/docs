@@ -1,0 +1,30 @@
+/* 사용자 관리: 글자 16px, 보조 14px, 입력 48px(DESIGN.md 운영자 화면 기준) */
+.adm { display: flex; flex-direction: column; gap: 24px; max-width: 960px; }
+.adm h1 { font-size: 26px; margin: 0; }
+.adm-error { text-align: left; }
+.adm-card { display: flex; flex-direction: column; gap: 12px; }
+.adm-card h2 { margin: 0; }
+.adm-help { margin: 0; font-size: 15px; color: var(--body); }
+.adm-form { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto; grid-template-rows: auto auto; column-gap: 8px; row-gap: 4px; align-items: end; }
+.adm-form label { grid-row: 1; font-size: 15px; font-weight: 600; }
+.adm-form input { grid-row: 2; height: 48px; padding: 0 14px; border: 1px solid var(--border-strong); border-radius: var(--r-sm); background: var(--canvas); color: var(--ink); font: inherit; font-size: 16px; min-width: 0; }
+.adm-form input[aria-invalid='true'] { border-color: var(--danger); }
+.adm-form input:focus { outline: 2px solid var(--ink); outline-offset: 1px; }
+.adm-form button { grid-row: 2; grid-column: 3; display: inline-flex; align-items: center; gap: 6px; padding: 0 20px; }
+.adm-warn { margin: 0; font-size: 14px; color: var(--danger); }
+.adm-list { list-style: none; margin: 0; padding: 0; }
+.adm-list li { display: flex; align-items: center; gap: 12px; min-height: 60px; border-top: 1px solid var(--hairline-soft); }
+.adm-list li > svg { flex: none; color: var(--muted); }
+.adm-entry { flex: 1; min-width: 0; display: flex; flex-direction: column; font-size: 16px; font-weight: 600; overflow-wrap: anywhere; }
+.adm-entry small { font-size: 14px; font-weight: 400; color: var(--muted); }
+.adm-confirm { display: inline-flex; gap: 6px; }
+.adm-table { width: 100%; border-collapse: collapse; font-size: 15px; }
+.adm-table th { text-align: left; font-size: 14px; font-weight: 600; color: var(--muted); padding: 8px 4px; border-bottom: 1px solid var(--hairline); }
+.adm-table td { padding: 12px 4px; border-bottom: 1px solid var(--hairline-soft); overflow-wrap: anywhere; }
+.adm-tag { display: inline-flex; align-items: center; gap: 4px; margin: 0 0 0 8px; vertical-align: 1px; }
+@media (max-width: 743px) {
+  .adm-form { grid-template-columns: 1fr; }
+  .adm-form label, .adm-form input, .adm-form button { grid-row: auto; grid-column: auto; }
+  .adm-form button { height: 48px; justify-content: center; margin-top: 8px; }
+  .adm-table th:nth-child(3), .adm-table td:nth-child(3) { display: none; }
+}

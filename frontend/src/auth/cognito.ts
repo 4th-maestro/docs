@@ -1,5 +1,6 @@
 // Cognito 로그인(USER_PASSWORD_AUTH, 라이브러리 없이 cognito-idp HTTPS 직접 호출)
-// - 계정: 관리자 발급, 자체 가입 없음. 첫 로그인은 NEW_PASSWORD_REQUIRED 단계로 비밀번호 변경
+// - 계정: 허용 목록(이메일·@도메인) 이메일만 자체 가입, 이메일 인증 코드 확인 후 사용. CLI 발급 계정은 첫 로그인에 비밀번호 변경
+// - 비밀번호 재설정: 인증된 이메일로 코드 발송(ForgotPassword → ConfirmForgotPassword)
 // - 토큰: 액세스 토큰을 API·WebSocket에 사용, 만료 60초 전 갱신 토큰으로 재발급
 // - 보관: localStorage(하루 종일 사용, 새로고침 후 유지)
 //   shortcut: XSS 발생 시 토큰 노출 위험, 사용자 입력 HTML을 표시하는 기능이 생기면 메모리 보관 + HttpOnly 쿠키 갱신으로 전환
@@ -75,6 +76,26 @@ export async function completeNewPassword(email: string, newPassword: string, se
   keep(r.AuthenticationResult)
 }
 
+export async function signUp(email: string, password: string) {
+  await idp('SignUp', { ClientId: CLIENT_ID, Username: email, Password: password, UserAttributes: [{ Name: 'email', Value: email }] })
+}
+
+export async function confirmSignUp(email: string, code: string) {
+  await idp('ConfirmSignUp', { ClientId: CLIENT_ID, Username: email, ConfirmationCode: code })
+}
+
+export async function resendCode(email: string) {
+  await idp('ResendConfirmationCode', { ClientId: CLIENT_ID, Username: email })
+}
+
+export async function forgotPassword(email: string) {
+  await idp('ForgotPassword', { ClientId: CLIENT_ID, Username: email })
+}
+
+export async function confirmForgotPassword(email: string, code: string, password: string) {
+  await idp('ConfirmForgotPassword', { ClientId: CLIENT_ID, Username: email, ConfirmationCode: code, Password: password })
+}
+
 // API·WebSocket 호출 직전에 사용. 갱신 실패 시 로그아웃 처리 후 null
 export async function getAccessToken(): Promise<string | null> {
   if (!AUTH_ON) return null
@@ -102,19 +123,29 @@ export function onAuthChange(f: () => void) {
   return () => { listeners.delete(f) }
 }
 
-// 표시용 이메일: ID 토큰 본문(서명 검증은 API 쪽에서 수행)
-export function currentEmail(): string {
+// 표시용 정보: ID 토큰 본문(서명 검증·권한 판정은 API 쪽에서 수행)
+function idClaims(): Record<string, unknown> {
   try {
     const p = tokens!.idToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
-    return JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(p), (c) => c.charCodeAt(0)))).email ?? ''
+    return JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(p), (c) => c.charCodeAt(0))))
   } catch {
-    return ''
+    return {}
   }
 }
+
+export const currentEmail = () => String(idClaims().email ?? '')
+// 관리자 메뉴 표시 여부(실제 권한은 admin API가 액세스 토큰 그룹으로 판정)
+export const isAdmin = () => ((idClaims()['cognito:groups'] as string[] | undefined) ?? []).includes('admin')
 
 export function authMessage(e: unknown): string {
   const code = e instanceof AuthError ? e.code : ''
   if (code === 'NotAuthorizedException' || code === 'UserNotFoundException') return '이메일 또는 비밀번호가 맞지 않습니다.'
+  if (code === 'UserLambdaValidationException' && e instanceof AuthError && e.message.includes('NOT_ALLOWED')) return '가입이 허용되지 않은 이메일입니다. 관리자에게 허용 목록 등록을 요청하십시오.'
+  if (code === 'UsernameExistsException') return '이미 가입한 이메일입니다. 로그인하거나 비밀번호를 재설정하십시오.'
+  if (code === 'CodeMismatchException') return '인증 코드가 맞지 않습니다. 메일의 6자리 숫자를 다시 확인하십시오.'
+  if (code === 'ExpiredCodeException') return '인증 코드가 만료되었습니다. 코드를 다시 받으십시오.'
+  if (code === 'UserNotConfirmedException') return '이메일 인증이 끝나지 않았습니다. 메일로 받은 코드를 입력하십시오.'
+  if (code === 'InvalidParameterException') return '입력값을 확인하십시오. 이메일 형식과 비밀번호 조건을 확인해야 합니다.'
   if (code === 'InvalidPasswordException') return '비밀번호 조건을 확인하십시오. 10자 이상, 영문 소문자와 숫자를 포함해야 합니다.'
   if (code === 'PasswordResetRequiredException') return '비밀번호 재설정이 필요합니다. 관리자에게 문의하십시오.'
   if (code === 'TooManyRequestsException' || code === 'LimitExceededException') return '시도 횟수가 많습니다. 잠시 후 다시 시도하십시오.'

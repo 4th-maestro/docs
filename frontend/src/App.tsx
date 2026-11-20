@@ -1,5 +1,6 @@
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react'
 import { AlertTriangle, CalendarClock, Droplets, Info, Moon, RefreshCw, Sun, Zap } from 'lucide-react'
+import AdminPage from './admin/AdminPage'
 import ChatPanel, { type ChatMsg } from './ai/ChatPanel'
 import type { AskResult } from './ai/types'
 import { useAsk } from './ai/useAsk'
@@ -77,6 +78,13 @@ function Shell({ themeButton, dark }: { themeButton: React.ReactNode; dark: bool
   if (route.building && (!list.data || known)) {
     // 건물 변경 시 key로 다시 마운트: 층, 상태, 대화, 초안, 선택 호실, 패널 값 초기화
     return <Dashboard key={route.building} building={route.building} info={known} tab={route.tab} buildings={buildings} themeButton={themeButton} dark={dark} />
+  }
+  if (route.admin) {
+    return (
+      <Layout building={null} tab="ops" buildings={buildings} tools={themeButton} admin>
+        <div className="page"><AdminPage /></div>
+      </Layout>
+    )
   }
   return (
     <Layout building={null} tab="ops" buildings={buildings} tools={themeButton}>

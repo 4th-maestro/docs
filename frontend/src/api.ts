@@ -71,3 +71,11 @@ export async function cancelSchedule(id: string): Promise<{ id: string; mock?: b
   if (!BASE || id.startsWith('mock-')) return mockCancelSchedule(id)
   return call<{ id: string }>(`/schedules/${encodeURIComponent(id)}`, { method: 'DELETE' })
 }
+
+// 사용자 관리(관리자 그룹 전용, lambda/src/admin.py): 목업 대체 없음, 실패는 화면에 오류 표시
+export type AllowEntry = { entry: string; note?: string; addedAt?: string }
+export type UserRow = { email: string; status: string; enabled: boolean; admin: boolean; createdAt: string }
+export const listAllow = () => call<{ entries: AllowEntry[] }>('/admin/allow')
+export const addAllow = (entry: string, note: string) => call<AllowEntry>('/admin/allow', { method: 'POST', body: JSON.stringify({ entry, note }) })
+export const removeAllow = (entry: string) => call<{ entry: string }>(`/admin/allow/${encodeURIComponent(entry)}`, { method: 'DELETE' })
+export const listUsers = () => call<{ users: UserRow[] }>('/admin/users')

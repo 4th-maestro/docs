@@ -26,8 +26,6 @@ Globals:
       Variables:
         SCHEDULES_TABLE: !Ref SchedulesTable
         CHAT_TABLE: !Ref ChatTable
-        USER_POOL_ID: !Ref UserPool
-        USER_POOL_CLIENT_ID: !Ref UserPoolClient
 
 Resources:
   Api:
@@ -61,15 +59,32 @@ Resources:
       KeySchema: [{AttributeName: pk, KeyType: HASH}, {AttributeName: sk, KeyType: RANGE}]
       TimeToLiveSpecification: {AttributeName: ttl, Enabled: true}
 
-  # 운영자 계정: 관리자 발급(자체 가입 없음), 이메일 로그인, 첫 로그인 비밀번호 변경
+  # 가입 허용 목록: 개별 이메일 또는 @도메인(allow.py), 관리자 화면에서 관리
+  AllowTable:
+    Type: AWS::Serverless::SimpleTable
+    Properties:
+      PrimaryKey: {Name: entry, Type: String}
+
+  # 운영자 계정: 허용 목록 이메일만 자체 가입(가입 전 검사), 이메일 인증 코드, 비밀번호 재설정은 인증된 이메일
+  # - 메일 발송: Cognito 기본 메일(하루 50통, 발신 no-reply@verificationemail.com)
+  # - 이름 Maestro 유지: 사용자 풀 이름 변경은 재생성(기존 계정 삭제)
   UserPool:
     Type: AWS::Cognito::UserPool
     Properties:
       UserPoolName: maestro-operators
       UsernameAttributes: [email]
       AutoVerifiedAttributes: [email]
-      AdminCreateUserConfig: {AllowAdminCreateUserOnly: true}
-      AccountRecoverySetting: {RecoveryMechanisms: [{Name: admin_only, Priority: 1}]}
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: false
+        InviteMessageTemplate:
+          EmailSubject: 에게(에너지게이트) 계정 안내
+          EmailMessage: '에게(에너지게이트) 계정이 발급되었습니다. 아이디 {username}, 임시 비밀번호 {####}로 로그인한 뒤 새 비밀번호를 설정하십시오.'
+      VerificationMessageTemplate:
+        DefaultEmailOption: CONFIRM_WITH_CODE
+        EmailSubject: 에게(에너지게이트) 인증 코드
+        EmailMessage: '에게(에너지게이트) 인증 코드는 {####}입니다. 화면에 입력하십시오.'
+      AccountRecoverySetting: {RecoveryMechanisms: [{Name: verified_email, Priority: 1}]}
+      LambdaConfig: {PreSignUp: !GetAtt PreSignUpFunction.Arn}
       Policies:
         PasswordPolicy: {MinimumLength: 10, RequireLowercase: true, RequireNumbers: true, RequireUppercase: false, RequireSymbols: false, TemporaryPasswordValidityDays: 7}
 
@@ -86,6 +101,48 @@ Resources:
       RefreshTokenValidity: 30
       TokenValidityUnits: {AccessToken: minutes, IdToken: minutes, RefreshToken: days}
 
+  AdminGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      UserPoolId: !Ref UserPool
+      GroupName: admin
+      Description: 허용 목록과 가입자 관리
+
+  # 가입 전 검사: 사용자 풀 → 함수 참조라 함수 쪽 환경 변수에 사용자 풀을 넣지 않음(순환 참조)
+  PreSignUpFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: signup.handler
+      Environment:
+        Variables: {ALLOW_TABLE: !Ref AllowTable}
+      Policies: [DynamoDBReadPolicy: {TableName: !Ref AllowTable}]
+
+  PreSignUpPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref PreSignUpFunction
+      Principal: cognito-idp.amazonaws.com
+      SourceArn: !GetAtt UserPool.Arn
+
+  AdminFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: admin.handler
+      Environment:
+        Variables: {ALLOW_TABLE: !Ref AllowTable, USER_POOL_ID: !Ref UserPool}
+      Policies:
+        - DynamoDBCrudPolicy: {TableName: !Ref AllowTable}
+        - Statement:
+            - Effect: Allow
+              Action: [cognito-idp:ListUsers, cognito-idp:ListUsersInGroup]
+              Resource: !GetAtt UserPool.Arn
+      Events:
+        ListAllow: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /admin/allow, Method: GET}}
+        AddAllow: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /admin/allow, Method: POST}}
+        DeleteAllow: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: '/admin/allow/{entry}', Method: DELETE}}
+        Users: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /admin/users, Method: GET}}
+
   ChatFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -100,6 +157,8 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: auth.handler
+      Environment:
+        Variables: {USER_POOL_ID: !Ref UserPool, USER_POOL_CLIENT_ID: !Ref UserPoolClient}
 
   WsAuthorizer:
     Type: AWS::ApiGatewayV2::Authorizer
