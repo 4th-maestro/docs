@@ -87,7 +87,8 @@ export function onTwinChange(handlers: { floor?: (floor: string) => void; mode?:
 // 앱 임베드(2026-11-20): 트윈 안 버튼·칩·패널은 숨기고 앱 카드가 대신함
 // - 트윈 → {source:'twin', type:'twinUi', ui, kpis, actions}: 화면 상태, 역할별 지표 칸, 조치 목록(바뀔 때만)
 // - 앱 → {source:'maestro', type:'ui', action}: persona:<owner|engineer|facility|sim>, flow, pipes, back, rv:<vol|slice|hum|air>
-export type TwinUi = { view: 'building' | 'floor' | 'room'; persona: string; flow: boolean; pipes: boolean; rv: Record<string, boolean> }
+// idu: 층 보기에서 지금 층의 실내기 유형(cls) 목록(범례용)
+export type TwinUi = { view: 'building' | 'floor' | 'room'; persona: string; flow: boolean; pipes: boolean; rv: Record<string, boolean>; idu?: string[] }
 export type TwinKpi = { key: string; label: string; value: string; unit: string; bad: boolean }
 export type TwinActionItem = { room: string; floor: string; title: string; detail: string; lv: number }
 export type TwinActions = { title: string; scope: string; hero: { label: string; value: string; note: string } | null; items: TwinActionItem[] }

@@ -532,7 +532,7 @@
 
 <script type="module">
 import * as THREE from 'three';
-import { iduFields, iduShape } from './pipeline/idu-shapes.js';   // 실내기 유형(cls)별 3D 형상
+import { iduFields, iduShape, iduSymbolSvg, IDU_NAME } from './pipeline/idu-shapes.js';   // 실내기 유형(cls)별 3D 형상
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
@@ -2216,7 +2216,9 @@ function buildPlanSvg(f, intro = false){
   const dly = r => `animation-delay:${(120 + (r.b.cx / W) * 520 + (r.b.cy / D) * 160).toFixed(0)}ms`;
   const RS = f.rooms.filter(r => r.acs.length);
   html += '<g>' + RS.map(r => `<path class="tint" data-id="${r.id}" style="${dly(r)}" fill-rule="evenodd" d="${[r.poly, ...(r.poly.holes || [])].map(l => 'M' + l.map(P).join('L') + 'Z').join('')}"/>`).join('') + '</g>';
-  html += '<g>' + f.rooms.flatMap(r => r.acs.map(a => `<circle class="idu" data-a="${a.id}" cx="${p.ox + a.x*p.S}" cy="${p.oy + a.y*p.S}" r="7" stroke="#fff" stroke-width="2.5"/>`)).join('') + '</g>';
+  // 실내기 유형(cls)이 있으면 유형별 기호, 없으면(이전 데이터) 원
+  html += '<g>' + f.rooms.flatMap(r => r.acs.map(a => a.cls ? iduSymbolSvg(a, p.ox + a.x*p.S, p.oy + a.y*p.S)
+    : `<circle class="idu" data-a="${a.id}" cx="${p.ox + a.x*p.S}" cy="${p.oy + a.y*p.S}" r="7" stroke="#fff" stroke-width="2.5"/>`)).join('') + '</g>';
   html += '<g>' + RS.map(r => {
     const b = r.b, cx = p.ox + b.cx * p.S, cy = p.oy + (r.type === 'room' ? b.cy + (b.h > 4 ? 1.3 : .55) : b.cy) * p.S;
     const showChip = r.area >= 12;
@@ -2763,12 +2765,16 @@ function renderFloorPicker(){
 $('#floorPicker').addEventListener('click', e => { const b = e.target.closest('button'); if (b) goFloor(FLOOR[b.dataset.f]); });
 $('#floorPicker').addEventListener('pointerover', e => { const b = e.target.closest('button'); if (b) { hoverFloor = FLOOR[b.dataset.f]; controls.autoRotate = false; } });
 $('#floorPicker').addEventListener('pointerleave', () => { hoverFloor = null; });
+// 층 보기에서 지금 층에 있는 실내기 유형(cls). cls가 없는 이전 데이터는 빈 목록
+const floorIduTypes = () => document.body.classList.contains('v-floor') && state.floor ? [...new Set(state.floor.rooms.flatMap(r => r.acs.map(a => a.cls)).filter(Boolean))] : [];
 function renderLegend(){
   const m = state.metric, sc = SCALES[m], el = $('#legend');
   const sw = c => `<i style="background:${c}"></i>`;
   let html = m === 'alert'
     ? `<div class="t">${sc.label}</div><div class="cats"><span>${sw(sc.colors[0])}정상</span><span>${sw(sc.colors[1])}<span style="display:inline-flex;color:var(--caution)">${IC.alertCircle}</span>주의</span><span>${sw(sc.colors[2])}<span style="display:inline-flex;color:var(--danger)">${IC.alert}</span>위험</span></div>`
     : `<div class="t">${sc.label}</div><div class="scale">${sc.colors.map(sw).join('')}<span>${sc.min}~${sc.max}${sc.unit}</span></div>`;
+  const cls = floorIduTypes();
+  if (cls.length) html += `<div class="t" style="margin-top:8px">실내기 유형</div><div class="cats">${cls.map(c => `<span><svg width="18" height="18" viewBox="-9 -9 18 18" aria-hidden="true" style="fill:var(--muted);stroke:var(--canvas)">${iduSymbolSvg({ cls:c }, 0, 0, 7)}</svg>${IDU_NAME[c] || c}</span>`).join('')}</div>`;
   if (state.pipes) html += `<div class="t" style="margin-top:8px">설비 연결</div><div class="cats"><span><i style="background:#4aa8ff"></i>서측 실외기 계통</span><span><i style="background:#2fd0b0"></i>동측 실외기 계통</span><span><i style="background:#7cd3ff;border-radius:50%"></i>냉매 흐름</span></div>`;
   el.innerHTML = html;
   $('#rlTemp').style.background = gradientCss('temp');
@@ -3008,7 +3014,7 @@ const LV_OF = c => c.includes('danger') ? 2 : c.includes('caution') ? 1 : 0;
 function hostUiReport(force){
   if (!HOST.on || !hostReady()) return;
   const B = document.body.classList, pressed = s => $(s)?.getAttribute('aria-pressed') === 'true';
-  const ui = { view:B.contains('v-room') ? 'room' : B.contains('v-floor') ? 'floor' : 'building', persona:state.persona, flow:pressed('#flowBtn'), pipes:pressed('#pipesBtn'),
+  const ui = { view:B.contains('v-room') ? 'room' : B.contains('v-floor') ? 'floor' : 'building', persona:state.persona, flow:pressed('#flowBtn'), pipes:pressed('#pipesBtn'), idu:floorIduTypes(),
     rv:Object.fromEntries([...document.querySelectorAll('#roomTools [data-rv]')].map(b => [b.dataset.rv, b.getAttribute('aria-selected') === 'true'])) };
   const kpis = [...document.querySelectorAll('#kpis .kpi')].map(k => { const b = k.querySelector('b');
     return { key:k.id.replace('k-', ''), label:k.querySelector('small')?.textContent || '', value:b?.firstChild?.nodeType === 3 ? b.firstChild.textContent : (b?.textContent || ''), unit:b?.querySelector('i')?.textContent || '', bad:k.classList.contains('bad') }; });

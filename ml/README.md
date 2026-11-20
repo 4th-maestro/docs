@@ -49,7 +49,7 @@ ml/sagemaker.sh status <작업 이름>
 ml/sagemaker.sh logs <작업 이름> --follow
 ```
 
-- 학습 인스턴스는 `INSTANCE` 환경 변수로 바꾸십시오. 기본값은 `ml.g6.xlarge`(L4 24GB, 서울 리전 시간당 $1.385, 2026-11-20 조회)입니다. 이 인스턴스에서는 GPU 사용률 83~98%, vCPU 4개 사용률 약 93%로 모두 포화되었습니다. `INSTANCE=ml.g6e.4xlarge`(L40S, vCPU 16개, 시간당 $4.62)에서는 학습 속도가 3 it/s에서 8.8 it/s로 올랐습니다.
+- 학습 인스턴스는 `INSTANCE` 환경 변수로 바꾸십시오. 기본값은 `ml.g6.xlarge`(L4 24GB, 서울 리전 시간당 $1.385, 2026-11-20 조회)입니다. 이 인스턴스에서는 GPU 사용률 83~98%, vCPU 4개 사용률 약 93%로 모두 포화되었습니다. `INSTANCE=ml.g6e.4xlarge`(L40S, vCPU 16개, 시간당 $4.62)에서는 학습 속도가 3 it/s에서 8.8 it/s로 올랐습니다. 로컬 Apple M4 Pro(MPS, 메모리 24GB)는 같은 설정(1024px, 배치 16)에서 반복 1회에 80~88초로 g6e.4xlarge보다 약 700배 느려 로컬 학습은 쓰지 않습니다(2026-11-20 측정).
 - 합성 데이터 버전은 `DATASET` 환경 변수로 구분하십시오. 기본값은 `hvac-yolo`(v1, 단순 선 기호 5종)이고, 국내 CAD 기호 6종은 `DATASET=hvac-yolo-v2`입니다. `data`와 `train`에 같은 값을 주십시오.
 - 실제 도면 타일을 섞으려면 `REAL=s3://<버킷>/data/hvac-real/`을 지정하십시오. 학습 타일은 `REAL_REPEAT`(기본 20)회 반복해 넣고, `images/test` 타일은 별도로 채점해 `test_metrics.json`의 `real`에 저장합니다.
 - 결과는 `s3://<버킷>/models/<작업 이름>/output/model.tar.gz`입니다. 압축 안의 `hvac/weights/best.pt`가 가중치이고, `test_metrics.json`이 테스트 지표입니다.

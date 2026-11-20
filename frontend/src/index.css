@@ -84,6 +84,8 @@ h3 { font-size: 17px; font-weight: 600; margin: 0 0 8px; }
 .tw-tools .pill { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 0 12px; white-space: nowrap; }
 .sim-none { display: flex; align-items: center; justify-content: center; margin: 0; padding: 24px; text-align: center; color: var(--muted); }
 .legend { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin-top: 12px; font-size: 14px; color: var(--muted); }
+.legend-units { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.legend .sym-icon { width: 20px; height: 20px; vertical-align: middle; margin-right: 4px; }
 .sw { display: inline-block; width: 22px; height: 12px; border-radius: 2px; margin-right: 2px; vertical-align: -1px; }
 .sw.bad { background: #fdecec; outline: 2px solid var(--danger); margin-right: 6px; }
 

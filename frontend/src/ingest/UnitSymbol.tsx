@@ -1,4 +1,5 @@
 import { TYPES } from './units'
+import './ingest.css'
 
 // 유형 기호: 같은 테두리(사각형)에 토출구 선(카세트), 흡입구 격자선(덕트), 얇은 본체(벽걸이), 원(스탠드)으로 구분. 오른쪽(x+)이 토출 방향
 const MARK: Record<string, string> = {

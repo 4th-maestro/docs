@@ -80,3 +80,25 @@ export function iduShape(THREE, a, { at, ceil, room, mat }){
   const dirs = local.map(([lx, lz]) => [lx * ux - lz * uz, lx * uz + lz * ux]);
   return { g, ways:ways || 1, dirs, off, vanes, slotMat, ledMat, halo, light, wp:g.position.clone() };
 }
+
+// 층별 평면도(SVG)의 유형별 2D 기호. 모양은 2D 매핑 화면(src/ingest/UnitSymbol.tsx)과 같음, 오른쪽(x+)이 토출 방향
+// 본체 색은 g의 fill(가동 상태 색)을 상속, 선은 #plan .idu의 stroke(바탕색)
+const MARK = {
+  cassette_4way: 'M.55 -.6V.6M-.55 -.6V.6M-.6 .55H.6M-.6 -.55H.6',
+  cassette_2way: 'M.55 -.6V.6M-.55 -.6V.6',
+  cassette_1way: 'M.55 -.6V.6',
+  ceiling_duct: 'M-.6 -.45H.3M-.6 0H.3M-.6 .45H.3M.6 -.7V.7',
+  wall_mounted: 'M.15 -.8V.8',
+};
+// 범례 이름: src/ingest/hvac-types.json(원본 ml/hvac_types.json)의 name과 같음
+export const IDU_NAME = { cassette_4way:'천장형 4방향 카세트', cassette_2way:'천장형 2방향 카세트', cassette_1way:'천장형 1방향 카세트',
+  ceiling_duct:'천장 매립 덕트형', wall_mounted:'벽걸이형', floor_standing:'스탠드형' };
+export function iduSymbolSvg(a, x, y, s = 10){
+  // vector-effect는 상속되지 않아 요소마다 지정(없으면 선 두께가 s배로 커져 기호를 덮음)
+  const v = 'vector-effect="non-scaling-stroke"', mk = `fill="none" ${v}`;
+  const body = a.cls === 'wall_mounted' ? `<rect x="-.35" y="-1" width=".7" height="2" rx=".1" ${v}/>` : `<rect x="-1" y="-1" width="2" height="2" rx=".15" ${v}/>`;
+  const mark = MARK[a.cls] ? `<path d="${MARK[a.cls]}" ${mk}/>` : a.cls === 'floor_standing' ? `<circle r=".45" ${mk}/>` : '';
+  const rot = Number.isFinite(a.rot) ? a.rot : 0;
+  return `<g class="idu" data-a="${a.id ?? ''}" transform="translate(${x} ${y}) rotate(${rot}) scale(${s})" stroke-width="2">${body}${mark}</g>`;
+}
+

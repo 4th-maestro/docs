@@ -33,6 +33,8 @@ import { answerText, draftOf, parseWhatIf, pendingText, type WhatIf } from './wh
 import type { BuildingCard, Draft, Mode, Room, Status } from './types'
 import { Sk, SkFloors, SkKpis, SkPlan } from './skeleton/Skeleton'
 import CountUp from './motion/CountUp'
+import { UnitIcon } from './ingest/UnitSymbol'
+import { TYPES } from './ingest/units'
 
 // three.js 청크(약 620kB)는 3D 영역 표시 시점에 로드
 const Twin3D = lazy(() => import('./twin3d/Twin3D'))
@@ -474,7 +476,7 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
                     </Suspense>
                   ) : <div className="embed" />}
                   {/* 시뮬레이션 역할은 예상 실온을 같은 온도 척도로 칠함 */}
-                  <Legend mode={sim ? 'temp' : mode} status={status} />
+                  <Legend mode={sim ? 'temp' : mode} status={status} units={twinOn ? report?.ui.idu : undefined} />
                   {room ? <RoomDetail r={room} /> : <p className="muted pick-hint">{floor ? '호실을 누르면 HVAC 상태가 여기에 표시됩니다.' : '층을 선택하면 평면도가 표시됩니다.'}</p>}
                 </section>
                 {ops && floor && <PowerTrend building={building} floor={floor} />}
@@ -527,7 +529,7 @@ function Kpi({ label, value, unit, sub, bad }: { label: string; value: number; u
   )
 }
 
-function Legend({ mode, status }: { mode: Mode; status: Status | null }) {
+function Legend({ mode, status, units }: { mode: Mode; status: Status | null; units?: string[] }) {
   return (
     <div className="legend">
       {mode === 'anomaly' ? (
@@ -543,6 +545,7 @@ function Legend({ mode, status }: { mode: Mode; status: Status | null }) {
           {SCALES[mode].label} {SCALES[mode].min}~{SCALES[mode].max}{SCALES[mode].unit}
         </span>
       )}
+      {!!units?.length && <span className="legend-units">{units.map((c) => <span key={c}><UnitIcon cls={c} />{TYPES.find((t) => t.class === c)?.name ?? c}</span>)}</span>}
       {status && <span>외기 {status.outdoorTemp}℃, 기준 {hhmm(status.generatedAt)}</span>}
     </div>
   )

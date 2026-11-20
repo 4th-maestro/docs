@@ -102,7 +102,7 @@
 | 방향 | 메시지 | 필드 |
 |---|---|---|
 | 대시보드 → 트윈 | `{source: "maestro", type: "ui", action}` | `persona:<owner·engineer·facility·sim>`, `flow`(토글), `flow:off`(닫기 전용, 여러 번 받아도 같은 결과), `pipes`, `back`, `rv:<vol·slice·hum·air>` |
-| 트윈 → 대시보드 | `{source: "twin", type: "twinUi", ui, kpis, actions, flow}` | `ui`(보기, 역할, 토글 눌림), `kpis`(라벨, 값, 단위, 경고), `actions`(제목, 범위, 요약, 호실 항목), `flow`(데이터 흐름을 켠 경우만: `sources`, `infos`(현재 값, 출처, 받는 역할), `personas`). 1초마다 바뀐 경우만 |
+| 트윈 → 대시보드 | `{source: "twin", type: "twinUi", ui, kpis, actions, flow}` | `ui`(보기, 역할, 토글 눌림, `idu`: 층 보기에서 지금 층의 실내기 유형 목록으로 범례에 사용), `kpis`(라벨, 값, 단위, 경고), `actions`(제목, 범위, 요약, 호실 항목), `flow`(데이터 흐름을 켠 경우만: `sources`, `infos`(현재 값, 출처, 받는 역할), `personas`). 1초마다 바뀐 경우만 |
 
 - 운영 탭과 시뮬레이션 탭은 같은 iframe을 유지합니다. 시뮬레이션 탭에 들어가면 역할을 운전 시뮬레이션으로 바꾸고 데이터 흐름과 설비 연결을 끄며, 운영 탭으로 돌아오면 에너지 총괄로 바꿉니다.
 - 역할을 바꾸면 트윈은 운전 시뮬레이션 상태(`sim`)를 다시 보냅니다. 시뮬레이션 탭의 패널은 탭을 열 때 새로 생기므로 이전 보고를 받지 못하기 때문입니다.
