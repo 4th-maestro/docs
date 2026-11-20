@@ -180,8 +180,10 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
     { icon: Droplets, text: `${floor.replace('F', '층')}에서 습도가 높은 공간 5곳 알려줘` },
   ]
 
-  // 패널의 위치 버튼: 3D에서 선택하고 3D 영역을 화면 안으로 이동
+  // 패널의 위치 버튼: 3D에서 선택하고 3D 영역을 화면 안으로 이동, 다른 층 호실이면 그 층으로 전환
   function locate(id: string) {
+    const r = all.find((x) => x.id === id)
+    if (r && r.floor !== floor) setFloor(r.floor)
     setSelected(id)
     document.querySelector('.twin')?.scrollIntoView({ block: 'nearest' })
   }
@@ -285,7 +287,7 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
                   {room ? <RoomDetail r={room} /> : <p className="muted pick-hint">호실을 누르면 HVAC 상태가 여기에 표시됩니다.</p>}
                 </section>
                 <PowerTrend building={building} floor={floor} />
-                <ScheduleTimeline building={building} refreshKey={scheduleKey} rooms={all} onLocate={locate} />
+                <ScheduleTimeline building={building} floor={floor} floors={floors} refreshKey={scheduleKey} rooms={all} onLocate={locate} />
               </div>
 
               <aside className="rail">
