@@ -48,6 +48,18 @@ TOOLS = [
 ]
 
 
+def chips(name, args):
+    """도구 인자를 화면 조건 칩(한국어)으로 변환. 검증 전 값이라 없는 키는 건너뜀"""
+    out = [args.get('floor') if args.get('floor') != 'all' else '전체 층', args.get('use') if args.get('use') != 'all' else '전체 용도']
+    if name == 'query_spaces':
+        metric = METRICS.get(args.get('metric'), '').split('(')[0]
+        out += [metric and f"{metric} {'낮은' if args.get('order') == 'asc' else '높은'} 순", args.get('limit') and f"{args['limit']}곳"]
+    elif name == 'create_schedule':
+        action = {'off': '운전 OFF', 'on': '운전 ON'}.get(args.get('action')) or f"설정온도 {args.get('setpoint', 0):g}℃"
+        out += [args.get('time') and f"{args['time']} 이후", '재실 없을 때' if args.get('condition') == 'unused' else None, action]
+    return [c for c in out if c]
+
+
 def _pick(floor, use):
     return [r for r in sim.ROOMS if floor in ('all', r['floor']) and use in ('all', r['use'])]
 

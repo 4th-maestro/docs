@@ -4,9 +4,10 @@ Maestro API(Lambda, Python 3.12)와 AWS 리소스(SAM) 폴더입니다. 구조 �
 
 | 경로 | 내용 |
 |---|---|
-| `template.yaml` | API Gateway HTTP API, Lambda 3개, DynamoDB, S3, CloudFront |
+| `template.yaml` | API Gateway HTTP API, WebSocket API, Lambda 4개, DynamoDB, S3, CloudFront |
 | `src/status.py` | `GET /rooms/status?floor=1F` 호실별 가상 상태 |
-| `src/query.py` | `POST /query` 자연어 질의(Bedrock Claude Sonnet 5.5) |
+| `src/query.py` | `POST /query` 자연어 질의(Bedrock Claude Sonnet 5.5), 응답에 단계 기록 `steps` 포함 |
+| `src/ws.py` | WebSocket `ask` 라우트, 질의 단계 이벤트 실시간 전송([이벤트 형식](../docs/human/explanation/architecture.md#7-자연어-질의-llm-도구-호출과-서버-검증)) |
 | `src/schedules.py` | `GET·POST /schedules` 스케줄 조회·저장 |
 | `src/tools.py` | LLM 도구 정의와 서버 검증 |
 | `src/sim.py`, `src/rooms.json` | 가상 HVAC 상태 생성, 시연 호실 137개(공개 IFC 의원 건물) |
@@ -31,7 +32,7 @@ sam build && sam deploy --guided --profile maestro
 
 두 번째 배포부터는 `sam deploy --stack-name maestro --region ap-northeast-2 --profile maestro --capabilities CAPABILITY_IAM --resolve-s3`를 사용하십시오. `ModelId` 기본값을 바꾼 배포는 `--parameter-overrides ModelId=global.anthropic.claude-sonnet-5-5`를 함께 지정하십시오. 스택에 저장된 이전 값이 허용 값 검사에서 거부됩니다.
 
-모델은 bedrock-runtime global 추론 프로필 `global.anthropic.claude-sonnet-5-5`입니다. bedrock-mantle 엔드포인트는 Sonnet 5.5를 제공하지 않습니다(2026-11-20 확인). 출력값 `ApiUrl`을 Frontend의 `VITE_API_BASE_URL`에 넣고, `WebBucketName`에 Frontend 빌드를 올리십시오.
+모델은 bedrock-runtime global 추론 프로필 `global.anthropic.claude-sonnet-5-5`입니다. bedrock-mantle 엔드포인트는 Sonnet 5.5를 제공하지 않습니다(2026-11-20 확인). 출력값 `ApiUrl`을 Frontend의 `VITE_API_BASE_URL`에, `WsUrl`을 `VITE_WS_URL`에 넣고, `WebBucketName`에 Frontend 빌드를 올리십시오.
 
 ## 규칙
 
