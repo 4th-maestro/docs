@@ -1,13 +1,20 @@
 import { demoStatus, kstNow, live, mockAsk, summarize } from './mock'
 import { mockAnomalies, mockBuildings, mockCancelSchedule, mockHistory, mockRecommendations, mockSaveSchedule, mockSchedules } from './panels/mock'
 import type { Anomalies, History, Recommendations, Schedules } from './panels/types'
+import { AUTH_ON, getAccessToken, signOut } from './auth/cognito'
 import type { Draft, Portfolio, QueryResult, Status } from './types'
 
 const BASE = import.meta.env.VITE_API_BASE_URL as string | undefined
 
-async function call<T>(path: string, init?: RequestInit): Promise<T> {
+// 로그인 만료: 로그아웃 처리 후 로그인 화면으로 전환(목업 대체 화면이 잠깐 보일 수 있으나 곧 해제됨)
+export class AuthRequired extends Error {}
+
+export async function call<T>(path: string, init?: RequestInit): Promise<T> {
   if (!BASE) throw new Error('VITE_API_BASE_URL 없음')
-  const res = await fetch(`${BASE}${path}`, { headers: { 'content-type': 'application/json' }, ...init })
+  const token = await getAccessToken()
+  if (AUTH_ON && !token) { signOut(); throw new AuthRequired('로그인이 필요합니다.') }
+  const res = await fetch(`${BASE}${path}`, { ...init, headers: { 'content-type': 'application/json', ...(token ? { authorization: `Bearer ${token}` } : {}) } })
+  if (res.status === 401) { signOut(); throw new AuthRequired('로그인이 필요합니다.') }
   const data = await res.json()
   if (!res.ok) throw new Error(data.error ?? `요청 실패(${res.status})`)
   return data as T

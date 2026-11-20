@@ -1,0 +1,42 @@
+/* AI 운영 도우미(메신저형)
+   - 높이: 데스크톱 680px 고정(대화 목록만 스크롤), 한 열 화면 70vh
+   - 말풍선: 사용자 오른쪽 ink 채움, AI 왼쪽 surface 면. 글자 16px, 행간 1.5(DESIGN.md 운영자 화면 기준)
+   - 움직임 없음: 새 메시지는 효과 없이 추가, 자동 스크롤만 수행 */
+.chat { display: flex; flex-direction: column; height: 680px; padding: 0; overflow: hidden; }
+.chat-head { display: flex; align-items: center; gap: 8px; padding: 16px 20px; border-bottom: 1px solid var(--hairline); }
+.chat-head h2 { margin: 0 auto 0 0; }
+.chat-confirm { display: inline-flex; gap: 6px; }
+.chat-mini { height: 36px; padding: 0 12px; border: 1px solid var(--hairline); border-radius: var(--r-full); background: var(--canvas); color: var(--ink); font-size: 14px; font-weight: 600; }
+.chat-mini.danger { border-color: var(--danger); color: var(--danger); }
+.chat-log { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; padding: 16px 20px; background: var(--surface-soft); }
+.chat-empty { margin: auto 0; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; color: var(--muted); font-size: 15px; }
+.chat-empty p { margin: 0; max-width: 300px; }
+.chat-empty .suggest { width: 100%; margin-top: 8px; text-align: left; }
+.chat-empty .suggest button { background: var(--canvas); border: 1px solid var(--hairline); margin-bottom: 6px; color: var(--ink); }
+
+.msg { max-width: 92%; font-size: 16px; line-height: 1.5; }
+.msg p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.msg.me { align-self: flex-end; padding: 10px 14px; border-radius: 14px 14px 4px 14px; background: var(--ink); color: var(--on-ink); }
+.msg.ai { align-self: flex-start; display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; border: 1px solid var(--hairline); border-radius: 14px 14px 14px 4px; background: var(--canvas); color: var(--ink); }
+.msg.ai.note { border-color: var(--ok); }
+.msg.ai .tag { align-self: flex-start; margin: 0; }
+.msg-text { display: block; }
+.msg.note .msg-text { display: flex; gap: 6px; color: var(--ok); font-weight: 600; }
+.msg-steps summary { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; font-size: 14px; font-weight: 600; color: var(--muted); cursor: pointer; }
+.msg-steps[open] summary { margin-bottom: 8px; }
+.msg-draft { display: flex; align-items: center; gap: 6px; font-size: 14px; color: var(--muted); }
+.msg .draft { border-top: 1px solid var(--hairline); padding-top: 12px; }
+.msg-rooms { display: flex; flex-direction: column; gap: 6px; border-top: 1px solid var(--hairline); padding-top: 10px; }
+.msg-rooms .chat-mini { align-self: flex-start; }
+.msg-rooms ul { list-style: none; margin: 0; padding: 0; }
+.msg-rooms li button { width: 100%; min-height: 40px; display: flex; align-items: center; gap: 6px; padding: 0 4px; border: 0; border-radius: var(--r-sm); background: none; color: var(--ink); font-size: 15px; text-align: left; }
+.msg-rooms li button:hover { background: var(--surface-soft); }
+.msg-rooms li svg { color: var(--danger); flex: none; }
+.msg-rooms .num { margin-left: auto; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.chat-input { display: flex; align-items: flex-end; gap: 8px; padding: 12px 12px 4px 16px; border-top: 1px solid var(--hairline); background: var(--canvas); }
+.chat-input textarea { flex: 1; min-height: 48px; max-height: 120px; resize: none; padding: 12px 14px; border: 1px solid var(--border-strong); border-radius: 24px; background: var(--canvas); color: var(--ink); font: inherit; font-size: 17px; line-height: 1.4; }
+.chat-input textarea:focus { outline: 2px solid var(--ink); outline-offset: 1px; }
+.chat-hint { margin: 0; padding: 4px 16px 12px; font-size: 14px; color: var(--muted); background: var(--canvas); }
+.chat-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+@media (max-width: 1127px) { .chat { height: 70vh; min-height: 520px; } }

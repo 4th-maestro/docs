@@ -1,20 +1,16 @@
 import type { ReactNode } from 'react'
-import { AlertTriangle, BarChart3, CheckCircle2, ChevronRight, Info, TrendingDown } from 'lucide-react'
+import { BarChart3, ChevronRight, Info } from 'lucide-react'
 import { hhmm } from '../panels/usePoll'
-import type { BuildingCard, Level, Portfolio as Data } from '../types'
+import type { BuildingCard, Portfolio as Data } from '../types'
+import { LEVEL } from './level'
 import './portfolio.css'
 
-// 전체 현황: 건물 카드는 API 순서(이상, 절감 검토, 정상 순)로 표시, 상태는 색·아이콘·글자 병행(디자인 시스템 1절)
-const LEVEL: Record<Level, { Icon: typeof AlertTriangle; text: (b: BuildingCard) => string }> = {
-  alert: { Icon: AlertTriangle, text: (b) => `이상 ${b.now.anomaly}건` },
-  warn: { Icon: TrendingDown, text: () => '절감 검토' },
-  ok: { Icon: CheckCircle2, text: () => '정상' },
-}
 const fmt = new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 1 })
 const n = (v: number) => fmt.format(v)
 // 전체 합계는 정수: 390px 화면 2열 요약 칸(약 147px)에서 수치와 단위가 한 줄에 표시되도록
 const n0 = (v: number) => fmt.format(Math.round(v))
 
+// 전체 현황: 건물 카드는 API 순서(이상, 절감 검토, 정상 순)로 표시
 // compare: 건물 비교 영역(다른 브랜치의 BuildingCompare), 카드 목록 아래에 표시
 export default function Portfolio({ data, error, compare }: { data: Data | null; error: string; compare?: ReactNode }) {
   const list = data?.buildings ?? []

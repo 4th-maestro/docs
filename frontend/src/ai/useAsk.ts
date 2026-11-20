@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ask as askRest } from '../api'
+import { getAccessToken } from '../auth/cognito'
 import { STEP_ORDER, type AskResult, type AskState, type ServerEvent, type Step } from './types'
 
 // AI 질의 실행 훅
@@ -72,37 +73,41 @@ export function useAsk(building: string) {
     c.tick = window.setInterval(() => update((s) => ({ ...s, elapsedMs: Date.now() - startedAt })), TICK_MS)
     c.timeout = window.setTimeout(() => fail('45초 안에 AI 응답을 받지 못했습니다. 다시 시도하십시오.'), TIMEOUT_MS)
     if (!WS_URL) return rest()
+    // 로그인 토큰: 브라우저 WebSocket은 헤더 지정이 불가해 쿼리로 전달(lambda/src/auth.py에서 검증)
+    getAccessToken().then((token) => { if (cur.current === c) connect(token) })
 
-    let received = false
-    let ws: WebSocket
-    try {
-      ws = new WebSocket(WS_URL)
-    } catch {
-      return rest() // 잘못된 주소 형식
-    }
-    c.ws = ws
-    ws.onopen = () => ws.send(JSON.stringify({ action: 'ask', requestId: id, text, buildingId: building }))
-    ws.onmessage = (m) => {
-      let e: ServerEvent
+    const connect = (token: string | null) => {
+      let received = false
+      let ws: WebSocket
       try {
-        e = JSON.parse(m.data)
+        ws = new WebSocket(token ? `${WS_URL}?token=${encodeURIComponent(token)}` : WS_URL!)
       } catch {
-        return
+        return rest() // 잘못된 주소 형식
       }
-      // API Gateway 자체 메시지(요청 시간 초과 등)는 requestId가 달라 무시
-      if (e.requestId !== id) return
-      received = true
-      if (e.type === 'step') update((s) => applyStep(s, e))
-      else if (e.type === 'delta') update((s) => ({ ...s, answer: s.answer + e.text }))
-      else if (e.type === 'done') succeed(e.result)
-      else if (e.type === 'error') fail(e.message)
-    }
-    // 첫 이벤트 전 실패는 REST로 대체, 진행 중 끊김은 모델 재호출 비용을 피하려고 오류 처리
-    ws.onclose = () => {
-      if (cur.current !== c) return
-      c.ws = undefined
-      if (received) fail('AI 연결이 끊어졌습니다. 다시 시도하십시오.')
-      else rest()
+      c.ws = ws
+      ws.onopen = () => ws.send(JSON.stringify({ action: 'ask', requestId: id, text, buildingId: building }))
+      ws.onmessage = (m) => {
+        let e: ServerEvent
+        try {
+          e = JSON.parse(m.data)
+        } catch {
+          return
+        }
+        // API Gateway 자체 메시지(요청 시간 초과 등)는 requestId가 달라 무시
+        if (e.requestId !== id) return
+        received = true
+        if (e.type === 'step') update((s) => applyStep(s, e))
+        else if (e.type === 'delta') update((s) => ({ ...s, answer: s.answer + e.text }))
+        else if (e.type === 'done') succeed(e.result)
+        else if (e.type === 'error') fail(e.message)
+      }
+      // 첫 이벤트 전 실패는 REST로 대체, 진행 중 끊김은 모델 재호출 비용을 피하려고 오류 처리
+      ws.onclose = () => {
+        if (cur.current !== c) return
+        c.ws = undefined
+        if (received) fail('AI 연결이 끊어졌습니다. 다시 시도하십시오.')
+        else rest()
+      }
     }
   }, [end, building])
 
