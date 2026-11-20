@@ -243,6 +243,12 @@
       "type": "explanation"
     },
     {
+      "path": "docs/human/explanation/improvements/2026-11-21(전력·요금 카드 좁은 너비 줄바꿈).md",
+      "title": "전력·요금 카드 좁은 너비 줄바꿈",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
       "path": "docs/human/explanation/improvements/README.md",
       "title": "개선 기록",
       "audience": "human",
