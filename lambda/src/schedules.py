@@ -1,4 +1,4 @@
-"""GET /schedules, POST /schedules: 운영자가 확인한 스케줄 초안 저장·조회(시뮬레이션에만 반영)"""
+"""GET /schedules, POST /schedules, DELETE /schedules/{id}: 운영자가 확인한 스케줄 초안 저장·조회·취소(시뮬레이션에만 반영)"""
 import datetime as dt
 import re
 import uuid
@@ -7,11 +7,20 @@ import common
 import sim
 
 ROOM_IDS = {r['id'] for r in sim.ROOMS}
+SCHEDULE_ID = re.compile(r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')
 
 
 def handler(event, context):
-    if event.get('requestContext', {}).get('http', {}).get('method') == 'GET':
+    method = event.get('requestContext', {}).get('http', {}).get('method')
+    if method == 'GET':
         return common.resp(200, {'schedules': common.list_schedules()})
+    if method == 'DELETE':
+        sid = str((event.get('pathParameters') or {}).get('id', ''))
+        if not SCHEDULE_ID.fullmatch(sid):
+            return common.resp(400, {'error': 'id는 UUID 형식'})
+        if not common.delete_schedule(sid):
+            return common.resp(404, {'error': '없는 스케줄'})
+        return common.resp(200, {'id': sid, 'deleted': True})
     d = common.body(event) or {}
     ids = d.get('roomIds') or []
     if not ids or not set(ids) <= ROOM_IDS:

@@ -1,6 +1,6 @@
 # 시스템 설계: 6단계 처리 흐름과 4계층 구조
 
-> **요약** (기준일 2026-11-19)
+> **요약** (기준일 2026-11-20)
 >
 > - 처리 흐름은 도면 파싱, 3D 생성, 공간-설비 매핑, 상태 시각화, 자연어 질의, 최적 제어 추천 6단계. IFC를 우선 입력으로 쓰고 PDF·DXF는 대체 경로
 > - 자연어 질의는 LLM이 도구 호출 JSON만 만들고, 서버가 닫힌 값 검증과 운영자 확인을 거쳐 시뮬레이터에만 반영
@@ -8,6 +8,7 @@
 > - 공개 IFC 실험에서 호실 269개 추출, 공조 단말 448개 매핑, 처리 약 10초를 확인함. Frontend와 Lambda 첫 구현은 `frontend/`, `lambda/`
 >
 > - 2026-11-20 첫 배포 완료: 웹 https://d2y0m857hv27mz.cloudfront.net, 질의 응답 3.8~8.5초(2건)
+> - 2026-11-20 운영 패널 API 4종 추가(미배포): 추천, 이상 감지 상세, 전력 추이, 스케줄 취소
 >
 > **다음 작업**: 질의 테스트 문장 30개 작성(미정)
 
@@ -36,7 +37,7 @@ LLM 호출과 도구 실행은 query Lambda가 담당합니다. 실시간 연동
 | 웹 | React, TypeScript, Vite → S3(비공개) + CloudFront(OAC) | 정적 배포, HTTPS |
 | API | API Gateway HTTP API(CORS) | Lambda 연동, 요청 단가가 REST API보다 낮음 |
 | 실시간 전송 | API Gateway WebSocket API(`ask` 라우트), ws Lambda | AI 질의 단계와 답변 텍스트를 진행 시점에 전송. 연결 실패 시 HTTP API로 대체 |
-| 처리 | Lambda Python 3.12(arm64): status, query, schedules | IFC 파싱·분석 코드와 같은 언어 |
+| 처리 | Lambda Python 3.12(arm64): status, query, ws, schedules, recommend, anomalies, history | IFC 파싱·분석 코드와 같은 언어 |
 | 데이터 | DynamoDB(스케줄), 호실 목록은 Lambda 패키지의 `rooms.json` | 서버리스, 소량 데이터 |
 | 자연어 질의 | Bedrock Claude Sonnet 5.5(`global.anthropic.claude-sonnet-5-5`, bedrock-runtime global 추론 프로필) | 사용자 지정 상한, 템플릿에서 Haiku 5.5로만 하향 가능. Mantle은 Sonnet 5.5 미제공([장애 기록](troubleshooting/2026-11-20%28Bedrock%20Sonnet%205.5%20%EB%AA%A8%EB%8D%B8%20ID%20404%29.md)) |
 | 정의·배포 | AWS SAM(`lambda/template.yaml`) | 리소스 1개 파일 관리 |
@@ -97,7 +98,7 @@ LLM 호출과 도구 실행은 query Lambda가 담당합니다. 실시간 연동
 |---|---|---|---|
 | `query_spaces` | 층, 용도, 지표(전력·온도·습도·설정온도), 정렬, 개수 | 조건에 맞는 호실 조회, 화면 강조 | 구현 |
 | `create_schedule` | 층, 용도, 동작(off·on·setpoint), 시각, 조건(unused·always), 설정온도 | 초안과 예상 절감량 반환, 확인 후 저장 | 구현 |
-| `recommend` | 층 또는 건물, 기간 | 낭비 순위와 개선안 반환 | 다음 단계 |
+| `recommend` | 층 또는 건물, 기간 | 낭비 순위와 개선안 반환 | 다음 단계(규칙은 `GET /recommendations`로 구현, LLM 도구 미연결) |
 
 주: 도구 정의 원본은 `lambda/src/tools.py`. 모든 도구는 `strict: true`이며, Sonnet 5.5는 강제 `tool_choice`를 지원하지 않아 시스템 프롬프트로 도구 사용을 유도합니다.
 
@@ -139,11 +140,44 @@ Frontend는 `VITE_WS_URL`이 있으면 WebSocket API의 `ask` 라우트로 질�
 
 주: 기준값은 운영자가 바꿀 수 있습니다. 공공기관 기준 원문 조문은 확인하지 않았습니다.
 
+**8-2. 규칙 3종은 `GET /recommendations`(`lambda/src/recommend.py`)로 구현했고, 추천 1건마다 바로 저장할 수 있는 스케줄 초안을 포함합니다.**
+
+**표 8.2 추천 API 구현 기준(2026-11-20)**
+
+| 항목 | 기준 |
+|---|---|
+| 빈 공간 운전 | 지금, 15분 전, 30분 전 모두 재실 0명으로 운전 |
+| 업무 외 운전 | 최근 7일 중 운영 시간(평일 09~18시) 밖에 재실 없이 운전한 날 2일 이상(주 2회 기준) |
+| 과냉·과열 설정 | 냉방 설정 26℃ 미만, 난방 설정 20℃ 초과. 초안은 26℃ 또는 20℃로 변경 |
+| 초안 | OFF 규칙은 `00:00 이후 재실 없을 때 OFF`, 설정 규칙은 `00:00 이후 항상 설정온도 변경`. 스케줄이 매일 지정 시각부터 적용되므로 하루 전체에 적용 |
+| 호실당 추천 수 | 1건. OFF 규칙이 설정 규칙보다 우선이라 절감 합계에 중복 없음 |
+| 예상 절감량 | 초안 적용 전후 시뮬레이터 전력 차이를 초안 시각부터 24시까지 1시간 간격으로 합산한 1일 값(가상) |
+| 정렬, 제외 | 절감량 내림차순, 절감량 0인 추천 제외 |
+| 저장 후 동작 | 판정에 저장된 스케줄을 적용하므로 초안을 저장하면 다음 조회부터 해당 추천이 빠짐 |
+
+주: 시뮬레이터는 지정 시각이 지난 스케줄을 저장 순서대로 모두 적용합니다. 운전 ON·OFF는 마지막 스케줄이 우선이고, 설정온도 변경은 ON·OFF와 별개로 유지됩니다(2026-11-20 변경, 이전에는 마지막 스케줄 1건만 적용). 전력 추이(`GET /rooms/history`)는 스케줄을 생성 시각 이후 구간에만 적용해 저장 전후 차이를 그래프에 표시합니다.
+
 ## 9. 경계 확장: 고장 탐지
 
 **9-1. 설정온도 미도달 HVAC을 같은 조건의 정상 HVAC 기대값과 비교하고, 잔차가 크면 고장 의심으로 3D에 표시합니다.**
 
 잔차 계산, 원인 후보 카드, 3D 겹쳐보기는 이전 기획의 설계를 재사용합니다. 고장 데이터는 가상 시나리오로 주입합니다.
+
+**9-2. 이상 감지 상세는 `GET /anomalies`(`lambda/src/anomalies.py`)로 제공하며, 원인 후보는 진단이 아니라 규칙 기반 추정입니다.**
+
+**표 9.1 이상 감지 API 구현 기준(2026-11-20)**
+
+| 항목 | 기준 |
+|---|---|
+| 대상 | 지금 `setpoint_unreached`(운전 중 설정온도 미도달)인 HVAC |
+| 기대 온도 | 같은 용도·같은 모드로 운전 중인 정상 HVAC의 (실내온도 - 설정온도) 평균 + 이 호실 설정온도. 같은 용도가 없으면 같은 모드 전체 |
+| 잔차 | 실내온도 - 기대 온도. 잔차 절댓값 내림차순 정렬 |
+| 지속 시간 | 오늘 00:00부터 5분 간격으로 처음 미도달이 판정된 시각부터 현재까지 |
+| 압축기·냉매 계통 성능 저하 | 정격 대비 출력 90% 이상이면 높음, 그 외 보통 |
+| 필터·열교환기 오염 | 지속 60분 이상이면 보통, 그 외 낮음 |
+| 재실 인원 대비 용량 부족 | 재실 밀도 0.15명/㎡ 이상이면 보통, 그 외 낮음 |
+
+주: 응답의 `causeBasis: "rule"`이 규칙 기반 추정임을 표시합니다. 가능성 판정 기준값은 실제 고장 이력으로 검증하지 않았습니다.
 
 ![고장 탐지 확장](img/d-s-ext.png)
 
@@ -152,8 +186,8 @@ Frontend는 `VITE_WS_URL`이 있으면 WebSocket API의 `ask` 라우트로 질�
 **10-1. 코드는 `frontend/`(웹 화면)와 `lambda/`(API·인프라) 두 폴더이며, 3D 트윈은 팀원 저장소에서 임베드 URL로 제공합니다.**
 
 ```text
-frontend/          React 대시보드(heat.ts 색 척도, twin.ts 임베드 연동, api.ts API 호출)
-lambda/src/        Lambda 코드(status, query, schedules, tools, sim, rooms.json)
+frontend/          React 대시보드(heat.ts 색 척도, twin.ts 임베드 연동, api.ts API 호출, panels/ 운영 패널)
+lambda/src/        Lambda 코드(status, query, schedules, recommend, anomalies, history, tools, sim, rooms.json)
 lambda/tests/      가상 데이터·도구 검증 테스트
 lambda/template.yaml  AWS SAM 템플릿(API, Lambda, DynamoDB, S3, CloudFront)
 docs/              문서(현재 구조 유지)
@@ -167,7 +201,8 @@ docs/              문서(현재 구조 유지)
 |---|---|---|
 | LLM 도구 정의 초안과 질의 테스트 문장 30개 작성 | 미정 | 미정 |
 | 가상 데이터 생성 규칙의 계수(정격 용량, 부하율) 확정 | 미정 | 미정 |
-| 추천 도구(`recommend`)와 낭비 규칙 구현 | 미정 | 미정 |
+| 추천 LLM 도구(`recommend`)를 `GET /recommendations` 규칙과 연결 | 미정 | 미정 |
+| 운영 패널 4종 화면 배치(`App.tsx`)와 1440px, 390px 화면 확인 | 미정 | 주 작업자 |
 
 ## 관련 자료
 
