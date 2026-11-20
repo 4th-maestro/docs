@@ -4,7 +4,10 @@ import { onNeedBuilding, onTwinReady, sendTwin, TWIN_URL, twinSrc } from '../twi
 import { resolveAppearance, type Appearance } from '../../twin/pipeline/appearance.js'
 import './appearance.css'
 
-type Props = { plan: Plan; onSave(plan: Plan): void; onBack(plan: Plan): void }
+type Props = { plan: Plan } & (
+  { onAppearanceChange(appearance: Partial<Appearance>): void; onSave?: never; onBack?: never } |
+  { onAppearanceChange?: never; onSave(plan: Plan): void; onBack(plan: Plan): void }
+)
 const sliders = [
   { key: 'facadeOpacity', label: '외피 불투명도', min: .1, max: .9, step: .01 },
   { key: 'roofOpacity', label: '지붕 불투명도', min: .15, max: 1, step: .01 },
@@ -13,12 +16,13 @@ const sliders = [
   { key: 'cameraAngle', label: '첫 시점 각도', min: -180, max: 180, step: 1 },
 ] as const
 
-export default function AppearanceEditor({ plan, onSave, onBack }: Props) {
+export default function AppearanceEditor({ plan, onSave, onBack, onAppearanceChange }: Props) {
   const [draft, setDraft] = useState<Partial<Appearance>>(() => plan.appearance ?? {})
+  const [showControls, setShowControls] = useState(!onAppearanceChange)
   const [ready, setReady] = useState(false)
   const [slow, setSlow] = useState(false)
   const frame = useRef<HTMLIFrameElement>(null)
-  const appearance = resolveAppearance(plan.building, draft)
+  const appearance = resolveAppearance(plan.building, draft, plan.floors)
   const [src] = useState(() => {
     if (!TWIN_URL) return null
     const url = new URL(twinSrc('appearance-preview'))
@@ -38,34 +42,42 @@ export default function AppearanceEditor({ plan, onSave, onBack }: Props) {
     if (ready) sendTwin(frame.current, { type: 'appearance', appearance: draft })
   }, [draft, ready])
 
-  function change<Key extends keyof Appearance>(key: Key, value: Appearance[Key]) {
-    setDraft(previous => ({ ...previous, [key]: value }))
+  function update(next: Partial<Appearance>) {
+    setDraft(next)
+    onAppearanceChange?.(next)
   }
 
   return (
     <section className="card appearance-editor" aria-labelledby="appearance-heading">
-      <h2 id="appearance-heading">외관 다듬기</h2>
-      <div className="appearance-layout">
+      <header className="appearance-heading">
+        <div>
+          <h2 id="appearance-heading">{onAppearanceChange ? '3D 트윈 미리보기' : '외관 다듬기'}</h2>
+          {onAppearanceChange && <p className="muted">{Object.keys(draft).length ? '외관에 수동 조정값을 반영했습니다.' : '건물 형태에 맞춰 외관 보정을 적용했습니다.'}</p>}
+        </div>
+        {onAppearanceChange && <button type="button" className="pill" aria-expanded={showControls} aria-controls="appearance-controls"
+          onClick={() => setShowControls(open => !open)}>{showControls ? '조정 닫기' : '외관 조정'}</button>}
+      </header>
+      <div className={showControls ? 'appearance-layout with-controls' : 'appearance-layout'}>
         <div className="appearance-preview">
           {src ? <iframe ref={frame} title="3D 외관 미리보기" src={src} /> : <p className="muted">3D 미리보기에 연결하면 조정한 외관을 확인할 수 있습니다.</p>}
           {src && !ready && <p className="muted" role="status">{slow ? '3D 미리보기가 아직 열리지 않았습니다.' : '3D 미리보기 여는 중…'}</p>}
         </div>
-        <div className="appearance-controls">
-          <label>외피 색상 <input type="color" value={appearance.facadeColor} onChange={e => change('facadeColor', e.target.value)} /></label>
-          <label>지붕 색상 <input type="color" value={appearance.roofColor} onChange={e => change('roofColor', e.target.value)} /></label>
+        <div className="appearance-controls" id="appearance-controls" hidden={!showControls}>
+          <label>외피 색상 <input type="color" value={appearance.facadeColor} onChange={e => update({ ...draft, facadeColor: e.target.value })} /></label>
+          <label>지붕 색상 <input type="color" value={appearance.roofColor} onChange={e => update({ ...draft, roofColor: e.target.value })} /></label>
           {sliders.map(({ key, label, min, max, step }) => (
             <label key={key}>
               <span>{label}</span><output>{key === 'cameraAngle' ? `${appearance[key]}°` : `${Math.round(appearance[key] * 100)}%`}</output>
-              <input type="range" min={min} max={max} step={step} value={appearance[key]} onChange={e => change(key, e.target.valueAsNumber)} />
+              <input type="range" min={min} max={max} step={step} value={appearance[key]} onChange={e => update({ ...draft, [key]: e.target.valueAsNumber })} />
             </label>
           ))}
-          <button type="button" className="pill" onClick={() => setDraft({})}>자동값으로 되돌리기</button>
+          <button type="button" className="pill" onClick={() => update({})}>자동값으로 되돌리기</button>
         </div>
       </div>
-      <footer className="edit-actions">
+      {onBack && onSave && <footer className="edit-actions">
         <button type="button" className="pill" onClick={() => onBack({ ...plan, appearance: draft })}>이전 단계</button>
         <button type="button" className="primary" onClick={() => onSave({ ...plan, appearance: draft })}>외관 확정</button>
-      </footer>
+      </footer>}
     </section>
   )
 }

@@ -133,6 +133,8 @@ node tools/sim-server.mjs 8766
 | 대시보드 → 파이프라인 | `detectResult` | `id`, `detections`(`{cls, conf, box}`, 보정 이미지 픽셀), `key`(S3 키), `error` | 대시보드가 `POST /plans/detect`로 인식. 서버가 없거나 실패하면 빈 목록과 `error` |
 | 파이프라인 → 대시보드 | `buildingRendered`(기존) | `building` | `detect=1`이면 층마다 `background`(`toPlan` = 보정 이미지 픽셀 → m), `detections`, `meta.ingest.warnings`를 붙임 |
 
+주: "3D 트윈 만들기" 실행 중에는 상태 문구 아래 진행률 막대(`#batchProg`)를 표시합니다. 단계별 예상 시간(층마다 도면 읽기 2초, 윤곽 1초, 실내 공간 2초, 실내기 기호 인식 30초, 층 맞춤·색상·지붕·마무리 1~2초) 합 기준이고, 진행 중 단계는 경과 시간으로 채웁니다(2026-11-21).
+
 - 메시지는 `source`(`maestro` 또는 `twin`)와 부모 창과 iframe 창으로 출처를 확인합니다.
 - 인식용 보정 이미지는 화면용 20px/m 보정 이미지와 따로, 원본 이미지에서 다시 보정합니다. 해상도 `pxPerM`은 인식 모델 학습 해상도 80px/m, 원본의 실제 해상도(외곽 4변 중 최대), 여백 포함 긴 변 8000px 중 가장 작은 값입니다(`pipeline/host-bridge.js` `detectRes`).
 - 인식용 보정 이미지 픽셀 (u, v)와 평면 좌표의 관계는 `x = u / pxPerM − 6`, `y = v / pxPerM − 6`입니다(`MARGIN` 6m).

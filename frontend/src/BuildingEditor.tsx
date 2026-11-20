@@ -355,7 +355,7 @@ export default function BuildingEditor({ initial, floor, onSave, onCancel, onApp
           }} disabled={!history.length}>실행 취소</button>
           <button className="pill" onClick={goBack}>나가기</button>
           {onAppearance && <button className="pill" onClick={() => onAppearance(withPendingNames)}>외관 다듬기</button>}
-          <button className="primary" disabled={!draft && !unsaved} onClick={() => onSave(withPendingNames, level)}>{draft ? '외관 다듬기' : '저장'}</button>
+          <button className="primary" disabled={!draft && !unsaved} onClick={() => onSave(withPendingNames, level)}>{draft ? '3D 미리보기' : '저장'}</button>
         </div>
       </header>
       <div className="edit-layout">

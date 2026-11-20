@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import { Circle, CircleAlert, CircleCheck, LoaderCircle, Upload } from 'lucide-react'
 import BuildingEditor from '../BuildingEditor'
-import AppearanceEditor from './AppearanceEditor'
 import type { Plan } from '../floor-edit'
 import { onBuildingRendered, pipelineSrc } from '../twin'
+import ConvertProgress from './ConvertProgress'
 import { ACCEPT, API_ON, convertFiles, detect, kindOf, pageFiles, saveTwin, type Convert, type Job, type Page } from './api'
 import { detectingSrc, onDetectRequest, sendPlans } from './bridge'
 import { applyDetections, asPlan, pendingDetections, reviewDoors, reviewUnits } from './units'
@@ -15,6 +15,8 @@ import './ingest.css'
 // - 파이프라인은 보정 평면도마다 기호 인식을 요청(detectRequest) → 이 화면이 보정 이미지를 1쪽 PDF로 바꿔 pdf 작업(렌더링 → 인식 모델)으로 처리
 // - 확정: onConfirm이 있으면 호출한 화면이 저장(판매사 건물 화면), 없으면 saveTwin(buildingId, twin, convert) 후 onDone(twin)
 const STEPS = [['parse', '파일 해석'], ['detect', '실내기 인식'], ['merge', '병합']] as const
+// 진행률 단계별 예상 시간(초): 업로드(초당 4MB) + 종류별 해석·인식·병합(ConvertProgress 주석의 실측 기준, PDF 인식은 2쪽 가정)
+const EST: Record<string, [number, number, number]> = { ifc: [16, 2, 3], cad: [12, 2, 3], pdf: [12, 44, 5] }
 const msg = (e: unknown) => (e instanceof Error ? e.message : String(e))
 
 export default function PlanIngest({ buildingId, onDone, onConfirm, convert }: { buildingId: string; onDone(twin: Plan): void; onConfirm?(twin: Plan): void; convert?: Convert }) {
@@ -24,12 +26,10 @@ export default function PlanIngest({ buildingId, onDone, onConfirm, convert }: {
   const [error, setError] = useState('')
   const [plans, setPlans] = useState<File[] | null>(null)
   const [draft, setDraft] = useState<Plan | null>(null)
-  const [preview, setPreview] = useState<Plan | null>(null)
   const [src] = useState(() => detectingSrc(pipelineSrc()))
   const frame = useRef<HTMLIFrameElement>(null)
   const loaded = useRef(false)
   const saving = useRef(false)
-  const appearanceDraft = useRef<Plan['appearance']>(undefined)
   const abort = useRef<AbortController | null>(null)
   // 층 id → 배경 이미지 주소(서버 페이지 URL 또는 파이프라인 보정 이미지 blob URL), blobs는 화면을 닫을 때 해제
   const [backgrounds, setBackgrounds] = useState<Record<string, string>>({})
@@ -86,8 +86,9 @@ export default function PlanIngest({ buildingId, onDone, onConfirm, convert }: {
     }
   }
 
-  async function confirm(plan: Plan) {
+  async function confirm(draft: Plan) {
     if (saving.current) return
+    const plan = { ...draft, appearance: draft.appearance ?? {} }
     const n = reviewUnits(plan).length, k = reviewDoors(plan).length, d = pendingDetections(plan)
     if ((n || k || d) && !window.confirm(`확인 필요 실내기 ${n}대${k ? `, 확인 필요 문 ${k}개` : ''}${d ? `, 위치를 맞추지 않은 인식 결과 ${d}개` : ''}가 남아 있습니다. 이대로 저장할까요?`)) return
     if (onConfirm) { onConfirm(plan); return }
@@ -112,10 +113,7 @@ export default function PlanIngest({ buildingId, onDone, onConfirm, convert }: {
         {warnings.length > 0 && <section className="banner" role="note" aria-label="변환 경고">
           <ul className="ingest-warn">{warnings.map((w, i) => <li key={i}>{w}</li>)}</ul>
         </section>}
-        <div hidden={!!preview}>
-          <BuildingEditor initial={draft} floor="" draft backgrounds={backgrounds} onSave={p => setPreview({ ...p, appearance: appearanceDraft.current ?? p.appearance })} onCancel={() => setDraft(null)} />
-        </div>
-        {preview && <AppearanceEditor plan={preview} onSave={confirm} onBack={p => { appearanceDraft.current = p.appearance; setPreview(null) }} />}
+        <BuildingEditor initial={draft} floor="" draft backgrounds={backgrounds} onSave={confirm} onCancel={() => setDraft(null)} />
       </> : (
         <section className="card ingest-up" aria-labelledby="ingest-title">
           <h2 id="ingest-title">도면 파일</h2>
@@ -129,6 +127,12 @@ export default function PlanIngest({ buildingId, onDone, onConfirm, convert }: {
           {files.length > 0 && <ul className="ingest-files" aria-label="고른 파일">
             {files.map(f => <li key={f.name}>{f.name} ({(f.size / 1048576).toFixed(1)} MB)</li>)}
           </ul>}
+          {(busy || job) && kind && kind !== 'image' && (() => {
+            const est = EST[kind] ?? EST.pdf, mb = files.reduce((s, f) => s + f.size, 0) / 1048576
+            const steps = [{ id: 'upload', label: '업로드', sec: Math.max(1, Math.round(mb / 4)) }, ...STEPS.map(([id, label], i) => ({ id, label, sec: est[i] }))]
+            const state = job?.status === 'failed' ? 'failed' : job && at >= STEPS.length ? 'done' : 'running'
+            return <ConvertProgress steps={steps} at={job ? Math.min(at + 1, steps.length - 1) : 0} state={state} />
+          })()}
           {job && <ol className="ingest-steps" aria-label="변환 단계">
             {STEPS.map(([id, label], i) => {
               const failed = job.status === 'failed' && i === at

@@ -129,6 +129,15 @@
   #quick .batch-numbers label{display:grid;gap:4px;color:var(--muted);font-size:15px}
   #quick input[type=file]{max-width:100%}
   #batchStatus{font-size:15px;color:var(--body)}
+  /* 만들기 진행률: 막대, 백분율, 남은 시간 추정 */
+  #batchProg{display:none;flex-direction:column;gap:6px;margin-top:4px}
+  #batchProg.on{display:flex}
+  #batchProg .bar{position:relative;height:10px;border-radius:999px;background:var(--surface-strong);overflow:hidden}
+  #batchProg .bar i{position:absolute;left:0;top:0;bottom:0;width:0;border-radius:inherit;background:var(--chart-cur);transition:width .4s ease-out}
+  #batchProg.fail .bar i{background:var(--danger)}
+  #batchProg.ok .bar i{background:var(--ok)}
+  #batchProg .meta{display:flex;justify-content:space-between;gap:8px;font-size:14px;color:var(--muted);font-variant-numeric:tabular-nums}
+  #batchProg .meta b{color:var(--ink)}
   @media (max-width:860px){ main{grid-template-columns:1fr;grid-template-rows:55vh auto;height:auto} aside{border-left:0;border-top:1px solid var(--hairline)} header{padding:8px 16px} }
   .batch-photo{border:1px dashed var(--border-strong);border-radius:var(--r-sm);padding:8px 12px;margin:8px 0}
   .batch-photo.dragging{border-color:var(--ink);background:var(--surface-soft)}
@@ -186,6 +195,7 @@
     </details>
     <div class="row"><button class="b pri" id="batchRun">3D 트윈 만들기</button><button class="b" type="button" id="advanced">직접 편집</button></div>
     <p id="batchStatus" role="status" aria-live="polite"></p>
+    <div id="batchProg" role="progressbar" aria-label="3D 트윈 만들기 진행률" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="bar"><i></i></div><div class="meta"><b id="batchPct">0%</b><span id="batchLeft"></span></div></div>
   </form>
 </section>
 <main id="editor">
@@ -1057,6 +1067,7 @@ async function detectFloors(status) {
   for (const floor of R.floors) {
     const img = IMG.get(floor.image)?.data; if (!img || !floor.corners || !RECT.get(floor.id)?.rect) continue;
     status.textContent = floorLabel(floor) + ' 실내기 기호 인식 중…';
+    progStep('detect' + R.floors.indexOf(floor));
     await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
     // 인식용 보정 이미지: 원본 이미지에서 최대 80px/m로 다시 보정(화면·벽 검출용 20px/m 보정 이미지는 그대로)
     const pxPerM = detectRes(floor.corners, W, D, P.MARGIN), rect = P.rectify(img, floor.corners, W, D, pxPerM);
@@ -1205,6 +1216,35 @@ function snapSharedEdges(loopsPerFloor, tol) {
   }
 }
 
+// 만들기 진행률: 단계별 예상 시간(초) 합 기준 0~100%, 진행 중 단계는 경과 시간으로 채움(예상의 95%에서 멈춤)
+// - 예상 시간: 층마다 도면 읽기 2, 윤곽 1, 실내 공간 2, 실내기 기호 인식 30(서버 인식 실측 중앙값 21.9초 + 렌더링·조회), 층 맞춤·색상·지붕·마무리 각 1~2
+const PROG = { steps:[], total:0, idx:-1, done:0, t0:0, timer:0 };
+function progStart(steps){
+  Object.assign(PROG, { steps, total:steps.reduce((s, [, x]) => s + x, 0), idx:-1, done:0, t0:performance.now() });
+  const el = $('#batchProg'); el.classList.add('on'); el.classList.remove('fail', 'ok');
+  clearInterval(PROG.timer); PROG.timer = setInterval(progTick, 250); progTick();
+}
+function progStep(key){
+  if (!PROG.timer) return;
+  const i = PROG.steps.findIndex(([k], j) => j > PROG.idx && k === key); if (i < 0) return;
+  PROG.done = PROG.steps.slice(0, i).reduce((s, [, x]) => s + x, 0); PROG.idx = i; PROG.t0 = performance.now(); progTick();
+}
+function progTick(){
+  const cur = PROG.steps[PROG.idx]?.[1] ?? 0, el = (performance.now() - PROG.t0) / 1000;
+  const pct = Math.min(97, (PROG.done + cur * Math.min(cur ? el / cur : 0, .95)) / (PROG.total || 1) * 100);
+  const left = Math.max(1, Math.round(PROG.total - PROG.done - Math.min(el, cur)));
+  progShow(pct, el > cur * 1.5 + 3 ? '예상보다 오래 걸리고 있습니다' : `약 ${left}초 남음`);
+}
+function progShow(pct, text){
+  $('#batchProg .bar i').style.width = pct + '%'; $('#batchProg').setAttribute('aria-valuenow', Math.round(pct));
+  $('#batchPct').textContent = Math.round(pct) + '%'; $('#batchLeft').textContent = text;
+}
+function progEnd(ok, text){
+  clearInterval(PROG.timer); PROG.timer = 0;
+  $('#batchProg').classList.add(ok ? 'ok' : 'fail');
+  progShow(ok ? 100 : parseFloat($('#batchPct').textContent) || 0, text);
+}
+
 async function runBatch(event) {
   event.preventDefault();
   const status = $('#batchStatus');
@@ -1235,12 +1275,15 @@ async function runBatch(event) {
   } catch (e) { status.textContent = e.message; return; }
   const controls = [...batch.querySelectorAll('button:not(:disabled), input:not(:disabled)')];
   for (const control of controls) control.disabled = true;
+  { const n = rows.length, det = batchQuery.get('detect') === '1' && window.parent !== window, per = (k, s) => Array.from({ length:n }, (_, i) => [k + i, s]);
+    progStart([...per('read', 2), ['fit', 1], ['tone', 1], ...per('outline', 1), ...per('rooms', 2), ...(det ? per('detect', 30) : []), ['roof', 2], ['finish', 2]]); }
   const frame = () => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
   const urls = [];
   const missing = [];
   try {
     for (const [i,row] of rows.entries()) {
       const floor = next.floors[i];
+      progStep('read' + i);
       if (isPdf(row.file)) {
         status.textContent = floorLabel(floor) + ` PDF ${row.page}페이지를 이미지로 변환 중…`;
         await frame();
@@ -1261,6 +1304,7 @@ async function runBatch(event) {
     }
     // 도면 시트(제목·범례·화면 캡처 여백 포함)에서 건물 덩어리를 찾아 층끼리 겹쳐 맞춤 → 모서리·외곽선·가로세로 비율
     status.textContent = '도면에서 건물 덩어리를 찾아 층을 맞추는 중…';
+    progStep('fit');
     await frame();
     const sheet = sheetLayout(next.floors);
     if (sheet) {
@@ -1276,6 +1320,7 @@ async function runBatch(event) {
       }
     }
     status.textContent = '참고 사진에서 색상 추정 중…';
+    progStep('tone');
     await frame();
     const outside = await estimatePhotoTone(facadePhotos,true);
     const inside = await estimatePhotoTone(interior,false);
@@ -1287,6 +1332,7 @@ async function runBatch(event) {
     const { w, d } = R.building.size;
     for (const floor of R.floors) {
       status.textContent = floorLabel(floor) + ' 건물 윤곽 인식 중…';
+      progStep('outline' + R.floors.indexOf(floor));
       await frame();
       const photo = IMG.get(floor.image).data;
       if (floor.darkPlan) floor.params = { ...floor.params, dark:16, close:2 };
@@ -1311,6 +1357,7 @@ async function runBatch(event) {
         }
       }
       status.textContent = floorLabel(floor) + ' 실내 공간 인식 중…';
+      progStep('rooms' + orderedFloors.indexOf(floor));
       await frame();
       const photo = IMG.get(floor.image).data;
       if (floor.darkPlan) floor.params = { ...floor.params, dark:46 };
@@ -1352,6 +1399,7 @@ async function runBatch(event) {
     const last = expanded.floors.at(-1), top = last && sources.get(last.id);
     if (top && !top.below && !top.open && (roofPlan || overhead.length || facadePhotos.length)) {
       status.textContent = '외관 사진에서 지붕 윤곽을 찾아 도면에 맞추는 중…';
+      progStep('roof');
       await frame();
       const loops = loopsOf(top, 'footprint');
       const reference = top.footprint ?? [[0,0],[w,0],[w,d],[0,d]];
@@ -1390,17 +1438,21 @@ async function runBatch(event) {
     }
     if (missing.length) next.building.assumed.push('모서리가 뚜렷하지 않아 이미지 전체를 사용한 평면도: ' + missing.join(', '));
     if (outside.unreadable + inside.unreadable) next.building.assumed.push('참고 사진 중 열 수 없는 파일 ' + (outside.unreadable + inside.unreadable) + '장 제외.');
+    progStep('finish');
     computeAll();
     if (!OUT.json.floors.some(floor => floor.footprint?.length || floor.topFootprint?.length || floor.rooms.some(room => room.type === 'room'))) {
       tool = 'corner';
       planMessage = '닫힌 공간을 자동 인식하지 못했습니다. 모서리나 벽을 보정한 뒤 결과에서 렌더링하세요.';
+      progEnd(false, '공간 인식 실패, 보정 필요');
       showQuick(false);
       return;
     }
     sendBuiltModel();
+    progEnd(true, '완료');
   } catch (e) {
     if (R !== next) for (const {filename,url} of urls) { IMG.delete(filename); URL.revokeObjectURL(url); }
     status.textContent = '모델을 만들지 못했습니다. ' + e.message;
+    progEnd(false, '중단');
   } finally {
     for (const control of controls) control.disabled = false;
   }

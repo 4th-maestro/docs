@@ -48,7 +48,7 @@
     --chart-cur:#2a78d6; --chart-prev:#929292;
     --scene-top:#f7f7f7; --scene-bot:#efefed;
     --shadow:rgba(0,0,0,.02) 0 0 0 1px, rgba(0,0,0,.04) 0 2px 6px 0, rgba(0,0,0,.1) 0 4px 8px 0;
-    --r-sm:8px; --r-md:14px; --r-full:9999px;
+    --r-sm:8px; --r-md:14px; --r-full:9999px; --hover-stroke:3px;
     color-scheme:light;
   }
   @media (prefers-color-scheme: dark){
@@ -216,10 +216,11 @@
   body.plan3d #planBox{background:transparent;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none}
   #planBox{flex:1;min-width:0;position:relative;border-radius:var(--r-md);overflow:hidden;display:flex;flex-direction:column}
   #planWrap{flex:1;min-height:0;margin:0 12px;border-radius:var(--r-sm);background:var(--paper);box-shadow:inset 0 0 0 1px var(--hairline);overflow:hidden;position:relative}
+  #planWrap{background-image:radial-gradient(circle,color-mix(in srgb,var(--ink) 12%,transparent) .7px,transparent .9px);background-size:18px 18px}
   #plan{width:100%;height:100%;display:block}
   body.dk #plan .tint{mix-blend-mode:normal;fill-opacity:.24;stroke:var(--c);stroke-opacity:.9;stroke-width:3.5}
   #plan .tint{mix-blend-mode:multiply;fill-opacity:.6;cursor:pointer;transition:fill .6s ease, fill-opacity .2s;stroke:transparent;stroke-width:5}
-  #plan .room-hover{fill:var(--chart-cur);fill-opacity:.17;stroke:var(--chart-cur);stroke-width:2.5;vector-effect:non-scaling-stroke;pointer-events:none}
+  #plan .room-hover{fill:none;stroke:var(--ink);stroke-width:var(--hover-stroke);stroke-linejoin:round;vector-effect:non-scaling-stroke;pointer-events:none}
   /* 강조 호실: 선택 객체 규칙(디자인 시스템 표 6.1)대로 primary 외곽선, 깜빡임 없음 */
   #plan .tint.hl, body.dk #plan .tint.hl{stroke:var(--primary);stroke-opacity:1;stroke-width:8}
   @keyframes tintIn{from{opacity:0}}
@@ -232,7 +233,7 @@
   #plan .badge text{font:800 18px 'SUIT Variable',SUIT,system-ui,sans-serif;fill:var(--canvas)}
   #plan .idu{pointer-events:none;stroke:var(--canvas)}
   #floorStats{display:flex;gap:8px;padding:12px;flex-wrap:wrap}
-  #floorStats div{flex:1;min-width:120px;border-radius:var(--r-sm);padding:8px 12px;background:var(--surface-soft);font-size:14px;color:var(--muted);font-weight:500}
+  #floorStats div{flex:1;min-width:120px;border:1px solid var(--hairline);border-radius:var(--r-sm);padding:8px 12px;background:linear-gradient(160deg,var(--canvas),var(--surface-soft));font-size:14px;color:var(--muted);font-weight:600}
   #floorStats b{display:block;font-size:21px;color:var(--ink);font-variant-numeric:tabular-nums;font-weight:700;line-height:1.25}
   #floorStats b i{font-style:normal;font-size:14px;color:var(--muted);font-weight:500;margin-left:2px}
   #floorTabs{display:flex;gap:8px;padding:12px;align-items:center;overflow-x:auto}
@@ -248,6 +249,18 @@
   #tip input{width:100%;min-height:36px;padding:4px 8px;border:1px solid var(--hairline);border-radius:var(--r-sm);color:var(--ink);background:var(--canvas);font:inherit}
   #tip .tip-buttons{display:flex;gap:6px;margin-top:6px}
   #tip .tip-error{color:var(--error)}
+  #tip[data-room-tip]{width:max-content;min-width:min(216px,calc(100% - 16px));max-width:min(320px,calc(100% - 16px));padding:12px;border-radius:var(--r-md);overflow-wrap:anywhere}
+  #tip .tip-heading{display:flex;align-items:center;gap:10px}
+  #tip .tip-heading b{margin:0;font-size:16px;font-weight:700;line-height:1.3}
+  #tip .tip-floor{flex:none;border:1px solid var(--hairline);border-radius:var(--r-full);padding:2px 8px;background:var(--surface-soft);color:var(--ink);font-size:12px;font-weight:700;font-variant-numeric:tabular-nums}
+  #tip .tip-details{display:grid;gap:4px;border-top:1px solid var(--hairline-soft);margin-top:10px;padding-top:8px;font-size:13px}
+  #tip .tip-details .row{color:var(--muted)}
+  #tip .tip-details .row span:last-child{min-width:0;text-align:right;font-variant-numeric:tabular-nums}
+  #tip[data-room-tip] .tip-buttons{justify-content:flex-end}
+  #tip [data-room-rename]{display:inline-flex;align-items:center;gap:6px;background:var(--surface-soft);font-size:13px;font-weight:600}
+  #tip [data-room-rename] .i{width:14px;height:14px}
+  #tip [data-room-rename]:hover{border-color:var(--border-strong);background:var(--surface-strong)}
+  #tip form button[type="submit"]{border-color:var(--ink);background:var(--ink);color:var(--on-ink)}
   .room-hit{fill:transparent;cursor:pointer}
   #tip b{font-size:15px;font-weight:600;display:block;margin-bottom:4px}
   #tip .row{display:flex;justify-content:space-between;gap:16px;color:var(--body)}
@@ -428,7 +441,7 @@
   body.hosted #planWrap{margin:0;padding:8px 8px 72px}
   body.hosted #planWrap:has(~ #floorStats .note){padding-top:56px}
   body.hosted #floorStats{position:absolute;inset:12px;padding:0;gap:8px;flex-wrap:nowrap;align-items:flex-end;justify-content:center;z-index:2;pointer-events:none}
-  body.hosted #floorStats div{flex:none;min-width:96px;padding:6px 12px;background:color-mix(in srgb,var(--canvas) 92%,transparent);border:1px solid var(--hairline);box-shadow:var(--shadow)}
+  body.hosted #floorStats div{flex:none;min-width:96px;padding:6px 12px;box-shadow:var(--shadow)}
   body.hosted #floorStats b{font-size:18px}
   body.hosted #floorStats .note{position:absolute;left:0;top:0;max-width:min(520px,100%);display:flex;gap:8px;align-items:flex-start;color:var(--body);line-height:1.4}
   body.hosted #floorStats .note svg.i{flex:none;width:16px;height:16px;margin-top:2px}
@@ -717,7 +730,7 @@ const taperedExterior = BD.floors.some(f => f.shellFootprint?.length);
 const exteriorFirst = foldedExterior || taperedExterior || !!BD.building?.facade?.dome;
 const mappedExterior = exteriorFirst || BD.floors.some(f => f.footprint?.length);
 const appearanceBuilding = { ...BD.building, size:BD.building?.size ?? { w:48, d:35 } };
-let appearance = resolveAppearance(appearanceBuilding, BD.appearance);
+let appearance = resolveAppearance(appearanceBuilding, BD.appearance, BD.floors);
 let polishedExterior = mappedExterior || !!BD.appearance || appearancePreview;
 const CFG = {
   buildingName: BD.building?.name || '건물',
@@ -750,6 +763,7 @@ const IC = {
   checkCircle: svgI('<circle cx="12" cy="12" r="10"/><path d="m16 9-5.5 5.5L8 12"/>'),
   dashed: svgI('<path d="M10.1 2.182a10 10 0 0 1 3.8 0"/><path d="M13.9 21.818a10 10 0 0 1-3.8 0"/><path d="M17.609 3.721a10 10 0 0 1 2.69 2.7"/><path d="M2.182 13.9a10 10 0 0 1 0-3.8"/><path d="M20.279 17.609a10 10 0 0 1-2.7 2.69"/><path d="M21.818 10.1a10 10 0 0 1 0 3.8"/><path d="M3.721 6.391a10 10 0 0 1 2.7-2.69"/><path d="M6.391 20.279a10 10 0 0 1-2.69-2.7"/>'),
   chevron: svgI('<path d="m9 18 6-6-6-6"/>'),
+  pencil: svgI('<path d="M21 7 9 19l-5 1 1-5L17 3a2.8 2.8 0 0 1 4 4Z"/><path d="m15 5 4 4"/>'),
   x: svgI('<path d="M18 6 6 18"/><path d="m6 6 12 12"/>'),
 };
 // 계산 메시지: '오류: '로 시작하면 아이콘과 오류 색으로 표시
@@ -1188,11 +1202,12 @@ const isDark = () => new THREE.Color(cssVar('--scene-bot') || '#d9e0eb').getHSL(
 function onThemeChange(){
   bg = bgTexture(); bScene.background = bg; bScene.fog.color.set(cssVar('--scene-bot')); if (room3d) room3d.scene.background = bg; applyGroundTheme();
   isDarkNow = isDark();
+  focusOutline = cssVar('--ink');
   for (const grp of floorGroups) { const pm = grp.userData.planMat; pm.map = planTexture(grp.userData.floor); pm.color.set(isDarkNow ? 0xffffff : 0xc4ccd8); pm.needsUpdate = true;
     grp.userData.slabMat.color.set(isDarkNow ? 0x5b5e63 : 0xc1c1c1); }
   applyAppearanceMaterials();
   for (const grp of floorGroups) if (grp.userData.labels) { grp.userData.labels.removeFromParent(); dispose(grp.userData.labels); grp.userData.labels = null; }
-  if (state.view === 'floor' && state.floor) { buildPlanSvg(state.floor); updatePlanSvg(); }
+  if (state.view === 'floor' && state.floor) { buildPlanSvg(state.floor); updatePlanSvg(); if (tipRoom) markHoveredRoom(tipRoom); }
 }
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (!document.documentElement.dataset.theme) onThemeChange(); });
 const composer = new EffectComposer(renderer);
@@ -1260,6 +1275,8 @@ function loftGeometry(bot, top, h, N = 128){
 function dispose(obj){ obj.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) [].concat(o.material).forEach(m => { FAT.delete(m); if (m.map) m.map.dispose(); m.dispose(); }); }); }
 // 굵은 선: 픽셀 단위 굵기, 화면 크기가 바뀌면 resize()가 해상도 갱신
 const FAT = new Set();
+const hoverStroke = parseFloat(cssVar('--hover-stroke'));
+let focusOutline = cssVar('--ink');
 function fatLines(seg, color, px){
   const g = new LineSegmentsGeometry(); g.setPositions(seg);
   const m = new LineMaterial({ color, linewidth:px, transparent:true, depthTest:false, depthWrite:false, toneMapped:false });
@@ -1532,7 +1549,7 @@ for (const f of FLOORS) {
   const frame = new THREE.LineSegments(fg, new THREE.LineBasicMaterial({ color:0x7b8798, transparent:true, opacity:.45 }));
   grp.add(frame); grp.userData.frame = frame;
   // 마우스를 올린 층의 굵은 테두리(3px): 기본 테두리 1px은 구분이 어려움
-  const hotFrame = fatLines(frameSeg, 0xe6e6e3, 3); hotFrame.visible = false; grp.add(hotFrame); grp.userData.hotFrame = hotFrame;
+  const hotFrame = fatLines(frameSeg, focusOutline, hoverStroke); hotFrame.visible = false; grp.add(hotFrame); grp.userData.hotFrame = hotFrame;
   { // neon edge ring per floor (coloured by the floor's average of the current metric)
     const t = .09, parts = loops.flatMap(loop => loop.map(([x0, y0], i) => { const [x1, y1] = loop[(i + 1) % loop.length], L = Math.hypot(x1 - x0, y1 - y0); if (L < .01) return null;
       const g = new THREE.BoxGeometry(L + t, t, t); g.rotateY(-Math.atan2(y1 - y0, x1 - x0)); const c = toWorld((x0 + x1) / 2, (y0 + y1) / 2); return g.translate(c.x, .03, c.z); })).filter(Boolean);
@@ -1561,6 +1578,7 @@ const soil = NB ? (() => {
 })() : null;
 // roof + outdoor units with spinning fans
 const roof = new THREE.Group(), roofMaterials = []; bScene.add(roof);
+let roofSideMaterial = null;
 // 지붕: 맨 위층 윗 윤곽(곡면 외피면 topFootprint) 모양 · 맨 위층이 지붕 정원(open)이면 따로 덮지 않음
 if (!topFloor.open) {
   const facade = BD.building?.facade, roofColor = facade?.roofColor ?? (exteriorFirst ? facade?.glassColor : undefined);
@@ -1570,7 +1588,8 @@ if (!topFloor.open) {
     const covering = new THREE.Mesh(folded.roof, new THREE.MeshStandardMaterial({ color:roofTint, roughness:.64, metalness:.24, side:THREE.DoubleSide, ...translucent }));
     const sides = new THREE.Mesh(folded.sides, new THREE.MeshStandardMaterial({ color:facade.glassColor ?? roofTint, roughness:.55, side:THREE.DoubleSide, ...translucent }));
     covering.position.y = sides.position.y = roofY + .3;
-    roof.add(covering,sides); roofMaterials.push(covering.material, sides.material);
+    roof.add(covering,sides); roofMaterials.push(covering.material);
+    roofSideMaterial = sides.material;
   } else {
     const slab = new THREE.Mesh(slabGeometry(!USER.floors, .3, .3, roofOutline), new THREE.MeshStandardMaterial({ color:roofTint, roughness:.7, metalness:0, envMapIntensity:.25, transparent:true, opacity:exteriorFirst ? .32 : roofColor ? .78 : isDark() ? .5 : .45, depthWrite:false }));
     slab.position.y = roofY + .3; roof.add(slab); roofMaterials.push(slab.material);
@@ -1589,21 +1608,32 @@ function applyAppearanceMaterials(){
   if (polishedExterior) {
     for (const { userData:{ shellMat } } of floorGroups) if (shellMat) {
       shellMat.color.set(appearance.facadeColor);
+      shellMat.roughness = Math.max(shellMat.roughness,.54);
+      shellMat.envMap = ENV;
+      shellMat.envMapIntensity = .26;
       shellMat.side = THREE.DoubleSide;
       shellMat.needsUpdate = true;
     }
     for (const material of roofMaterials) {
       material.color.set(appearance.roofColor);
       material.opacity = appearance.roofOpacity;
+      material.envMap = ENV;
+      material.envMapIntensity = .22;
+    }
+    if (roofSideMaterial) {
+      roofSideMaterial.color.set(appearance.facadeColor);
+      roofSideMaterial.opacity = appearance.facadeOpacity;
+      roofSideMaterial.envMap = ENV;
+      roofSideMaterial.envMapIntensity = .26;
     }
     sun.intensity = 1.1 * appearance.lighting;
-    rim.intensity = .5 * appearance.lighting;
+    rim.intensity = .32 * appearance.lighting;
   } else if (!BD.building?.facade?.roofColor) {
     for (const material of roofMaterials) material.color.set(isDarkNow ? 0x3a3c40 : 0xdddddd);
   }
 }
 function applyAppearance(saved){
-  const next = resolveAppearance(appearanceBuilding, saved), turn = next.cameraAngle !== appearance.cameraAngle;
+  const next = resolveAppearance(appearanceBuilding, saved, BD.floors), turn = next.cameraAngle !== appearance.cameraAngle;
   appearance = next; polishedExterior = true;
   applyAppearanceMaterials();
   if (turn && state.view === 'building' && !explodeF) {
@@ -1845,16 +1875,16 @@ function updateBuilding(t, dt){
     if (polishedExterior && grp.userData.shellMat) {
       grp.userData.shellMat.opacity = fade * (showArchitecture ? appearance.facadeOpacity : Math.min(appearance.facadeOpacity, .17));
     }
-    grp.userData.frame.material.color.set(hot ? (isDarkNow ? 0xe6e6e3 : 0x222222) : 0x8b99ad);
-    grp.userData.hotFrame.visible = hot && !showArchitecture && !explodeF;
-    if (grp.userData.hotFrame.visible) { grp.userData.hotFrame.material.color.set(isDarkNow ? 0xe6e6e3 : 0x222222); grp.userData.hotFrame.material.opacity = e; }
+    grp.userData.frame.material.color.set(hot ? focusOutline : 0x8b99ad);
+    grp.userData.hotFrame.visible = hot && !explodeF && !f.below;
+    if (grp.userData.hotFrame.visible) { grp.userData.hotFrame.material.color.set(focusOutline); grp.userData.hotFrame.material.opacity = e; }
     { // 방 이름 홀로그램: labelFloor(층 3D의 층, 건물 3D의 마우스 올린 층)만
       const showL = labelFloor === f && !showArchitecture && !state.pipes;
       if (showL && !grp.userData.labels) buildRoomLabels(grp);
       const L = grp.userData.labels;
       if (L) { L.visible = showL; if (showL) for (const s of L.children) s.material.opacity = .95 * fade; } }
     grp.userData.frame.material.opacity = (hot ? 1 : showArchitecture ? .16 : .4) * e;
-    if (grp.userData.mullMat) grp.userData.mullMat.opacity = (hot ? .45 : showArchitecture ? .13 : .2) * fade;   // 지하층은 멀리언 없음
+    if (grp.userData.mullMat) grp.userData.mullMat.opacity = (showArchitecture ? exteriorFirst ? .18 : .10 : hot ? .45 : .2) * fade;
     { // 네온 색·밝기는 목표값으로 천천히 (1초마다 값이 바뀔 때 블룸 때문에 번쩍이지 않게)
       const nm = grp.userData.neon.material, sm = 1 - Math.exp(-dt * 2.5);
       (grp.userData.neonS ||= grp.userData.neonC.clone()).lerp(grp.userData.neonC, sm);
@@ -2955,7 +2985,8 @@ function buildLive(){
 //   building은 배포 계산 서버(Lambda 레포 infra/sim, 웹 /api/sim/*)가 임시 폴더에 써서 계산. 로컬 tools/sim-server.mjs는 400으로 거절
 async function simCompare(scenario, useLive){
   if (HOST_PLAN && !DATA.building) throw new Error('대시보드에서 평면도를 받지 못해 계산할 수 없습니다.');
-  const where = HOST_PLAN ? { building:DATA.building } : { data:DATA_BASE };
+  // buildingId: 대시보드 건물 ID. 계산 서버가 이 ID로 운영 시간(대시보드 건물 설정)을 찾음(도면 안 building.id는 변환 때 붙은 값이라 다를 수 있음)
+  const where = HOST_PLAN ? { building:DATA.building, ...(BUILDING_ID ? { buildingId:BUILDING_ID } : {}) } : { data:DATA_BASE };
   const r = await fetch('/api/sim/compare', { method:'POST', headers:{ 'Content-Type':'application/json' },
     body:JSON.stringify({ ...where, scenario:{ mode:simMode(), ...scenario }, ...(useLive ? { live:buildLive() } : {}) }) });
   const j = await r.json().catch(() => null);
@@ -3447,22 +3478,16 @@ function markHoveredRoom(room){
     return;
   }
   if (!room.poly?.length) return;
-  const tint = cssVar('--chart-cur') || '#3987e5';
-  const base = new THREE.ShapeGeometry(shapeOf(room.poly));
-  base.rotateX(-Math.PI/2);
-  base.translate(-W/2,.036,-D/2);
-  const fill = new THREE.Mesh(base, new THREE.MeshBasicMaterial({ color:tint, transparent:true, opacity:.32, depthWrite:false, side:THREE.DoubleSide }));
+  // 건물 보기의 층 외곽선처럼 방의 윤곽만 표시해 지표 색상이 보이게 한다.
   const segments = [], top = room.type === 'room' && room.acs.length ? CEIL + .06 : .06;
   for (const loop of [room.poly, ...(room.poly.holes || [])]) {
     for (let i=0; i<loop.length; i++) {
       const a = toWorld(...loop[i]), b = toWorld(...loop[(i+1)%loop.length]);
       segments.push(a.x,top,a.z,b.x,top,b.z);
-      if (top > 1) segments.push(a.x,.04,a.z,b.x,.04,b.z, a.x,.04,a.z,a.x,top,a.z);   // 바닥 테두리, 세로 모서리
     }
   }
-  const edges = fatLines(segments, tint, 4);   // 호버 테두리 4px(기본 선 1px은 호버 구분이 어려움)
-  roomHoverMark = new THREE.Group();
-  roomHoverMark.add(fill,edges);
+  roomHoverMark = fatLines(segments, focusOutline, hoverStroke);
+  roomHoverMark.material.depthTest = true;
   floorGroups[room.floorIndex].add(roomHoverMark);
 }
 const localRename = window.parent === window && !params.has('building') && !params.has('data') && DATA_FROM.building === '직접 넣은 파일';
@@ -3547,8 +3572,10 @@ function showRoomTip(r, e){
   tipRoom = r; tipAnchor = { x:e.clientX, y:e.clientY };
   tip.toggleAttribute('data-editable',editable);
   const on = r.acs.filter(a => a.status === 'on').length, fault = r.acs.filter(a => a.status === 'fault').length;
-  tip.innerHTML = `<b>${esc(r.name)}</b>
-    <div class="row"><span>층 · 면적</span><span>${esc(r.floorId)} · ${r.area.toFixed(1)} m²</span></div>
+  tip.setAttribute('data-room-tip','');
+  tip.innerHTML = `<div class="tip-heading"><span class="tip-floor">${esc(r.floorId)}</span><b>${esc(r.name)}</b></div>
+    <div class="tip-details">
+    <div class="row"><span>면적</span><span>${r.area.toFixed(1)} m²</span></div>
     ${LIVE.count ? `<div class="row"><span>온도 · 습도</span><span>${r.temp.toFixed(1)}°C · ${Math.round(r.hum)}%</span></div>
     <div class="row"><span>전력</span><span>${r.power.toFixed(2)} kW</span></div>` : '<div class="row">운전 데이터 대기 중</div>'}
     ${r.occSrc === 'wifi' || r.occSrc === 'sensor' || r.occSrc === 'status' ? `<div class="row"><span>재실 (${OCC_SRC[r.occSrc]})</span><span>${r.occ}명${r.cap ? ` / ${r.cap}` : ''}</span></div>` : ''}
@@ -3556,12 +3583,13 @@ function showRoomTip(r, e){
     ${r.cmf ? `<div class="row"><span>쾌적도 PMV</span><span>${pmvTxt(r.cmf.pmv)} · 불만족 ${Math.round(r.cmf.ppd)}%</span></div>` : ''}
     ${r.acs.length ? `<div class="row"><span>실내기</span><span>${on}/${r.acs.length} 가동${fault ? ` · 고장 ${fault}` : ''} · ${r.setpoint}°</span></div>` : ''}
     ${r.alert.items.map(([lv, m]) => `<div class="al" style="color:${lv === 2 ? 'var(--danger)' : 'var(--caution)'}">${lv === 2 ? IC.alert : IC.alertCircle}${esc(m)}</div>`).join('')}
-    ${(actionsByRoom().get(r.id) || []).filter(i => !r.alert.items.some(([, m]) => m === i.title)).map(i => `<div class="al" style="color:${i.lv === 2 ? 'var(--danger)' : 'var(--caution)'}">${i.lv === 2 ? IC.alert : IC.alertCircle}${esc(i.title)}</div><div class="act-d">${i.d}</div>`).join('')}`;
-  if (editable) tip.insertAdjacentHTML('beforeend','<div class="tip-buttons"><button type="button" data-room-rename>이름 수정</button></div>');
+    ${(actionsByRoom().get(r.id) || []).filter(i => !r.alert.items.some(([, m]) => m === i.title)).map(i => `<div class="al" style="color:${i.lv === 2 ? 'var(--danger)' : 'var(--caution)'}">${i.lv === 2 ? IC.alert : IC.alertCircle}${esc(i.title)}</div><div class="act-d">${i.d}</div>`).join('')}
+    </div>`;
+  if (editable) tip.insertAdjacentHTML('beforeend',`<div class="tip-buttons"><button type="button" data-room-rename>${IC.pencil}이름 수정</button></div>`);
   tip.style.display = 'block'; placeTip(e);
 }
 function showFloorTip(f, e){
-  tipRoom = null; tip.removeAttribute('data-editable');
+  tipRoom = null; tip.removeAttribute('data-editable'); tip.removeAttribute('data-room-tip');
   const rs = f.rooms.filter(r => r.type === 'room');
   const avgT = rs.reduce((s, r) => s + r.temp, 0) / rs.length, pw = f.rooms.reduce((s, r) => s + r.power, 0);
   const occ = f.rooms.reduce((s, r) => s + r.occ, 0), al = f.rooms.filter(r => r.alert.level).length;
@@ -3574,7 +3602,7 @@ function hideTip(){
   clearTimeout(tipExit);
   if (tipRoom || roomHoverMark) markHoveredRoom(null);
   tip.style.display = 'none'; tipRoom = null; tipAnchor = null;
-  delete tip.dataset.editing; tip.removeAttribute('data-editable');
+  delete tip.dataset.editing; tip.removeAttribute('data-editable'); tip.removeAttribute('data-room-tip');
 }
 
 /* picking */

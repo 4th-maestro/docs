@@ -949,7 +949,7 @@ export function assemble(recipe, floorResults){
   if (!open && !atrium) warn.push('중정(atrium) 라벨이 없음');
   if (!open && !elevator) warn.push('엘리베이터 라벨이 없음');
   return {
-    json:{ schema:'twin.building/v1', source:`자료→렌더링 파이프라인 (레시피 ${recipe.id || ''}): 평면도 ${recipe.floors.map(f => f.image || '수동').join(', ')}`,
+    json:{ schema:'twin.building/v1', appearance:{}, source:`자료→렌더링 파이프라인 (레시피 ${recipe.id || ''}): 평면도 ${recipe.floors.map(f => f.image || '수동').join(', ')}`,
       building, ...(site ? { site } : {}), ...(open ? {} : { atrium:at2 || { x0:Wout / 2 - 1, y0:Dout / 2 - 1, x1:Wout / 2 + 1, y1:Dout / 2 + 1 }, elevator:el2 || { x0:0, y0:0, x1:0, y1:0 } }),
       operation:recipe.operation || { source:'BMS 운영 스케줄 설정', weekday:['08:00', '21:00'], weekend:null }, floors, odus, idus, ...(ap.aps.length ? { aps:ap.aps, wifi:{ devicesPerPerson:recipe.wifi.devicesPerPerson ?? 1.3, source:'와이파이 지도(AP 위치) → 접속 기기 수로 재실 추정' } } : {}) },
     warn,

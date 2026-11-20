@@ -87,14 +87,12 @@ export function TwinPipeline({ hidden, onRendered }: { hidden?: boolean; onRende
 function ImageStep({ company, building, name, back, file }: { company: string; building?: string; name: string; back: string; file?: boolean }) {
   const [jobId] = useState(() => building ?? newBuildingId())
   const [twin, setTwin] = useState<Twin | null>(null)
-  const [preview, setPreview] = useState<Plan | null>(null)
-  const appearanceDraft = useRef<Plan['appearance']>(undefined)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const rendered = useCallback((b: unknown) => {
     try {
-      const plan = editablePlan(b)
-      setPreview({ ...plan, appearance: appearanceDraft.current ?? plan.appearance }); setError('')
+      const plan = editablePlan(b) as Twin
+      setTwin({ ...plan, appearance: plan.appearance ?? {} }); setError('')
     } catch (e) { setError(msg(e)) }
   }, [])
 
@@ -129,9 +127,8 @@ function ImageStep({ company, building, name, back, file }: { company: string; b
   return (
     <>
       {error && <p key={error} className="error adm-error fade-in" role="alert">{error}</p>}
-      {preview && !twin && <AppearanceEditor plan={preview}
-        onBack={plan => { appearanceDraft.current = plan.appearance; setPreview(null) }}
-        onSave={plan => { appearanceDraft.current = plan.appearance; setTwin(plan as Twin); setPreview(null) }} />}
+      {twin && <AppearanceEditor plan={twin} onAppearanceChange={appearance =>
+        setTwin(current => current && { ...current, appearance })} />}
       {twin && info && (
         <section className="card adm-card fade-in" aria-labelledby="bld-ok">
           <h2 id="bld-ok">{building ? '도면 교체 확인' : '건물 정보 확인'}</h2>
@@ -152,7 +149,7 @@ function ImageStep({ company, building, name, back, file }: { company: string; b
       )}
       {file
         ? <div hidden={!!twin}><PlanIngest buildingId={jobId} onDone={() => undefined} onConfirm={(p) => { setTwin(p as Twin); setError('') }} /></div>
-        : <TwinPipeline hidden={!!twin || !!preview} onRendered={rendered} />}
+        : <TwinPipeline hidden={!!twin} onRendered={rendered} />}
     </>
   )
 }

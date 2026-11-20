@@ -8,7 +8,14 @@ export type Appearance = {
   cameraAngle: number
 }
 
+export type AppearanceBuilding = {
+  size: { w: number; d: number }
+  floorHeight?: number
+  facade?: { glassColor?: string; roofColor?: string; roofProfile?: unknown[]; dome?: { height?: number } }
+}
+
 export function resolveAppearance(
-  building: { size: { w: number; d: number }; facade?: { glassColor?: string; roofColor?: string } },
+  building: AppearanceBuilding,
   saved?: Partial<Appearance>,
+  floors?: { id: string; below?: boolean; shellFootprint?: unknown[] }[],
 ): Appearance

@@ -1,5 +1,5 @@
 import { wallSpans as solidWallSpans } from '../twin/pipeline/wall-spans.js'
-import type { Appearance } from '../twin/pipeline/appearance.js'
+import type { Appearance, AppearanceBuilding } from '../twin/pipeline/appearance.js'
 
 export { solidWallSpans }
 
@@ -19,7 +19,7 @@ export type ModelMatch = 'source' | 'schedule' | 'exact' | 'nearest' | 'type' | 
 export type PlanBackground = { key?: string; px: [number, number]; toPlan: Affine | null }
 // 문: a, b는 벽 위 개구부 양 끝(m), hinge는 경첩 쪽 끝, side는 열리는 쪽(a→b 기준 화면 왼쪽 1, 오른쪽 -1, 평면 y는 아래쪽)
 export type Door = { id: string; a: Point; b: Point; hinge: 'a' | 'b'; side: 1 | -1; source: 'ifc' | 'cad' | 'yolo' | 'manual'; conf?: number; review?: boolean; ref?: string }
-export type PlanFloor = { id: string; rooms: PlanRoom[]; footprint?: Point[] | Point[][]; atrium?: boolean; openWalls?: Opening[]; partitions?: Segment[]; elevation?: number; background?: PlanBackground; detections?: Detection[]; doors?: Door[] }
+export type PlanFloor = { id: string; rooms: PlanRoom[]; footprint?: Point[] | Point[][]; shellFootprint?: Point[] | Point[][]; below?: boolean; atrium?: boolean; openWalls?: Opening[]; partitions?: Segment[]; elevation?: number; background?: PlanBackground; detections?: Detection[]; doors?: Door[] }
 export type IndoorUnit = { id: string; room: string; pos: Point; model?: string; type?: string; coolKw?: number; ratedKw?: number; source?: string; basis?: string
   cls?: string; manual?: string; conf?: number; review?: boolean; rot?: number; size?: [number, number]; ref?: string; floor?: string; odu?: string
   kwSource?: 'pdf-text' | 'cad-text' | 'ifc' | 'schedule' | 'manual'; tag?: string; modelMatch?: ModelMatch }
@@ -28,7 +28,7 @@ export type OutdoorUnit = { id: string; model?: string; location?: string; serve
 export type Plan = {
   schema: 'twin.building/v1'
   appearance?: Partial<Appearance>
-  building: { name: string; size: { w: number; d: number } }
+  building: AppearanceBuilding & { name: string }
   floors: PlanFloor[]
   idus: IndoorUnit[]
   odus?: OutdoorUnit[]

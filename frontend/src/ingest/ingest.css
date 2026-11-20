@@ -59,6 +59,14 @@
 .ingest-file { position: absolute; width: 1px; height: 1px; opacity: 0; }
 .ingest-up p { margin: 10px 0 0; }
 .ingest-files { margin: 10px 0 0; padding-left: 20px; overflow-wrap: anywhere; }
+/* 변환 진행률: 막대(완료 초록, 실패 빨강), 백분율·현재 단계·남은 시간 */
+.ingest-prog { display: flex; flex-direction: column; gap: 6px; margin-top: 16px; }
+.ingest-prog .bar { position: relative; height: 10px; border-radius: var(--r-full); background: var(--surface-strong); overflow: hidden; }
+.ingest-prog .bar i { position: absolute; inset: 0 auto 0 0; border-radius: inherit; background: var(--ink); transition: width 0.4s ease-out; }
+.ingest-prog.done .bar i { background: var(--ok); }
+.ingest-prog.failed .bar i { background: var(--danger); }
+.ingest-prog .prog-meta { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.ingest-prog .prog-meta b { color: var(--ink); margin-right: auto; }
 .ingest-steps { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 12px 0 0; padding: 0; list-style: none; }
 .ingest-steps li { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); }
 .ingest-steps li.on { color: var(--ink); font-weight: 600; }
