@@ -399,6 +399,12 @@
       "type": "explanation"
     },
     {
+      "path": "docs/human/explanation/troubleshooting/2026-11-21(PDF 등록 건물 목록 누락).md",
+      "title": "PDF 등록 건물 목록 누락",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
       "path": "docs/human/explanation/troubleshooting/README.md",
       "title": "장애 조사 기록",
       "audience": "human",

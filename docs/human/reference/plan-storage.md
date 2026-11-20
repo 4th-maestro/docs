@@ -18,6 +18,7 @@
 | `plans/<건물 id>/v<번호>.json` | 버전별 도면(초기 적재는 `v1.json`) | 조회 API는 읽지 않음 |
 | `plans/<건물 id>/building.json` | 현재 트윈 원본(`twin.building/v1`) | `GET /buildings/{id}/twin`(트윈 화면, 평면도 편집) |
 | `plans/<건물 id>/building-v<번호>.json` | 버전별 트윈 원본 | 조회 API는 읽지 않음 |
+| `plans/_rev` | 건물·소속 변경 표시(본문은 갱신 시각) | API 실행 환경이 3초마다 ETag 비교(`lambda/src/plan.py`의 `rev`) |
 
 - 버킷 이름은 `maestro` 스택 출력값 `PlansBucketName`입니다.
 - 초기 적재는 `lambda/tools/upload_plans.py`이며, `current.json`이 이미 있는 건물은 건너뜁니다.
@@ -67,7 +68,7 @@
 - 확정 저장 요청 본문 `{twin, rooms, plan}`의 `rooms`로 호실·설비 테이블을 갱신하고, 목록에서 빠진 호실의 호실·설비·상태 행은 삭제합니다. 화면 변환 코드는 `frontend/src/admin/convert.ts`입니다.
 - 판매사 등록 건물의 호실 id는 `<건물 id>.<트윈 호실 id>`입니다. 다른 건물과 호실 id가 겹치면 409입니다.
 - 판매사 등록 건물의 도면에는 실내기가 연결된 호실만 들어가며, y 좌표는 트윈 평면과 부호가 반대입니다(내장 3D 배치 기준).
-- 건물·호실 데이터는 Lambda 실행 환경별로 60초 캐시하므로 테이블 변경은 최대 60초 뒤 반영됩니다.
+- 건물·호실 데이터는 Lambda 실행 환경별로 60초 캐시합니다. API의 쓰기 요청(건물 등록·수정·삭제, 소속, 구성원, 기업 상태)은 변경 표시 `plans/_rev`를 갱신하고, 다른 API 실행 환경은 3초마다 표시를 확인해 다시 읽습니다. API를 거치지 않은 테이블 직접 변경은 최대 60초 뒤 반영됩니다.
 
 ## 4. 대체 경로: 웹 번들 도면
 
