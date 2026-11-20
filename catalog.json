@@ -135,6 +135,90 @@
       "type": "explanation"
     },
     {
+      "path": "docs/human/explanation/improvements/2026-11-20(AI 답변 구조화 응답 3문장 보장).md",
+      "title": "AI 답변 구조화 응답 3문장 보장",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/improvements/2026-11-20(AI 답변 품질 JEV 판단 평가).md",
+      "title": "AI 답변 품질 JEV 판단 평가",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/improvements/2026-11-20(AI 대화 메모리 10턴과 현재 시각 전달).md",
+      "title": "AI 대화 메모리 10턴과 현재 시각 전달",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/improvements/2026-11-20(AI 저장 안내 화면 이동과 증감률 도구 계산).md",
+      "title": "AI 저장 안내 화면 이동과 증감률 도구 계산",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/improvements/2026-11-20(데이터 흐름 모달과 오른쪽 열 카드 순서).md",
+      "title": "데이터 흐름 모달과 오른쪽 열 카드 순서",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/improvements/2026-11-20(배포 명령 브랜치·미커밋 확인 단계).md",
+      "title": "배포 명령 브랜치·미커밋 확인 단계",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/improvements/2026-11-20(새로고침 후 3D 도면 즉시 표시).md",
+      "title": "새로고침 후 3D 도면 즉시 표시",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/improvements/2026-11-20(웹 배포 트윈 주소 누락 수정).md",
+      "title": "웹 배포 트윈 주소 누락 수정",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/improvements/2026-11-20(층 평면도 지표 카드 플로팅과 3D 영역 확대).md",
+      "title": "층 평면도 지표 카드 플로팅과 3D 영역 확대",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/improvements/2026-11-20(트윈 로딩 화면 고정과 전송 크기 축소).md",
+      "title": "트윈 로딩 화면 고정과 전송 크기 축소",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/improvements/2026-11-20(트윈 화면 앱 디자인 통일).md",
+      "title": "트윈 화면 앱 디자인 통일",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/improvements/2026-11-20(판매사 건물 관리와 고객사 관제 전용 화면).md",
+      "title": "판매사 건물 관리와 고객사 관제 전용 화면",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/improvements/2026-11-20(판매사·고객사 회원 구조와 데이터 출처 전환).md",
+      "title": "판매사·고객사 회원 구조와 데이터 출처 전환",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/improvements/README.md",
+      "title": "개선 기록",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
       "path": "docs/human/explanation/research/README.md",
       "title": "외부 조사 기록",
       "audience": "human",
