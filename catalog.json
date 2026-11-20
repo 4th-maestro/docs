@@ -255,6 +255,12 @@
       "type": "explanation"
     },
     {
+      "path": "docs/human/explanation/improvements/2026-11-21(방 3D 상태 카드 전환).md",
+      "title": "방 3D 상태 카드 전환",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
       "path": "docs/human/explanation/improvements/2026-11-21(사이드바 층 목록 축소와 오늘 스케줄 배치).md",
       "title": "사이드바 층 목록 축소와 오늘 스케줄 배치",
       "audience": "human",
