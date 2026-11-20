@@ -11,6 +11,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / 'src'))
 import api  # noqa: E402
 import buildings  # noqa: E402
 import plan  # noqa: E402
+import tenant  # noqa: E402
 
 
 class FakeTable:
@@ -39,12 +40,14 @@ class DataSourceTest(unittest.TestCase):
         sys.modules['boto3'] = fake
         os.environ.update(BUILDINGS_TABLE='B', ROOMS_TABLE='R')
         buildings._cache['data'] = None
+        tenant._tables.clear()  # 테이블 이름별 캐시(tenant.table) 비움
 
     def tearDown(self):
         os.environ.pop('BUILDINGS_TABLE'); os.environ.pop('ROOMS_TABLE')
         if self._boto3 is not None:
             sys.modules['boto3'] = self._boto3
         buildings._cache['data'] = None
+        tenant._tables.clear()
 
     def test_tables_match_files_in_rooms_and_order(self):
         lst, rooms = self.expected

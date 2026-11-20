@@ -1,7 +1,6 @@
 import { kstNow } from '../mock'
 import type { Breakdown, Compare, Heatmap, Period, Point, Trend } from './api'
 import PROFILES from './buildings.json'
-import { customProfile } from '../custom'
 
 // 에너지 분석 목업(난수 없음, 같은 시각이면 같은 값). API를 쓸 수 없을 때만 사용, 결과에는 mock 표시
 // - 시간 전력: 운영 시간은 면적 1㎡당 0.06kW × 85~100%, 운영 전후(시작 1시간 전 ~ 종료 3시간 후)는 낭비율만큼, 그 밖은 0
@@ -28,7 +27,7 @@ const sum = (xs: number[]) => xs.reduce((s, x) => s + x, 0)
 const u = (n: number) => { const x = Math.sin(n * 12.9898) * 43758.5453; return x - Math.floor(x) }
 
 function building(id = BUILDINGS[0].id): B {
-  const b = BUILDINGS.find((x) => x.id === id) ?? customProfile(id)
+  const b = BUILDINGS.find((x) => x.id === id)
   if (!b) throw new Error(`알 수 없는 건물: ${id}`)
   return b
 }

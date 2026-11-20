@@ -6,7 +6,6 @@ import { getCompare, query } from './api'
 import { Delta, Seg } from './parts'
 import { NAMES, fmt } from './util'
 import './energy.css'
-import { isBuildingHidden } from '../custom'
 import { Sk, SkBars } from '../skeleton/Skeleton'
 import CountUp from '../motion/CountUp'
 
@@ -18,7 +17,7 @@ export default function BuildingCompare({ onOpen }: { onOpen(buildingId: string)
   const [period, setPeriod] = useState<'day' | 'month'>('day')
   const { data, error, stale } = usePoll(getCompare, query({ period }))
   const names = NAMES[data?.period ?? period]
-  const items = (data?.items ?? []).filter(i => !isBuildingHidden(i.buildingId)).sort((a, b) => b.kwh - a.kwh)
+  const items = [...(data?.items ?? [])].sort((a, b) => b.kwh - a.kwh)
   const max = Math.max(1, ...items.map((i) => Math.max(i.kwh, i.prevKwh)))
   const w = (v: number) => `${((v / max) * 100).toFixed(2)}%`
 

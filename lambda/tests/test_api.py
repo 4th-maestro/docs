@@ -14,7 +14,7 @@ class RouteTest(unittest.TestCase):
         tpl = (pathlib.Path(__file__).resolve().parent.parent / 'template.yaml').read_text()
         block = tpl[tpl.index('  ApiFunction:'):tpl.index('  QueryFunction:')]
         paths = [line.split('Path: ')[1].split(',')[0].strip("'") for line in block.splitlines() if 'Path: ' in line]
-        self.assertEqual(len(paths), 35)  # 2026-11-20 고객사 설정 7개, 판매사 구성원·이력 3개 추가
+        self.assertEqual(len(paths), 40)  # 2026-11-20 판매사 건물 관리 4개, 트윈 파일 조회 1개 추가
         for p in paths:
             self.assertIsNotNone(api.route(p), p)
 
@@ -29,6 +29,8 @@ class RouteTest(unittest.TestCase):
         self.assertIs(api.route('/company/members/{sub}'), api.customer.handler)
         self.assertIs(api.route('/buildings/{id}'), api.customer.handler)
         self.assertIs(api.route('/buildings/{id}/plan'), api.plan.handler)
+        self.assertIs(api.route('/buildings/{id}/twin'), api.admin.twin)
+        self.assertIs(api.route('/admin/companies/{id}/buildings'), api.admin.handler)
         self.assertIs(api.route('/buildings'), api.portfolio.handler)
         self.assertIs(api.route('/admin/companies/{id}/members/{sub}'), api.admin.handler)
         self.assertEqual(api.handler({'routeKey': 'GET /nope'}, None)['statusCode'], 404)

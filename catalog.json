@@ -111,6 +111,12 @@
       "type": "explanation"
     },
     {
+      "path": "docs/human/explanation/decisions/2026-11-20(판매사 건물 관리와 고객사 관제 전용).md",
+      "title": "판매사 건물 관리와 고객사 관제 전용",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
       "path": "docs/human/explanation/decisions/2026-11-20(판매사·고객사 회원 구조).md",
       "title": "판매사·고객사 회원 구조",
       "audience": "human",

@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { AlertTriangle, CheckCircle2, CirclePause, History, UserRound } from 'lucide-react'
-import { listAudit, removeMember, setMemberRole, type AuditItem, type Company, type Member, type Role } from '../api'
+import { listAudit, removeMember, setMemberRole, type AuditItem, type BuildingInput, type Company, type Member, type Role } from '../api'
 import { ROLE } from '../auth/me'
+import { Seg } from '../energy/parts'
 import { SkRows, SkWrap } from '../skeleton/Skeleton'
-import { badMail, day, FIELDS, msg, type Form } from './form'
+import { badMail, day, FIELDS, hh, msg, type Form } from './form'
 
-// 기업 화면 공용 컴포넌트: 판매사 기업 상세(AdminPage)와 고객사 기업 설정(SettingsPage)
+// 기업 화면 공용 컴포넌트: 판매사 기업 상세(AdminPage), 판매사 건물 화면(BuildingPages), 고객사 기업 정보(SettingsPage, 변경 이력만)
 
 export function Fields({ value, onChange }: { value: Form; onChange: (f: Form) => void }) {
   const bad = badMail(value)
@@ -39,11 +40,10 @@ export function Expiry({ iso }: { iso: string }) {
     : <span className="adm-st bad"><AlertTriangle size={16} aria-hidden />{day(iso)} 만료</span>
 }
 
-// 구성원: 역할 변경(고객사 관리자, 운영자 전환), 제외. 둘 다 재확인 후 실행
-// - base: 고객사 관리자 '/company', 판매사 co(기업 id)
+// 구성원(판매사 기업 상세): 역할 변경(고객사 관리자, 운영자 전환), 제외. 둘 다 재확인 후 실행
+// - base: 판매사 co(기업 id)
 // - 마지막 고객사 관리자의 변경·제외는 서버 409 문구 표시
-// - self: 로그인 사용자 이메일, 해당 행에 "나" 표시
-export function Members({ base, members, self, onChange }: { base: string; members: Member[]; self?: string; onChange: () => void }) {
+export function Members({ base, members, onChange }: { base: string; members: Member[]; onChange: () => void }) {
   const [ask, setAsk] = useState<{ sub: string; remove: boolean } | null>(null)
   const [busy, setBusy] = useState(false)
   const [out, setOut] = useState<{ text: string; bad?: boolean } | null>(null)
@@ -79,7 +79,7 @@ export function Members({ base, members, self, onChange }: { base: string; membe
               <li key={m.sub} className="adm-mem">
                 <UserRound size={18} aria-hidden />
                 <span className="adm-entry">
-                  <span>{m.email}{m.email === self && <span className="tag adm-tag">나</span>}</span>
+                  <span>{m.email}</span>
                   <small>{ROLE[m.role] ?? m.role}, {day(m.joinedAt)} 가입</small>
                 </span>
                 <span className="adm-confirm adm-acts">
@@ -93,7 +93,7 @@ export function Members({ base, members, self, onChange }: { base: string; membe
                     <p className="adm-help">
                       {open.remove
                         ? `${m.email} 구성원을 기업에서 제외합니다. 제외한 구성원은 이 기업의 건물을 볼 수 없습니다. 다시 참여하려면 기업 코드가 필요합니다.`
-                        : `${m.email} 구성원의 역할을 ${ROLE[next]}로 바꿉니다. ${next === 'operator' ? '운영자는 기업 정보, 건물 정보, 구성원을 수정할 수 없습니다.' : '고객사 관리자는 기업 정보, 건물 정보, 구성원을 수정할 수 있습니다.'}`}
+                        : `${m.email} 구성원의 역할을 ${ROLE[next]}로 바꿉니다.`}
                     </p>
                     <div className="adm-btns">
                       <button className={open.remove ? 'adm-danger adm-btn' : 'adm-dark adm-btn'} type="button" disabled={busy} onClick={() => run(m, open.remove)}>{open.remove ? '제외' : '변경'}</button>
@@ -113,10 +113,11 @@ export function Members({ base, members, self, onChange }: { base: string; membe
 
 // 변경 이력: 서버 순서(최신순) 50건, 동작·대상, 시각(한국 시각)·사용자
 // - at: 부모 데이터 객체. 바뀔 때마다 다시 조회(같은 화면에서 한 변경 반영)
-// - names: 대상 id → 표시 이름(기업 이름, 건물 이름, 구성원 이메일). 없으면 detail.email, 그다음 원래 값
+// - names: 대상 id → 표시 이름(기업 이름, 건물 이름, 구성원 이메일). 없으면 detail.email, detail.name, 그다음 원래 값
 const ACTION: Record<string, string> = {
   'company.create': '기업 생성', 'company.update': '기업 정보 수정', 'company.delete': '기업 삭제', 'company.code': '기업 코드 재발급',
-  'building.assign': '건물 연결', 'building.update': '건물 정보 수정', 'member.join': '구성원 가입', 'member.role': '역할 변경', 'member.remove': '구성원 제외',
+  'building.assign': '건물 연결', 'building.update': '건물 정보 수정', 'building.create': '건물 추가', 'building.plan': '도면 교체', 'building.delete': '건물 삭제',
+  'member.join': '구성원 가입', 'member.role': '역할 변경', 'member.remove': '구성원 제외',
 }
 // 기록 시각: 서버 정렬 키(시각#uuid) 형식도 허용
 const iso = (at: string) => at.split('#')[0]
@@ -131,7 +132,8 @@ export function Audit({ base, at, names }: { base: string; at: unknown; names: R
     return () => { alive = false }
   }, [base, at])
 
-  const target = (a: AuditItem) => names[a.target] ?? (typeof a.detail?.email === 'string' ? a.detail.email : a.target)
+  // 삭제된 건물은 목록에 없으므로 detail.name(building.delete) 사용
+  const target = (a: AuditItem) => names[a.target] ?? [a.detail?.email, a.detail?.name].find((v): v is string => typeof v === 'string') ?? a.target
   return (
     <section className="card adm-card" aria-labelledby="adm-log">
       <h2 id="adm-log">변경 이력</h2>
@@ -153,5 +155,66 @@ export function Audit({ base, at, names }: { base: string; at: unknown; names: R
         </ul>
       )}
     </section>
+  )
+}
+
+// 건물 정보 입력: 이름 1~40자, 용도 1~20자, 운영 시간(0~24시, 시작 < 종료), 주말 운영
+// - diff: 바뀐 항목만 전송(정보 수정), 없으면 전체 전송(건물 추가 확인)
+// - 저장 실패는 서버 문구를 폼 안에 표시(409 포함)
+const HOURS = Array.from({ length: 25 }, (_, h) => h)
+const WEEKEND: ['on' | 'off', string][] = [['on', '운영'], ['off', '휴무']]
+export type BuildingInfo = Required<BuildingInput>
+export function BuildingForm({ init, label, ok, cancel, diff, submit, onCancel }: {
+  init: BuildingInfo; label: string; ok: string; cancel: string; diff?: boolean; submit: (body: BuildingInput) => Promise<unknown>; onCancel: () => void
+}) {
+  const [name, setName] = useState(init.name)
+  const [use, setUse] = useState(init.use)
+  const [start, setStart] = useState(init.hours[0])
+  const [end, setEnd] = useState(init.hours[1])
+  const [weekend, setWeekend] = useState(init.weekend)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const body: BuildingInfo = { name: name.trim(), use: use.trim(), hours: [start, end], weekend }
+  const send = diff ? Object.fromEntries(Object.entries(body).filter(([k, v]) => JSON.stringify(v) !== JSON.stringify(init[k as keyof BuildingInfo]))) as BuildingInput : body
+  const bad = !body.name ? '건물 이름을 입력하십시오.' : !body.use ? '용도를 입력하십시오.' : start >= end ? '운영 종료 시각은 시작 시각보다 늦어야 합니다.' : ''
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault()
+    if (bad || !Object.keys(send).length) return
+    setBusy(true); setError('')
+    try {
+      await submit(send)
+    } catch (err) {
+      setError(msg(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const hour = (text: string, value: number, set: (h: number) => void, hours: number[]) => (
+    <label>
+      {text}
+      <select value={value} onChange={(e) => set(Number(e.target.value))} aria-invalid={start >= end || undefined}>
+        {hours.map((h) => <option key={h} value={h}>{hh(h)}시</option>)}
+      </select>
+    </label>
+  )
+  return (
+    <form className="adm-ask fade-in" onSubmit={save} aria-label={label}>
+      <div className="adm-fields">
+        <label>건물 이름<input value={name} maxLength={40} autoComplete="off" onChange={(e) => setName(e.target.value)} aria-required aria-invalid={!body.name || undefined} /></label>
+        <label>용도<input value={use} maxLength={20} autoComplete="off" onChange={(e) => setUse(e.target.value)} aria-required aria-invalid={!body.use || undefined} /></label>
+        {hour('운영 시작', start, setStart, HOURS.slice(0, 24))}
+        {hour('운영 종료', end, setEnd, HOURS.slice(1))}
+      </div>
+      <span className="adm-label" aria-hidden>주말 운영</span>
+      <Seg label="주말 운영" options={WEEKEND} value={weekend ? 'on' : 'off'} onChange={(v) => setWeekend(v === 'on')} />
+      {bad && <p className="adm-warn" role="alert">{bad}</p>}
+      {error && <p key={error} className="adm-warn fade-in" role="alert">{error}</p>}
+      <div className="adm-btns">
+        <button className="adm-dark adm-btn" type="submit" disabled={busy || !!bad || !Object.keys(send).length}>{ok}</button>
+        <button className="secondary adm-btn" type="button" onClick={onCancel}>{cancel}</button>
+      </div>
+    </form>
   )
 }

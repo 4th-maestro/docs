@@ -4,7 +4,7 @@ import AdminPage from './admin/AdminPage'
 import ChatPanel, { type ChatMsg } from './ai/ChatPanel'
 import type { AskResult } from './ai/types'
 import { useAsk } from './ai/useAsk'
-import { clearChat, getBuildings, getChat, getMe, getStatus, joinCompany, saveSchedule, SUSPENDED, type Me } from './api'
+import { BUILDINGS_CHANGED, clearChat, getBuildings, getChat, getMe, getStatus, getTwin, joinCompany, saveSchedule, SUSPENDED, type Me } from './api'
 import LoginScreen, { NoCompany, Suspended } from './auth/LoginScreen'
 import { AUTH_ON, currentEmail, isAdmin, onAuthChange, signedIn } from './auth/cognito'
 import { ME_CHANGED, MeContext } from './auth/me'
@@ -23,11 +23,7 @@ import { usePoll } from './panels/usePoll'
 import Portfolio from './portfolio/Portfolio'
 import { FloorList, Layout } from './shell/Shell'
 import { href, parseRoute, type FloorSummary, type Tab } from './shell/route'
-import { TWIN_URL, loadEditablePlan, onNeedBuilding, onTwinControl, onRoomSelected, onTwinChange, postState, twinSrc, type TwinBuilding, type TwinData } from './twin'
-import AddBuilding from './AddBuilding'
-import BuildingEditor from './BuildingEditor'
-import type { Plan } from './floor-edit'
-import { BUILDINGS_CHANGED, buildingsChanged, customBuilding, customOf, deleteBuilding, isBuildingHidden, isCustom, saveEditedPlan } from './custom'
+import { TWIN_URL, onNeedBuilding, onTwinControl, onRoomSelected, onTwinChange, postState, postTheme, twinSrc, type TwinBuilding, type TwinData } from './twin'
 import type { BuildingCard, Draft, Mode, Room, Status } from './types'
 import { SkFloors, SkKpis, SkPlan } from './skeleton/Skeleton'
 import CountUp from './motion/CountUp'
@@ -54,9 +50,11 @@ const uid = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(
 const STOPPED = '서비스가 중지된 기업입니다. 판매사에 문의하십시오.'
 
 // 테마: index.html 인라인 스크립트가 첫 표시 전에 data-theme 지정, 여기서는 전환과 저장만 처리
+// - 트윈 iframe(운영 탭 3D, 판매사 도면 파이프라인)에도 전환을 전달
 type Theme = 'light' | 'dark'
 function saveTheme(t: Theme) {
   document.documentElement.dataset.theme = t
+  document.querySelectorAll('iframe').forEach(postTheme)
   try { localStorage.setItem('maestro-theme', t) } catch { /* 저장 불가 브라우저는 이번 방문에만 적용 */ }
 }
 
@@ -118,27 +116,19 @@ function Shell({ themeButton, dark }: { themeButton: React.ReactNode; dark: bool
   const list = usePoll(getBuildings, 'all')
   const buildings = list.data?.buildings ?? []
   const known = buildings.find((b) => b.id === route.building)
-  // 건물 추가·렌더링·취소 → 목록 다시 조회
+  // 판매사 건물 추가·수정·삭제·연결 → 목록 다시 조회
   const { reload } = list
   useEffect(() => { window.addEventListener(BUILDINGS_CHANGED, reload); return () => window.removeEventListener(BUILDINGS_CHANGED, reload) }, [reload])
-  // 추가만 하고 아직 렌더링하지 않은 건물: 도면 넣는 화면(데이터 생성 안 함)
-  if (route.building && isCustom(route.building) && customOf(route.building)?.state === 'pending') {
-    return (
-      <Layout building={null} tab="ops" buildings={buildings} tools={themeButton}>
-        <AddBuilding id={route.building} />
-      </Layout>
-    )
-  }
 
   // 목록 도착 전에는 주소의 건물을 그대로 표시, 목록에 없는 건물만 안내
-  if (route.building && !isBuildingHidden(route.building) && (!list.data || known)) {
+  if (route.building && (!list.data || known)) {
     // 건물 변경 시 key로 다시 마운트: 층, 상태, 대화, 초안, 선택 호실, 패널 값 초기화
     return <Dashboard key={route.building} building={route.building} info={known} tab={route.tab} buildings={buildings} themeButton={themeButton} dark={dark} />
   }
   if (route.admin) {
     return (
       <Layout building={null} tab="ops" buildings={buildings} tools={themeButton} admin>
-        <div className="page"><AdminPage company={route.company} /></div>
+        <div className="page"><AdminPage company={route.company} sub={route.sub} /></div>
       </Layout>
     )
   }
@@ -180,11 +170,9 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
   const [reloadKey, setReloadKey] = useState(0)
   const [selected, setSelected] = useState<string | null>(null)
   const [loadedAt, setLoadedAt] = useState(0)
-  const [editPlan, setEditPlan] = useState<Plan | null>(null)
-  const [edited, setEdited] = useState(() => Boolean(customBuilding(building)))
-  const [loadingPlan, setLoadingPlan] = useState(false)
-  const [editError, setEditError] = useState('')
   const frame = useRef<HTMLIFrameElement>(null)
+  // 트윈 주소는 첫 렌더링 값 유지: 테마 전환은 메시지로 전달(주소가 바뀌면 iframe을 다시 읽음)
+  const [src] = useState(() => (TWIN_URL ? twinSrc(building) : ''))
 
   // 운영 탭에서만 5초 주기 조회. 건물 전체 호실을 받아 사이드바 층별 요약과 선택 층 화면에 함께 사용
   useEffect(() => {
@@ -200,7 +188,10 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
   }, [building, ops, reloadKey])
   const load = () => setReloadKey((k) => k + 1)
   useEffect(() => onRoomSelected(setSelected), [])
-  useEffect(() => onNeedBuilding(() => frame.current, customBuilding), [])
+  // 트윈 데이터가 없는 건물(트윈 조회 404 등): 트윈 화면 대신 내장 3D 도면, 트윈 연동 패널 숨김
+  const [twinless, setTwinless] = useState(false)
+  const twinOn = Boolean(TWIN_URL) && !twinless
+  useEffect(() => onNeedBuilding(() => frame.current, (id) => getTwin(id).catch((e: unknown) => { setTwinless(true); throw e })), [])
   useEffect(() => onTwinControl((room, sp) => { setRoomSetpoint(building, room, sp); load() }), [building])
 
   // 대화 기록: 서버(로그인 사용자·건물별), 실패하면 이 화면에만 기록
@@ -222,7 +213,7 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
   // 선택된 층이 현재 건물의 층 목록에서 사라지면 건물 보기로 돌아감
   if (status && floor && !floors.includes(floor)) setFloor('')
   // 트윈 화면이 없으면 빈 층(새로고침 직후 빈 도면) 대신 첫 층 표시
-  if (!TWIN_URL && !floor && floors.length) setFloor(floors[0])
+  if (!twinOn && !floor && floors.length) setFloor(floors[0])
   // 새 AI 결과: 대화에 추가, 이전 초안 닫기, 대상 호실 강조, 초안 대상 층으로 이동
   if (ai.result !== seen) {
     setSeen(ai.result)
@@ -303,45 +294,6 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
     clearChat(building)
   }
 
-  async function beginEdit() {
-    setEditError('')
-    setLoadingPlan(true)
-    try {
-      setEditPlan(await loadEditablePlan(building, customBuilding(building)))
-    } catch (e) {
-      setEditError(e instanceof Error ? e.message : '건물 평면도를 불러오지 못했습니다.')
-    } finally {
-      setLoadingPlan(false)
-    }
-  }
-
-  function savePlan(plan: Plan, level: string) {
-    if (!saveEditedPlan(building, plan)) {
-      setEditError('도면을 저장하지 못했습니다. 브라우저 저장 공간을 확인하세요.')
-      return
-    }
-    setEdited(true)
-    setFloor(level)
-    setSelected(null)
-    setFocus(NO_IDS)
-    setEditPlan(null)
-    setEditError('')
-    load()
-    buildingsChanged()
-  }
-
-  function removeBuilding() {
-    const name = info?.name ?? status?.building.name ?? building
-    const action = isCustom(building) ? '저장된 도면도 함께 삭제됩니다.' : '이 브라우저의 건물 목록에서 숨깁니다.'
-    if (!window.confirm(`‘${name}’ 건물을 삭제할까요?\n${action}`)) return
-    if (!deleteBuilding(building)) {
-      setEditError('건물을 목록에서 삭제하지 못했습니다.')
-      return
-    }
-    location.hash = '#/'
-    buildingsChanged()
-  }
-
   const tools = (
     <>
       {ops && status && (
@@ -356,13 +308,10 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
 
   return (
     <Layout building={building} tab={tab} buildings={buildings} tools={tools}
-      side={ops && !editPlan && (status ? <FloorList floors={floorSummaries} floor={floor} onFloor={(f) => { setFloor(f); setSelected(null) }} /> : <SkFloors n={info?.floors.length ?? 2} />)}>
+      side={ops && (status ? <FloorList floors={floorSummaries} floor={floor} onFloor={(f) => { setFloor(f); setSelected(null) }} /> : <SkFloors n={info?.floors.length ?? 2} />)}>
       <div className="page">
-        {ops && editError && <p className="error" role="alert">{editError}</p>}
         {!ops && <EnergyPage building={building} />}
-        {ops && (editPlan ? (
-          <BuildingEditor initial={editPlan} floor={floor} onSave={savePlan} onCancel={() => { setEditPlan(null); setEditError('') }} />
-        ) : (
+        {ops && (
           <>
             {status?.virtual && (
               <div className="banner" role="note">
@@ -390,18 +339,14 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
                 <section className="card twin" aria-label={`${scope} 3D 도면`}>
                   <div className="twin-head">
                     <h2>{scope} 3D 도면</h2>
-                    <div className="edit-actions" aria-label="건물 관리">
-                      {TWIN_URL && <button className="pill" onClick={beginEdit} disabled={loadingPlan}>{loadingPlan ? '평면도 여는 중…' : '수정'}</button>}
-                      <button className="pill building-delete" onClick={removeBuilding}>건물 삭제</button>
-                    </div>
                     <div className="modes" role="tablist" aria-label="표시 지표">
                       {MODES.map((m) => (
                         <button key={m.id} role="tab" aria-selected={mode === m.id} className={mode === m.id ? 'pill on' : 'pill'} onClick={() => setMode(m.id)}>{m.label}</button>
                       ))}
                     </div>
                   </div>
-                  {TWIN_URL ? (
-                    <iframe ref={frame} className="embed" src={twinSrc(building, edited)} title="3D 디지털트윈" onLoad={() => postState(frame.current, building, floor, mode, rooms, highlight, twinData)} />
+                  {twinOn ? (
+                    <iframe ref={frame} className="embed" src={src} title="3D 디지털트윈" onLoad={() => { postTheme(frame.current); postState(frame.current, building, floor, mode, rooms, highlight, twinData) }} />
                   ) : floor ? (
                     <Suspense fallback={<div className="embed"><SkPlan /></div>}>
                       <Twin3D building={building} floor={floor} mode={mode} rooms={rooms} highlight={highlight} selectedId={selected} onSelect={setSelected} dark={dark} />
@@ -417,7 +362,7 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
 
               <aside className="rail">
                 {/* 3D 트윈 안에 있던 운전 시뮬레이션: 임베딩 화면이 작아서 3D 도면 바로 옆 패널로 */}
-                {TWIN_URL && <SimPanel frame={() => frame.current} onLocate={locate} />}
+                {twinOn && <SimPanel frame={() => frame.current} onLocate={locate} />}
                 {import.meta.env.DEV && building === 'eng6' && <ExperimentPanel />}
                 <ChatPanel
                   ai={ai} messages={messages} rooms={rooms} suggestions={suggestions} busy={busy} history={history}
@@ -430,7 +375,7 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
               </aside>
             </main>
           </>
-        ))}
+        )}
       </div>
     </Layout>
   )

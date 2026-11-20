@@ -1,7 +1,6 @@
 import { useContext, useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { AlertTriangle, BarChart3, Briefcase, Building2, CheckCircle2, ChevronDown, LayoutDashboard, LogOut, Menu, Plus, Settings, X } from 'lucide-react'
-import { addCustom, buildingsChanged } from '../custom'
+import { AlertTriangle, BarChart3, Briefcase, Building2, CheckCircle2, ChevronDown, LayoutDashboard, LogOut, Menu, Settings, X } from 'lucide-react'
 import { AUTH_ON, currentEmail, isAdmin, signOut } from '../auth/cognito'
 import { MeContext, ROLE } from '../auth/me'
 import { LEVEL } from '../portfolio/level'
@@ -61,10 +60,10 @@ export function Layout({ building, tab, buildings, tools, side, admin, settings,
                   <span>{me.company.name}<small>{me.role ? ROLE[me.role] : ''}</small></span>
                 </p>
               )}
-              {/* 고객사 기업 설정: 판매사 관리자는 기업 관리 사용 */}
+              {/* 고객사 기업 정보(조회 전용): 판매사 관리자는 기업 관리 사용 */}
               {me?.company && me.role !== 'admin' && (
                 <a className={settings ? 'side-link on' : 'side-link'} href="#/settings" aria-current={settings ? 'page' : undefined} onClick={() => setDrawer(false)}>
-                  <Settings size={20} aria-hidden />기업 설정
+                  <Settings size={20} aria-hidden />기업 정보
                 </a>
               )}
               {/* 관리자 메뉴: 표시는 ID 토큰 그룹 또는 GET /me 역할 기준, 권한은 admin API가 판정 */}
@@ -118,10 +117,6 @@ function BuildingToggle({ buildings, current, tab }: { buildings: BuildingCard[]
               </a>
             )
           })}
-          {/* 건물 추가: 도면을 넣고 트윈에서 렌더링하면 그때부터 데이터 생성 */}
-          <button className="bt-add" role="menuitem" onClick={() => { const id = addCustom(); setOpen(false); buildingsChanged(); location.hash = href(id) }}>
-            <Plus size={18} aria-hidden />건물 추가하기
-          </button>
         </div>
       )}
     </div>

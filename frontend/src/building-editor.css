@@ -1,13 +1,24 @@
-.building-edit { margin: 14px 0; padding: 16px; }
-.building-edit > header { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+/* 평면도 편집: 토큰은 index.css :root(DESIGN.md), 버튼은 앱 .pill·.primary 재사용
+   - 같은 줄 버튼: 머리글 동작 줄은 주 버튼 높이 48에 맞춰 높이·너비 1:1, 도구 줄은 .pill 44
+   - 비활성: 같은 색 투명도 대신 별도 회색(DESIGN.md 비활성)
+   - 도면 위 표시: 그리는 선·설비는 차트 파랑(앱 전력 추이 오늘 선과 같은 값), 정렬 안내선 caution, 지우기 danger */
+.building-edit { --edit-line: #2a78d6; margin: 16px 0; }
+:root[data-theme='dark'] .building-edit { --edit-line: #3987e5; }
+.building-edit > header { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
 .building-edit h2 { margin: 0; }
 .edit-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.edit-actions .primary { padding: 0 14px; height: 38px; font-size: 14px; }
-.edit-actions button:disabled { opacity: .55; cursor: default; }
-.edit-actions .building-delete { color: var(--bad, #c63344); }
-.edit-layout { display: grid; grid-template-columns: 68px minmax(0, 1fr); gap: 14px; }
-.edit-layout nav { display: flex; flex-direction: column; gap: 6px; max-height: 65vh; overflow-y: auto; padding: 2px; }
-.edit-work > p { margin: 6px 0 8px; }
+.building-edit > header .edit-actions { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; }
+.building-edit > header .edit-actions .pill { height: 48px; }
+/* 편집 도구 줄: 같은 너비(가장 긴 라벨 기준), 좁은 화면은 줄바꿈 */
+.edit-work > .edit-actions { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); }
+.edit-actions .primary { height: 48px; padding: 0 20px; font-size: 16px; }
+.edit-actions .building-delete { border-color: var(--danger); color: var(--danger); }
+.building-edit .pill:disabled, .edit-actions .pill:disabled { border-color: var(--border-strong); background: var(--surface-strong); color: var(--muted); }
+.building-edit button:focus-visible, .building-edit input:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.edit-layout { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 16px; }
+.edit-layout nav { display: flex; flex-direction: column; gap: 8px; max-height: 65vh; overflow-y: auto; padding: 4px; }
+.edit-layout nav .pill { padding: 0 8px; font-weight: 600; }
+.edit-work > p { margin: 8px 0 12px; }
 .edit-plan { display: block; width: 100%; height: clamp(270px, 56vh, 700px); background: var(--canvas); border: 1px solid var(--hairline); border-radius: var(--r-sm); touch-action: none; }
 .edit-plan:not(.select) { cursor: crosshair; }
 .edit-outline, .edit-wall { stroke: var(--muted); stroke-width: 1.2; vector-effect: non-scaling-stroke; }
@@ -17,22 +28,25 @@
 .edit-wall.selected { stroke: var(--ink); stroke-width: 2.5; }
 .edit-plan.select .edit-room { cursor: pointer; }
 .edit-plan text { fill: var(--ink); pointer-events: none; }
-.edit-preview { stroke: #4f9eff; stroke-width: 4; vector-effect: non-scaling-stroke; pointer-events: none; }
-.edit-alignment-guide { stroke: #f3ae48; stroke-width: 1.5; stroke-dasharray: 5 4; vector-effect: non-scaling-stroke; pointer-events: none; }
-.edit-anchor { fill: #4f9eff; pointer-events: none; }
-.edit-preview.erase { stroke: #f25566; }
+.edit-preview { stroke: var(--edit-line); stroke-width: 4; vector-effect: non-scaling-stroke; pointer-events: none; }
+.edit-alignment-guide { stroke: var(--caution); stroke-width: 1.5; stroke-dasharray: 5 4; vector-effect: non-scaling-stroke; pointer-events: none; }
+.edit-anchor { fill: var(--edit-line); pointer-events: none; }
+.edit-preview.erase { stroke: var(--danger); }
 .edit-partition, .edit-unit { vector-effect: non-scaling-stroke; }
 .edit-partition { stroke: var(--ink); stroke-width: 2.5; pointer-events: none; }
-.edit-unit { fill: #3f8cf5; stroke: var(--canvas); stroke-width: 1.5; }
+.edit-unit { fill: var(--edit-line); stroke: var(--canvas); stroke-width: 1.5; }
 .edit-plan.ac-remove .edit-unit { cursor: pointer; }
-.edit-ac-capacity { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-.edit-ac-capacity input { width: 84px; padding: 5px; color: var(--ink); background: var(--canvas); border: 1px solid var(--hairline); border-radius: var(--r-sm); }
-.edit-foot { display: flex; flex-wrap: wrap; flex-direction: column; gap: 4px; padding-top: 10px; }
+.edit-ac-capacity { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; font-size: 15px; color: var(--muted); }
+.edit-ac-capacity input, .edit-foot input { height: 44px; padding: 0 12px; color: var(--ink); background: var(--canvas); border: 1px solid var(--border-strong); border-radius: var(--r-sm); font: inherit; font-size: 16px; }
+.edit-ac-capacity input { width: 96px; }
+.edit-foot { display: flex; flex-direction: column; gap: 4px; padding-top: 12px; }
 .edit-foot form { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
-.edit-foot input { max-width: 34vw; padding: 6px; color: var(--ink); background: var(--canvas); border: 1px solid var(--hairline); border-radius: var(--r-sm); }
-.edit-foot p { min-height: 1.2em; margin: 4px 0 0; }
+.edit-foot label { display: inline-flex; align-items: center; gap: 8px; font-size: 15px; color: var(--muted); }
+.edit-foot input { max-width: 34vw; }
+.edit-foot p { min-height: 1.5em; margin: 4px 0 0; }
 @media (max-width: 640px) {
-  .building-edit { padding: 10px; }
-  .edit-layout { grid-template-columns: 46px minmax(0, 1fr); gap: 6px; }
+  .edit-layout { grid-template-columns: 52px minmax(0, 1fr); gap: 8px; }
   .edit-layout nav .pill { padding-inline: 4px; }
+  .building-edit > header .edit-actions { width: 100%; }
+  .edit-foot input { max-width: 100%; }
 }

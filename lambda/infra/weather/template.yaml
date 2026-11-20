@@ -110,7 +110,7 @@ Resources:
           Type: Schedule
           Properties:
             Schedule: rate(30 minutes)
-            Enabled: !If [RunSchedule, true, false]
+            State: !If [RunSchedule, ENABLED, DISABLED]
             RetryPolicy:
               MaximumRetryAttempts: 0
               MaximumEventAgeInSeconds: 60

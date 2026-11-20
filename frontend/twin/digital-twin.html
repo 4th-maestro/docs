@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Building Digital Twin</title>
+<title>3D 디지털트윈</title>
 <!--
   ═════════════════════════════════════════════════════════════════════════════
   도면 기반 3D 디지털 트윈 — 시각화 모듈 (iframe 임베딩용 단일 파일)
@@ -26,363 +26,415 @@
 
   postMessage
     호스트→트윈 : twin:update {data: twin.realtime/v1 스냅샷} · twin:navigate · twin:metric · twin:highlight {rooms:[id]} · twin:load
+                  {source:'maestro', type:'theme', theme:'light'|'dark'} (부모 창 메시지만 수락, 주소 theme와 같은 값. 둘 다 없으면 시스템 설정)
         twin.realtime/v1 = { time, outdoor:{temp,hum}, idus:{id:{power,mode,setTemp,roomTemp,roomHum,fan,vane,kw,error}}, meters:{building:{kw,kwhToday}},
                              wifi:{apId:접속 기기 수}, rooms:{roomId:{occupancy,temp,hum}}, trend:{date, hours:[시간 평균 스냅샷 + h, minutes]} }
     트윈→호스트 : twin:ready · twin:view · twin:alert · roomSelected {source:'twin', roomId} (4th-maestro Frontend 규약) · twin:control {room, setTemp, idus:[id]} (방 설정온도 바꾸기 → 중앙제어기로 전달)
   ═════════════════════════════════════════════════════════════════════════════
 -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/sun-typeface/SUIT@2.0.5/fonts/variable/woff2/SUIT-Variable.css">
 <style>
+  /* 디자인 토큰: 앱 src/index.css(:root, [data-theme='dark'])와 같은 값. iframe이라 앱 CSS를 불러올 수 없어 값을 맞춤
+     - 기준: DESIGN.md 운영자 화면 기준(본문 16px, 보조 14px 이상, 누름 영역 44px), docs/human/reference/design-system.md 6절
+     - 테마: data-theme(주소 theme 또는 앱 메시지) 우선, 없으면 시스템 설정
+     - 차트 색: 이번 값 파랑, 비교 기준 회색(앱 panels.css와 같은 값)
+     - 3D 바탕: scene-top·scene-bot은 WebGL이 읽으므로 hex로 지정(isDark는 scene-bot 명도로 판단) */
   :root{
-    --bg:#eef1f6; --panel:rgba(255,255,255,.74); --panel-solid:#ffffff; --ink:#131926; --muted:#667085;
-    --line:rgba(16,24,40,.09); --line-strong:rgba(16,24,40,.16); --accent:#3b6cff; --accent2:#8b5cf6; --accent-soft:rgba(59,108,255,.12);
-    --warn:#f2a01f; --crit:#e5484d; --ok:#22b07d;
-    --scene-top:#f6f8fc; --scene-bot:#d9e0eb; --chip:rgba(255,255,255,.94); --chip-line:rgba(16,24,40,.08);
-    --shadow:0 10px 30px -8px rgba(20,30,60,.18), 0 2px 6px rgba(20,30,60,.06); --glass-hi:rgba(255,255,255,.7);
-    --paper:#ffffff;
+    --page:#f5f5f3; --canvas:#ffffff; --surface-soft:#f7f7f7; --surface-strong:#efefed;
+    --hairline:#dddddd; --hairline-soft:#ebebeb; --border-strong:#c1c1c1;
+    --ink:#222222; --body:#3f3f3f; --muted:#6a6a6a; --on-ink:#ffffff;
+    --primary:#ff385c; --primary-fill:#e00b41; --primary-active:#b8082f;
+    --error:#c13515; --danger:#b91c1c; --ok:#15803d; --caution:#b45309;
+    --chart-cur:#2a78d6; --chart-prev:#929292;
+    --scene-top:#f7f7f7; --scene-bot:#efefed;
+    --shadow:rgba(0,0,0,.02) 0 0 0 1px, rgba(0,0,0,.04) 0 2px 6px 0, rgba(0,0,0,.1) 0 4px 8px 0;
+    --r-sm:8px; --r-md:14px; --r-full:9999px;
+    color-scheme:light;
   }
   @media (prefers-color-scheme: dark){
     :root:not([data-theme="light"]){
-      --bg:#080b12; --panel:rgba(16,21,32,.62); --panel-solid:#111725; --ink:#e9edf5; --muted:#8a94a8;
-      --line:rgba(255,255,255,.08); --line-strong:rgba(255,255,255,.16); --accent:#5b8cff; --accent-soft:rgba(91,140,255,.16);
-      --scene-top:#141c2e; --scene-bot:#05070c; --shadow:0 12px 34px -10px rgba(0,0,0,.7), 0 2px 6px rgba(0,0,0,.3); --glass-hi:rgba(255,255,255,.06);
-      --paper:#0b1220; --chip:rgba(13,19,33,.9); --chip-line:rgba(120,160,255,.22);
+      --page:#151618; --canvas:#1f2023; --surface-soft:#26282b; --surface-strong:#2e3034;
+      --hairline:#3a3c40; --hairline-soft:#303236; --border-strong:#5b5e63;
+      --ink:#e6e6e3; --body:#cfcfcb; --muted:#a2a29e; --on-ink:#151618;
+      --error:#f2856d; --danger:#f27272; --ok:#4cc27a; --caution:#e0a060;
+      --chart-cur:#3987e5; --chart-prev:#7d7d79;
+      --scene-top:#26282b; --scene-bot:#1f2023;
+      --shadow:rgba(0,0,0,.4) 0 0 0 1px, rgba(0,0,0,.3) 0 4px 8px 0;
+      color-scheme:dark;
     }
   }
   :root[data-theme="dark"]{
-    --bg:#080b12; --panel:rgba(16,21,32,.62); --panel-solid:#111725; --ink:#e9edf5; --muted:#8a94a8;
-    --line:rgba(255,255,255,.08); --line-strong:rgba(255,255,255,.16); --accent:#5b8cff; --accent-soft:rgba(91,140,255,.16);
-    --scene-top:#141c2e; --scene-bot:#05070c; --shadow:0 12px 34px -10px rgba(0,0,0,.7), 0 2px 6px rgba(0,0,0,.3); --glass-hi:rgba(255,255,255,.06);
-    --paper:#0b1220; --chip:rgba(13,19,33,.9); --chip-line:rgba(120,160,255,.22);
+    --page:#151618; --canvas:#1f2023; --surface-soft:#26282b; --surface-strong:#2e3034;
+    --hairline:#3a3c40; --hairline-soft:#303236; --border-strong:#5b5e63;
+    --ink:#e6e6e3; --body:#cfcfcb; --muted:#a2a29e; --on-ink:#151618;
+    --error:#f2856d; --danger:#f27272; --ok:#4cc27a; --caution:#e0a060;
+    --chart-cur:#3987e5; --chart-prev:#7d7d79;
+    --scene-top:#26282b; --scene-bot:#1f2023;
+    --shadow:rgba(0,0,0,.4) 0 0 0 1px, rgba(0,0,0,.3) 0 4px 8px 0;
+    color-scheme:dark;
+  }
+  /* 이전 토큰 이름: 화면 스크립트가 만드는 마크업이 사용하므로 새 토큰 별칭으로 유지
+     - accent: 선택·누를 수 있는 요소 강조(패널 안 primary 미사용 규칙에 따라 ink) */
+  :root{
+    --bg:var(--page); --panel:var(--canvas); --panel-solid:var(--canvas); --paper:var(--canvas);
+    --line:var(--hairline); --line-strong:var(--border-strong); --chip:var(--canvas); --chip-line:var(--hairline);
+    --accent:var(--ink); --accent-soft:var(--surface-soft); --warn:var(--caution); --crit:var(--danger);
   }
   *{box-sizing:border-box}
-  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
-    font:14px/1.45 Pretendard,"Pretendard Variable",system-ui,-apple-system,"Segoe UI","Malgun Gothic","Apple SD Gothic Neo",sans-serif;overflow:hidden;
-    -webkit-font-smoothing:antialiased}
+  html,body{margin:0;height:100%;background:var(--page);color:var(--ink);
+    font:16px/1.5 'SUIT Variable',SUIT,-apple-system,system-ui,sans-serif;overflow:hidden;-webkit-font-smoothing:antialiased}
   #app{position:relative;width:100%;height:100%}
-  button{font:inherit;color:inherit}
+  button{font:inherit;color:inherit;cursor:pointer}
+  button:disabled{cursor:not-allowed}
+  button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,.ftag:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
   .num{font-variant-numeric:tabular-nums}
-  .glass{background:var(--panel);border:1px solid var(--line);box-shadow:var(--shadow), inset 0 1px 0 var(--glass-hi);
-    backdrop-filter:blur(14px) saturate(1.4);-webkit-backdrop-filter:blur(14px) saturate(1.4)}
+  svg.i{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  /* 떠 있는 면: 앱 카드와 같은 면·테두리, 그림자는 떠 있는 패널용 1종(반투명·흐림 없음) */
+  .glass{background:var(--canvas);border:1px solid var(--hairline);box-shadow:var(--shadow)}
 
-  /* stage fills everything; header floats */
-  #stage{position:absolute;inset:0;overflow:hidden;background:radial-gradient(120% 90% at 50% 18%, var(--scene-top), var(--scene-bot))}
+  /* 3D 무대: 앱 3D 도면(.t3)과 같은 surface-soft 바탕 */
+  #stage{position:absolute;inset:0;overflow:hidden;background:var(--scene-bot)}
   #gl{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
   #fade{position:absolute;inset:0;background:var(--scene-bot);opacity:0;pointer-events:none;transition:opacity .28s;z-index:8}
   #fade.on{opacity:1}
 
-  /* floating header */
-  #bar{position:absolute;left:14px;right:14px;top:14px;z-index:6;display:flex;align-items:center;gap:10px;pointer-events:none;flex-wrap:wrap}
+  /* 상단 도구 줄: 높이 44px 통일, 같은 묶음 버튼은 너비 1:1, 선택은 ink 채움(앱 .pill.on) */
+  #bar{position:absolute;left:16px;right:16px;top:16px;z-index:6;display:flex;align-items:center;gap:8px;pointer-events:none;flex-wrap:wrap}
   #bar > *{pointer-events:auto}
-  #title{display:flex;align-items:center;gap:10px;border-radius:14px;padding:6px 14px 6px 6px;min-width:0}
-  #title .mark{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;flex:none;color:#fff;
-    background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:0 4px 14px -2px rgba(91,110,255,.55)}
-  #title .mark svg{width:17px;height:17px}
-  #crumbs{display:flex;align-items:center;gap:6px;font-weight:700;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.2px}
+  #title{display:flex;align-items:center;height:44px;border-radius:var(--r-full);padding:0 16px;min-width:0}
+  #crumbs{display:flex;align-items:center;gap:4px;font-size:17px;font-weight:700;min-width:0;white-space:nowrap;overflow:hidden}
   #crumbs a{color:var(--muted);text-decoration:none;cursor:pointer;font-weight:600}
-  #crumbs a:hover{color:var(--accent)}
-  #crumbs .sep{color:var(--muted);opacity:.5}
+  #crumbs a:hover{color:var(--ink);text-decoration:underline;text-underline-offset:3px}
+  #crumbs .sep{display:inline-flex;color:var(--muted)}
+  #crumbs .sep svg.i{width:16px;height:16px}
   .spacer{flex:1}
-  .icon-btn{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;cursor:pointer;flex:none;border:1px solid var(--line)}
-  .icon-btn:hover{color:var(--accent);border-color:var(--accent)}
-  .icon-btn svg{width:18px;height:18px}
-  .seg{display:flex;gap:2px;border-radius:13px;padding:4px}
-  .seg button{border:0;background:transparent;padding:6px 12px;border-radius:9px;cursor:pointer;color:var(--muted);font-weight:700;font-size:13px;white-space:nowrap;transition:color .15s, background .15s}
-  .seg button:hover{color:var(--ink)}
-  .seg button[aria-selected="true"]{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;box-shadow:0 4px 12px -3px rgba(91,110,255,.6)}
-  .tgl{display:flex;align-items:center;gap:7px;border-radius:13px;padding:9px 13px;cursor:pointer;font-weight:700;font-size:13px;color:var(--muted)}
-  .tgl svg{width:16px;height:16px}
-  .tgl:hover{color:var(--ink)}
-  .tgl[aria-pressed="true"]{color:#fff;border-color:transparent;background:linear-gradient(135deg,#1fb8c9,#3b6cff);box-shadow:0 6px 18px -4px rgba(31,184,201,.6)}
-  #live{display:flex;align-items:center;gap:7px;color:var(--muted);font-size:12px;border-radius:13px;padding:10px 13px}
-  #live .dot{width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 0 rgba(34,176,125,.6);animation:ping 2s infinite}
-  #live b{color:var(--ink);font-size:13px}
-  @keyframes ping{0%{box-shadow:0 0 0 0 rgba(34,176,125,.55)}70%{box-shadow:0 0 0 7px rgba(34,176,125,0)}100%{box-shadow:0 0 0 0 rgba(34,176,125,0)}}
+  .icon-btn{width:44px;height:44px;border-radius:var(--r-full);display:grid;place-items:center;cursor:pointer;flex:none;padding:0;color:var(--ink)}
+  .icon-btn:hover{background:var(--surface-soft)}
+  .icon-btn[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--on-ink)}
+  .seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:8px}
+  .seg.glass{background:none;border:0;box-shadow:none}
+  .seg button,.tgl{height:44px;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:0 16px;border-radius:var(--r-full);
+    border:1px solid var(--hairline);background:var(--canvas);color:var(--ink);font-size:15px;font-weight:500;white-space:nowrap;box-shadow:var(--shadow)}
+  .seg button:hover,.tgl:hover{background:var(--surface-soft)}
+  .seg button[aria-selected="true"],.tgl[aria-pressed="true"]{border-color:var(--ink);background:var(--ink);color:var(--on-ink)}
+  #live{display:flex;align-items:center;gap:8px;height:44px;color:var(--muted);font-size:14px;border-radius:var(--r-full);padding:0 16px;font-variant-numeric:tabular-nums}
+  #live .dot{width:8px;height:8px;border-radius:50%;background:var(--ok)}
+  #live b{color:var(--ink);font-size:16px;font-weight:600}
+  #live small{font-size:14px}
+  #live.stale .dot{background:var(--muted)}
+  #live.stale b{color:var(--muted)}
 
-  /* KPI cards (building) */
-  #kpis{position:absolute;left:14px;top:72px;display:flex;flex-direction:column;gap:8px;z-index:4}
-  .kpi{border-radius:14px;padding:10px 14px 10px 12px;min-width:150px;display:flex;align-items:center;gap:11px}
-  .kpi .ic{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;flex:none}
-  .kpi .ic svg{width:16px;height:16px}
-  .kpi small{display:block;font-size:11px;color:var(--muted);font-weight:600;letter-spacing:.1px}
-  .kpi b{font-size:19px;font-variant-numeric:tabular-nums;letter-spacing:-.4px;font-weight:800}
-  .kpi b i{font-style:normal;font-size:12px;color:var(--muted);font-weight:600;margin-left:2px}
-  .kpi.bad b{color:var(--crit)}
+  /* 핵심 수치 카드(건물): 앱 .kpi 구성(라벨, 값, 단위), 3D 위 겹침이라 값은 21px */
+  #kpis{position:absolute;left:16px;top:76px;display:flex;flex-direction:column;gap:8px;z-index:4}
+  .kpi{border-radius:var(--r-md);padding:10px 16px 10px 12px;min-width:172px;display:flex;align-items:center;gap:12px}
+  .kpi .ic{display:grid;place-items:center;flex:none;color:var(--muted)}
+  .kpi small{display:block;font-size:14px;color:var(--muted);font-weight:500;line-height:1.4}
+  .kpi b{font-size:21px;font-variant-numeric:tabular-nums;font-weight:700;line-height:1.25}
+  .kpi b i{font-style:normal;font-size:14px;color:var(--muted);font-weight:500;margin-left:2px}
+  .kpi.bad b{color:var(--danger)}
 
-  /* floating floor tags (building view) */
+  /* 층 이름표(건물): 3D 층 옆 고정, 층 이름은 ink 채움 칩 */
   #floorTags{position:absolute;inset:0;pointer-events:none;z-index:3}
-  .ftag{position:absolute;left:0;top:0;display:flex;align-items:center;gap:0;pointer-events:auto;cursor:pointer;opacity:0;transition:opacity .5s;will-change:transform}
-  .ftag .ln{width:34px;height:1px;background:linear-gradient(90deg,rgba(91,140,255,0),var(--accent));position:relative}
-  .ftag .ln::before{content:"";position:absolute;left:-3px;top:-3px;width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px 2px var(--accent)}
-  .ftag .bd{display:flex;align-items:center;gap:9px;padding:5px 11px 5px 5px;border-radius:11px;white-space:nowrap}
-  .ftag .fl{font-weight:900;font-size:12px;color:#fff;border-radius:7px;padding:3px 7px;background:linear-gradient(135deg,var(--accent),var(--accent2))}
-  .ftag .v{font-size:12px;font-weight:700;font-variant-numeric:tabular-nums}
-  .ftag .v i{font-style:normal;color:var(--muted);font-weight:600;margin:0 5px}
-  .ftag .sw{width:9px;height:9px;border-radius:3px;display:inline-block;margin-right:5px;vertical-align:-1px}
-  .ftag .al{width:7px;height:7px;border-radius:50%;margin-left:2px;animation:ping 1.6s infinite}
-  .ftag:hover .bd,.ftag.hot .bd{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent), var(--shadow)}
+  .ftag{position:absolute;left:0;top:0;display:flex;align-items:center;pointer-events:auto;cursor:pointer;opacity:0;transition:opacity .5s;will-change:transform}
+  .ftag .ln{width:32px;height:1px;background:var(--border-strong);position:relative}
+  .ftag .ln::before{content:"";position:absolute;left:-3px;top:-3px;width:7px;height:7px;border-radius:50%;background:var(--ink)}
+  .ftag .bd{display:flex;align-items:center;gap:8px;min-height:36px;padding:4px 12px 4px 4px;border-radius:var(--r-full);white-space:nowrap}
+  .ftag .fl{font-weight:700;font-size:14px;color:var(--on-ink);border-radius:var(--r-full);padding:2px 10px;background:var(--ink)}
+  .ftag .v{display:inline-flex;align-items:center;font-size:14px;font-weight:600;font-variant-numeric:tabular-nums}
+  .ftag .v i{font-style:normal;color:var(--muted);font-weight:500;margin:0 6px}
+  .ftag .sw{width:16px;height:12px;border-radius:2px;display:inline-block;margin-right:6px;box-shadow:inset 0 0 0 1px var(--hairline)}
+  .ftag .al{margin-left:6px}
+  .ftag .al svg.i{width:16px;height:16px}
+  .ftag:hover .bd,.ftag.hot .bd{border-color:var(--ink)}
   body:not(.v-building) #floorTags{display:none}
   #introTitle{position:absolute;left:50%;bottom:11%;transform:translateX(-50%);z-index:5;text-align:center;pointer-events:none;opacity:0;transition:opacity 1.2s, transform 1.2s}
   #introTitle.on{opacity:1;transform:translateX(-50%) translateY(-6px)}
-  #introTitle small{display:block;font-size:11px;letter-spacing:.42em;color:var(--muted);font-weight:700;margin-bottom:6px}
-  #introTitle b{font-size:30px;font-weight:900;letter-spacing:-.6px;background:linear-gradient(90deg,var(--ink),var(--accent),var(--accent2),var(--ink));background-size:300% 100%;
-    -webkit-background-clip:text;background-clip:text;color:transparent;animation:shine 3.5s linear infinite}
-  @keyframes shine{to{background-position:-300% 0}}
+  #introTitle b{font-size:28px;font-weight:700;color:var(--ink)}
   @media (max-width:760px){ .ftag .v{display:none} #introTitle b{font-size:22px} }
+  @media (max-width:480px){ #floorTags{display:none} }   /* 휴대폰: 층 이름표가 화면 밖으로 잘려 층 선택 버튼만 사용 */
 
-  /* floor picker (mobile only; desktop uses floating tags) */
+  /* 층 선택(휴대폰 전용, 데스크톱은 층 이름표) */
   @media (min-width:761px){ #floorPicker{display:none !important} }
-  #floorPicker{position:absolute;right:14px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column-reverse;gap:4px;z-index:4;border-radius:16px;padding:6px}
-  #floorPicker button{position:relative;width:50px;height:40px;border-radius:11px;border:0;background:transparent;cursor:pointer;font-weight:800;color:var(--muted);transition:all .15s}
-  #floorPicker button:hover,#floorPicker button.hot{color:#fff;background:linear-gradient(135deg,var(--accent),var(--accent2))}
-  #floorPicker .cnt{position:absolute;top:2px;right:2px;width:8px;height:8px;border-radius:50%;box-shadow:0 0 0 2px var(--panel-solid)}
+  #floorPicker{position:absolute;right:16px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column-reverse;gap:4px;z-index:4;border-radius:var(--r-md);padding:4px}
+  #floorPicker button{position:relative;min-width:52px;height:44px;border-radius:var(--r-sm);border:0;background:transparent;cursor:pointer;font-size:16px;font-weight:700;color:var(--ink)}
+  #floorPicker button:hover,#floorPicker button.hot{color:var(--on-ink);background:var(--ink)}
+  #floorPicker .cnt{position:absolute;top:4px;right:4px;width:8px;height:8px;border-radius:50%;box-shadow:0 0 0 2px var(--canvas)}
 
-  /* legend */
-  #legend{position:absolute;left:14px;bottom:14px;border-radius:14px;padding:11px 14px;z-index:4;min-width:220px}
-  #legend .t{font-size:11px;color:var(--muted);margin-bottom:7px;font-weight:700;letter-spacing:.2px}
-  #legend .bar{height:8px;border-radius:4px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.06)}
-  #legend .ticks{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:5px;font-variant-numeric:tabular-nums}
-  #legend .cats{display:flex;gap:12px;font-size:12px;flex-wrap:wrap}
+  /* 범례: 앱 .legend와 같은 5단계 견본 + 지표 이름·범위·단위 */
+  #legend{position:absolute;left:16px;bottom:16px;border-radius:var(--r-md);padding:12px 16px;z-index:4;min-width:220px;font-size:14px;color:var(--muted)}
+  #legend .t{font-size:14px;color:var(--ink);margin-bottom:6px;font-weight:600}
+  #legend .scale{display:flex;align-items:center;gap:2px;font-variant-numeric:tabular-nums}
+  #legend .scale i{width:22px;height:12px;border-radius:2px;box-shadow:inset 0 0 0 1px var(--hairline)}
+  #legend .scale span{margin-left:8px}
+  #legend .cats{display:flex;gap:6px 14px;flex-wrap:wrap}
   #legend .cats span{display:flex;align-items:center;gap:6px}
-  #legend .cats i{width:10px;height:10px;border-radius:3px;display:inline-block}
+  #legend .cats i{width:16px;height:12px;border-radius:2px;display:inline-block}
+  #legend .cats svg.i{width:16px;height:16px}
 
-  /* floor view */
-  #floorView{position:absolute;inset:0;display:none;padding:72px 14px 14px 14px;z-index:3;opacity:0;transition:opacity .55s ease}
+  /* 층 평면도 */
+  #floorView{position:absolute;inset:0;display:none;padding:76px 16px 16px 16px;z-index:3;opacity:0;transition:opacity .55s ease}
   #floorView.pre{display:flex}
   #kpis,#floorTags,#legend{transition:opacity .45s}
   body.diving #kpis, body.diving #floorTags, body.diving #legend{opacity:0;pointer-events:none}
   #floorView.pre.in{opacity:1}
   #floorView.pre:not(.in):not(.leaving) #plan .tint, #floorView.pre:not(.in):not(.leaving) #plan .chip, #floorView.pre:not(.in):not(.leaving) #plan .idu{animation:none;opacity:0}
   #floorView.leaving #plan *{animation:none !important}
-  #planBox{flex:1;min-width:0;position:relative;border-radius:20px;overflow:hidden;display:flex;flex-direction:column}
-  #planWrap{flex:1;min-height:0;margin:0 12px;border-radius:14px;background:var(--paper);box-shadow:inset 0 0 0 1px rgba(16,24,40,.06);overflow:hidden;position:relative}
+  #planBox{flex:1;min-width:0;position:relative;border-radius:var(--r-md);overflow:hidden;display:flex;flex-direction:column}
+  #planWrap{flex:1;min-height:0;margin:0 12px;border-radius:var(--r-sm);background:var(--paper);box-shadow:inset 0 0 0 1px var(--hairline);overflow:hidden;position:relative}
   #plan{width:100%;height:100%;display:block}
-  body.dk #planWrap{box-shadow:inset 0 0 0 1px rgba(120,160,255,.14), inset 0 0 60px rgba(40,80,200,.12)}
-  body.dk #plan .tint{mix-blend-mode:normal;fill-opacity:.2;stroke:var(--c);stroke-opacity:.9;stroke-width:3.5;filter:drop-shadow(0 0 6px var(--c))}
-  body.dk #plan .tint:hover{fill-opacity:.34;stroke:var(--accent)}
-  body.dk #plan .tint.hl{stroke:var(--accent)}
-  body.dk #plan .chip rect{filter:drop-shadow(0 2px 6px rgba(0,0,0,.5))}
-  #plan .tint{mix-blend-mode:multiply;fill-opacity:.55;cursor:pointer;transition:fill .6s ease, fill-opacity .2s;stroke:transparent;stroke-width:5}
-  #plan .tint:hover{fill-opacity:.78;stroke:var(--accent)}
-  #plan .tint.hl{stroke:var(--accent);stroke-width:8;animation:hl 1s ease-in-out infinite}
-  @keyframes hl{50%{stroke-opacity:.25}}
+  body.dk #plan .tint{mix-blend-mode:normal;fill-opacity:.24;stroke:var(--c);stroke-opacity:.9;stroke-width:3.5}
+  body.dk #plan .tint:hover{fill-opacity:.36;stroke:var(--ink)}
+  #plan .tint{mix-blend-mode:multiply;fill-opacity:.6;cursor:pointer;transition:fill .6s ease, fill-opacity .2s;stroke:transparent;stroke-width:5}
+  #plan .tint:hover{fill-opacity:.78;stroke:var(--ink)}
+  /* 강조 호실: 선택 객체 규칙(디자인 시스템 표 6.1)대로 primary 외곽선, 깜빡임 없음 */
+  #plan .tint.hl, body.dk #plan .tint.hl{stroke:var(--primary);stroke-opacity:1;stroke-width:8}
   @keyframes tintIn{from{opacity:0}}
-  #plan.intro .tint, #plan.intro .chip, #plan.intro .idu{animation:tintIn .7s ease-out backwards}   /* 건물 → 층으로 들어올 때만 */
+  #plan.intro .tint, #plan.intro .chip, #plan.intro .idu{animation:tintIn .7s ease-out backwards}   /* 건물 → 층으로 들어올 때 1회 */
   #plan .chip{pointer-events:none}
-  #plan .chip rect{fill:var(--chip);stroke:var(--chip-line);filter:drop-shadow(0 2px 4px rgba(16,24,40,.12))}
-  #plan .chip text{font:700 19px Pretendard,system-ui,"Malgun Gothic",sans-serif;fill:var(--ink)}
+  #plan .chip rect{fill:var(--canvas);stroke:var(--hairline)}
+  #plan .chip text{font:700 19px 'SUIT Variable',SUIT,system-ui,sans-serif;fill:var(--ink)}
   #plan .chip .dim{fill:var(--muted);font-weight:500}
   #plan .badge{pointer-events:none}
-  #plan .badge circle{animation:pulse 1.4s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
-  #plan .badge text{font:800 18px system-ui;fill:#fff}
-  #plan .idu{pointer-events:none}
-  @keyframes pulse{50%{transform:scale(1.25);opacity:.75}}
+  #plan .badge text{font:800 18px 'SUIT Variable',SUIT,system-ui,sans-serif;fill:var(--canvas)}
+  #plan .idu{pointer-events:none;stroke:var(--canvas)}
   #floorStats{display:flex;gap:8px;padding:12px;flex-wrap:wrap}
-  #floorStats div{flex:1;min-width:110px;border-radius:12px;padding:8px 12px;background:var(--accent-soft);font-size:11px;color:var(--muted);font-weight:600}
-  #floorStats b{display:block;font-size:17px;color:var(--ink);font-variant-numeric:tabular-nums;font-weight:800;letter-spacing:-.3px}
-  #floorStats b i{font-style:normal;font-size:11px;color:var(--muted);font-weight:600;margin-left:2px}
-  #floorTabs{display:flex;gap:4px;padding:12px 12px 10px;min-height:62px;align-items:center}
-  #floorTabs{overflow-x:auto}
-  #floorTabs button{flex:none;border:1px solid var(--line);background:transparent;border-radius:10px;padding:5px 13px;font-weight:800;font-size:13px;color:var(--muted);cursor:pointer}
-  #floorTabs button:hover{color:var(--ink);border-color:var(--line-strong)}
-  #floorTabs button[aria-selected="true"]{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border-color:transparent}
+  #floorStats div{flex:1;min-width:120px;border-radius:var(--r-sm);padding:8px 12px;background:var(--surface-soft);font-size:14px;color:var(--muted);font-weight:500}
+  #floorStats b{display:block;font-size:21px;color:var(--ink);font-variant-numeric:tabular-nums;font-weight:700;line-height:1.25}
+  #floorStats b i{font-style:normal;font-size:14px;color:var(--muted);font-weight:500;margin-left:2px}
+  #floorTabs{display:flex;gap:8px;padding:12px;align-items:center;overflow-x:auto}
+  #floorTabs button{flex:none;min-width:64px;height:44px;border:1px solid var(--hairline);background:var(--canvas);border-radius:var(--r-full);padding:0 16px;font-size:16px;font-weight:600;color:var(--ink);cursor:pointer}
+  #floorTabs button:hover{background:var(--surface-soft)}
+  #floorTabs button[aria-selected="true"]{background:var(--ink);color:var(--on-ink);border-color:var(--ink)}
 
-  /* tooltip */
-  #tip{position:absolute;pointer-events:none;border-radius:12px;padding:10px 12px;font-size:12px;z-index:7;display:none;min-width:180px;background:var(--panel-solid)}
-  #tip b{font-size:13px;display:block;margin-bottom:4px}
-  #tip .row{display:flex;justify-content:space-between;gap:14px;color:var(--muted);line-height:1.7}
-  #tip .row span:last-child{color:var(--ink);font-variant-numeric:tabular-nums;font-weight:700}
-  #tip .al{margin-top:5px;font-weight:700}
+  /* 툴팁: 앱 3D 도면 툴팁(.t3-tip)과 같은 면 */
+  #tip{position:absolute;pointer-events:none;border-radius:var(--r-sm);padding:10px 12px;font-size:14px;line-height:1.5;z-index:7;display:none;min-width:200px}
+  #tip b{font-size:15px;font-weight:600;display:block;margin-bottom:4px}
+  #tip .row{display:flex;justify-content:space-between;gap:16px;color:var(--body)}
+  #tip .row span:last-child{color:var(--ink);font-variant-numeric:tabular-nums;font-weight:600}
+  #tip .al{display:flex;align-items:center;gap:6px;margin-top:4px;font-weight:600}
+  #tip .al svg.i{width:16px;height:16px}
 
-  /* room view */
-  #roomBack,#infoBtn{position:absolute;top:14px;z-index:6;display:none}
-  #roomBack{left:14px}
-  #infoBtn{left:62px}
-  #infoBtn[aria-pressed="true"]{color:#fff;background:linear-gradient(135deg,var(--accent),var(--accent2));border-color:transparent}
-  #roomTitle{position:absolute;top:14px;left:110px;z-index:6;display:none;border-radius:13px;padding:6px 14px;flex-direction:column;justify-content:center;height:42px}
-  #roomTitle b{font-size:14px;letter-spacing:-.2px;line-height:1.2}
-  #roomTitle small{font-size:11px;color:var(--muted);font-weight:600}
-  #roomLegend{position:absolute;left:14px;bottom:14px;z-index:4;display:none;flex-direction:column;gap:9px;border-radius:14px;padding:12px 14px}
-  #roomLegend div{display:flex;align-items:center;gap:9px}
-  #roomLegend svg{width:18px;height:18px;flex:none}
-  #roomLegend .g{width:120px;height:8px;border-radius:4px}
-  #roomLegend .g.hum{position:relative;background:rgba(255,255,255,.1)}
+  /* 방 3D */
+  #roomBack,#infoBtn{position:absolute;top:16px;z-index:6;display:none}
+  #roomBack{left:16px}
+  #infoBtn{left:68px}
+  #roomTitle{position:absolute;top:16px;left:120px;z-index:6;display:none;border-radius:var(--r-md);padding:4px 16px;flex-direction:column;justify-content:center;min-height:44px;max-width:calc(100% - 136px)}
+  #roomTitle b{font-size:16px;font-weight:700;line-height:1.3}
+  #roomTitle small{font-size:14px;color:var(--muted);font-weight:500}
+  #roomLegend{position:absolute;left:16px;bottom:16px;z-index:4;display:none;flex-direction:column;gap:8px;border-radius:var(--r-md);padding:12px 16px;font-size:14px;color:var(--muted)}
+  #roomLegend > div{display:flex;align-items:center;gap:8px}
+  #roomLegend > div > svg.i{color:var(--ink)}
+  #roomLegend .g{width:120px;height:12px;border-radius:2px;flex:none}
+  #roomLegend .g.hum{position:relative;background:var(--surface-strong)}
   #roomLegend .g.hum i{position:absolute;top:-3px;bottom:-3px;width:3px;margin-left:-1.5px;border-radius:2px;background:var(--ink);z-index:1;transition:left .6s}
-  #roomLegend .g.hum::after{content:'';position:absolute;left:40%;width:20%;top:0;bottom:0;border-radius:4px;background:rgba(34,176,125,.55)}
-  #roomLegend small.rh{font-size:11px;color:var(--muted);font-weight:700;font-variant-numeric:tabular-nums}
-  #roomLegend .dots{display:flex;gap:10px;align-items:center}
-  #roomLegend .dots svg{width:10px;height:10px}
-  #inspector{position:absolute;right:14px;top:14px;bottom:14px;width:320px;z-index:6;border-radius:18px;display:none;flex-direction:column;overflow:auto;padding:16px}
+  #roomLegend .g.hum::after{content:'';position:absolute;left:40%;width:20%;top:0;bottom:0;background:color-mix(in srgb,var(--ok) 55%,transparent)}
+  #roomLegend small{font-size:14px;color:var(--muted);font-variant-numeric:tabular-nums}
+  #roomLegend .dots{display:flex;gap:6px;align-items:center}
+  #roomLegend .dots i{width:10px;height:10px;border-radius:50%;margin-left:4px}
+  #roomLegend .dots i:first-child{margin-left:0}
+  #inspector{position:absolute;right:16px;top:16px;bottom:16px;width:340px;z-index:6;border-radius:var(--r-md);display:none;flex-direction:column;overflow:auto;padding:16px}
   #inspector.open{display:flex}
-  #inspector h2{margin:0;font-size:18px;letter-spacing:-.3px}
-  #inspector .sub{color:var(--muted);font-size:12px;margin-bottom:12px}
+  #inspector h2{margin:0;font-size:21px;font-weight:700;line-height:1.3}
+  #inspector .head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:12px}
+  #inspector .sub{color:var(--muted);font-size:14px}
   #inspector .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px}
-  #inspector .grid > div{background:var(--accent-soft);border-radius:12px;padding:9px 11px;font-size:11px;color:var(--muted);font-weight:600}
-  #inspector .grid b{display:block;font-size:19px;color:var(--ink);font-variant-numeric:tabular-nums;font-weight:800;letter-spacing:-.4px}
-  #inspector .grid b span{font-size:11px;color:var(--muted);font-weight:600}
-  #inspector .meter{height:6px;border-radius:3px;background:var(--line);overflow:hidden;margin-top:6px}
-  #inspector .meter i{display:block;height:100%;border-radius:3px}
-  #inspector h3{font-size:12px;color:var(--muted);margin:14px 0 6px;font-weight:700;display:flex;justify-content:space-between;align-items:center}
-  #inspWi .wi{display:grid;grid-template-columns:1fr auto;gap:6px 10px;align-items:center;font-size:12px;color:var(--muted);font-weight:600}
-  #inspWi .wi output{color:var(--ink);font-weight:800;font-variant-numeric:tabular-nums}
-  #inspWi .wi input[type=range]{width:100%;accent-color:#3b6cff}
-  #inspWi .btns{display:flex;gap:6px;grid-column:1 / -1}
-  #inspWi button{flex:1;font:inherit;font-weight:800;padding:7px 8px;border-radius:10px;border:0;background:#3b6cff;color:#fff;cursor:pointer}
-  #inspWi button.ghost{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1px var(--line)}
-  #inspWi button:disabled{opacity:.55;cursor:default}
-  #inspWi .res{font-size:11.5px;color:var(--muted);margin-top:8px;line-height:1.5}
+  #inspector .grid > div{background:var(--surface-soft);border-radius:var(--r-sm);padding:8px 12px;font-size:14px;color:var(--muted);font-weight:500}
+  #inspector .grid b{display:block;font-size:21px;color:var(--ink);font-variant-numeric:tabular-nums;font-weight:700;line-height:1.3}
+  #inspector .grid b.sm{font-size:16px}
+  #inspector .grid b span{font-size:14px;color:var(--muted);font-weight:500}
+  #inspector .meter{height:8px;border-radius:var(--r-full);background:var(--surface-strong);overflow:hidden;margin-top:6px}
+  #inspector .meter i{display:block;height:100%;border-radius:var(--r-full)}
+  #inspector .zone{position:relative;height:12px;border-radius:2px;overflow:visible}
+  #inspector .zone i{position:absolute;top:-2px;bottom:-2px;background:transparent;box-shadow:0 0 0 2px var(--ink);border-radius:2px}
+  #inspector .note{margin-top:4px;font-size:14px;color:var(--muted)}
+  #inspector h3{font-size:16px;font-weight:600;color:var(--ink);margin:16px 0 8px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+  #inspector h3 .num{font-size:14px;font-weight:500;color:var(--muted)}
+  #inspector .alert-line{display:flex;align-items:center;gap:6px;font-weight:600;font-size:15px;margin-bottom:4px}
+  #inspector .who{padding:8px 12px;border-radius:var(--r-sm);margin-bottom:8px;border:1px solid var(--hairline)}
+  #inspector .who.on{border:2px solid var(--ink);padding:7px 11px}
+  #inspector .who-p{font-size:14px;font-weight:600;color:var(--muted)}
+  #inspector .who-t{font-weight:600;font-size:16px}
+  #inspector .who-d{font-size:14px;color:var(--body);margin:2px 0 6px}
+  #inspWi .wi{display:grid;grid-template-columns:1fr auto;gap:8px 12px;align-items:center;font-size:14px;color:var(--muted);font-weight:500}
+  #inspWi .wi output{color:var(--ink);font-size:16px;font-weight:700;font-variant-numeric:tabular-nums}
+  #inspWi .wi input[type=range]{width:100%;height:44px;accent-color:var(--ink)}
+  /* 패널 버튼: 앱 .pn-btn(높이 44, 같은 줄 너비 1:1), 채운 버튼은 ink 1종(패널 안 primary 미사용) */
+  #inspWi .btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;grid-column:1 / -1}
+  #inspWi button,#actions .simf button{height:44px;padding:0 12px;border-radius:var(--r-sm);border:1px solid var(--ink);background:var(--ink);color:var(--on-ink);font-size:16px;font-weight:600}
+  #inspWi button.ghost{background:var(--canvas);color:var(--ink)}
+  #inspWi button.ghost:hover{background:var(--surface-soft)}
+  #inspWi button:disabled,#actions .simf button:disabled{border-color:var(--border-strong);background:var(--surface-strong);color:var(--muted)}
+  #inspWi .res{font-size:15px;color:var(--body);margin-top:8px;line-height:1.5}
   #inspWi .res b{color:var(--ink)}
-  #inspWi .res .up{color:var(--crit)} #inspWi .res .dn{color:#22b07d}
-  #inspWi svg{width:100%;height:92px;display:block;margin-top:6px}
-  #inspWi .msg{font-size:11px;margin-top:6px;color:var(--muted)}
-  .idu-row{display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid var(--line);font-size:12px}
+  #inspWi .res .up{color:var(--danger)} #inspWi .res .dn{color:var(--ok)}
+  #inspWi svg.chart{width:100%;height:auto;display:block;margin-top:8px;font-family:inherit}
+  #inspWi .key{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:4px;font-size:14px;color:var(--muted)}
+  #inspWi .key span{display:inline-flex;align-items:center;gap:6px}
+  #inspWi .key i{display:inline-block;width:16px;height:2px}
+  #inspWi .key i.prev{background:var(--chart-prev)}
+  #inspWi .key i.cur{height:3px;background:var(--chart-cur)}
+  #inspWi .key i.busy{height:12px;background:color-mix(in srgb,var(--ink) 10%,transparent)}
+  .msg{font-size:14px;margin-top:6px;color:var(--muted)}
+  .msg.pad{padding:0 16px}
+  .msg.err{display:flex;align-items:flex-start;gap:6px;color:var(--error);font-weight:600}
+  .msg.err svg.i{width:16px;height:16px;margin-top:3px}
+  .idu-row{display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--hairline-soft);font-size:14px}
   .idu-row .tx{flex:1;min-width:0}
-  .idu-row b{display:block;font-size:12px}
-  .idu-row span{color:var(--muted);font-size:11px}
-  .pill{font-size:11px;font-weight:800;border-radius:999px;padding:2px 9px;color:#fff;min-width:42px;text-align:center}
-  .icon-btn.sm{width:30px;height:30px;border-radius:9px;background:transparent}
+  .idu-row b{display:block;font-size:15px;font-weight:600}
+  .idu-row span:not(.pill){color:var(--muted);font-size:14px}
+  /* 실내기 상태 배지: 색과 글자(ON, OFF, 고장) 병행 */
+  .pill{font-size:14px;font-weight:600;border-radius:var(--r-full);padding:2px 10px;color:var(--canvas);min-width:52px;text-align:center}
+  .icon-btn.sm{background:transparent;border:0;box-shadow:none}
 
   body.v-room #bar{display:none}
-  #roomTools{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);z-index:6;display:none}
-  #roomTools button{display:flex;align-items:center;gap:6px}
-  #roomTools svg{width:15px;height:15px}
-  #roomLegend .wind{width:120px;height:8px;border-radius:4px;background:linear-gradient(90deg,#e6fbff,#7fdcff 30%,rgba(127,220,255,0))}
+  #roomTools{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);z-index:6;display:none}
+  #roomTools svg.i{width:18px;height:18px}
+  #roomLegend .wind{width:120px;height:12px;border-radius:2px;flex:none;background:linear-gradient(90deg,var(--chart-cur),color-mix(in srgb,var(--chart-cur) 0%,transparent))}
   body.v-room #roomBack, body.v-room #infoBtn{display:grid}
-  body.v-room #roomLegend, body.v-room #roomTitle, body.v-room #roomTools{display:flex}
+  body.v-room #roomLegend, body.v-room #roomTitle{display:flex}
+  body.v-room #roomTools{display:grid}
   body.v-room #legend{display:none}
   body.v-floor #floorView{display:flex;opacity:1}
   body:not(.v-building) #floorPicker, body:not(.v-building) #kpis{display:none}
   body.v-building #back{display:none}
   body:not(.v-building) #pipesBtn{display:none}
-  body.v-floor #legend{left:auto;right:28px;top:84px;bottom:auto;min-width:0;width:230px;padding:7px 12px;box-shadow:none;background:transparent;border-color:transparent;backdrop-filter:none}
-  body.v-floor #legend .t{margin-bottom:4px}
+  body.v-floor #legend{left:auto;right:400px;top:148px;bottom:auto;min-width:0;padding:8px 12px}
 
   @media (max-width:760px){
-    #bar{gap:6px}
+    #bar{gap:8px;left:12px;right:12px;top:12px}
     #metrics{order:5;width:100%}
-    #metrics button{flex:1;padding:6px 4px}
+    #metrics button{padding:0 4px}
     #live{display:none}
-    #floorView{padding:120px 10px 10px}
-    #floorPicker{top:auto;bottom:14px;right:12px;transform:none;flex-direction:row-reverse;max-width:calc(100% - 24px);overflow-x:auto}
-    #floorPicker button{width:40px;height:34px}
-    #kpis{top:auto;bottom:70px;flex-direction:row;flex-wrap:wrap;right:14px}
-    .kpi{min-width:0;padding:7px 10px}.kpi .ic{display:none}.kpi b{font-size:15px}
+    #floorView{padding:176px 8px 8px}
+    #floorPicker{top:auto;bottom:16px;right:12px;transform:none;flex-direction:row-reverse;max-width:calc(100% - 24px);overflow-x:auto}
+    #kpis{top:auto;bottom:76px;flex-direction:row;flex-wrap:wrap;left:12px;right:12px}
+    .kpi{min-width:0;padding:6px 12px}.kpi .ic{display:none}.kpi b{font-size:17px}
     #legend{display:none}
     #inspector{left:8px;right:8px;width:auto;top:auto;height:62%;bottom:8px}
     #roomTitle{display:none !important}
+    #roomTools button{padding:0 8px;font-size:14px}
   }
-  @media (prefers-reduced-motion: reduce){ #plan .badge circle,#live .dot,#plan .tint.hl{animation:none} }
-  /* 대시보드(에게) 안에 들어가 있을 때: 연동 표시 칩 — 대시보드 버튼을 누르면 '대시보드 → 2F · 전력'이 잠깐 빛남 */
-  #hostLink{position:absolute;right:12px;bottom:12px;z-index:9;display:none;align-items:center;gap:7px;padding:7px 11px;border-radius:999px;font-size:11.5px;font-weight:700;color:var(--muted);pointer-events:none;transition:box-shadow .3s,color .3s}
+  @media (prefers-reduced-motion: reduce){ #plan .tint, #fade, #introTitle, .ftag{transition:none} #plan.intro .tint, #plan.intro .chip, #plan.intro .idu{animation:none} }
+  /* 앱 안에 임베드된 상태: 연동 상태 칩(오른쪽 아래). 앱에서 바꾼 값은 1.8초 외곽선 표시 후 원래대로(반복 없음) */
+  /* 위치: 아래 가운데(오른쪽 아래 정보 패널, 왼쪽 아래 범례와 겹치지 않음), 방 보기는 보기 도구 위, 층 보기는 평면 패널 아래 여백 */
+  #hostLink{position:absolute;left:50%;transform:translateX(-50%);bottom:16px;white-space:nowrap;z-index:9;display:none;align-items:center;gap:8px;min-height:36px;padding:4px 14px;border-radius:var(--r-full);font-size:14px;font-weight:500;color:var(--muted);pointer-events:none;transition:box-shadow .3s,color .3s}
   body.hosted #hostLink{display:flex}
-  body.hosted #metrics{display:none}      /* 지표 버튼은 대시보드 패널의 것(온도·전력·습도·이상 감지)을 씀 */
-  #hostLink .dot{width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 0 rgba(59,108,255,.6);animation:ping 2s infinite}
-  #hostLink b{color:var(--ink)}
-  #hostLink.flash{color:var(--ink);box-shadow:0 0 0 2px var(--accent),0 8px 24px -6px rgba(59,108,255,.55)}
-  /* 대시보드가 바꾼 버튼: 잠깐 강조 */
+  body.v-room #hostLink{bottom:76px}
+  body.hosted.v-floor #floorView{padding-bottom:64px}
+  body.hosted #metrics{display:none}      /* 지표 버튼은 앱 패널의 것(온도·전력·습도·이상 감지)을 사용 */
+  /* 앱 안 좁은 화면: 층 선택은 앱 왼쪽 층 목록을 사용, 지표 줄이 없어 평면도 위 여백 축소 */
+  @media (max-width:760px){ body.hosted #floorPicker{display:none !important} body.hosted #floorView{padding-top:76px} }
+  @media (max-width:480px){ body.hosted #floorView{padding-top:128px} }
+  #hostLink .dot{width:8px;height:8px;border-radius:50%;background:var(--ok)}
+  #hostLink b{color:var(--ink);font-weight:600}
+  #hostLink.flash{color:var(--ink);box-shadow:0 0 0 2px var(--ink),var(--shadow)}
   .hostPing{animation:hostPing 1.1s ease-out}
-  @keyframes hostPing{0%{box-shadow:0 0 0 0 rgba(59,108,255,.75)}100%{box-shadow:0 0 0 10px rgba(59,108,255,0)}}
-  @media (prefers-reduced-motion: reduce){ #hostLink .dot,.hostPing{animation:none} }
-  /* persona + actions + data flow */
-  #persona button{display:flex;align-items:center;gap:6px}
-  @media (max-width:1180px){ .tgl{font-size:0;gap:0;padding:9px 11px} #persona button{padding:6px 9px} #persona button span{font-size:12px} }
+  @keyframes hostPing{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--ink) 60%,transparent)}100%{box-shadow:0 0 0 10px color-mix(in srgb,var(--ink) 0%,transparent)}}
+  @media (prefers-reduced-motion: reduce){ .hostPing{animation:none} }
+
+  /* 보는 사람 버튼, 오른쪽 아래 정보 패널 */
+  /* 도구 버튼 글자: 한 줄에 다 들어가지 않는 1600px 이하에서는 아이콘만(이름은 title) */
+  @media (max-width:1600px){ .tgl{font-size:0;gap:0;width:44px;padding:0} .tgl svg.i{width:20px;height:20px} }
+  @media (max-width:1180px){ #persona button{padding:0 12px} }
   @media (max-width:960px){ #persona button span{display:none} }
-  #persona button svg{width:15px;height:15px}
-  #actions{position:absolute;right:14px;bottom:14px;width:318px;max-height:min(48%,440px);z-index:5;border-radius:18px;display:flex;flex-direction:column;overflow:hidden;transition:opacity .45s}
-  body.v-floor #actions{top:72px;max-height:none}
+  #actions{position:absolute;right:16px;bottom:16px;width:340px;max-height:min(52%,460px);z-index:5;border-radius:var(--r-md);display:flex;flex-direction:column;overflow:auto;transition:opacity .45s}
+  body.v-floor #actions{top:76px;max-height:none}
   body.v-room #actions, body.diving #actions{opacity:0;pointer-events:none}
   body.v-room #actions{display:none}
   body.hosted #persona button[data-p="sim"]{display:none}
-  @media (min-width:761px){ #floorView{padding-right:344px} }
+  @media (min-width:761px){ #floorView{padding-right:372px} }
   @media (max-width:760px){ #actions{display:none} #persona button span{display:none} }
-  #actions .hd{padding:13px 15px 10px;border-bottom:1px solid var(--line)}
-  #actions .hd small{display:block;font-size:11px;color:var(--muted);font-weight:700;letter-spacing:.3px}
-  #actions .hd b{font-size:15px;letter-spacing:-.3px}
-  #actions .hd .why{font-size:11.5px;color:var(--muted);margin-top:3px}
-  #actions .simf{padding:10px 12px 4px;display:grid;gap:8px;font-size:12px;color:var(--muted)}
-  #actions .simf .base{font-size:11.5px}
-  #actions .simf label{display:grid;gap:4px;font-weight:600}
-  #actions .simf label output{float:right;color:var(--ink,inherit);font-weight:800}
+  #actions .hd{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 16px;border-bottom:1px solid var(--hairline)}
+  #actions .hd b{font-size:17px;font-weight:700;line-height:1.3}
+  .tag{display:inline-block;flex:none;padding:2px 8px;border-radius:var(--r-full);background:var(--surface-strong);font-size:14px;font-weight:600;color:var(--muted);white-space:nowrap}
+  #actions .simf{padding:12px 16px 4px;display:grid;gap:8px;font-size:14px;color:var(--muted)}
+  #actions .simf .base{font-size:14px;color:var(--body)}
+  #actions .simf label{display:grid;gap:4px;font-weight:500}
+  #actions .simf label output{float:right;color:var(--ink);font-weight:700;font-size:16px}
   #actions .simf .two{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:end}
-  #actions .simf .chk{display:flex;align-items:center;gap:6px}
-  #actions .simf input[type=time], #actions .simf select{font:inherit;padding:4px 6px;border-radius:8px;border:1px solid var(--line);background:transparent;color:inherit}
-  #actions .simf button{font:inherit;font-weight:800;padding:8px;border-radius:10px;border:0;background:#3b6cff;color:#fff;cursor:pointer}
-  #actions .simf button:disabled{opacity:.6;cursor:wait}
-  #actions .simf .msg{font-size:11px}
-  #actions .simt{margin:6px 12px;border-collapse:collapse;font-size:11.5px;width:calc(100% - 24px)}
-  #actions .simt th, #actions .simt td{padding:3px 4px;text-align:right;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
-  #actions .simt th:first-child{text-align:left;font-weight:600;color:var(--muted)}
-  #actions .simt thead th{font-size:11px}
-  #actions .simt thead small{display:block;font-weight:500;color:var(--muted);font-size:10px}
-  #actions .simt td.up{color:#36c08a;font-weight:800} #actions .simt td.dn{color:var(--crit);font-weight:800}
-  #actions .empty{padding:14px}
-  #actions .hero{margin:10px 12px 2px;padding:10px 12px;border-radius:12px;background:linear-gradient(135deg,rgba(34,176,125,.18),rgba(59,108,255,.12));font-size:12px;color:var(--muted)}
-  #actions .hero b{display:block;font-size:20px;color:var(--ink);letter-spacing:-.4px;font-variant-numeric:tabular-nums}
-  #actions .list{overflow:auto;padding:6px 8px 4px;flex:1}
-  #actions .it{display:block;width:100%;text-align:left;border:0;background:transparent;color:inherit;font:inherit;border-radius:12px;padding:9px 9px 9px 10px;cursor:pointer;position:relative}
-  #actions .it:hover{background:var(--accent-soft)}
-  #actions .it .t{display:flex;align-items:center;gap:7px;font-weight:800;font-size:13px}
-  #actions .it .t i{width:8px;height:8px;border-radius:50%;flex:none}
-  #actions .it .t em{margin-left:auto;font-style:normal;font-size:10.5px;color:var(--muted);font-weight:700;background:var(--line);padding:1px 6px;border-radius:6px}
-  #actions .it .d{font-size:11.5px;color:var(--muted);margin:3px 0 5px 15px;line-height:1.45}
+  #actions .simf .chk{display:flex;align-items:center;gap:8px;min-height:44px}
+  #actions .simf .chk input{width:20px;height:20px;accent-color:var(--ink)}
+  #actions .simf input[type=range]{height:32px;accent-color:var(--ink)}
+  #actions .simf input[type=time], #actions .simf select{font:inherit;font-size:16px;height:44px;padding:0 8px;border-radius:var(--r-sm);border:1px solid var(--border-strong);background:var(--canvas);color:var(--ink)}
+  #actions .simt{margin:8px 16px;border-collapse:collapse;font-size:15px;width:calc(100% - 32px)}
+  #actions .simt th, #actions .simt td{padding:6px 4px;text-align:right;border-bottom:1px solid var(--hairline-soft);font-variant-numeric:tabular-nums}
+  #actions .simt th:first-child{text-align:left;font-weight:500;color:var(--muted)}
+  #actions .simt thead th{font-size:14px;font-weight:600;border-bottom-color:var(--hairline)}
+  #actions .simt thead small{display:block;font-weight:500;color:var(--muted);font-size:14px}
+  #actions .simt td.up{color:var(--ok);font-weight:700} #actions .simt td.dn{color:var(--danger);font-weight:700}
+  #actions .hero{margin:12px 16px 4px;padding:12px;border-radius:var(--r-sm);background:var(--surface-soft);font-size:14px;color:var(--muted)}
+  #actions .hero b{display:block;font-size:21px;font-weight:700;color:var(--ink);line-height:1.3;font-variant-numeric:tabular-nums}
+  #actions .hero b.inline{display:inline;font-size:inherit}
+  #actions .list{overflow:auto;padding:4px 8px;flex:1;min-height:120px}
+  #actions .it{display:block;width:100%;min-height:44px;text-align:left;border:0;background:transparent;color:inherit;font:inherit;border-radius:var(--r-sm);padding:8px;cursor:pointer;position:relative}
+  #actions .it + .it{border-top:1px solid var(--hairline-soft)}
+  #actions .it:hover{background:var(--surface-soft)}
+  #actions .it .t{display:flex;align-items:center;gap:8px;font-weight:600;font-size:16px;line-height:1.4}
+  #actions .it .t svg.i{width:18px;height:18px}
+  #actions .it .t em{margin-left:auto;font-style:normal;font-size:14px;color:var(--muted);font-weight:600;background:var(--surface-strong);padding:0 8px;border-radius:var(--r-full)}
+  #actions .it .d{font-size:14px;color:var(--body);margin:4px 0 6px 26px;line-height:1.5}
   #actions .it .d b{color:var(--ink)}
-  .srcs{display:flex;flex-wrap:wrap;gap:4px;margin-left:15px}
-  .src{font-size:10px;font-weight:700;padding:2px 6px;border-radius:6px;background:color-mix(in srgb,var(--c) 18%,transparent);color:var(--c);white-space:nowrap}
-  #actions .empty{padding:18px 14px;color:var(--muted);font-size:12.5px;text-align:center}
-  #actions .ft{border-top:1px solid var(--line);padding:8px 12px;display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--muted)}
-  #actions .ft button{border:0;background:transparent;color:var(--accent);font-weight:800;font-size:12px;cursor:pointer;padding:4px 2px}
-  #live small#wx{margin-left:8px;color:var(--muted);font-weight:700}
-  @media (max-width:1320px){ #live small#wx{display:none} }
+  .srcs{display:flex;flex-wrap:wrap;gap:4px;margin-left:26px}
+  #inspector .srcs{margin-left:0}
+  .src{font-size:14px;font-weight:500;padding:0 8px;border-radius:var(--r-full);background:var(--surface-strong);color:var(--body);white-space:nowrap}
+  #actions .empty{display:flex;align-items:center;justify-content:center;gap:6px;padding:16px;color:var(--muted);font-size:15px;text-align:left}
+  #actions .ft{border-top:1px solid var(--hairline);padding:4px 8px 4px 16px;display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:14px;color:var(--muted)}
+  #actions .ft span{display:inline-flex;align-items:center;gap:6px}
+  #actions .ft svg.i{width:16px;height:16px}
+  #actions .ft button{display:inline-flex;align-items:center;gap:2px;min-height:44px;border:0;background:transparent;color:var(--ink);font-weight:600;font-size:15px;cursor:pointer;padding:0 8px;border-radius:var(--r-sm)}
+  #actions .ft button:hover{background:var(--surface-soft)}
+  #live small#wx{margin-left:4px}
+  @media (max-width:1440px){ #live small#wx{display:none} }
   @media (max-width:1060px){ #speedLbl{display:none} }
-  #live.stale .dot{background:#8a94a6 !important;box-shadow:none !important;animation:none !important}
-  .org{display:inline-block;font-size:9.5px;font-weight:800;padding:1px 5px;border-radius:5px;margin-right:6px;vertical-align:1px;letter-spacing:.2px}
-  .org.co{background:rgba(91,140,255,.18);color:#7fa6ff}
-  .org.pub{background:rgba(34,176,125,.18);color:#3cc995}
-  #dataPanel{position:absolute;right:14px;top:70px;width:min(460px,calc(100% - 28px));max-height:calc(100% - 84px);z-index:8;border-radius:20px;display:none;padding:16px 16px 14px;overflow:auto}
+  /* 데이터 출처 구분: 글자(회사, 공공, 계산)로 구분하고 색은 쓰지 않음 */
+  .org{display:inline-block;flex:none;font-size:14px;font-weight:600;padding:0 8px;border-radius:var(--r-full);margin-right:8px;background:var(--surface-strong);color:var(--muted)}
+  #dataPanel{position:absolute;right:16px;top:76px;width:min(480px,calc(100% - 32px));max-height:calc(100% - 92px);z-index:8;border-radius:var(--r-md);display:none;padding:16px;overflow:auto}
   #dataPanel.open{display:block}
-  #dataPanel .top{display:flex;justify-content:space-between;gap:10px;margin-bottom:10px}
-  #dataPanel h2{margin:0;font-size:17px;letter-spacing:-.3px}
-  #dataPanel .top p{margin:3px 0 0;color:var(--muted);font-size:12px}
-  #dataPanel .row{display:flex;align-items:flex-start;gap:8px;padding:9px 10px;border-radius:12px;border:1px solid var(--line);margin-bottom:6px;background:var(--panel-solid)}
-  #dataPanel .row.off{opacity:.55}
+  #dataPanel .top,#flow .top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}
+  #dataPanel h2,#flow h2{margin:0;font-size:21px;font-weight:700;line-height:1.3}
+  #dataPanel .lead,#flow .lead{margin:0 0 12px;font-size:15px;color:var(--body);line-height:1.5}
+  #dataPanel .row{display:flex;align-items:flex-start;gap:8px;padding:12px;border-radius:var(--r-sm);border:1px solid var(--hairline);margin-bottom:8px;background:var(--canvas)}
   #dataPanel .row > div{flex:1;min-width:0}
-  #dataPanel .row b{font-size:13px}
-  #dataPanel .row small{display:block;color:var(--muted);font-size:11.5px;margin-top:1px}
-  #dataPanel .row code{display:block;font-size:10px;color:var(--muted);opacity:.75;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  #dataPanel .row i{font-style:normal;color:var(--ok);font-size:11px;margin-top:2px}
-  #dataPanel .row.off i{color:var(--muted)}
-  #dataPanel .drop{display:block;text-align:center;border:1.5px dashed var(--line-strong);border-radius:12px;padding:14px;color:var(--muted);font-size:12.5px;cursor:pointer;margin:10px 0 8px}
-  #dataPanel .drop:hover, #stage.dropping #dataPanel .drop{border-color:var(--accent);color:var(--accent)}
-  #dataPanel .foot{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:10.5px;color:var(--muted)}
-  #dataPanel .foot code{font-size:10px}
-  #dataPanel .foot button{border:1px solid var(--line-strong);background:transparent;color:var(--ink);border-radius:8px;padding:5px 9px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap}
-  #stage.dropping::after{content:'JSON 데이터를 놓으면 바로 반영돼요';position:absolute;inset:10px;border:2px dashed var(--accent);border-radius:20px;display:grid;place-items:center;font-weight:800;color:var(--accent);background:rgba(10,16,30,.45);z-index:20;pointer-events:none}
-  #gate{position:fixed;inset:0;display:grid;place-items:center;background:var(--bg);z-index:50}
-  #gate .box{max-width:420px;text-align:center;padding:28px;border:1.5px dashed var(--line-strong);border-radius:20px}
-  #gate .box b{font-size:18px}
-  #gate .box p{color:var(--muted);font-size:13px;line-height:1.6}
-  #gate .pick{display:inline-block;margin:6px 0 12px;padding:9px 16px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-weight:800;cursor:pointer}
-  #gate small{display:block;color:var(--muted);font-size:11px}
-  #flow{position:absolute;inset:70px 14px 14px;z-index:8;border-radius:20px;display:none;padding:18px 22px 20px;overflow:auto}
+  #dataPanel .row b{font-size:16px;font-weight:600}
+  #dataPanel .row.off b{color:var(--muted)}
+  #dataPanel .row small{display:block;color:var(--body);font-size:14px;margin-top:2px}
+  #dataPanel .row code{display:block;font-size:14px;color:var(--muted);margin-top:4px;overflow-wrap:anywhere}
+  #dataPanel .row .st{display:inline-flex;align-items:center;gap:4px;flex:none;font-size:14px;font-weight:600;color:var(--ok)}
+  #dataPanel .row.off .st{color:var(--muted)}
+  #dataPanel .drop{display:block;text-align:center;border:1px dashed var(--border-strong);border-radius:var(--r-sm);padding:16px;color:var(--body);font-size:15px;cursor:pointer;margin:12px 0 8px}
+  #dataPanel .drop:hover, #stage.dropping #dataPanel .drop{border-color:var(--ink);color:var(--ink)}
+  #dataPanel .foot{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:14px;color:var(--muted)}
+  #dataPanel .foot code{font-size:14px;overflow-wrap:anywhere}
+  #dataPanel .foot button{height:44px;border:1px solid var(--ink);background:var(--canvas);color:var(--ink);border-radius:var(--r-sm);padding:0 16px;font-size:16px;font-weight:600;cursor:pointer;white-space:nowrap}
+  #dataPanel .foot button:hover{background:var(--surface-soft)}
+  #stage.dropping::after{content:'JSON 데이터를 놓으면 바로 반영됩니다';position:absolute;inset:12px;border:2px dashed var(--ink);border-radius:var(--r-md);display:grid;place-items:center;font-size:17px;font-weight:700;color:var(--ink);background:color-mix(in srgb,var(--canvas) 85%,transparent);z-index:20;pointer-events:none}
+  #gate{position:fixed;inset:0;display:grid;place-items:center;padding:16px;background:var(--page);z-index:50}
+  #gate .box{max-width:440px;text-align:left;padding:24px;border:1px solid var(--hairline);border-radius:var(--r-md);background:var(--canvas)}
+  #gate .box b{font-size:21px;font-weight:700}
+  #gate .box p{color:var(--body);font-size:16px;line-height:1.5}
+  #gate .box .err{color:var(--error)}
+  /* 화면의 주 동작 1개: primary-fill(흰 글자 대비 4.89:1), 높이 48 */
+  #gate .pick{display:inline-flex;align-items:center;justify-content:center;height:48px;margin:4px 0 12px;padding:0 24px;border-radius:var(--r-sm);background:var(--primary-fill);color:#fff;font-size:16px;font-weight:600;cursor:pointer}
+  #gate .pick:active{background:var(--primary-active)}
+  #gate small{display:block;color:var(--muted);font-size:14px}
+  #flow{position:absolute;inset:76px 16px 16px;z-index:8;border-radius:var(--r-md);display:none;padding:16px 24px 24px;overflow:auto}
   #flow.open{display:block}
-  #flow .top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}
-  #flow h2{margin:0;font-size:18px;letter-spacing:-.3px}
-  #flow .top p{margin:3px 0 0;color:var(--muted);font-size:12.5px}
-  #flow .cols{position:relative;display:grid;grid-template-columns:1fr 1.25fr 1fr;gap:70px;align-items:start}
+  #flow .cols{position:relative;display:grid;grid-template-columns:1fr 1.25fr 1fr;gap:64px;align-items:start}
   #flow .cols > svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
-  #flow .col h4{margin:0 0 8px;font-size:11px;color:var(--muted);letter-spacing:.4px}
-  #flow .node{position:relative;border-radius:12px;padding:8px 11px;margin-bottom:8px;background:var(--panel-solid);border:1px solid var(--line-strong);font-size:12.5px;font-weight:700;transition:opacity .2s, border-color .2s, box-shadow .2s;cursor:default}
-  #flow .node small{display:block;font-weight:500;color:var(--muted);font-size:11px;margin-top:2px}
-  #flow .node .v{position:absolute;right:10px;top:8px;font-size:11px;color:var(--accent);font-variant-numeric:tabular-nums}
-  #flow .node.dim{opacity:.32}
-  #flow .node.hot{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent), 0 6px 20px -6px rgba(91,140,255,.6)}
-  #flow .node.src{border-left:4px solid var(--c)}
-  #flow .node.per{cursor:pointer;padding:11px 12px}
-  #flow .node.per b{font-size:14px}
-  #flow path{fill:none;stroke:var(--line-strong);stroke-width:1.5;transition:stroke .2s, opacity .2s}
-  #flow path.on{stroke:url(#flowGrad);stroke-width:2.4}
+  #flow .col h4{margin:0 0 8px;font-size:16px;font-weight:600;color:var(--ink)}
+  #flow .node{position:relative;border-radius:var(--r-sm);padding:8px 12px;margin-bottom:8px;background:var(--canvas);border:1px solid var(--hairline);font-size:15px;font-weight:600;transition:opacity .2s, border-color .2s;cursor:default}
+  #flow .node small{display:block;font-weight:400;color:var(--muted);font-size:14px;margin-top:2px}
+  #flow .node .v{display:block;font-size:14px;color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
+  #flow .node.dim{opacity:.35}
+  #flow .node.hot{border:2px solid var(--ink);padding:7px 11px}
+  #flow .node.per{cursor:pointer;padding:12px}
+  #flow .node.per.hot{padding:11px}
+  #flow .node.per b{font-size:16px}
+  #flow .node .cnt{margin-top:6px;color:var(--ink);font-weight:600}
+  #flow path{fill:none;stroke:var(--border-strong);stroke-width:1.5;transition:stroke .2s, opacity .2s}
+  #flow path.on{stroke:var(--ink);stroke-width:2.4}
   #flow path.dim{opacity:.25}
-  @media (max-width:760px){ #flow .cols{grid-template-columns:1fr;gap:14px} #flow .cols > svg{display:none} }
+  @media (max-width:760px){ #flow{inset:12px} #flow .cols{grid-template-columns:1fr;gap:16px} #flow .cols > svg{display:none} }
 </style>
 <script type="importmap">
 { "imports": {
@@ -392,36 +444,37 @@
 </script>
 </head>
 <body class="v-building">
+<!-- 아이콘: lucide 1.76.0(앱 lucide-react와 같은 판) 경로를 인라인 SVG로 사용 -->
 <div id="app">
   <main id="stage">
     <canvas id="gl"></canvas>
     <header id="bar">
-      <button id="back" class="icon-btn glass" aria-label="뒤로"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
-      <div id="title" class="glass"><span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/></svg></span><nav id="crumbs"></nav></div>
+      <button id="back" class="icon-btn glass" aria-label="뒤로"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button>
+      <div id="title" class="glass"><nav id="crumbs"></nav></div>
       <div id="persona" class="seg glass" role="tablist" aria-label="보는 사람">
-        <button data-p="owner" role="tab" title="건물주·에너지 총괄: 비용과 절감"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg><span>에너지 총괄</span></button>
-        <button data-p="engineer" role="tab" title="현장 엔지니어: 설비 제어와 쾌적"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg><span>현장 엔지니어</span></button>
-        <button data-p="facility" role="tab" title="시설 관리자: 고장·노후·교체"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18v3h3l6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/></svg><span>시설 관리자</span></button>
-        <button data-p="sim" role="tab" title="운전 시뮬레이션: 이렇게 운전하면 몇 도가 되고, 얼마를 아끼고, 얼마나 불쾌한가"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6M10 3v6l-5.5 9.5A1.6 1.6 0 0 0 5.9 21h12.2a1.6 1.6 0 0 0 1.4-2.5L14 9V3"/><path d="M7.5 15h9"/></svg><span>시뮬레이션</span></button>
+        <button data-p="owner" role="tab" title="건물주·에너지 총괄: 비용과 절감"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg><span>에너지 총괄</span></button>
+        <button data-p="engineer" role="tab" title="현장 엔지니어: 설비 제어와 쾌적"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 17H5"/><path d="M19 7h-9"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></svg><span>현장 엔지니어</span></button>
+        <button data-p="facility" role="tab" title="시설 관리자: 고장·노후·교체"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.106-3.105c.32-.322.863-.22.983.218a6 6 0 0 1-8.259 7.057l-7.91 7.91a1 1 0 0 1-2.999-3l7.91-7.91a6 6 0 0 1 7.057-8.259c.438.12.54.662.219.984z"/></svg><span>시설 관리자</span></button>
+        <button data-p="sim" role="tab" title="운전 시뮬레이션: 이렇게 운전하면 몇 도가 되고, 얼마를 아끼고, 얼마나 불쾌한가"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2v6a2 2 0 0 0 .245.96l5.51 10.08A2 2 0 0 1 18 22H6a2 2 0 0 1-1.755-2.96l5.51-10.08A2 2 0 0 0 10 8V2"/><path d="M6.453 15h11.094"/><path d="M8.5 2h7"/></svg><span>시뮬레이션</span></button>
       </div>
       <div class="spacer"></div>
-      <button id="flowBtn" class="tgl glass" aria-pressed="false" title="어떤 데이터로 누구에게 무엇을 주는지">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="5" cy="6" r="2"/><circle cx="5" cy="18" r="2"/><circle cx="19" cy="12" r="2"/><path d="M7 6c6 0 6 6 10 6M7 18c6 0 6-6 10-6"/></svg>데이터 흐름</button>
-      <button id="pipesBtn" class="tgl glass" aria-pressed="false" title="실내기(IDU) ↔ 실외기(ODU) 연결 보기">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 18h5a3 3 0 0 0 3-3V9a3 3 0 0 1 3-3h5"/><circle cx="4" cy="18" r="2"/><circle cx="20" cy="6" r="2"/></svg>설비 연결</button>
-      <div id="metrics" class="seg glass" role="tablist">
+      <button id="flowBtn" class="tgl" aria-pressed="false" title="어떤 데이터로 누구에게 무엇을 주는지">
+        <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect width="8" height="8" x="3" y="3" rx="2"/><path d="M7 11v4a2 2 0 0 0 2 2h4"/><rect width="8" height="8" x="13" y="13" rx="2"/></svg>데이터 흐름</button>
+      <button id="pipesBtn" class="tgl" aria-pressed="false" title="실내기(IDU)와 실외기(ODU) 연결 보기">
+        <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5h8.5a1 1 0 010 7h-11a1 1 0 000 7H15"/><circle cx="18" cy="19" r="3"/><circle cx="6" cy="5" r="3"/></svg>설비 연결</button>
+      <div id="metrics" class="seg glass" role="tablist" aria-label="표시 지표">
         <button data-m="temp" role="tab">온도</button>
         <button data-m="hum" role="tab">습도</button>
         <button data-m="power" role="tab">전력</button>
         <button data-m="alert" role="tab">상태</button>
       </div>
-      <button id="dataBtn" class="tgl glass" aria-pressed="false" title="이 화면을 그리는 데이터">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><ellipse cx="12" cy="5.5" rx="7.5" ry="2.8"/><path d="M4.5 5.5v13c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8v-13M4.5 12c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8"/></svg>데이터</button>
+      <button id="dataBtn" class="tgl" aria-pressed="false" title="이 화면을 그리는 데이터">
+        <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></svg>데이터</button>
       <div id="live" class="glass"><span class="dot"></span><b id="clock" class="num">--:--</b><small id="speedLbl"></small><small id="wx"></small></div>
     </header>
     <div id="floorTags"></div>
     <div id="hostLink" class="glass" role="status" aria-live="polite"><span class="dot"></span><span class="t">대시보드 연동</span></div>
-    <div id="introTitle"><small>DIGITAL TWIN</small><b></b></div>
+    <div id="introTitle"><b></b></div>
     <div id="kpis"></div>
     <aside id="actions" class="glass"></aside>
     <section id="flow" class="glass" aria-hidden="true"></section>
@@ -436,22 +489,21 @@
     <div id="floorPicker" class="glass"></div>
     <div id="legend" class="glass"></div>
     <div id="roomLegend" class="glass" aria-hidden="true">
-      <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 14.8V4a2 2 0 1 0-4 0v10.8a4 4 0 1 0 4 0z"/></svg><span class="g" id="rlTemp"></span></div>
-      <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 8h11a3 3 0 1 0-3-3M3 12h15a3 3 0 1 1-3 3M3 16h7"/></svg><span class="wind"></span></div>
-      <div><svg viewBox="0 0 24 24" fill="none" stroke="#7cc4ec" stroke-width="2" stroke-linecap="round"><path d="M5.6 18.4A9 9 0 1 1 18.4 18.4"/><path d="M12 12l3.5-3.5"/></svg><span class="g hum"><i id="rlHumMk"></i></span><small class="rh" id="rlHum"></small></div>
-      <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="6" rx="1.5"/><path d="M7 15l-2 4M12 15v4M17 15l2 4"/></svg>
-        <span class="dots"><svg viewBox="0 0 10 10"><circle cx="5" cy="5" r="4" fill="#22b07d"/></svg><svg viewBox="0 0 10 10"><circle cx="5" cy="5" r="4" fill="#8a94a6"/></svg><svg viewBox="0 0 10 10"><circle cx="5" cy="5" r="4" fill="#e5484d"/></svg></span></div>
-      <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="6" r="3"/><path d="M6 21v-3a6 6 0 0 1 12 0v3"/></svg>
-        <span class="dots"><svg viewBox="0 0 10 10"><circle cx="5" cy="5" r="2" fill="#8a94a6"/></svg><svg viewBox="0 0 10 10"><circle cx="3" cy="5" r="2" fill="#8a94a6"/><circle cx="7.5" cy="5" r="2" fill="#8a94a6"/></svg></span></div>
+      <div><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"/></svg><span class="g" id="rlTemp"></span><small id="rlTempLbl"></small></div>
+      <div><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12.8 19.6A2 2 0 1 0 14 16H2"/><path d="M17.5 8a2.5 2.5 0 1 1 2 4H2"/><path d="M9.8 4.4A2 2 0 1 1 11 8H2"/></svg><span class="wind"></span><small>기류</small></div>
+      <div><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/></svg><span class="g hum"><i id="rlHumMk"></i></span><small class="rh" id="rlHum"></small></div>
+      <div><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 17.5a2.5 2.5 0 1 1-4 2.03V12"/><path d="M6 12H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 8h12"/><path d="M6.6 15.572A2 2 0 1 0 10 17v-5"/></svg>
+        <span class="dots"><i style="background:var(--ok)"></i>가동<i style="background:var(--muted)"></i>정지<i style="background:var(--danger)"></i>고장</span></div>
+      <div><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/></svg><small>재실 인원</small></div>
     </div>
-    <button id="roomBack" class="icon-btn glass" aria-label="평면도로"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
-    <button id="infoBtn" class="icon-btn glass" aria-label="상세 정보" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg></button>
+    <button id="roomBack" class="icon-btn glass" aria-label="평면도로"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button>
+    <button id="infoBtn" class="icon-btn glass" aria-label="상세 정보" aria-pressed="false"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></button>
     <div id="roomTitle" class="glass"></div>
     <div id="roomTools" class="seg glass">
-      <button data-rv="vol" aria-selected="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/></svg>온도장</button>
-      <button data-rv="slice" aria-selected="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 15l9 5 9-5-9-5z"/><path d="M3 10l9 5 9-5" opacity=".45"/></svg>바닥 등온선</button>
-      <button data-rv="hum" aria-selected="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5.6 18.4A9 9 0 1 1 18.4 18.4"/><path d="M12 12l3.5-3.5"/></svg>습도</button>
-      <button data-rv="air" aria-selected="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 8h11a3 3 0 1 0-3-3M3 12h15a3 3 0 1 1-3 3M3 16h7"/></svg>기류</button>
+      <button data-rv="vol" aria-selected="true"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>온도장</button>
+      <button data-rv="slice" aria-selected="true"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"/><path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12"/><path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17"/></svg>바닥 등온선</button>
+      <button data-rv="hum" aria-selected="true"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/></svg>습도</button>
+      <button data-rv="air" aria-selected="true"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12.8 19.6A2 2 0 1 0 14 16H2"/><path d="M17.5 8a2.5 2.5 0 1 1 2 4H2"/><path d="M9.8 4.4A2 2 0 1 1 11 8H2"/></svg>기류</button>
     </div>
     <aside id="inspector" class="glass"></aside>
     <div id="tip" class="glass"></div>
@@ -474,6 +526,12 @@ import { wallSpans } from './pipeline/wall-spans.js';
 /* ═════════════════════════ config ═════════════════════════ */
 const params = new URLSearchParams(location.search);
 if (params.get('theme')) document.documentElement.dataset.theme = params.get('theme');
+// 테마 동기화: 앱(부모 창)이 {source:'maestro', type:'theme', theme} 메시지로 전달, 부모 창 메시지만 수락
+// - 부팅 전에 받으면 토큰만 바꾸고, 3D 바탕은 부팅 때 새 토큰으로 생성
+let themeReady = false;
+addEventListener('message', e => { const m = e.data;
+  if (e.source !== window.parent || m?.source !== 'maestro' || m.type !== 'theme' || (m.theme !== 'light' && m.theme !== 'dark') || document.documentElement.dataset.theme === m.theme) return;
+  document.documentElement.dataset.theme = m.theme; if (themeReady) onThemeChange(); });
 /* ═════════════════════════ data in ═════════════════════════
    이 화면은 데이터를 받아 그리기만 한다. 입력 6종 (schema 필드로 자동 인식):
    회사  building.json(도면·설비대장) · 실시간(중앙제어기·BMS, twin:update) · maintenance.json(유지보수 이력)
@@ -530,7 +588,7 @@ function dataGate(){
       <small>로컬 서버로 열면(start-twin.bat) data 폴더를 자동으로 읽어요.</small></div>`;
     document.body.appendChild(g);
     const take = async files => { for (const j of await readJsonFiles(files)) { const k = kindOfData(j); if (k && k !== 'realtime') { DATA[k] = j; DATA_FROM[k] = '직접 넣은 파일'; } }
-      if (DATA.building) { g.remove(); res(); } else g.querySelector('p').innerHTML = '<b style="color:#e5484d">building.json(twin.building/v1)을 찾지 못했어요.</b> 다시 넣어 주세요.'; };
+      if (DATA.building) { g.remove(); res(); } else g.querySelector('p').innerHTML = '<b class="err">building.json(twin.building/v1)을 찾지 못했어요.</b> 다시 넣어 주세요.'; };
     g.querySelector('input').addEventListener('change', e => take(e.target.files));
     g.addEventListener('dragover', e => e.preventDefault()); g.addEventListener('drop', e => { e.preventDefault(); take(e.dataTransfer.files); });
   });
@@ -558,30 +616,46 @@ const noise = () => rnd() + rnd() + rnd() - 1.5;
 const hash = s => { let h = 2166136261; for (const c of String(s)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return ((h >>> 0) % 10000) / 10000; };
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+// 아이콘: lucide 1.76.0 경로(앱 lucide-react와 같은 판), 이모지·기호 문자 대신 사용
+const svgI = d => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${d}</svg>`;
+const IC = {
+  alert: svgI('<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>'),
+  alertCircle: svgI('<circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/>'),
+  info: svgI('<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>'),
+  check: svgI('<path d="M20 6 9 17l-5-5"/>'),
+  checkCircle: svgI('<circle cx="12" cy="12" r="10"/><path d="m16 9-5.5 5.5L8 12"/>'),
+  dashed: svgI('<path d="M10.1 2.182a10 10 0 0 1 3.8 0"/><path d="M13.9 21.818a10 10 0 0 1-3.8 0"/><path d="M17.609 3.721a10 10 0 0 1 2.69 2.7"/><path d="M2.182 13.9a10 10 0 0 1 0-3.8"/><path d="M20.279 17.609a10 10 0 0 1-2.7 2.69"/><path d="M21.818 10.1a10 10 0 0 1 0 3.8"/><path d="M3.721 6.391a10 10 0 0 1 2.7-2.69"/><path d="M6.391 20.279a10 10 0 0 1-2.69-2.7"/>'),
+  chevron: svgI('<path d="m9 18 6-6-6-6"/>'),
+  x: svgI('<path d="M18 6 6 18"/><path d="m6 6 12 12"/>'),
+};
+// 계산 메시지: '오류: '로 시작하면 아이콘과 오류 색으로 표시
+const msgHtml = m => !m ? '' : m.startsWith('오류: ') ? `<div class="msg err">${IC.alert}<span>${esc(m)}</span></div>` : `<div class="msg">${esc(m)}</div>`;
 const fmtT = m => `${String(Math.floor(m / 60) % 24).padStart(2,'0')}:${String(Math.floor(m % 60)).padStart(2,'0')}`;
 const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 
+/* 히트맵 색: 원본 src/heat.ts(SCALES, color, ANOMALY). 앱이 iframe 아래에 같은 범례를 표시하므로 같은 값으로 정의
+   - 지표별 단일 색상 5단계(밝음→어두움), 값은 가까운 단계로 고정, 범위 밖 값은 양끝 색
+   - 상태: 정상 회색(border-strong), 주의 caution, 위험 danger(디자인 시스템 표 1.1 상태 토큰)
+   - 방 3D 온도장(smooth)만 단계 사이를 보간: 방 안 온도 차이(1~3℃)가 한 단계 폭(3℃)보다 작아서 */
 const SCALES = {
-  temp:  { label:'온도 (°C)', ticks:[16,20,24,28,32], stops:[[16,'#2c5cff'],[20,'#1fb5ff'],[23,'#2fd09a'],[25.5,'#f7d038'],[28,'#ff7b2c'],[31,'#e3223b']] },
-  hum:   { label:'습도 (%)',  ticks:[20,40,60,80],     stops:[[20,'#f2e2b8'],[40,'#9ed8e8'],[55,'#4aa8e0'],[70,'#2160c4'],[85,'#1b2a8f']] },
-  power: { label:'전력 (kW)', ticks:[0,2,4,6,8],       stops:[[0,'#eef1f4'],[0.6,'#d3ecd0'],[2,'#7cc77f'],[4,'#f2b134'],[7,'#d9468a']] },
-  alert: { label:'상태',  ticks:[],                stops:[[0,'#c9d1db'],[1,'#f2a01f'],[2,'#e5484d']] },
+  temp:  { label:'온도', unit:'℃', min:16, max:28, colors:['#FFF1E0', '#FFD3A1', '#F9A65A', '#E5762A', '#B45309'] },
+  hum:   { label:'습도', unit:'%', min:30, max:70, colors:['#E6F7F5', '#B4E8E2', '#6ECFC4', '#2BA89B', '#0F766E'] },
+  power: { label:'전력', unit:'kW', min:0, max:6, colors:['#E8F0FE', '#BFD4FB', '#7FA8F2', '#3F7AE0', '#1E4FB0'] },
+  alert: { label:'상태', unit:'', min:0, max:2, colors:['#C1C1C1', '#B45309', '#B91C1C'] },
 };
+const frac = (m, v) => { const sc = SCALES[m]; return Number.isFinite(v) ? clamp((v - sc.min) / (sc.max - sc.min), 0, 1) : 0; };
 const _a = new THREE.Color(), _b = new THREE.Color();
-function colorInto(metric, v, out){
-  const st = SCALES[metric].stops;
-  if (!(v > st[0][0])) return out.set(st[0][1]);
-  for (let i = 1; i < st.length; i++) if (v <= st[i][0]) {
-    const t = (v - st[i-1][0]) / (st[i][0] - st[i-1][0]);
-    _a.set(st[i-1][1]); _b.set(st[i][1]); return out.copy(_a).lerp(_b, t);
-  }
-  return out.set(st[st.length-1][1]);
+function colorInto(metric, v, out, smooth = false){
+  const cs = SCALES[metric].colors, k = frac(metric, v) * (cs.length - 1);
+  if (!smooth) return out.set(cs[Math.round(k)]);
+  const i = Math.min(Math.floor(k), cs.length - 2);
+  _a.set(cs[i]); _b.set(cs[i + 1]); return out.copy(_a).lerp(_b, k - i);
 }
 const _css = new THREE.Color();
 const cssColor = (m, v) => '#' + colorInto(m, v, _css).getHexString();
 function gradientCss(m){
-  const st = SCALES[m].stops, lo = st[0][0], hi = st[st.length-1][0];
-  return `linear-gradient(90deg,${st.map(([v,c]) => `${c} ${((v-lo)/(hi-lo)*100).toFixed(1)}%`).join(',')})`;
+  const cs = SCALES[m].colors, w = 100 / cs.length;
+  return `linear-gradient(90deg,${cs.map((c, i) => `${c} ${(i * w).toFixed(1)}% ${((i + 1) * w).toFixed(1)}%`).join(',')})`;
 }
 
 /* ═════════════════════════ building model (from building.json) ═════════════════════════ */
@@ -590,7 +664,7 @@ const EV = BD.elevator || { x0:0, y0:0, x1:.01, y1:.01 };
 const KIND_LABEL = { lecture:'강의', meeting:'회의', lab:'실습', lounge:'휴게·카페', admin:'행정', office:'연구·사무', retail:'상점', restaurant:'식당', waiting:'대합실', none:'공용' };
 // EnergyPlus 결과(simulation.json)가 있으면: 실 최대 냉방부하 vs 설치 용량
 const simLine = r => { const x = DATA.simulation?.rooms?.[r.id]; if (!x) return '';
-  const c = x.verdict === '용량 부족' ? '#e5484d' : x.verdict === '과대 설치' ? '#f2a01f' : '#36c08a';
+  const c = x.verdict === '용량 부족' ? 'var(--danger)' : x.verdict === '과대 설치' ? 'var(--caution)' : 'var(--ok)';
   return `<div class="sub" style="margin-top:4px">EnergyPlus 최대 냉방 <b>${x.peakCoolKw.toFixed(1)}kW</b> · 설치 ${x.installedKw.toFixed(1)}kW · <b style="color:${c}">${x.verdict}</b></div>`; };
 function bbox(poly){
   let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
@@ -774,7 +848,7 @@ function drawPlan(f){
   g.fillText('도면·설비대장 데이터로 생성  ·  ⊠ 실내기', cw - S*.9, ch - S*.65);
   const src = cv.toDataURL('image/png');
   const g2 = cv.getContext('2d'), id = g2.getImageData(0, 0, cw, ch), d = id.data;
-  const BG = [34, 45, 66], FG = [214, 228, 252];      // 어두운 화면의 바닥: 배경보다 한 단계 밝은 남색 (판이 검게 묻히지 않게)
+  const BG = [46, 48, 52], FG = [230, 230, 227];      // 어두운 화면의 바닥: 앱 어두운 토큰 surface-strong 바탕 + ink 선 (3D 바탕보다 한 단계 밝음)
   for (let i = 0; i < d.length; i += 4) {
     const r = d[i], gg = d[i+1], bb = d[i+2], mx = Math.max(r, gg, bb), mn = Math.min(r, gg, bb), sh = 255 - mx - mn;
     for (let k = 0; k < 3; k++) { const c = (d[i+k] + sh) / 255; d[i+k] = BG[k] + c * (FG[k] - BG[k]); }
@@ -942,9 +1016,16 @@ function bgTexture(){
 }
 let bg = bgTexture();
 const isDark = () => new THREE.Color(cssVar('--scene-bot') || '#d9e0eb').getHSL({}).l < .3;
-matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+// 테마 변경(시스템 설정 또는 앱 메시지): 3D 바탕·안개·바닥·층 평면 이미지, 2D 평면도를 새 테마로 다시 그림
+function onThemeChange(){
   bg = bgTexture(); bScene.background = bg; bScene.fog.color.set(cssVar('--scene-bot')); if (room3d) room3d.scene.background = bg; applyGroundTheme();
-});
+  isDarkNow = isDark();
+  for (const grp of floorGroups) { const pm = grp.userData.planMat; pm.map = planTexture(grp.userData.floor); pm.color.set(isDarkNow ? 0xffffff : 0xc4ccd8); pm.needsUpdate = true;
+    grp.userData.slabMat.color.set(isDarkNow ? 0x5b5e63 : 0xc1c1c1); }
+  roof.userData.mat.color.set(isDarkNow ? 0x3a3c40 : 0xdddddd);
+  if (state.view === 'floor' && state.floor) { buildPlanSvg(state.floor); updatePlanSvg(); }
+}
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (!document.documentElement.dataset.theme) onThemeChange(); });
 const composer = new EffectComposer(renderer);
 const renderPass = new RenderPass(new THREE.Scene(), camera);
 const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), .4, .5, .93);
@@ -998,7 +1079,9 @@ function beamTexture(){
   gr.addColorStop(0, 'rgba(255,255,255,.9)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
   g.fillStyle = gr; g.fillRect(0, 0, 4, 128); return new THREE.CanvasTexture(c);
 }
-const STATUS_HEX = { on:0x22b07d, off:0x8a94a6, fault:0xe5484d };
+// 실내기 상태 색: 디자인 시스템 표 1.1 상태 토큰(정상 ok, 정지 muted, 고장 danger). WebGL 재질은 CSS 변수를 못 읽어 밝은 화면 값 사용
+const STATUS_HEX = { on:0x15803d, off:0x6a6a6a, fault:0xb91c1c };
+const STATUS_CSS = { on:'var(--ok)', off:'var(--muted)', fault:'var(--danger)' };
 
 /* point sprites (airflow / pipe flow) */
 const pointVS = `
@@ -1119,17 +1202,17 @@ const scanRings = [0, 1].map(() => { const m = new THREE.Mesh(new THREE.RingGeom
   m.rotation.x = -Math.PI/2; m.position.y = -.36; bScene.add(m); return m; });
 function applyGroundTheme(){
   const dark = isDark();
-  groundMat.map = radialTex(dark ? [[0,'rgba(70,110,200,.30)'],[.45,'rgba(40,70,140,.12)'],[1,'rgba(0,0,0,0)']] : [[0,'rgba(255,255,255,.95)'],[.5,'rgba(255,255,255,.4)'],[1,'rgba(255,255,255,0)']]);
+  groundMat.map = radialTex(dark ? [[0,'rgba(255,255,255,.08)'],[.45,'rgba(255,255,255,.03)'],[1,'rgba(0,0,0,0)']] : [[0,'rgba(255,255,255,.95)'],[.5,'rgba(255,255,255,.4)'],[1,'rgba(255,255,255,0)']]);
   groundMat.needsUpdate = true;
-  gridMat.uniforms.uCol.value.set(dark ? 0x6f8cc8 : 0x7d8ba3); gridMat.uniforms.uA.value = dark ? .28 : .22;
+  gridMat.uniforms.uCol.value.set(dark ? 0x5b5e63 : 0xc1c1c1); gridMat.uniforms.uA.value = .5;   // 무채색 격자(앱 border-strong)
 }
 applyGroundTheme();
-const warnTex = glowTexture('rgba(242,160,31,1)'), critTex = glowTexture('rgba(229,72,77,1)'), beamTex = beamTexture();
+const warnTex = glowTexture('rgba(180,83,9,1)'), critTex = glowTexture('rgba(185,28,28,1)'), beamTex = beamTexture();
 const floorGroups = [], pickables = [];
 for (const f of FLOORS) {
   if (!f.plan) f.plan = drawPlan(f);
   const grp = new THREE.Group(); grp.position.y = floorY(f.index); grp.userData = { floor:f, lift:0, fade:1, intro:0 };
-  const slab = new THREE.Mesh(slabGeometry(f.hasVoid, .3, .3, f.footprint), new THREE.MeshStandardMaterial({ color:isDark() ? 0x6c7a92 : 0xb9c3d0, roughness:.92, metalness:0, envMapIntensity:.35, transparent:true }));
+  const slab = new THREE.Mesh(slabGeometry(f.hasVoid, .3, .3, f.footprint), new THREE.MeshStandardMaterial({ color:isDark() ? 0x5b5e63 : 0xc1c1c1, roughness:.92, metalness:0, envMapIntensity:.35, transparent:true }));
   slab.userData.floor = f; grp.add(slab); pickables.push(slab); grp.userData.slabMat = slab.material;
   // 평면도 판: 층 윤곽(footprint) 모양으로 잘라 바닥판과 크기를 맞춤 (중정은 비움)
   const fl = f.footprint?.length >= 3 ? f.footprint : [[0, 0], [W, 0], [W, D], [0, D]];
@@ -1158,7 +1241,7 @@ for (const f of FLOORS) {
     const beacon = new THREE.Sprite(new THREE.SpriteMaterial({ map:critTex, transparent:true, depthWrite:false }));
     beacon.position.copy(toWorld(r.b.cx, r.b.cy, h + .9)); beacon.visible = false; grp.add(beacon);
     const beam = new THREE.Mesh(new THREE.CylinderGeometry(.35, .35, 14, 16, 1, true),
-      new THREE.MeshBasicMaterial({ map:beamTex, color:0xe5484d, transparent:true, opacity:.5, depthWrite:false, blending:THREE.AdditiveBlending, side:THREE.DoubleSide }));
+      new THREE.MeshBasicMaterial({ map:beamTex, color:0xb91c1c, transparent:true, opacity:.5, depthWrite:false, blending:THREE.AdditiveBlending, side:THREE.DoubleSide }));
     beam.position.copy(toWorld(r.b.cx, r.b.cy, h + 7)); beam.visible = false; grp.add(beam);
     grp.userData.blocks.push({ r, mesh, edges, beacon, beam });
   }
@@ -1195,8 +1278,8 @@ const roofY = floorY(FLOORS.length - 1) + FH - .1;
 // roof + outdoor units with spinning fans
 const roof = new THREE.Group(); bScene.add(roof);
 {
-  const slab = new THREE.Mesh(slabGeometry(!USER.floors, .3, .3, FLOORS[FLOORS.length - 1].footprint), new THREE.MeshStandardMaterial({ color:isDark() ? 0x34415c : 0xc9d3e0, roughness:.95, metalness:0, envMapIntensity:.25, transparent:true, opacity:isDark() ? .5 : .45, depthWrite:false }));
-  slab.position.y = roofY + .3; roof.add(slab);
+  const slab = new THREE.Mesh(slabGeometry(!USER.floors, .3, .3, FLOORS[FLOORS.length - 1].footprint), new THREE.MeshStandardMaterial({ color:isDark() ? 0x3a3c40 : 0xdddddd, roughness:.95, metalness:0, envMapIntensity:.25, transparent:true, opacity:isDark() ? .5 : .45, depthWrite:false }));
+  slab.position.y = roofY + .3; roof.add(slab); roof.userData.mat = slab.material;
   const re = new THREE.LineSegments(new THREE.EdgesGeometry(slab.geometry), new THREE.LineBasicMaterial({ color:0xa9b8cc, transparent:true, opacity:.5 })); re.position.copy(slab.position); roof.add(re);
 }
 const fanMat = new THREE.MeshStandardMaterial({ color:0x3a4250, roughness:.5 });
@@ -1272,7 +1355,6 @@ if (!USER.floors) bScene.add(evShaft, evCab);
 const fitK = () => clamp(1.55 / camera.aspect, 1, 3) * SC;
 const homePos = () => HOME.target.clone().add(HOME.pos.clone().sub(HOME.target).multiplyScalar(fitK()));
 let hoverFloor = null, introStart = null, isDarkNow = isDark();
-matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { isDarkNow = isDark(); });
 
 // holographic scan sweep (intro reveal + periodic pass)
 const scan = new THREE.Group(); bScene.add(scan);
@@ -1308,6 +1390,8 @@ const DUSTN = 520, dustGeo = new THREE.BufferGeometry(), dustV = new Float32Arra
   dustGeo.setAttribute('aAlpha', new THREE.BufferAttribute(al, 1));
 }
 const dustMat = pointMaterial(55), dust = new THREE.Points(dustGeo, dustMat); bScene.add(dust);
+// 디자인 기준(DESIGN.md 움직임: 깜빡임·반짝임·무한 반복 금지): 별, 먼지, 회전 링, 퍼지는 원은 장면에서 제외
+bScene.remove(dust, stars, ...hud, ...scanRings);
 // HTML floor tags pinned to the right-most visible edge of each floor
 const tagsEl = $('#floorTags');
 tagsEl.innerHTML = FLOORS.map(f => `<div class="ftag" data-f="${f.id}"><span class="ln"></span><span class="bd glass"><span class="fl">${f.id}</span><span class="v"></span></span></div>`).join('');
@@ -1320,8 +1404,8 @@ function renderTags(){
   for (const f of FLOORS) {
     const a = floorAgg(f.rooms), crit = f.rooms.some(r => r.alert.level === 2), warn = f.rooms.some(r => r.alert.level === 1);
     const val = m === 'temp' ? `${a.temp.toFixed(1)}°C` : m === 'hum' ? `${Math.round(a.hum)}%` : m === 'power' ? `${a.power.toFixed(1)}kW` : `${a.alerts}실 주의`;
-    const sw = m === 'alert' ? (crit ? '#e5484d' : warn ? '#f2a01f' : '#c9d1db') : cssColor(m, m === 'temp' ? a.temp : m === 'hum' ? a.hum : a.power / Math.max(f.rooms.filter(r => r.type === 'room').length, 1));
-    setHTML(tagEls[f.id].querySelector('.v'), `<span class="sw" style="background:${sw}"></span>${val}<i>·</i>${a.occ}명${crit || warn ? `<span class="al" style="display:inline-block;background:${crit ? 'var(--crit)' : 'var(--warn)'}"></span>` : ''}`);
+    const sw = m === 'alert' ? cssColor('alert', crit ? 2 : warn ? 1 : 0) : cssColor(m, m === 'temp' ? a.temp : m === 'hum' ? a.hum : a.power / Math.max(f.rooms.filter(r => r.type === 'room').length, 1));
+    setHTML(tagEls[f.id].querySelector('.v'), `<span class="sw" style="background:${sw}"></span>${val}<i>·</i>${a.occ}명${crit || warn ? `<span class="al" style="display:inline-flex;color:${crit ? 'var(--danger)' : 'var(--caution)'}">${crit ? IC.alert : IC.alertCircle}</span>` : ''}`);
   }
 }
 const _p = new THREE.Vector3();
@@ -1364,7 +1448,7 @@ function recolorBuilding(){
 let scanY = null, explodeF = null, roofLift = 0;
 function updateBuilding(t, dt){
   if (introStart == null) introStart = t;
-  const it = reduceMotion ? 99 : t - introStart, hlOn = performance.now() < HL.until, pulse = .5 + .5 * Math.sin(t * 5);
+  const it = reduceMotion ? 99 : t - introStart, hlOn = performance.now() < HL.until, pulse = 1;   // 깜빡임 금지: 강조는 고정 밝기
   { // scan sweep: 처음 한 번만 건물을 훑으며 드러냄 (10초마다 반복하던 훑기는 화면이 번쩍여 보여 뺌)
     const top = roofY + 1.5, ph = (it - 1.2) / 2.6, on = !reduceMotion && ph > 0 && ph < 1 && !state.pipes;
     scanY = on ? -.3 + (top + .3) * (1 - Math.pow(1 - ph, 2)) : null;
@@ -1381,7 +1465,7 @@ function updateBuilding(t, dt){
     grp.userData.fade = lerp(grp.userData.fade, explodeF ? (f === explodeF ? 1 : up ? 0 : .1) : hoverFloor && !hot ? .28 : 1, explodeF ? .08 : .15);
     grp.position.y = floorY(f.index) + grp.userData.lift + (1 - e) * 22;
     const fade = grp.userData.fade * e;
-    grp.userData.frame.material.color.set(hot ? 0x5b8cff : 0x8b99ad);
+    grp.userData.frame.material.color.set(hot ? (isDarkNow ? 0xe6e6e3 : 0x222222) : 0x8b99ad);
     grp.userData.frame.material.opacity = (hot ? 1 : .4) * e;
     grp.userData.mullMat.opacity = (hot ? .45 : .2) * fade;
     { // 네온 색·밝기는 목표값으로 천천히 (1초마다 값이 바뀔 때 블룸 때문에 번쩍이지 않게)
@@ -1389,7 +1473,7 @@ function updateBuilding(t, dt){
       (grp.userData.neonS ||= grp.userData.neonC.clone()).lerp(grp.userData.neonC, sm);
       grp.userData.boost = lerp(grp.userData.boost ?? 1.6, hot || explodeF === f ? 2.4 : 1.6, 1 - Math.exp(-dt * 6));
       nm.color.copy(grp.userData.neonS);
-      if (grp.userData.crit) nm.color.lerp(_c.setHex(0xff3b45), .35 + .45 * pulse);
+      if (grp.userData.crit) nm.color.lerp(_c.setHex(0xb91c1c), .35 + .45 * pulse);
       nm.color.multiplyScalar(grp.userData.boost); nm.opacity = (hot || explodeF === f ? 1 : .85) * fade; }
     grp.userData.planMat.opacity = fade * (state.pipes ? .3 : 1); grp.userData.slabMat.opacity = e * (explodeF ? grp.userData.fade : 1); grp.visible = grp.userData.fade > .01;
     grp.userData.coreMat.opacity = .92 * fade * (state.pipes ? .3 : 1);
@@ -1406,7 +1490,7 @@ function updateBuilding(t, dt){
       const sc = sweep ? Math.exp(-Math.pow((grp.position.y + CEIL / 2 - scanY) / 1.6, 2)) : 0;
       bk.mesh.material.emissiveIntensity = (hl ? .5 + .6 * pulse : hot ? .32 : .18) + sc * .9;
       if (hl) bk.mesh.material.opacity = Math.max(bk.mesh.material.opacity, .8);
-      if (bk.beacon.visible) { const s = 1.6 + Math.sin(t * 4 + bk.r.b.cx) * .45; bk.beacon.scale.set(s, s, s); bk.beacon.material.opacity = fade; }
+      if (bk.beacon.visible) { const s = 1.6; bk.beacon.scale.set(s, s, s); bk.beacon.material.opacity = fade; }
       if (bk.beam.visible) bk.beam.material.opacity = (.25 + .25 * pulse) * fade;
     }
     for (const { m } of grp.userData.idus) m.visible = state.pipes;
@@ -1430,7 +1514,7 @@ function updateBuilding(t, dt){
     const pos = flowGeo.attributes.position, col = flowGeo.attributes.aColor, al = flowGeo.attributes.aAlpha;
     PIPE_PATHS.forEach((P, pi) => {
       const st = P.a.status, sp = st === 'on' ? (2.2 + P.a.power * 1.2) / P.total : 0;
-      _c.setHex(st === 'on' ? 0x7cd3ff : st === 'fault' ? 0xe5484d : 0x8a94a6);
+      _c.setHex(st === 'on' ? 0x7cd3ff : st === 'fault' ? 0xb91c1c : 0x6a6a6a);
       for (let j = 0; j < PER_PIPE; j++) {
         const i = pi * PER_PIPE + j;
         flowS[i] = (flowS[i] + dt * sp) % 1;
@@ -1507,7 +1591,7 @@ function buildRoom(r, held = false){
   sc.add(dl, dl.target);
   const root = new THREE.Group(); sc.add(root);
   { // soft glow pad under the room (floating diorama look)
-    const pad = new THREE.Mesh(new THREE.PlaneGeometry(b.w * 2.4 + 8, b.h * 2.4 + 8), new THREE.MeshBasicMaterial({ map:radialTex(isDark() ? [[0,'rgba(80,120,220,.35)'],[.5,'rgba(40,70,150,.12)'],[1,'rgba(0,0,0,0)']] : [[0,'rgba(20,30,60,.22)'],[.5,'rgba(20,30,60,.07)'],[1,'rgba(0,0,0,0)']]), transparent:true, depthWrite:false }));
+    const pad = new THREE.Mesh(new THREE.PlaneGeometry(b.w * 2.4 + 8, b.h * 2.4 + 8), new THREE.MeshBasicMaterial({ map:radialTex(isDark() ? [[0,'rgba(255,255,255,.1)'],[.5,'rgba(255,255,255,.04)'],[1,'rgba(0,0,0,0)']] : [[0,'rgba(0,0,0,.14)'],[.5,'rgba(0,0,0,.05)'],[1,'rgba(0,0,0,0)']]), transparent:true, depthWrite:false }));
     pad.rotation.x = -Math.PI/2; pad.position.copy(c0); pad.position.y = -.33; root.add(pad);
   }
 
@@ -1714,10 +1798,10 @@ function buildRoom(r, held = false){
     g.lineCap = 'round'; g.strokeStyle = cssColor('hum', v); g.lineWidth = 14; g.beginPath(); g.arc(c, c, R, a0, A(v)); g.stroke();
     const st = v < 40 ? ['건조', '#f2b134'] : v <= 60 ? ['적정', '#3cc995'] : v < 70 ? ['다소 높음', '#7fb8ff'] : ['높음', '#5b8cff'];
     g.textAlign = 'center'; g.textBaseline = 'alphabetic';
-    g.fillStyle = '#e9edf5'; g.font = '800 64px Pretendard, system-ui, sans-serif'; g.fillText(Math.round(v), c - 10, c + 18);
-    g.fillStyle = '#8a94a8'; g.font = '700 26px Pretendard, system-ui, sans-serif'; g.fillText('%', c + 44, c + 18);
-    g.fillStyle = '#8a94a8'; g.font = '700 19px Pretendard, system-ui, "Malgun Gothic", sans-serif'; g.fillText('습도', c, c - 40);
-    g.fillStyle = st[1]; g.font = '800 21px Pretendard, system-ui, "Malgun Gothic", sans-serif'; g.fillText(st[0], c, c + 56);
+    g.fillStyle = '#e9edf5'; g.font = '800 64px "SUIT Variable", SUIT, system-ui, sans-serif'; g.fillText(Math.round(v), c - 10, c + 18);
+    g.fillStyle = '#8a94a8'; g.font = '700 26px "SUIT Variable", SUIT, system-ui, sans-serif'; g.fillText('%', c + 44, c + 18);
+    g.fillStyle = '#8a94a8'; g.font = '700 19px "SUIT Variable", SUIT, system-ui, "Malgun Gothic", sans-serif'; g.fillText('습도', c, c - 40);
+    g.fillStyle = st[1]; g.font = '800 21px "SUIT Variable", SUIT, system-ui, "Malgun Gothic", sans-serif'; g.fillText(st[0], c, c + 56);
     hgTex.needsUpdate = true;
   }
 
@@ -1788,7 +1872,7 @@ function buildRoom(r, held = false){
       hotCand.length = 0;
       for (let i = 0; i < N; i++) {
         const T = r.temp + dev[i] - mean;
-        colorInto('temp', T, tmpC);   // linear: the composer's OutputPass does the sRGB encode
+        colorInto('temp', T, tmpC, true);   // linear: the composer's OutputPass does the sRGB encode
         const o = vi[i]; vdata[o] = tmpC.r * 255; vdata[o+1] = tmpC.g * 255; vdata[o+2] = tmpC.b * 255; vdata[o+3] = 255 * clamp(Math.abs(T - r.temp) / 2.6, .1, 1);
         if (vy[i] < 1.2 && T > r.temp + 1.2 && hotCand.length < 400) hotCand.push(i);
       }
@@ -1811,7 +1895,7 @@ function buildRoom(r, held = false){
       for (let y = 0; y < Hc; y++) for (let x = 0; x < Wc; x++) {
         const T = val((x + .5) / SR - .5, (y + .5) / SR - .5), o = (y * Wc + x) * 4;
         if (isNaN(T)) { px[o + 3] = 0; continue; }
-        colorInto('temp', T, tmpC).convertLinearToSRGB();
+        colorInto('temp', T, tmpC, true).convertLinearToSRGB();
         px[o] = tmpC.r * 255; px[o + 1] = tmpC.g * 255; px[o + 2] = tmpC.b * 255; px[o + 3] = 205; band[y * Wc + x] = Math.floor(T * 2);
       }
       for (let y = 0; y < Hc - 1; y++) for (let x = 0; x < Wc - 1; x++) { const bb = band[y * Wc + x]; if (bb === -999) continue;
@@ -1863,9 +1947,9 @@ function buildRoom(r, held = false){
       o.ledMat.emissiveIntensity = st === 'fault' ? 4 * blink : st === 'on' ? 3 : .1;
       o.slotMat.opacity = st === 'on' ? .65 + .25 * Math.sin(t * 4 + k) : 0;
       o.halo.material.opacity = st === 'fault' ? .5 * blink : st === 'on' ? .1 + .25 * clamp(pr - .5, 0, 1) : 0;
-      o.halo.material.color.setHex(st === 'fault' ? 0xe5484d : 0x7fdcff);
+      o.halo.material.color.setHex(st === 'fault' ? 0xb91c1c : 0x7fdcff);
       o.light.intensity = st === 'on' ? 1.6 : st === 'fault' ? 1.2 * blink : 0;
-      o.light.color.setHex(st === 'fault' ? 0xff5a5a : 0x7cc8ff);
+      o.light.color.setHex(st === 'fault' ? 0xb91c1c : 0x7cc8ff);
     });
 
     { const hv = Math.round(r.hum); if (hv !== hgShown) { hgShown = hgShown < 0 ? hv : hgShown + Math.sign(hv - hgShown); drawHumGauge(hgShown); } hgMat.opacity = vis * (state.rv.hum ? 1 : 0); }
@@ -1882,10 +1966,10 @@ function buildRoom(r, held = false){
       const ph = (t * .45 + k / 3) % 1, sc = .2 + ph * 3.4; m.scale.set(sc, sc, sc);
       m.material.opacity = (1 - ph) * (a.clients ? .4 : .12);
     });
-    const lv = r.alert.level, pulse = .5 + .5 * Math.sin(t * 5);
+    const lv = r.alert.level, pulse = 1;   // 깜빡임 금지: 강조는 고정 밝기
     outlineMat.color.setHex(0x7b8798);
-    if (lv === 2) outlineMat.color.lerp(_c.setHex(0xe5484d), .4 + .6 * pulse);
-    else if (lv === 1) outlineMat.color.lerp(_c.setHex(0xf2a01f), .3 + .5 * pulse);
+    if (lv === 2) outlineMat.color.lerp(_c.setHex(0xb91c1c), .4 + .6 * pulse);
+    else if (lv === 1) outlineMat.color.lerp(_c.setHex(0xb45309), .3 + .5 * pulse);
     if (lv === 2) wallMat.color.setHex(0xf0a0a3); else wallMat.color.set(r.finish?.wall || 0xa9bacb);
     wallMat.opacity = lv === 2 ? .1 + .08 * pulse : r.finish?.wall ? .22 : .13;
   }
@@ -2121,7 +2205,6 @@ function buildPlanSvg(f, intro = false){
   planRefs = RS.map(r => ({ r, tint:svg.querySelector(`.tint[data-id="${r.id}"]`), chip:svg.querySelector(`.chip[data-id="${r.id}"]`), badge:svg.querySelector(`.badge[data-id="${r.id}"]`),
     idus:r.acs.map(a => [a, svg.querySelector(`.idu[data-a="${a.id}"]`)]) }));
 }
-const HEX_CSS = h => '#' + h.toString(16).padStart(6, '0');
 function updatePlanSvg(){
   const m = state.metric, hlOn = performance.now() < HL.until;
   for (const { r, tint, chip, badge, idus } of planRefs) {
@@ -2139,8 +2222,8 @@ function updatePlanSvg(){
     }
     const lv = r.alert.level;
     badge.style.display = lv ? '' : 'none';
-    badge.querySelector('circle').style.fill = lv === 2 ? '#e5484d' : '#f2a01f';
-    for (const [a, el] of idus) el.style.fill = HEX_CSS(STATUS_HEX[a.status]);
+    badge.querySelector('circle').style.fill = lv === 2 ? 'var(--danger)' : 'var(--caution)';
+    for (const [a, el] of idus) el.style.fill = STATUS_CSS[a.status];
   }
 }
 svg.addEventListener('pointermove', e => { const id = e.target.dataset && e.target.dataset.id; if (!id) return hideTip(); showRoomTip(ROOM[id], e); });
@@ -2167,13 +2250,13 @@ $('#floorTabs').addEventListener('click', e => { const b = e.target.closest('but
 
 /* ═════════════════════════ personas · data sources · insights ═════════════════════════ */
 const SRC = {
-  acs:     { label:'중앙제어기', org:'회사', full:'LG 중앙제어기 · BMS', what:'실내기 ON/OFF · 설정온도 · 흡입 온습도 · 풍량 · 풍향 · 에러코드', c:'#5b8cff' },
-  meter:   { label:'전력계측', org:'회사', full:'BMS 전력 계측', what:'건물 · 실외기 계통 · 실내기별 kW / 오늘 누적 kWh', c:'#f2b134' },
-  drawing: { label:'도면·설비대장', org:'회사', full:'설계 · 시공 도면 + 설비대장', what:'실 형상 · 용도 · 정원 · 실내기 위치 · 모델 · 계통', c:'#9aa6b8' },
-  maint:   { label:'유지보수 이력', org:'회사', full:'유지보수 · 서비스 이력', what:'누적 운전시간 · 필터 청소일 · 과거 고장', c:'#ff7b2c' },
-  sched:   { label:'학사 시간표', org:'공공', full:'부산대 학사 시간표 (수강편람)', what:'강의실별 수업 시간 · 수강 인원', c:'#22b07d' },
-  kma:     { label:'기상청', org:'공공', full:'기상청 단기예보 (공공데이터포털)', what:'외기 온도 · 습도 · 하늘 상태', c:'#2fb8d0' },
-  tariff:  { label:'한전 요금', org:'공공', full:'한전 전기요금표 (교육용)', what:'kWh 단가 → 비용 · 절감액 환산', c:'#8b5cf6' },
+  acs:     { label:'중앙제어기', org:'회사', full:'LG 중앙제어기 · BMS', what:'실내기 ON/OFF · 설정온도 · 흡입 온습도 · 풍량 · 풍향 · 에러코드' },
+  meter:   { label:'전력계측', org:'회사', full:'BMS 전력 계측', what:'건물 · 실외기 계통 · 실내기별 kW / 오늘 누적 kWh' },
+  drawing: { label:'도면·설비대장', org:'회사', full:'설계 · 시공 도면 + 설비대장', what:'실 형상 · 용도 · 정원 · 실내기 위치 · 모델 · 계통' },
+  maint:   { label:'유지보수 이력', org:'회사', full:'유지보수 · 서비스 이력', what:'누적 운전시간 · 필터 청소일 · 과거 고장' },
+  sched:   { label:'학사 시간표', org:'공공', full:'부산대 학사 시간표 (수강편람)', what:'강의실별 수업 시간 · 수강 인원' },
+  kma:     { label:'기상청', org:'공공', full:'기상청 단기예보 (공공데이터포털)', what:'외기 온도 · 습도 · 하늘 상태' },
+  tariff:  { label:'한전 요금', org:'공공', full:'한전 전기요금표 (교육용)', what:'kWh 단가 → 비용 · 절감액 환산' },
 };
 const PERSONA = {
   owner:    { name:'건물주 · 에너지 총괄', short:'에너지 총괄', why:'얼마를 쓰고, 어디서 아낄 수 있나 → 예산 · 운영 정책 결정', metric:'power' },
@@ -2193,7 +2276,7 @@ const FLOW = [
   { id:'filter',  label:'필터 청소 · 정기 점검 시기',      src:['maint', 'drawing'],           to:['facility'] },
 ];
 const won = v => v >= 10000 ? `₩${(v / 10000).toFixed(v >= 100000 ? 0 : 1)}만` : `₩${Math.round(v).toLocaleString()}`;
-const srcChips = ks => `<div class="srcs">${ks.map(k => `<span class="src" style="--c:${SRC[k].c}" title="${SRC[k].org} 데이터">${SRC[k].label}</span>`).join('')}</div>`;
+const srcChips = ks => `<div class="srcs">${ks.map(k => `<span class="src" title="${SRC[k].org} 데이터">${SRC[k].label}</span>`).join('')}</div>`;
 const runH = a => MAINT[a.id]?.filterHours ?? 0;
 function wasteOf(rs){ const w = rs.filter(r => r.idle); return { rooms:w, kw:w.reduce((s, r) => s + r.acPower, 0) }; }
 function anomalies(rs){
@@ -2242,7 +2325,8 @@ function insights(persona, rs){
   }
   return out.sort((a, b) => b.lv - a.lv);
 }
-const LV_COL = ['#8a94a6', 'var(--warn)', 'var(--crit)'];
+// 항목 수준: 아이콘 + 색(위험 danger, 주의 caution, 안내 muted 또는 정상 ok), 제목 글자와 병행
+const LV_ICON = (lv, ok) => `<span style="display:inline-flex;color:${lv === 2 ? 'var(--danger)' : lv === 1 ? 'var(--caution)' : ok ? 'var(--ok)' : 'var(--muted)'}">${lv === 2 ? IC.alert : lv === 1 ? IC.alertCircle : ok ? IC.checkCircle : IC.info}</span>`;
 function renderActions(){
   if (state.persona === 'sim') return renderSim();
   const el = $('#actions'), P = PERSONA[state.persona];
@@ -2250,15 +2334,15 @@ function renderActions(){
   const its = insights(state.persona, scope);
   let hero = '';
   if (state.persona === 'owner') { const w = wasteOf(scope.filter(r => r.acs.length));
-    hero = `<div class="hero">지금 바로 아낄 수 있는 전력<b>${w.kw.toFixed(1)} kW · 시간당 ${won(w.kw * TARIFF)}</b>하루 3시간 · 월 22일 반복 시 약 <b style="display:inline;font-size:12px">${won(w.kw * TARIFF * 3 * 22)}</b> / 월</div>`; }
+    hero = `<div class="hero">지금 바로 아낄 수 있는 전력<b>${w.kw.toFixed(1)} kW · 시간당 ${won(w.kw * TARIFF)}</b>하루 3시간 · 월 22일 반복 시 약 <b class="inline">${won(w.kw * TARIFF * 3 * 22)}</b> / 월</div>`; }
   else if (state.persona === 'engineer') { const rs = scope.filter(r => r.acs.length && r.inUse), ok = rs.filter(r => r.cmf && Math.abs(r.cmf.pmv) < .5).length;
     hero = `<div class="hero">사용 중인 방의 쾌적 비율<b>${rs.length ? Math.round(ok / rs.length * 100) : 100}% · ${ok}/${rs.length}실</b>기준: ISO 7730 B등급 (|PMV| &lt; 0.5, 불만족 10% 이하) · 옷 ${CMF ? CMF.cloOf(monthNow()).toFixed(1) : '–'}clo 가정</div>`; }
   else { const acs = scope.flatMap(r => r.acs), f = acs.filter(a => a.status === 'fault').length, due = acs.filter(a => a.status !== 'fault' && runH(a) >= FILTER_H).length;
     hero = `<div class="hero">실내기 ${acs.length}대 상태<b>고장 ${f} · 점검 도래 ${due} · 정상 ${acs.length - f - due}</b>필터 기준 ${FILTER_H.toLocaleString()}h 누적 운전</div>`; }
-  const html = `<div class="hd"><small>${state.view === 'floor' && state.floor ? state.floor.id + ' · ' : '건물 전체 · '}이 사람에게 필요한 정보</small><b>${P.name}</b><div class="why">${P.why}</div></div>${hero}
-    <div class="list">${its.length ? its.slice(0, 14).map(i => `<button class="it" data-room="${i.r.id}"><div class="t"><i style="background:${LV_COL[i.lv]}"></i>${esc(i.title)}<em>${i.r.floorId}</em></div><div class="d">${i.d}</div>${srcChips(i.src)}</button>`).join('')
-      : '<div class="empty">지금 조치할 항목이 없어요 ✓</div>'}</div>
-    <div class="ft"><span>${its.length}건 · 클릭하면 해당 방으로</span><button data-flow>데이터 흐름 ›</button></div>`;
+  const html = `<div class="hd"><b title="${esc(P.why)}">${P.name}</b><span class="tag">${state.view === 'floor' && state.floor ? state.floor.id : '건물 전체'}</span></div>${hero}
+    <div class="list">${its.length ? its.slice(0, 14).map(i => `<button class="it" data-room="${i.r.id}"><div class="t">${LV_ICON(i.lv)}${esc(i.title)}<em>${i.r.floorId}</em></div><div class="d">${i.d}</div>${srcChips(i.src)}</button>`).join('')
+      : `<div class="empty">${LV_ICON(0, true)}지금 조치할 항목이 없어요</div>`}</div>
+    <div class="ft"><span>${its.length}건 · 클릭하면 해당 방으로</span><button data-flow>데이터 흐름${IC.chevron}</button></div>`;
   if (html !== renderActions.last) { const sc = el.querySelector('.list')?.scrollTop || 0; el.innerHTML = html; renderActions.last = html; const l = el.querySelector('.list'); if (l) l.scrollTop = sc; }
 }
 $('#actions').addEventListener('pointerdown', e => {
@@ -2319,12 +2403,12 @@ async function simCompare(scenario, useLive){
 }
 async function simRun(){
   const f = simForm(), now = f.period === 'now' && hasLive(), useLive = now || (f.useLive && hasLive());
-  if (HOST_PLAN) { SIM.msg = '⚠ 브라우저에 저장된 평면도의 EnergyPlus 계산은 지원되지 않습니다.'; SIM.ver++; renderSim(true); return; } SIM.busy = true; SIM.ver++; SIM.msg = `EnergyPlus 계산 중… (${useLive ? '오늘 실측 기준 · ' : ''}기존·선택 두 번, 10초 안팎)`; renderSim(true);
+  if (HOST_PLAN) { SIM.msg = '오류: 브라우저에 저장된 평면도의 EnergyPlus 계산은 지원되지 않습니다.'; SIM.ver++; renderSim(true); return; } SIM.busy = true; SIM.ver++; SIM.msg = `EnergyPlus 계산 중… (${useLive ? '오늘 실측 기준 · ' : ''}기존·선택 두 번, 10초 안팎)`; renderSim(true);
   try {
     const j = await simCompare(now ? { name:'지금부터', coolSetpoint:+f.coolSetpoint, window:{ hours:+f.durH || 2 } }
       : { name:'내 선택', coolSetpoint:+f.coolSetpoint, hours:[f.start, f.end], offWhenEmpty:f.offWhenEmpty, precoolMin:+f.precoolMin }, useLive);
     SIM.result = j; SIM.msg = `계산 완료 · ${j.scenario.engine} · ${j.scenario.run.seconds}s${j.scenario.cached ? ' (저장된 결과)' : ''} · 경고 ${j.scenario.run.warnings} · 심각 ${j.scenario.run.severe}`;
-  } catch (e) { SIM.msg = '⚠ ' + (e.message || e); }
+  } catch (e) { SIM.msg = '오류: ' + (e.message || e); }
   SIM.busy = false; SIM.ver++; renderSim(true); $('#kpis').innerHTML = ''; renderKpis(); if (state.view === 'room') renderInspector();
 }
 // 대시보드의 '운전 시뮬레이션' 패널로 보내는 상태 (트윈 안 패널은 작아서 대시보드 쪽에 그림)
@@ -2354,23 +2438,23 @@ function renderSim(force){
     const row = (l, x, y, u, good) => { const d = y - x, cls = Math.abs(d) < 1e-6 ? '' : (good ? d < 0 : d > 0) ? 'up' : 'dn';
       return `<tr><th>${l}</th><td>${fmt1(x)}${u}</td><td class="${cls}">${fmt1(y)}${u}</td></tr>`; };
     const rs = scope.filter(r => R.scenario.rooms[r.id]).map(r => ({ r, x:R.scenario.rooms[r.id], b:R.baseline.rooms[r.id] })).sort((p, q) => (q.x.maxTempC ?? 0) - (p.x.maxTempC ?? 0));
-    const tcol = t => t >= 28 ? 'var(--crit)' : t > (R.scenario.comfort?.upper ?? 26) ? 'var(--warn)' : '#36c08a';
+    const tlv = t => t >= 28 ? 2 : t > (R.scenario.comfort?.upper ?? 26) ? 1 : 0;
     const L = R.live, K = R.calibration, RD = R.restOfDay;
-    res = `${R.window ? `<div class="msg" style="padding:0 12px">계산 구간 <b>${R.window.label}</b> · ${esc(R.baseline.scenario.name)} 대비 ${fmt1(R.window.savedKwh)} kWh · ${won(R.window.savedWon)}</div>` : ''}<div class="hero">${L ? `오늘 실제 운전 대비 절감 <span style="opacity:.75">(${L.date.slice(5).replace('-', '/')}(${L.day}) ${Math.floor(L.now)}시 기준 · 외기 ${fmt1(L.weather.min)}~${fmt1(L.weather.max)}°C 예보·실측)</span>` : `기존 운전 대비 절감 <span style="opacity:.75">(${esc(R.baseline.weather)} · ${R.baseline.days}일)</span>`}
+    res = `${R.window ? `<div class="msg pad">계산 구간 <b>${R.window.label}</b> · ${esc(R.baseline.scenario.name)} 대비 ${fmt1(R.window.savedKwh)} kWh · ${won(R.window.savedWon)}</div>` : ''}<div class="hero">${L ? `오늘 실제 운전 대비 절감 <span>(${L.date.slice(5).replace('-', '/')}(${L.day}) ${Math.floor(L.now)}시 기준 · 외기 ${fmt1(L.weather.min)}~${fmt1(L.weather.max)}°C 예보·실측)</span>` : `기존 운전 대비 절감 <span>(${esc(R.baseline.weather)} · ${R.baseline.days}일)</span>`}
         <b>${fmt1(c.savedKwh)} kWh (${fmt1(c.savedPct)}%) · ${won(c.savedWon)}</b>
-        ${RD ? `지금(${RD.fromHour}시)부터 오늘 끝까지 <b style="display:inline;font-size:inherit">${fmt1(RD.savedKwh)} kWh · ${won(RD.savedWon)}</b><br>` : ''}
+        ${RD ? `지금(${RD.fromHour}시)부터 오늘 끝까지 <b class="inline">${fmt1(RD.savedKwh)} kWh · ${won(RD.savedWon)}</b><br>` : ''}
         불쾌도 ${c.tdisChange > 0 ? '+' : ''}${fmt1(c.tdisChange)} K·h/실 · 불만족(PPD) ${c.ppdChange > 0 ? '+' : ''}${fmt1(c.ppdChange)}%p</div>
-      ${K ? `<div class="msg" style="padding:0 12px;font-size:11px;color:var(--muted)" title="${esc(K.note)}">실측 보정 ×${fmt1(K.factor)} · 지난 ${K.hours}시간 실측 실내기 전력 ${fmt1(K.measuredKwh)}kWh 기준${K.cvrmsePct != null ? ` · 시간별 오차 CV(RMSE) ${fmt1(K.cvrmseRawPct)}% → ${fmt1(K.cvrmsePct)}%` : ''} · 재실 ${esc(OCC_SRC[R.live?.occSource] || '실측')}</div>` : ''}
+      ${K ? `<div class="msg pad" title="${esc(K.note)}">실측 보정 ×${fmt1(K.factor)} · 지난 ${K.hours}시간 실측 실내기 전력 ${fmt1(K.measuredKwh)}kWh 기준${K.cvrmsePct != null ? ` · 시간별 오차 CV(RMSE) ${fmt1(K.cvrmseRawPct)}% → ${fmt1(K.cvrmsePct)}%` : ''} · 재실 ${esc(OCC_SRC[R.live?.occSource] || '실측')}</div>` : ''}
       <table class="simt"><thead><tr><th></th><th>${L ? '오늘 실제' : '기존'}<small>${L ? `평균 ${bs.coolSetpoint}°C · 실별 기록` : `${bs.coolSetpoint}°C · ${bs.hours.join('~')}`}</small></th><th>선택<small>${sc.coolSetpoint}°C · ${sc.hours.join('~')}${sc.offWhenEmpty ? ' · 빈시간 OFF' : ''}${sc.precoolMin ? ` · 사전 ${sc.precoolMin}분` : ''}</small></th></tr></thead><tbody>
         ${row('냉방 전력', B.elecKwh, S.elecKwh, 'kWh', true)}${row('전기요금', B.costWon, S.costWon, '원', true)}
         ${row('예상 실온(재실 평균)', simAvgT(R.baseline), simAvgT(R.scenario), '°C', true)}${row('가장 더운 실', B.hottest?.tempC, S.hottest?.tempC, '°C', true)}
         ${row('열 불쾌도 tdis', B.tdisKhPerZone, S.tdisKhPerZone, 'K·h/실', true)}${row('불만족 PPD', B.ppd, S.ppd, '%', true)}${row('|PMV|>0.5 비율', B.uncomfortPct, S.uncomfortPct, '%', true)}
       </tbody></table>
-      <div class="list">${rs.slice(0, 40).map(({ r, x, b }) => `<button class="it" data-room="${r.id}"><div class="t"><i style="background:${tcol(x.maxTempC)}"></i>${esc(r.name)} 최고 ${fmt1(x.maxTempC)}°C<em>${r.floorId}</em></div>
+      <div class="list">${rs.slice(0, 40).map(({ r, x, b }) => `<button class="it" data-room="${r.id}"><div class="t">${LV_ICON(tlv(x.maxTempC), true)}${esc(r.name)} 최고 ${fmt1(x.maxTempC)}°C<em>${r.floorId}</em></div>
         <div class="d">재실 평균 ${fmt1(b?.avgTempC)} → <b>${fmt1(x.avgTempC)}°C</b> · PPD ${fmt1(b?.ppd)} → <b>${fmt1(x.ppd)}%</b> · 전력 ${fmt1(b?.elecKwh)} → ${fmt1(x.elecKwh)}kWh</div></button>`).join('')}</div>`;
   } else res = `<div class="empty">아직 계산한 결과가 없어요. 조건을 고르고 <b>EnergyPlus로 계산</b>을 누르세요.</div>`;
   const opt = (v, l) => `<option value="${v}"${+f.precoolMin === v ? ' selected' : ''}>${l}</option>`;
-  const html = `<div class="hd"><small>${state.view === 'floor' && state.floor ? state.floor.id + ' · ' : '건물 전체 · '}EnergyPlus ${R ? esc(R.scenario.engine.replace('EnergyPlus ', '')) : '24.2'}</small><b>${P.name}</b><div class="why">${P.why}</div></div>
+  const html = `<div class="hd"><b title="${esc(P.why)}">${P.name}</b><span class="tag">${state.view === 'floor' && state.floor ? state.floor.id : '건물 전체'} · EnergyPlus ${R ? esc(R.scenario.engine.replace('EnergyPlus ', '')) : '24.2'}</span></div>
     <form class="simf" onsubmit="return false">
       ${hasLive() ? `<label class="chk"><input type="checkbox" name="useLive"${f.useLive ? ' checked' : ''}> 오늘 실측 기준 (${OCC_SRC[occKind()]} 재실 · 실제 운전 · 기상 예보 · 실측 전력 보정)</label>` : ''}
       <div class="base">${f.useLive && hasLive() ? `기존 운전 = <b>오늘 실제 운전</b> (방마다 켠 시간·설정온도 기록, 지금 이후는 재실 예상으로)` : `기존 운전 <b>${b.coolSetpoint}°C · ${b.hours.join('~')}</b> · 사람 유무와 관계없이 운전`}</div>
@@ -2379,9 +2463,9 @@ function renderSim(force){
       <div class="two"><label class="chk"><input type="checkbox" name="offWhenEmpty"${f.offWhenEmpty ? ' checked' : ''}> 사람 적은 시간 끄기</label>
         <label>사전 냉방<select name="precoolMin">${opt(0, '없음')}${opt(30, '30분')}${opt(60, '1시간')}${opt(120, '2시간')}</select></label></div>
       <button type="button" data-simrun ${SIM.busy ? 'disabled' : ''}>${SIM.busy ? '계산 중…' : 'EnergyPlus로 계산'}</button>
-      ${SIM.msg ? `<div class="msg">${esc(SIM.msg)}</div>` : ''}
+      ${msgHtml(SIM.msg)}
     </form>${res}
-    <div class="ft"><span title="전력 = 냉방 열량 ÷ 실내기 정격 COP(외기 보정) · 요금 = 시간별 전력 × 한전 계시별 단가 · 불쾌도 = 재실 중 쾌적 범위(${R?.scenario?.comfort?.lower ?? 20}~${R?.scenario?.comfort?.upper ?? 26}°C) 밖 K·h (BOPTEST tdis) · PMV/PPD = ISO 7730 (옷 0.5clo, 기류 0.15m/s)">EnergyPlus 24.2 · ISO 7730 PMV/PPD · BOPTEST KPI · 한전 요금 ⓘ</span></div>`;
+    <div class="ft"><span title="전력 = 냉방 열량 ÷ 실내기 정격 COP(외기 보정) · 요금 = 시간별 전력 × 한전 계시별 단가 · 불쾌도 = 재실 중 쾌적 범위(${R?.scenario?.comfort?.lower ?? 20}~${R?.scenario?.comfort?.upper ?? 26}°C) 밖 K·h (BOPTEST tdis) · PMV/PPD = ISO 7730 (옷 0.5clo, 기류 0.15m/s)">${IC.info}EnergyPlus 24.2 · ISO 7730 PMV/PPD · BOPTEST KPI · 한전 요금</span></div>`;
   if (force || html !== renderActions.last) { const sc = el.querySelector('.list')?.scrollTop || 0; el.innerHTML = html; renderActions.last = html; const l = el.querySelector('.list'); if (l) l.scrollTop = sc; }
 }
 $('#actions').addEventListener('input', e => { const t = e.target; if (!t.closest('.simf')) return; const f = simForm();
@@ -2405,12 +2489,13 @@ function flowValue(id){
 }
 function renderFlow(){
   const el = $('#flow'), pk = state.persona;
-  el.innerHTML = `<div class="top"><div><h2>어떤 데이터로, 누구에게, 무엇을 주나</h2><p>회사 보유 데이터 4종 + 공공 데이터 3종만으로 세 사람에게 각자 필요한 정보를 만듭니다. 사람을 누르면 그 관점으로 전환돼요.</p></div>
-      <button class="icon-btn glass" data-close aria-label="닫기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
-    <div class="cols"><svg><defs><linearGradient id="flowGrad" x1="0" x2="1"><stop offset="0" stop-color="#5b8cff"/><stop offset="1" stop-color="#8b5cf6"/></linearGradient></defs></svg>
-      <div class="col"><h4>① 수집 데이터</h4>${Object.entries(SRC).map(([k, v]) => `<div class="node src" data-n="s:${k}" style="--c:${v.c}"><span class="org ${v.org === '회사' ? 'co' : 'pub'}">${v.org}</span>${v.full}<small>${v.what}</small></div>`).join('')}</div>
+  el.innerHTML = `<div class="top"><h2>데이터 흐름</h2>
+      <button class="icon-btn sm" data-close aria-label="닫기">${IC.x}</button></div>
+    <p class="lead">회사 보유 데이터 4종 + 공공 데이터 3종만으로 세 사람에게 각자 필요한 정보를 만듭니다. 사람을 누르면 그 관점으로 전환돼요.</p>
+    <div class="cols"><svg></svg>
+      <div class="col"><h4>① 수집 데이터</h4>${Object.entries(SRC).map(([k, v]) => `<div class="node src" data-n="s:${k}"><span class="org ${v.org === '회사' ? 'co' : 'pub'}">${v.org}</span>${v.full}<small>${v.what}</small></div>`).join('')}</div>
       <div class="col"><h4>② 트윈이 만드는 정보</h4>${FLOW.map(f => `<div class="node" data-n="f:${f.id}">${f.label}<span class="v">${flowValue(f.id)}</span><small>${f.src.map(k => SRC[k].label).join(' + ')}</small></div>`).join('')}</div>
-      <div class="col"><h4>③ 받는 사람</h4>${Object.entries(PERSONA).map(([k, v]) => `<div class="node per ${k === pk ? 'hot' : ''}" data-n="p:${k}"><b>${v.name}</b><small>${v.why}</small><small style="margin-top:6px;color:var(--accent)">${FLOW.filter(f => f.to.includes(k)).length}개 정보 수신</small></div>`).join('')}</div>
+      <div class="col"><h4>③ 받는 사람</h4>${Object.entries(PERSONA).map(([k, v]) => `<div class="node per ${k === pk ? 'hot' : ''}" data-n="p:${k}"><b>${v.name}</b><small>${v.why}</small><small class="cnt">${FLOW.filter(f => f.to.includes(k)).length}개 정보 수신</small></div>`).join('')}</div>
     </div>`;
   requestAnimationFrame(() => drawFlow());
 }
@@ -2463,11 +2548,11 @@ function renderDataPanel(){
   const el = $('#dataPanel');
   const rows = Object.entries(DATA_KINDS).map(([k, v]) => {
     const ok = k === 'realtime' ? LIVE.count > 0 : !!DATA[k], from = k === 'realtime' ? (LIVE.count ? LIVE.source : '대시보드 연결 대기') : DATA_FROM[k] || '—';
-    return `<div class="row ${ok ? '' : 'off'}"><span class="org ${v.org === '회사' ? 'co' : 'pub'}">${v.org}</span><div><b>${v.label}</b><small>${esc(dataSummary(k))}</small><code>${esc(from)} · ${v.schema}</code></div><i>${ok ? '●' : '○'}</i></div>`;
+    return `<div class="row ${ok ? '' : 'off'}"><span class="org ${v.org === '회사' ? 'co' : 'pub'}">${v.org}</span><div><b>${v.label}</b><small>${esc(dataSummary(k))}</small><code>${esc(from)} · ${v.schema}</code></div><span class="st">${ok ? IC.checkCircle + '있음' : IC.dashed + '없음'}</span></div>`;
   }).join('');
-  const html = `<div class="top"><div><h2>이 화면을 그리는 데이터</h2><p>아래 데이터만 받아서 렌더링해요. JSON 파일을 이 창에 끌어다 놓으면 바로 반영돼요.</p></div>
-      <button class="icon-btn glass" data-close aria-label="닫기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
-    <div class="rows">${rows}</div>
+  const html = `<div class="top"><h2>이 화면을 그리는 데이터</h2>
+      <button class="icon-btn sm" data-close aria-label="닫기">${IC.x}</button></div>
+    <p class="lead">아래 데이터만 받아서 렌더링해요. JSON 파일을 이 창에 끌어다 놓으면 바로 반영돼요.</p><div class="rows">${rows}</div>
     <label class="drop">JSON 파일 끌어다 놓기 · 또는 <u>선택</u><input type="file" accept=".json,application/json" multiple hidden></label>
     <div class="foot"><span>실시간 데이터: <code>postMessage({type:'twin:update', data})</code> 또는 <code>DigitalTwin.ingest(data)</code></span><button data-reset>기본 데이터로</button></div>`;
   if (html !== renderDataPanel.last) { el.innerHTML = html; renderDataPanel.last = html; }
@@ -2485,21 +2570,30 @@ stage.addEventListener('dragleave', e => { if (e.target === stage || !stage.cont
 stage.addEventListener('drop', e => { e.preventDefault(); stage.classList.remove('dropping'); if (e.dataTransfer.files.length) { setDataPanel(true); takeFiles(e.dataTransfer.files); } });
 
 /* ═════════════════════════ KPI cards ═════════════════════════ */
-const ICON = {'temp': '<path d="M14 14.8V4a2 2 0 1 0-4 0v10.8a4 4 0 1 0 4 0z"/>', 'hum': '<path d="M12 2.8S5.8 10 5.8 14.4a6.2 6.2 0 0 0 12.4 0C18.2 10 12 2.8 12 2.8z"/>', 'power': '<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>', 'occ': '<circle cx="9" cy="7" r="3"/><path d="M3 21v-2a6 6 0 0 1 12 0v2M16 3.5a3 3 0 0 1 0 7M21 21v-2a6 6 0 0 0-3.5-5.4"/>', 'alert': '<path d="M12 3l9.5 17h-19z"/><path d="M12 10v4M12 17v.5"/>', 'kwh': '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>', 'won': '<circle cx="12" cy="12" r="9"/><path d="M7 8l2.5 8L12 10l2.5 6L17 8M6.5 12h11"/>', 'save': '<path d="M5 19c0-8 6-14 15-14 0 9-6 15-14 15"/><path d="M5 19l7-7"/>', 'idu': '<rect x="3" y="5" width="18" height="6" rx="1.5"/><path d="M7 15l-2 4M12 15v4M17 15l2 4"/>', 'tool': '<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18v3h3l6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/>', 'ok': '<circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/>'};
-const ico = (k, col) => `<span class="ic" style="background:${col}22;color:${col}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICON[k]}</svg></span>`;
+const ICON = { temp:'<path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"/>', hum:'<path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/>',
+  power:'<path d="M15.914 4a1.5 1.5 0 00-2.474-1.561l-9 9A1.5 1.5 0 005.5 14h4.002a.5.5 0 01.471.666L8.086 20a1.5 1.5 0 002.475 1.56l9-9A1.5 1.5 0 0018.5 10h-3.997a.5.5 0 01-.472-.667z"/>',
+  occ:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/>',
+  alert:'<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+  kwh:'<path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>',
+  won:'<rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/>',
+  save:'<path d="M11 17h3v2a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1v-3a3.16 3.16 0 0 0 2-2h1a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1h-1a5 5 0 0 0-2-4V3a4 4 0 0 0-3.2 1.6l-.3.4H11a6 6 0 0 0-6 6v1a5 5 0 0 0 2 4v3a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1z"/><path d="M16 10h.01"/><path d="M2 8v1a2 2 0 0 0 2 2h1"/>',
+  idu:'<path d="M18 17.5a2.5 2.5 0 1 1-4 2.03V12"/><path d="M6 12H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 8h12"/><path d="M6.6 15.572A2 2 0 1 0 10 17v-5"/>',
+  tool:'<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.106-3.105c.32-.322.863-.22.983.218a6 6 0 0 1-8.259 7.057l-7.91 7.91a1 1 0 0 1-2.999-3l7.91-7.91a6 6 0 0 1 7.057-8.259c.438.12.54.662.219.984z"/>',
+  ok:'<circle cx="12" cy="12" r="10"/><path d="m16 9-5.5 5.5L8 12"/>' };
+const ico = k => `<span class="ic">${svgI(ICON[k])}</span>`;
 // 재실 인원 출처 표시: 와이파이(AP 접속 수) / 재실 센서 / 학사 시간표
 const OCC_SRC = { wifi:'와이파이', sensor:'재실 센서', schedule:'시간표' };
 const occKind = (rs = ROOMS) => rs.some(r => r.occSrc === 'wifi') ? 'wifi' : rs.some(r => r.occSrc === 'sensor') ? 'sensor' : 'schedule';
 const occName = (rs = ROOMS) => occKind(rs) === 'schedule' ? '수업 인원' : '재실 인원';
 const KPI_SET = {
-  owner:    [['power', '건물 전력', '#f2b134'], ['kwh', '오늘 누적 사용량', '#5b8cff'], ['won', '오늘 전기요금 (추정)', '#22b07d'], ['save', '지금 절감 가능', '#2fb8d0'], ['occ', '수업 인원 (시간표)', '#8b5cf6']],
-  engineer: [['temp', '평균 온도', '#ff7b2c'], ['hum', '평균 습도', '#4aa8e0'], ['alert', '쾌적 범위 밖', '#e5484d'], ['idu', '실내기 가동', '#22b07d'], ['occ', '수업 인원 (시간표)', '#8b5cf6']],
-  facility: [['alert', '실내기 고장', '#e5484d'], ['tool', '점검 도래', '#f2a01f'], ['ok', '정상 가동률', '#22b07d'], ['power', '과부하 의심', '#f2b134'], ['idu', '관리 실내기', '#5b8cff']],
-  sim:      [['save', '절감 전력량 (기존 대비)', '#2fb8d0'], ['won', '절감 요금', '#22b07d'], ['temp', '예상 실온 (재실 평균)', '#ff7b2c'], ['alert', '열 불쾌도 (BOPTEST)', '#e5484d'], ['occ', '불만족 비율 PPD', '#8b5cf6']],
+  owner:    [['power', '건물 전력'], ['kwh', '오늘 누적 사용량'], ['won', '오늘 전기요금 (추정)'], ['save', '지금 절감 가능'], ['occ', '수업 인원 (시간표)']],
+  engineer: [['temp', '평균 온도'], ['hum', '평균 습도'], ['alert', '쾌적 범위 밖'], ['idu', '실내기 가동'], ['occ', '수업 인원 (시간표)']],
+  facility: [['alert', '실내기 고장'], ['tool', '점검 도래'], ['ok', '정상 가동률'], ['power', '과부하 의심'], ['idu', '관리 실내기']],
+  sim:      [['save', '절감 전력량 (기존 대비)'], ['won', '절감 요금'], ['temp', '예상 실온 (재실 평균)'], ['alert', '열 불쾌도 (BOPTEST)'], ['occ', '불만족 비율 PPD']],
 };
 function renderKpis(){
   const a = floorAgg(ROOMS), el = $('#kpis'), pk = state.persona;
-  if (!el.firstChild) el.innerHTML = KPI_SET[pk].map(([k, l, c]) => `<div class="kpi glass" id="k-${k}">${ico(k, c)}<div><small>${l}</small><b></b></div></div>`).join('');
+  if (!el.firstChild) el.innerHTML = KPI_SET[pk].map(([k, l]) => `<div class="kpi glass" id="k-${k}">${ico(k)}<div><small>${l}</small><b></b></div></div>`).join('');
   if (pk !== 'sim' && pk !== 'facility') { const sm = el.querySelector('#k-occ small'); if (sm) setHTML(sm, `${occName()} (${OCC_SRC[occKind()]})`); }
   const set = (k, html, bad) => { const b = el.querySelector(`#k-${k} b`); if (b) { setHTML(b, html); b.parentElement.parentElement.classList.toggle('bad', !!bad); } };
   const acs = a.acs, on = acs.filter(x => x.status === 'on').length, fault = acs.filter(x => x.status === 'fault').length;
@@ -2528,26 +2622,26 @@ function renderInspector(){
   const bar = (k, col) => `<div class="meter"><i style="width:${(k * 100).toFixed(0)}%;background:${col}"></i></div>`;
   // 위(상태)는 매초 다시 그리고, 아래(설정온도 바꿔 보기)는 바뀔 때만 — 슬라이더를 끄는 중에 지워지지 않게
   if (!insp.querySelector('#inspMain')) insp.innerHTML = '<div id="inspMain"></div><div id="inspWi"></div>';
-  setHTML(insp.querySelector('#inspMain'), `<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><div><h2>${esc(r.name)}</h2><div class="sub">${r.floorId} · ${KIND_LABEL[r.kind]} · ${r.area.toFixed(0)}㎡${r.cap ? ` · 정원 ${r.cap}명` : ''}</div>${r.zoneOf ? `<div class="sub">공조 구역 · ${esc(r.zoneBasis || '')} (원래 공간 ${esc(r.zoneOf)})</div>` : ''}${simLine(r)}${scenLine(r)}</div>
-      <button class="icon-btn sm" data-close aria-label="닫기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+  setHTML(insp.querySelector('#inspMain'), `<div class="head"><div><h2>${esc(r.name)}</h2><div class="sub">${r.floorId} · ${KIND_LABEL[r.kind]} · ${r.area.toFixed(0)}㎡${r.cap ? ` · 정원 ${r.cap}명` : ''}</div>${r.zoneOf ? `<div class="sub">공조 구역 · ${esc(r.zoneBasis || '')} (원래 공간 ${esc(r.zoneOf)})</div>` : ''}${simLine(r)}${scenLine(r)}</div>
+      <button class="icon-btn sm" data-close aria-label="닫기">${IC.x}</button></div>
     <div class="grid">
-      <div>온도<b>${r.temp.toFixed(1)}<span>°C</span></b>${bar(clamp((r.temp - 16) / 16, 0, 1), cssColor('temp', r.temp))}</div>
-      <div>습도<b>${Math.round(r.hum)}<span>%</span></b>${bar(clamp(r.hum / 100, 0, 1), cssColor('hum', r.hum))}</div>
-      <div>전력<b>${r.power.toFixed(2)}<span>kW</span></b>${bar(clamp(r.power / 8, 0, 1), cssColor('power', r.power))}</div>
-      <div>${r.occSrc && r.occSrc !== 'schedule' ? `재실 인원 <span style="opacity:.7">(${OCC_SRC[r.occSrc]})</span>` : '수업 인원'}<b>${r.occSrc ? r.occ : '–'}<span> / ${r.cap}명</span></b>${bar(occK, '#8b5cf6')}</div>
-      <div title="ISO 7730 PMV/PPD · 가정: 복사온도 = 실온, 기류 ${c?.vel ?? '–'}m/s, 옷 ${c?.clo ?? '–'}clo(계절), 활동 ${c?.met ?? '–'}met(용도) · 불쾌지수(THI) ${di.toFixed(0)} ${diLabel(di)}는 참고값">쾌적도 PMV<b>${c ? pmvTxt(c.pmv) : '–'} <span>${c ? CMF.pmvLabel(c.pmv) : ''}</span></b>${bar(c ? clamp((c.pmv + 3) / 6, 0, 1) : 0, !c ? '#8a94a6' : Math.abs(c.pmv) >= 1.5 ? '#e5484d' : Math.abs(c.pmv) >= .5 ? '#f2a01f' : '#22b07d')}<div class="sub" style="margin:4px 0 0;font-size:10px">${c ? `불만족 ${Math.round(c.ppd)}% · ${c.grade === '등급 밖' ? 'ISO 등급 밖' : `ISO ${c.grade}등급`} · 옷 ${c.clo.toFixed(1)}clo·활동 ${c.met}met 가정` : ''}</div></div>
-      <div>학사 시간표<b style="font-size:14px">${r.cls ? esc(r.cls.course) : r.next ? `다음 ${r.next.start}` : '–'}</b><div class="sub" style="margin:4px 0 0;font-size:10px">${r.cls ? `${r.cls.start}~${r.cls.end} · ${r.cls.code}` : r.next ? esc(r.next.course) : r.scheduled ? '오늘 남은 수업 없음' : '시간표 대상 아님'}</div></div>
+      <div>온도<b>${r.temp.toFixed(1)}<span>°C</span></b>${bar(frac('temp', r.temp), cssColor('temp', r.temp))}</div>
+      <div>습도<b>${Math.round(r.hum)}<span>%</span></b>${bar(frac('hum', r.hum), cssColor('hum', r.hum))}</div>
+      <div>전력<b>${r.power.toFixed(2)}<span>kW</span></b>${bar(frac('power', r.power), cssColor('power', r.power))}</div>
+      <div>${r.occSrc && r.occSrc !== 'schedule' ? `재실 인원 (${OCC_SRC[r.occSrc]})` : '수업 인원'}<b>${r.occSrc ? r.occ : '–'}<span> / ${r.cap}명</span></b>${bar(occK, 'var(--chart-cur)')}</div>
+      <div title="ISO 7730 PMV/PPD · 가정: 복사온도 = 실온, 기류 ${c?.vel ?? '–'}m/s, 옷 ${c?.clo ?? '–'}clo(계절), 활동 ${c?.met ?? '–'}met(용도) · 불쾌지수(THI) ${di.toFixed(0)} ${diLabel(di)}는 참고값">쾌적도 PMV<b>${c ? pmvTxt(c.pmv) : '–'} <span>${c ? CMF.pmvLabel(c.pmv) : ''}</span></b>${bar(c ? clamp((c.pmv + 3) / 6, 0, 1) : 0, !c ? 'var(--muted)' : Math.abs(c.pmv) >= 1.5 ? 'var(--danger)' : Math.abs(c.pmv) >= .5 ? 'var(--caution)' : 'var(--ok)')}<div class="note">${c ? `불만족 ${Math.round(c.ppd)}% · ${c.grade === '등급 밖' ? 'ISO 등급 밖' : `ISO ${c.grade}등급`} · 옷 ${c.clo.toFixed(1)}clo·활동 ${c.met}met 가정` : ''}</div></div>
+      <div>학사 시간표<b class="sm">${r.cls ? esc(r.cls.course) : r.next ? `다음 ${r.next.start}` : '–'}</b><div class="note">${r.cls ? `${r.cls.start}~${r.cls.end} · ${r.cls.code}` : r.next ? esc(r.next.course) : r.scheduled ? '오늘 남은 수업 없음' : '시간표 대상 아님'}</div></div>
     </div>
-    ${r.alert.items.map(([lv, m]) => `<div style="color:${lv === 2 ? 'var(--crit)' : 'var(--warn)'};font-weight:700;font-size:12px;margin-bottom:4px">● ${esc(m)}</div>`).join('')}
+    ${r.alert.items.map(([lv, m]) => `<div class="alert-line" style="color:${lv === 2 ? 'var(--danger)' : 'var(--caution)'}">${lv === 2 ? IC.alert : IC.alertCircle}${esc(m)}</div>`).join('')}
     ${(() => { const rows = PERSONA_IDS.flatMap(pk => insights(pk, [r]).map(i => ({ pk, i }))).sort((a, b) => (b.pk === state.persona) - (a.pk === state.persona));
-      return rows.length ? `<h3>이 방, 누구에게 무엇을</h3>${rows.map(({ pk, i }) => `<div style="padding:8px 10px;border-radius:10px;margin-bottom:6px;background:${pk === state.persona ? 'var(--accent-soft)' : 'transparent'};border:1px solid var(--line)">
-        <div style="font-size:10.5px;font-weight:800;color:var(--accent);margin-bottom:2px">→ ${PERSONA[pk].short}</div><div style="font-weight:800;font-size:12.5px">${esc(i.title)}</div>
-        <div style="font-size:11.5px;color:var(--muted);margin:2px 0 5px">${i.d}</div>${srcChips(i.src).replace('margin-left:15px', '')}</div>`).join('')}` : ''; })()}
+      return rows.length ? `<h3>이 방, 누구에게 무엇을</h3>${rows.map(({ pk, i }) => `<div class="who${pk === state.persona ? ' on' : ''}">
+        <div class="who-p">${PERSONA[pk].short}</div><div class="who-t">${esc(i.title)}</div>
+        <div class="who-d">${i.d}</div>${srcChips(i.src)}</div>`).join('')}` : ''; })()}
     ${r.zone ? `<h3>거주역(1.1m) 온도 분포 <span class="num">${r.zone.min.toFixed(1)} ~ ${r.zone.max.toFixed(1)}°C</span></h3>
-      <div class="meter" style="height:8px;background:${gradientCss('temp')};position:relative;opacity:.9"><i style="position:absolute;left:${(clamp((r.zone.min - 16) / 16, 0, 1) * 100).toFixed(1)}%;width:${(clamp((r.zone.max - r.zone.min) / 16, .01, 1) * 100).toFixed(1)}%;background:transparent;box-shadow:0 0 0 2px var(--ink);border-radius:4px"></i></div>
-      <div class="sub" style="margin:6px 0 0">편차 ${(r.zone.max - r.zone.min).toFixed(1)}°C · 바닥의 빨강/파랑 마커가 가장 더운/시원한 지점</div>` : ''}
+      <div class="zone" style="background:${gradientCss('temp')}"><i style="left:${(frac('temp', r.zone.min) * 100).toFixed(1)}%;width:${(Math.max(frac('temp', r.zone.max) - frac('temp', r.zone.min), .01) * 100).toFixed(1)}%"></i></div>
+      <div class="note">편차 ${(r.zone.max - r.zone.min).toFixed(1)}°C · 바닥의 빨강/파랑 마커가 가장 더운/시원한 지점</div>` : ''}
     ${r.acs.length ? `<h3>실내기 ${r.acs.length}대 <span class="num">설정 ${r.setpoint.toFixed(1)}°C</span></h3>
-    ${r.acs.map(a => `<div class="idu-row"><span class="pill" style="background:${HEX_CSS(STATUS_HEX[a.status])}">${a.status === 'on' ? 'ON' : a.status === 'off' ? 'OFF' : '고장'}</span>
+    ${r.acs.map(a => `<div class="idu-row"><span class="pill" style="background:${STATUS_CSS[a.status]}">${a.status === 'on' ? 'ON' : a.status === 'off' ? 'OFF' : '고장'}</span>
       <div class="tx"><b>${a.id}${a.error ? ` <span style="color:var(--crit)">에러 ${a.error}</span>` : ''}</b><span>${esc(a.model)} ${a.cool}kW · ${a.odu} · ${a.power.toFixed(2)}kW${typeof a.temp === 'number' ? ` · 흡입 ${a.temp.toFixed(1)}°C` : ''}${MAINT[a.id] ? `<br>필터 ${MAINT[a.id].filterHours.toLocaleString()}h · 누적 ${MAINT[a.id].runHours.toLocaleString()}h` : ''}${a.status === 'on' && a.phi ? `<br>토출 ${a.ways || 4}방향 · 풍향 ${Math.round(a.phi)}° 자동 스윙` : ''}</span></div></div>`).join('')}` : '<h3>실내기 없음</h3>'}`);
   renderWhatIf(r);
 }
@@ -2567,7 +2661,7 @@ function renderWhatIf(r, force){
     <div class="wi"><input type="range" min="18" max="30" step="0.5" value="${WI.sp}" data-wisp aria-label="바꿀 설정온도"><output>${WI.sp.toFixed(1)}°C</output>
       <div class="btns"><button data-wirun ${WI.busy ? 'disabled' : ''}>${WI.busy ? '계산 중…' : hasLive() ? '오늘 남은 시간 예측' : '예측 (표준 하루)'}</button><button class="ghost" data-wiapply ${WI.busy ? 'disabled' : ''}>이 온도로 적용</button></div></div>
     ${WI.res ? wiResult(r) : `<div class="msg">${hasLive() ? `이 방만 바꾸고 나머지는 오늘 실제 운전 그대로 — 오늘 기록(${OCC_SRC[occKind()]} 재실·가동·외기)과 예보로 EnergyPlus 계산` : '실시간 데이터가 들어오면 오늘 기준으로 계산해요 (지금은 표준 일정·설계일)'}</div>`}
-    ${WI.msg ? `<div class="msg">${esc(WI.msg)}</div>` : ''}`;
+    ${msgHtml(WI.msg)}`;
 }
 function wiResult(r){
   const j = WI.res, b = j.baseline.rooms[r.id], x = j.scenario.rooms[r.id];
@@ -2584,17 +2678,17 @@ function wiResult(r){
   // 시간별 예상 실온 그래프 (회색 = 지금 설정 그대로, 파랑 = 바꾼 설정)
   let chart = '';
   if (b.hourlyT && x.hourlyT) {
-    const all = [...b.hourlyT, ...x.hourlyT].filter(v => v != null), lo = Math.floor(Math.min(...all, 22)), hi = Math.ceil(Math.max(...all, 27)), Wc = 280, Hc = 86;
-    const X = h => 8 + h / 23 * (Wc - 16), Y = t => 6 + (hi - t) / (hi - lo) * (Hc - 18), line = a => a.map((t, h) => t == null ? '' : `${X(h).toFixed(1)},${Y(t).toFixed(1)}`).filter(Boolean).join(' ');
-    const band = busy ? [...busy].map((c, h) => c === '1' ? `<rect x="${(X(h) - (Wc - 16) / 46).toFixed(1)}" y="6" width="${((Wc - 16) / 23).toFixed(1)}" height="${Hc - 18}" fill="#8b5cf6" opacity=".08"/>` : '').join('') : '';
-    chart = `<svg viewBox="0 0 ${Wc} ${Hc}" role="img" aria-label="시간별 예상 실온">${band}
+    const all = [...b.hourlyT, ...x.hourlyT].filter(v => v != null), lo = Math.floor(Math.min(...all, 22)), hi = Math.ceil(Math.max(...all, 27)), Wc = 280, Hc = 120;
+    const X = h => 16 + h / 23 * (Wc - 32), Y = t => 8 + (hi - t) / (hi - lo) * (Hc - 34), line = a => a.map((t, h) => t == null ? '' : `${X(h).toFixed(1)},${Y(t).toFixed(1)}`).filter(Boolean).join(' ');
+    const band = busy ? [...busy].map((c, h) => c === '1' ? `<rect x="${(X(h) - (Wc - 32) / 46).toFixed(1)}" y="8" width="${((Wc - 32) / 23).toFixed(1)}" height="${Hc - 34}" fill="currentColor" opacity=".1"/>` : '').join('') : '';
+    chart = `<svg class="chart" viewBox="0 0 ${Wc} ${Hc}" role="img" aria-label="시간별 예상 실온">${band}
       <line x1="8" x2="${Wc - 8}" y1="${Y(26).toFixed(1)}" y2="${Y(26).toFixed(1)}" stroke="var(--warn)" stroke-dasharray="3 3" stroke-width="1"/>
-      ${live ? `<line x1="${X(j.live.now).toFixed(1)}" x2="${X(j.live.now).toFixed(1)}" y1="4" y2="${Hc - 12}" stroke="var(--muted)" stroke-width="1"/><text x="${X(j.live.now) + 3}" y="12" font-size="8" fill="var(--muted)">지금</text>` : ''}
-      <polyline points="${line(b.hourlyT)}" fill="none" stroke="var(--muted)" stroke-width="1.5" opacity=".7"/>
-      <polyline points="${line(x.hourlyT)}" fill="none" stroke="#3b6cff" stroke-width="2"/>
-      ${[0, 6, 12, 18, 23].map(h => `<text x="${X(h)}" y="${Hc - 2}" font-size="8" text-anchor="middle" fill="var(--muted)">${h}시</text>`).join('')}
-      <text x="${Wc - 8}" y="${Y(26) - 2}" font-size="8" text-anchor="end" fill="var(--warn)">26°C</text></svg>
-      <div class="msg" style="margin-top:2px"><span style="color:var(--muted)">━ 지금 ${sp0}°C</span> · <span style="color:#3b6cff">━ ${sp}°C</span>${busy ? ' · 보라 = 사람 있는 시간' : ''}</div>`;
+      ${live ? `<line x1="${X(j.live.now).toFixed(1)}" x2="${X(j.live.now).toFixed(1)}" y1="4" y2="${Hc - 26}" stroke="var(--muted)" stroke-width="1"/><text x="${X(j.live.now) + 4}" y="20" font-size="14" fill="var(--muted)">지금</text>` : ''}
+      <polyline points="${line(b.hourlyT)}" fill="none" stroke="var(--chart-prev)" stroke-width="2" stroke-dasharray="4 3"/>
+      <polyline points="${line(x.hourlyT)}" fill="none" stroke="var(--chart-cur)" stroke-width="2.5"/>
+      ${[0, 6, 12, 18, 23].map(h => `<text x="${X(h)}" y="${Hc - 4}" font-size="14" text-anchor="middle" fill="var(--muted)">${h}시</text>`).join('')}
+      <text x="${Wc - 8}" y="${Y(26) - 4}" font-size="14" text-anchor="end" fill="var(--warn)">26°C</text></svg>
+      <div class="key"><span><i class="prev"></i>지금 ${sp0}°C</span><span><i class="cur"></i>${sp}°C</span>${busy ? '<span><i class="busy"></i>사람 있는 시간</span>' : ''}</div>`;
   }
   return `<div class="res">${live ? `${now}시부터 오늘 끝까지` : '표준 하루(설계일)'} · ${sp0}°C → <b>${sp}°C</b><br>
     ${occ ? '재실 중 ' : ''}실온 최고 ${fmt1(tmax[0])} → <b>${fmt1(tmax[1])}°C</b> · 평균 ${fmt1(tavg[0])} → <b>${fmt1(tavg[1])}°C</b><br>
@@ -2607,7 +2701,7 @@ async function wiRun(){
   const r = ROOM[WI.room]; if (!r || WI.busy) return;
   WI.busy = true; WI.msg = ''; WI.ver++; renderWhatIf(r, true);
   try { WI.res = await simCompare({ name:`${r.name} ${WI.sp}°C`, inherit:'live', rooms:{ [r.id]:{ coolSetpoint:WI.sp } } }, hasLive()); }
-  catch (e) { WI.res = null; WI.msg = '⚠ ' + (e.message || e); }
+  catch (e) { WI.res = null; WI.msg = '오류: ' + (e.message || e); }
   WI.busy = false; WI.ver++; if (state.room === r) renderWhatIf(r, true);
 }
 function applyControl(r, sp){
@@ -2642,12 +2736,14 @@ $('#floorPicker').addEventListener('pointerover', e => { const b = e.target.clos
 $('#floorPicker').addEventListener('pointerleave', () => { hoverFloor = null; });
 function renderLegend(){
   const m = state.metric, sc = SCALES[m], el = $('#legend');
+  const sw = c => `<i style="background:${c}"></i>`;
   let html = m === 'alert'
-    ? `<div class="t">${sc.label}</div><div class="cats"><span><i style="background:#c9d1db"></i>정상</span><span><i style="background:#f2a01f"></i>주의</span><span><i style="background:#e5484d"></i>경고</span></div>`
-    : `<div class="t">${sc.label}</div><div class="bar" style="background:${gradientCss(m)}"></div><div class="ticks">${sc.ticks.map(t => `<span>${t}</span>`).join('')}</div>`;
-  if (state.pipes) html += `<div class="t" style="margin-top:10px">설비 연결</div><div class="cats"><span><i style="background:#4aa8ff"></i>서측 ODU 계통</span><span><i style="background:#2fd0b0"></i>동측 ODU 계통</span><span><i style="background:#7cd3ff;border-radius:50%"></i>냉매 흐름</span></div>`;
+    ? `<div class="t">${sc.label}</div><div class="cats"><span>${sw(sc.colors[0])}정상</span><span>${sw(sc.colors[1])}<span style="display:inline-flex;color:var(--caution)">${IC.alertCircle}</span>주의</span><span>${sw(sc.colors[2])}<span style="display:inline-flex;color:var(--danger)">${IC.alert}</span>위험</span></div>`
+    : `<div class="t">${sc.label}</div><div class="scale">${sc.colors.map(sw).join('')}<span>${sc.min}~${sc.max}${sc.unit}</span></div>`;
+  if (state.pipes) html += `<div class="t" style="margin-top:8px">설비 연결</div><div class="cats"><span><i style="background:#4aa8ff"></i>서측 실외기 계통</span><span><i style="background:#2fd0b0"></i>동측 실외기 계통</span><span><i style="background:#7cd3ff;border-radius:50%"></i>냉매 흐름</span></div>`;
   el.innerHTML = html;
   $('#rlTemp').style.background = gradientCss('temp');
+  $('#rlTempLbl').textContent = `${SCALES.temp.label} ${SCALES.temp.min}~${SCALES.temp.max}${SCALES.temp.unit}`;
   document.querySelectorAll('#metrics button').forEach(b => b.setAttribute('aria-selected', b.dataset.m === m));
 }
 $('#metrics').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setMetric(b.dataset.m); });
@@ -2655,8 +2751,8 @@ $('#pipesBtn').addEventListener('click', () => setPipes(!state.pipes));
 function setMetric(m){ if (!SCALES[m]) return; state.metric = m; renderLegend(); recolorBuilding(); renderTags(); if (state.view === 'floor') updatePlanSvg(); }
 function renderCrumbs(){
   const c = [`<a data-go="building">${esc(CFG.buildingName)}</a>`];
-  if (state.floor) c.push('<span class="sep">›</span>', state.room ? `<a data-go="floor">${state.floor.id}</a>` : `<span>${state.floor.id}</span>`);
-  if (state.room) c.push('<span class="sep">›</span>', `<span>${esc(state.room.name)}</span>`);
+  if (state.floor) c.push(`<span class="sep">${IC.chevron}</span>`, state.room ? `<a data-go="floor">${state.floor.id}</a>` : `<span>${state.floor.id}</span>`);
+  if (state.room) c.push(`<span class="sep">${IC.chevron}</span>`, `<span>${esc(state.room.name)}</span>`);
   setHTML($('#crumbs'), c.join(''));
 }
 $('#crumbs').addEventListener('click', e => { const a = e.target.closest('a'); if (!a) return; a.dataset.go === 'building' ? goBuilding() : goFloor(state.floor); });
@@ -2680,7 +2776,7 @@ function showRoomTip(r, e){
     ${r.scheduled ? `<div class="row"><span>학사 시간표</span><span>${r.cls ? `${esc(r.cls.course)} · ${r.occ}명` : r.next ? `다음 ${r.next.start} ${esc(r.next.course)}` : '오늘 수업 끝'}</span></div>` : ''}
     ${r.cmf ? `<div class="row"><span>쾌적도 PMV</span><span>${pmvTxt(r.cmf.pmv)} · 불만족 ${Math.round(r.cmf.ppd)}%</span></div>` : ''}
     ${r.acs.length ? `<div class="row"><span>실내기</span><span>${on}/${r.acs.length} 가동${fault ? ` · 고장 ${fault}` : ''} · ${r.setpoint}°</span></div>` : ''}
-    ${r.alert.items.map(([lv, m]) => `<div class="al" style="color:${lv === 2 ? 'var(--crit)' : 'var(--warn)'}">⚠ ${esc(m)}</div>`).join('')}`;
+    ${r.alert.items.map(([lv, m]) => `<div class="al" style="color:${lv === 2 ? 'var(--danger)' : 'var(--caution)'}">${lv === 2 ? IC.alert : IC.alertCircle}${esc(m)}</div>`).join('')}`;
   tip.style.display = 'block'; placeTip(e);
 }
 function showFloorTip(f, e){
@@ -2689,7 +2785,7 @@ function showFloorTip(f, e){
   const occ = f.rooms.reduce((s, r) => s + r.occ, 0), al = f.rooms.filter(r => r.alert.level).length;
   tip.innerHTML = `<b>${f.id}</b><div class="row"><span>평균 온도</span><span>${avgT.toFixed(1)}°C</span></div>
     <div class="row"><span>전력</span><span>${pw.toFixed(1)} kW</span></div><div class="row"><span>${occName(f.rooms)}</span><span>${occ}명</span></div>
-    ${al ? `<div class="al" style="color:var(--crit)">⚠ 이상 ${al}개 실</div>` : ''}`;
+    ${al ? `<div class="al" style="color:var(--danger)">${IC.alert}이상 ${al}개 실</div>` : ''}`;
   tip.style.display = 'block'; placeTip(e);
 }
 function hideTip(){ tip.style.display = 'none'; }
@@ -2863,7 +2959,7 @@ window.addEventListener('message', e => {
 
 /* ═════════════════════════ start ═════════════════════════ */
 if (!LIVE.count) for (const r of ROOMS) r.alert = alertOf(r);
-booted = true;
+booted = true; themeReady = true;
 if (!params.get('metric')) state.metric = PERSONA[state.persona].metric;
 setPersona(state.persona, true);
 renderLegend();

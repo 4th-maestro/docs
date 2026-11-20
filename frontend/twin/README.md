@@ -15,6 +15,13 @@ node tools/sim-server.mjs 8766
 - 이 서버는 화면 파일을 보여 주고, 시뮬레이션 계산(EnergyPlus)도 맡습니다. 이 컴퓨터(127.0.0.1)에서만 열립니다.
 - `python -m http.server 8766`로도 화면은 열립니다. 다만 이 경우 시뮬레이션은 저장된 `scenario.json`만 보여 줍니다.
 
+## 화면 디자인과 테마
+
+- 색, 글꼴(SUIT Variable), 라운드, 그림자, 버튼 크기는 앱 `src/index.css` 토큰과 같은 값입니다. 기준은 작업 공간 `DESIGN.md`(운영자 화면 기준)와 디자인 시스템 6절입니다.
+- 히트맵 색은 앱 `src/heat.ts`와 같은 5단계입니다. 범위는 온도 16~28℃, 전력 0~6kW, 습도 30~70%이고, 범위 밖 값은 양끝 색으로 표시합니다.
+- 테마는 주소 `theme=light|dark`와 부모 창 메시지 `{source:'maestro', type:'theme', theme}`로 적용합니다. 둘 다 없으면 시스템 설정을 따릅니다. `digital-twin.html`과 `pipeline.html` 모두 같습니다.
+- 아이콘은 lucide 1.76.0(앱 `lucide-react`와 같은 판) 경로를 인라인 SVG로 씁니다. 이모지와 기호 문자는 쓰지 않습니다.
+
 ## 입력 데이터 (data/)
 
 | 파일 | 구분 | 실제 출처 | schema |

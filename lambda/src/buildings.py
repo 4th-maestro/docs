@@ -1,10 +1,11 @@
 """건물 목록과 건물별 호실
 
 - 출처: 환경 변수 BUILDINGS_TABLE·ROOMS_TABLE이 있으면 DynamoDB(maestro-twin 스택의 Buildings·Rooms), 없으면 buildings.json·rooms.json(로컬·테스트)
-  - 판매사·고객사 구조(2026-11-20 계획)에서 건물이 화면으로 추가·수정되므로 고정 파일 대신 테이블. 테이블 적재는 infra/twin/seed.py
+  - 판매사·고객사 구조(2026-11-20 계획)에서 건물이 화면으로 추가·수정되므로 고정 파일 대신 테이블. 초기 적재는 infra/twin/seed.py
+  - 판매사 건물 등록·도면 교체·삭제(admin.py)가 Buildings·Rooms 테이블에 직접 기록. 테이블 이름은 tenant.table(테스트는 가짜 테이블)
 - 캐시: 실행 환경별 60초. 다시 읽은 내용이 바뀌면 version()이 바뀌고, 다른 모듈의 파생 값은 version 기준으로 다시 계산
 - 수정 정보: 환경 변수 OWNERS_TABLE이 있으면 BuildingOwnersTable 항목의 overrides(name, use, hours, weekend)를 원본 값 위에 덮어씀
-  - 트윈 Buildings 테이블은 적재 스크립트가 항목 전체를 덮어써서 수정 정보를 별도 테이블에 저장. PATCH /buildings/{id}(customer.py)가 기록
+  - 트윈 Buildings 테이블은 적재 스크립트가 항목 전체를 덮어써서 수정 정보를 별도 테이블에 저장. PATCH /admin/buildings/{id}(admin.py)가 기록
 - 파일 출처의 호실: main은 공개 IFC 의원 원본(호실 id는 IFC GUID), 가상 건물은 원본 층을 복제·선택하고 용도를 바꿔 생성(호실 id "건물.층.GUID")
 - 운영 프로필(hours, weekend, waste)은 호실 dict에 넣어 sim.py가 건물 구분 없이 사용
 - LIST, BY_ROOM은 모듈 속성으로 접근하면 캐시에서 계산(기존 호출 코드 호환)
@@ -55,16 +56,6 @@ def _floor_key(f):
     return (-int(m.group(2)) if m.group(1) else int(m.group(2))) if m else 0
 
 
-def _scan(table):
-    items, kw = [], {}
-    while True:
-        r = table.scan(**kw)
-        items += r['Items']
-        if 'LastEvaluatedKey' not in r:
-            return items
-        kw['ExclusiveStartKey'] = r['LastEvaluatedKey']
-
-
 def _from_files():
     base = json.loads((_DIR / 'rooms.json').read_text())
     lst = json.loads((_DIR / 'buildings.json').read_text())
@@ -72,11 +63,9 @@ def _from_files():
 
 
 def _from_tables():
-    import boto3
-    ddb = boto3.resource('dynamodb')
-    lst = [{'id': x.pop('buildingId'), **x} for x in map(_plain, _scan(ddb.Table(os.environ['BUILDINGS_TABLE'])))]
+    lst = [{'id': x.pop('buildingId'), **x} for x in map(_plain, tenant.scan('BUILDINGS_TABLE'))]
     rooms = {}
-    for x in map(_plain, _scan(ddb.Table(os.environ['ROOMS_TABLE']))):
+    for x in map(_plain, tenant.scan('ROOMS_TABLE')):
         rooms.setdefault(x.pop('buildingId'), []).append({'id': x.pop('roomId'), **x})
     # 테이블 스캔 순서는 임의: 건물은 기본 건물 먼저 + id 순, 호실은 층 순 + 실내기 번호 순(파일 출처와 같은 순서)
     lst.sort(key=lambda b: (b['id'] != DEFAULT, b['id']))

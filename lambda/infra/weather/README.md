@@ -79,6 +79,16 @@ python3.12 -m venv /private/tmp/maestro-weather-venv
 
 ## 시험 배포
 
+### 부산대학교 부산캠퍼스 수집 위치
+
+수집 대상은 부산대학교 부산캠퍼스(부산광역시 금정구 부산대학로63번길 2,
+장전동)이며 `Location=98,77`을 사용합니다. 기상청 2026-10-19 공식 활용가이드에
+첨부된 격자표에서 장전제1동·장전제2동 모두 X=98, Y=77임을 확인했습니다.
+이는 캠퍼스의 지역 대표 관측값이며 건물 내부 센서값이 아닙니다.
+
+- 주소: https://pusan.ac.kr/kor/CMS/Contents/Contents.do?mCode=MN176
+- 격자표: https://www.data.go.kr/data/15084084/openapi.do 의 참고문서 ZIP
+
 실제 건물의 격자를 먼저 확정합니다. `maestro-twin` 스택이 같은 계정의 서울 리전에
 배포되어 `maestro-twin-WeatherTable`을 Export해야 합니다.
 
@@ -187,5 +197,10 @@ aws secretsmanager delete-secret --secret-id maestro/dev/kma-api-key \
   로컬 테스트에는 기존 SAM CLI에 포함된 boto3를 사용했습니다.
 - cfn-guard 전용 보안·준수 검사는 도구 미설치로 실행하지 않았습니다.
   위 템플릿 검사 통과는 해당 검사를 대체하지 않습니다.
-- 실제 건물 격자와 키 소유자의 시크릿 입력이 남아 있어, 스택 배포·실제 API 호출·
-  DynamoDB 쓰기·30분 스케줄 검증은 아직 진행하지 않았습니다.
+- 부산대학교 부산캠퍼스의 수집 격자는 공식 격자표 기준 `98,77`로 확인했습니다.
+- `maestro-weather-dev` 시험 스택 배포 및 수정 배포가 완료됐습니다.
+  Lambda는 `Active`, Python 3.12 / arm64, `LOCATION=98,77`입니다.
+- `Enabled: !If`를 사용한 최초 배포에서 규칙이 활성화되어 즉시 비활성화했습니다.
+  `State: !If [RunSchedule, ENABLED, DISABLED]`로 수정해 다시 배포했습니다.
+- 시험용 빈 시크릿 `maestro/dev/kma-api-key`를 생성했습니다. 키 소유자의 값 입력 전이므로
+  실제 API 호출·DynamoDB 쓰기·30분 스케줄 검증은 아직 진행하지 않았습니다.

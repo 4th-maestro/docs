@@ -6,28 +6,23 @@ import type { Mode, Room } from './types'
 export const TWIN_URL = import.meta.env.VITE_TWIN_URL as string | undefined
 // 같은 서버의 /twin/digital-twin.html 같은 상대 주소도 허용
 const twinOrigin = () => new URL(TWIN_URL as string, window.location.href).origin
+// 화면 테마: 트윈 첫 표시는 주소의 theme, 이후 전환은 postTheme 메시지(트윈이 수신)
+const theme = () => (document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light')
+export function postTheme(frame: HTMLIFrameElement | null) {
+  if (TWIN_URL) frame?.contentWindow?.postMessage({ source: 'maestro', type: 'theme', theme: theme() }, twinOrigin())
+}
 // 트윈이 그릴 건물: 건물 id(트윈 data/buildings.json의 id)를 주소에 붙임
-export function twinSrc(building: string, edited = false) {
+// - 목록에 없는 건물(서버 건물)은 트윈이 needBuilding으로 building.json을 요청
+// - 주소에 theme이 들어가므로 화면은 첫 렌더링 값을 유지(테마 전환 시 iframe 다시 읽기 방지)
+export function twinSrc(building: string) {
   const u = new URL(TWIN_URL as string, window.location.href)
   u.searchParams.set('building', building)
-  if (edited) u.searchParams.set('edited', '1')
+  u.searchParams.set('theme', theme())
   return u.href
 }
 
-export async function loadEditablePlan(building: string, stored: unknown): Promise<Plan> {
-  let data = stored
-  if (!data) {
-    const base = new URL(TWIN_URL || '/twin/digital-twin.html', location.href)
-    const getJson = async (path: string) => {
-      const response = await fetch(new URL(path, base))
-      if (!response.ok) throw new Error('건물 평면도를 불러오지 못했습니다.')
-      return response.json()
-    }
-    const index = await getJson('data/buildings.json')
-    const entry = index.buildings?.find((item: { id: string }) => item.id === building)
-    if (!entry) throw new Error('편집할 건물 평면도가 없습니다.')
-    data = await getJson(entry.data + 'building.json')
-  }
+// 편집 가능한 트윈 building.json 확인: schema, 건물 크기, 층별 실 목록
+export function editablePlan(data: unknown): Plan {
   const plan = data as Partial<Plan> | null
   const size = plan?.building?.size
   if (plan?.schema !== 'twin.building/v1' || !size || !Number.isFinite(size.w) || !Number.isFinite(size.d) ||
@@ -77,28 +72,28 @@ export function onTwinChange(handlers: { floor?: (floor: string) => void; mode?:
   return () => window.removeEventListener('message', listener)
 }
 
-// '건물 추가'로 넣은 건물: 트윈 폴더엔 도면이 없어서 트윈이 요청하면 이 브라우저에 저장된 building.json을 보냄
-export function onNeedBuilding(frame: () => HTMLIFrameElement | null, get: (id: string) => unknown) {
+// 서버 건물: 트윈 폴더에 도면이 없어서 트윈이 요청하면 서버 building.json(GET /buildings/{id}/twin)을 보냄, 없으면 null
+export function onNeedBuilding(frame: () => HTMLIFrameElement | null, get: (id: string) => Promise<unknown>) {
   const listener = (e: MessageEvent) => {
     if (!TWIN_URL || e.origin !== twinOrigin() || e.data?.source !== 'twin' || e.data.type !== 'needBuilding') return
     const target = frame()?.contentWindow
     if (!target || e.source !== target) return
     const id = String(e.data.id)
-    target.postMessage({ source: 'maestro', type: 'buildingData', id, data: get(id) }, twinOrigin())
+    get(id).catch(() => null).then((data) => target.postMessage({ source: 'maestro', type: 'buildingData', id, data }, twinOrigin()))
   }
   window.addEventListener('message', listener)
   return () => window.removeEventListener('message', listener)
 }
 
 // 트윈 파이프라인(도면 → building.json) 주소와 '트윈에서 렌더링' 결과 수신
-export function pipelineSrc(name?: string) {
+export function pipelineSrc() {
   if (!TWIN_URL) return null
   const url = new URL('pipeline.html', new URL(TWIN_URL, window.location.href))
   url.searchParams.set('quick', '1')
-  if (name) url.searchParams.set('name', name)
+  url.searchParams.set('theme', theme())
   return url.href
 }
-export function onBuildingRendered(handler: (building: { building?: { name?: string } }) => void) {
+export function onBuildingRendered(handler: (building: unknown) => void) {
   const listener = (e: MessageEvent) => {
     if (!TWIN_URL || e.origin !== twinOrigin() || e.data?.source !== 'twin' || e.data.type !== 'buildingRendered' || !e.data.building) return
     handler(e.data.building)

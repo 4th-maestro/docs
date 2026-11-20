@@ -76,6 +76,26 @@
 .adm-when { display: flex; flex-direction: column; align-items: flex-end; min-width: 0; font-size: 15px; font-variant-numeric: tabular-nums; text-align: right; overflow-wrap: anywhere; }
 .adm-when small { font-size: 14px; color: var(--muted); }
 
+/* 건물 행 버튼: 이름 아래, 같은 너비 칸(폭에 따라 5·3·2열) */
+.adm-bacts { flex-basis: 100%; display: grid; grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); gap: 6px; padding-left: 30px; }
+.adm-bacts .adm-mini { justify-content: center; min-width: 0; padding: 0 8px; }
+a.adm-mini, a.adm-btn { text-decoration: none; }
+.adm-mini:disabled { background: var(--surface-strong); border-color: var(--surface-strong); color: var(--muted); }
+
+/* 만들기 방법: 카드 2개 같은 줄 1:1(휴대폰 세로, 같은 너비), 준비 중 카드는 회색 비활성 */
+.adm-methods { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.adm-method { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; min-height: 160px; padding: 20px; border: 1px solid var(--hairline); border-radius: var(--r-md); background: var(--canvas); color: var(--ink); font: inherit; text-align: left; text-decoration: none; }
+.adm-method b { font-size: 18px; }
+.adm-method small { font-size: 15px; line-height: 1.5; color: var(--body); }
+a.adm-method:hover { border-color: var(--ink); }
+.adm-method:disabled { background: var(--surface-soft); color: var(--muted); cursor: not-allowed; }
+.adm-method:disabled small { color: var(--muted); }
+.adm-method:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+/* 트윈 파이프라인·도면 편집: 본문 폭 전체 */
+.adm-wide { max-width: none; }
+.adm-pipe { width: 100%; height: calc(100dvh - 260px); min-height: 520px; border: 1px solid var(--hairline); border-radius: var(--r-md); background: var(--canvas); }
+
 /* 기업 정보 조회(운영자): 라벨 위, 2열(휴대폰 1열) */
 .adm-dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; margin: 0; }
 .adm-dl .wide { grid-column: 1 / -1; }
@@ -88,6 +108,8 @@
   .adm-assign { grid-template-columns: 1fr; row-gap: 8px; }
   .adm-codeval { font-size: 26px; }
   .adm-dl { grid-template-columns: 1fr; }
+  .adm-methods { grid-template-columns: 1fr; }
+  .adm-bacts { padding-left: 0; }
   /* 구성원 버튼 2개는 이메일 아래 한 줄 1:1, 변경 이력 시각·사용자는 동작 아래 */
   .adm-mem > .adm-acts { flex-basis: 100%; }
   .adm-log { flex-wrap: wrap; }

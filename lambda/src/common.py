@@ -21,7 +21,7 @@ def resp(status, body):
 def body(event):
     try:
         return json.loads(event.get('body') or '{}')
-    except json.JSONDecodeError:
+    except (json.JSONDecodeError, RecursionError):  # 깊은 중첩 JSON도 형식 오류로 처리
         return None
 
 

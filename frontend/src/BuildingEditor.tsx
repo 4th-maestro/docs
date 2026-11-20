@@ -333,7 +333,7 @@ export default function BuildingEditor({ initial, floor, onSave, onCancel }: { i
           <button className="primary" disabled={!history.length && !pendingName} onClick={() => {
             const result = pendingName ? { ...model, floors: model.floors.map(f => f.id === level ? { ...f, rooms: renamedRooms() } : f) } : model
             onSave(result, level)
-          }}>저장하고 3D 보기</button>
+          }}>저장</button>
         </div>
       </header>
       <div className="edit-layout">

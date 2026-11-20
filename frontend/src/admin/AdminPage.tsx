@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useState } from 'react'
-import { ArrowLeft, Building2, Copy, Link2, Plus, RefreshCw, ShieldCheck, Trash2, Unlink } from 'lucide-react'
+import { ArrowLeft, Building2, Copy, FileImage, Link2, Pencil, PencilRuler, Plus, RefreshCw, ShieldCheck, Trash2, Unlink } from 'lucide-react'
 import {
-  assignBuilding, co, createCompany, deleteCompany, getCompany, listAdminBuildings, listCompanies, listUsers, renewCode, updateCompany,
+  assignBuilding, buildingsChanged, co, createCompany, deleteBuilding, deleteCompany, getCompany, listAdminBuildings, listCompanies, listUsers, patchBuilding, renewCode, updateCompany,
   type AdminBuilding, type Company, type CompanyDetail, type CompanyRow, type UserRow,
 } from '../api'
+import type { AdminSub } from '../shell/route'
 import { Seg } from '../energy/parts'
 import { SkRows, SkTable, SkWrap } from '../skeleton/Skeleton'
-import { auditNames, day, EMPTY, forCreate, formOk, forUpdate, msg, toForm, type Form } from './form'
-import { Audit, Expiry, Fields, Members, State } from './parts'
+import BuildingPage from './BuildingPages'
+import { auditNames, day, EMPTY, forCreate, formOk, forUpdate, hh, msg, toForm, type Form } from './form'
+import { Audit, BuildingForm, Expiry, Fields, Members, State } from './parts'
 import './admin.css'
 
 // 회원 상태: Cognito UserStatus → 운영자용 표현
@@ -18,9 +20,10 @@ const STATUS: Record<string, string> = {
 const DAYS: [string, string][] = [['7', '7일'], ['30', '30일'], ['90', '90일'], ['365', '1년']]
 const STATES: [Company['status'], string][] = [['active', '사용 중'], ['suspended', '사용 중지']]
 
-// 판매사 기업 관리(관리자 전용): #/admin 기업 목록·추가·가입한 사용자, #/admin/<기업 id> 기업 상세
+// 판매사 기업 관리(관리자 전용): #/admin 기업 목록·추가·가입한 사용자, #/admin/<기업 id> 기업 상세, 하위 건물 화면(BuildingPages)
 // - 권한 판정은 API(admin API)가 수행, 관리자가 아니면 403 안내 표시
-export default function AdminPage({ company }: { company?: string }) {
+export default function AdminPage({ company, sub }: { company?: string; sub?: AdminSub }) {
+  if (company && sub) return <BuildingPage company={company} sub={sub} />
   return company ? <CompanyView key={company} id={company} /> : <CompanyList />
 }
 
@@ -114,8 +117,8 @@ function CompanyList() {
   )
 }
 
-// 기업 상세: 기업 코드(복사, 재발급), 기업 정보·사용 상태, 건물 연결, 구성원(역할 변경, 제외), 변경 이력, 삭제
-// - 재확인: 코드 재발급, 건물 연결 해제, 구성원 역할 변경·제외, 기업 삭제(DESIGN.md 비가역 동작)
+// 기업 상세: 기업 코드(복사, 재발급), 기업 정보·사용 상태, 건물(추가, 정보 수정, 도면 편집·교체, 연결·해제, 영구 삭제), 구성원(역할 변경, 제외), 변경 이력, 삭제
+// - 재확인: 코드 재발급, 건물 연결 해제·삭제, 구성원 역할 변경·제외, 기업 삭제(DESIGN.md 비가역 동작)
 // - 결과 문구는 동작한 카드 안에 표시
 function CompanyView({ id }: { id: string }) {
   const [data, setData] = useState<CompanyDetail | null>(null)
@@ -229,23 +232,53 @@ function CompanyView({ id }: { id: string }) {
         {data.buildings.length === 0 && <p className="muted">연결한 건물이 없습니다. 구성원에게 표시할 건물이 없습니다.</p>}
         {!!data.buildings.length && (
           <ul className="adm-list">
-            {data.buildings.map((b) => (
-              <li key={b.id}>
-                <Building2 size={18} aria-hidden />
-                <span className="adm-entry">{b.name}<small>{b.use}, {b.floors.length}개 층, 호실 {b.roomCount}개</small></span>
-                {ask === `un:${b.id}` ? (
-                  <span className="adm-confirm">
-                    <button className="adm-mini danger" type="button" disabled={busy} onClick={() => run('bld', () => assignBuilding(b.id, null), `${b.name} 연결을 해제했습니다.`)}>해제</button>
-                    <button className="adm-mini" type="button" onClick={() => setAsk(null)}>취소</button>
+            {data.buildings.map((b) => {
+              const open = (k: string) => setAsk(ask === `${k}:${b.id}` ? null : `${k}:${b.id}`)
+              const plan = `#/admin/${id}/buildings/${b.id}`
+              return (
+                <li key={b.id} className="adm-mem">
+                  <Building2 size={18} aria-hidden />
+                  <span className="adm-entry">
+                    {b.name}
+                    <small>{b.use}, {b.floors.length}개 층, 호실 {b.roomCount}개</small>
+                    {b.hours && <small>운영 {hh(b.hours[0])}~{hh(b.hours[1])}시, 주말 {b.weekend ? '운영' : '휴무'}</small>}
+                    {b.hasTwin === false && <small id={`nt-${b.id}`}>트윈 도면 없음, 도면 교체 후 편집 가능</small>}
                   </span>
-                ) : (
-                  <button className="adm-mini" type="button" onClick={() => setAsk(`un:${b.id}`)} aria-label={`${b.name} 연결 해제`}><Unlink size={16} aria-hidden />연결 해제</button>
-                )}
-              </li>
-            ))}
+                  <span className="adm-bacts">
+                    <button className="adm-mini" type="button" disabled={busy || !b.hours} onClick={() => open('edit')} aria-expanded={ask === `edit:${b.id}`} aria-label={`${b.name} 정보 수정`}><Pencil size={16} aria-hidden />정보 수정</button>
+                    {b.hasTwin === false
+                      ? <button className="adm-mini" type="button" disabled aria-describedby={`nt-${b.id}`}><PencilRuler size={16} aria-hidden />도면 편집</button>
+                      : <a className="adm-mini" href={`${plan}/plan`} aria-label={`${b.name} 도면 편집`}><PencilRuler size={16} aria-hidden />도면 편집</a>}
+                    <a className="adm-mini" href={`${plan}/replace`} aria-label={`${b.name} 도면 교체`}><FileImage size={16} aria-hidden />도면 교체</a>
+                    <button className="adm-mini" type="button" disabled={busy} onClick={() => open('un')} aria-expanded={ask === `un:${b.id}`} aria-label={`${b.name} 연결 해제`}><Unlink size={16} aria-hidden />연결 해제</button>
+                    <button className="adm-mini danger" type="button" disabled={busy} onClick={() => open('del')} aria-expanded={ask === `del:${b.id}`} aria-label={`${b.name} 삭제`}><Trash2 size={16} aria-hidden />삭제</button>
+                  </span>
+                  {ask === `edit:${b.id}` && b.hours && (
+                    <BuildingForm init={b} label={`${b.name} 정보 수정`} ok="저장" cancel="취소" diff onCancel={() => setAsk(null)}
+                      submit={async (body) => { await patchBuilding(b.id, body); setAsk(null); setOut({ at: 'bld', text: `${b.name} 정보를 저장했습니다.` }); buildingsChanged(); await load().catch((e) => setError(msg(e))) }} />
+                  )}
+                  {(ask === `un:${b.id}` || ask === `del:${b.id}`) && (
+                    <div className="adm-ask fade-in">
+                      <p className="adm-help">
+                        {ask === `un:${b.id}`
+                          ? `${b.name} 건물 연결을 해제합니다. ${c.name} 구성원은 이 건물을 볼 수 없게 됩니다. 건물 데이터는 유지됩니다.`
+                          : `${b.name} 건물을 영구 삭제합니다. 건물 정보, 도면, 호실 목록이 삭제되며 되돌릴 수 없습니다.`}
+                      </p>
+                      <div className="adm-btns">
+                        {ask === `un:${b.id}`
+                          ? <button className="adm-dark adm-btn" type="button" disabled={busy} onClick={() => run('bld', () => assignBuilding(b.id, null).then(buildingsChanged), `${b.name} 연결을 해제했습니다.`)}><Unlink size={18} aria-hidden />연결 해제</button>
+                          : <button className="adm-danger adm-btn" type="button" disabled={busy} onClick={() => run('bld', () => deleteBuilding(b.id).then(buildingsChanged), `${b.name} 건물을 삭제했습니다.`)}><Trash2 size={18} aria-hidden />영구 삭제</button>}
+                        <button className="secondary adm-btn" type="button" onClick={() => setAsk(null)}>취소</button>
+                      </div>
+                    </div>
+                  )}
+                </li>
+              )
+            })}
           </ul>
         )}
-        <form className="adm-assign" onSubmit={(e) => { e.preventDefault(); if (picked) run('bld', () => assignBuilding(picked.id, id).then(() => setPick('')), `${picked.name} 건물을 연결했습니다.`) }}>
+        <a className="secondary adm-btn" href={`#/admin/${id}/buildings/new`}><Plus size={18} aria-hidden />건물 추가</a>
+        <form className="adm-assign" onSubmit={(e) => { e.preventDefault(); if (picked) run('bld', () => assignBuilding(picked.id, id).then(() => { setPick(''); buildingsChanged() }), `${picked.name} 건물을 연결했습니다.`) }}>
           <label htmlFor="adm-pick">연결할 건물</label>
           <select id="adm-pick" value={pick} onChange={(e) => setPick(e.target.value)}>
             <option value="">건물 선택</option>
