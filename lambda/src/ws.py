@@ -10,6 +10,7 @@ import logging
 
 import boto3
 
+import chat
 import common
 import query
 
@@ -32,7 +33,7 @@ def handler(event, context):
         elif not b:
             emit({'type': 'error', 'message': '알 수 없는 건물입니다. 건물을 다시 선택하십시오.'})
         else:
-            query.run(text, emit, b['id'])
+            query.converse(text, emit, b['id'], chat.user(event))
     except api.exceptions.GoneException:
         pass
     except Exception:

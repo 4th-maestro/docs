@@ -25,6 +25,9 @@ Globals:
     Environment:
       Variables:
         SCHEDULES_TABLE: !Ref SchedulesTable
+        CHAT_TABLE: !Ref ChatTable
+        USER_POOL_ID: !Ref UserPool
+        USER_POOL_CLIENT_ID: !Ref UserPoolClient
 
 Resources:
   Api:
@@ -33,12 +36,87 @@ Resources:
       CorsConfiguration:
         AllowOrigins: [!Ref AllowedOrigin]
         AllowMethods: [GET, POST, DELETE]
-        AllowHeaders: [content-type]
+        AllowHeaders: [content-type, authorization]
+      # 모든 경로 로그인 필수: Cognito 액세스 토큰(Authorization: Bearer), CORS 사전 요청은 제외
+      Auth:
+        DefaultAuthorizer: Cognito
+        Authorizers:
+          Cognito:
+            IdentitySource: $request.header.Authorization
+            JwtConfiguration:
+              issuer: !Sub https://cognito-idp.${AWS::Region}.amazonaws.com/${UserPool}
+              audience: [!Ref UserPoolClient]
 
   SchedulesTable:
     Type: AWS::Serverless::SimpleTable
     Properties:
       PrimaryKey: {Name: id, Type: String}
+
+  # 대화 기록(90일)과 대화 메모리(24시간), ttl 속성으로 자동 삭제(chat.py)
+  ChatTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions: [{AttributeName: pk, AttributeType: S}, {AttributeName: sk, AttributeType: S}]
+      KeySchema: [{AttributeName: pk, KeyType: HASH}, {AttributeName: sk, KeyType: RANGE}]
+      TimeToLiveSpecification: {AttributeName: ttl, Enabled: true}
+
+  # 운영자 계정: 관리자 발급(자체 가입 없음), 이메일 로그인, 첫 로그인 비밀번호 변경
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: maestro-operators
+      UsernameAttributes: [email]
+      AutoVerifiedAttributes: [email]
+      AdminCreateUserConfig: {AllowAdminCreateUserOnly: true}
+      AccountRecoverySetting: {RecoveryMechanisms: [{Name: admin_only, Priority: 1}]}
+      Policies:
+        PasswordPolicy: {MinimumLength: 10, RequireLowercase: true, RequireNumbers: true, RequireUppercase: false, RequireSymbols: false, TemporaryPasswordValidityDays: 7}
+
+  # 웹 클라이언트: 비밀 키 없음, 비밀번호·갱신 토큰 인증, 계정 존재 여부 노출 방지
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref UserPool
+      GenerateSecret: false
+      ExplicitAuthFlows: [ALLOW_USER_PASSWORD_AUTH, ALLOW_REFRESH_TOKEN_AUTH]
+      PreventUserExistenceErrors: ENABLED
+      AccessTokenValidity: 60
+      IdTokenValidity: 60
+      RefreshTokenValidity: 30
+      TokenValidityUnits: {AccessToken: minutes, IdToken: minutes, RefreshToken: days}
+
+  ChatFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: chat.handler
+      Policies: [DynamoDBCrudPolicy: {TableName: !Ref ChatTable}]
+      Events:
+        Get: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /chat, Method: GET}}
+        Delete: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /chat, Method: DELETE}}
+
+  # WebSocket 연결 인증: 쿼리 token(액세스 토큰) 검증(auth.py), 결과 sub를 ask 라우트로 전달
+  WsAuthorizerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: auth.handler
+
+  WsAuthorizer:
+    Type: AWS::ApiGatewayV2::Authorizer
+    Properties:
+      ApiId: !Ref WsApi
+      AuthorizerType: REQUEST
+      Name: maestro-ws-auth
+      IdentitySource: [route.request.querystring.token]
+      AuthorizerUri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${WsAuthorizerFunction.Arn}/invocations
+
+  WsAuthorizerPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref WsAuthorizerFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WsApi}/authorizers/${WsAuthorizer}
 
   StatusFunction:
     Type: AWS::Serverless::Function
@@ -57,6 +135,7 @@ Resources:
         Variables: {MODEL_ID: !Ref ModelId, BEDROCK_REGION: !Ref BedrockRegion}
       Policies:
         - DynamoDBReadPolicy: {TableName: !Ref SchedulesTable}
+        - DynamoDBCrudPolicy: {TableName: !Ref ChatTable}
         - Statement:
             - Effect: Allow
               # 응답 스트리밍(messages.stream)은 InvokeModelWithResponseStream 권한 필요
@@ -90,6 +169,8 @@ Resources:
     Properties:
       ApiId: !Ref WsApi
       RouteKey: $connect
+      AuthorizationType: CUSTOM
+      AuthorizerId: !Ref WsAuthorizer
       Target: !Sub integrations/${WsIntegration}
 
   WsDisconnectRoute:
@@ -130,6 +211,7 @@ Resources:
         Variables: {MODEL_ID: !Ref ModelId, BEDROCK_REGION: !Ref BedrockRegion}
       Policies:
         - DynamoDBReadPolicy: {TableName: !Ref SchedulesTable}
+        - DynamoDBCrudPolicy: {TableName: !Ref ChatTable}
         - Statement:
             - Effect: Allow
               Action: [bedrock:InvokeModel, bedrock:InvokeModelWithResponseStream]
@@ -146,7 +228,9 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: schedules.handler
-      Policies: [DynamoDBCrudPolicy: {TableName: !Ref SchedulesTable}]
+      Policies:
+        - DynamoDBCrudPolicy: {TableName: !Ref SchedulesTable}
+        - DynamoDBCrudPolicy: {TableName: !Ref ChatTable}
       Events:
         List: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /schedules, Method: GET}}
         Create: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /schedules, Method: POST}}
@@ -245,3 +329,7 @@ Outputs:
   WsUrl:
     Description: Frontend VITE_WS_URL 값
     Value: !Sub wss://${WsApi}.execute-api.${AWS::Region}.amazonaws.com/prod
+  UserPoolId:
+    Value: !Ref UserPool
+  UserPoolClientId:
+    Value: !Ref UserPoolClient

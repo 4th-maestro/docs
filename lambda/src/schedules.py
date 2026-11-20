@@ -4,10 +4,12 @@
 - 시뮬레이터는 호실 id로 스케줄을 매칭(건물 간 호실 id 중복 없음)하므로 상태 계산에는 전체 목록 사용
 """
 import datetime as dt
+import logging
 import re
 import uuid
 
 import buildings
+import chat
 import common
 import sim
 
@@ -51,4 +53,11 @@ def handler(event, context):
     if d['action'] == 'setpoint':
         item['setpoint'] = float(d['setpoint'])
     common.put_schedule(item)
+    # 대화 메모리에 마지막 저장 스케줄 기록: "방금 것 취소해" 같은 후속 질문 해석용
+    sub = chat.user(event)
+    try:
+        mem = chat.get_memory(sub, b['id']) or {}
+        chat.put_memory(sub, b['id'], {**mem, 'lastSchedule': {k: item.get(k) for k in ('id', 'action', 'time', 'condition', 'setpoint')} | {'targets': len(ids)}})
+    except Exception:
+        logging.exception('대화 메모리 갱신 실패')
     return common.resp(201, item)

@@ -4,12 +4,14 @@
 - emit(event): 단계가 실제로 바뀌는 시점에 호출, WebSocket은 즉시 전송하고 HTTP는 버림(결과의 steps에 기록이 남음)
 """
 import json
+import logging
 import os
 import time
 
 from anthropic import AnthropicBedrock
 
 import buildings
+import chat
 import common
 import sim
 import tools
@@ -21,8 +23,11 @@ LABELS = {'understand': '요청 해석', 'query': '데이터 조회', 'review': 
 REFUSAL = '이 요청은 처리할 수 없습니다. 질문을 바꿔 다시 입력하십시오.'
 
 
-def system(b):
-    """건물별 시스템 프롬프트: 도구 enum은 전체 건물 합집합이라 이 건물의 층·용도를 프롬프트로 한정"""
+def system(b, memory=None):
+    """건물별 시스템 프롬프트: 도구 enum은 전체 건물 합집합이라 이 건물의 층·용도를 프롬프트로 한정
+
+    - memory: 대화 메모리(chat.py, 1KB 이하 요약). 원문 대화 대신 이 요약만 전달해 후속 질문 해석
+    """
     uses = sorted({r['use'] for r in buildings.rooms(b['id'])})
     kind = '가상 건물' if b['virtual'] else '공개 IFC 도면 건물'
     return f"""너는 건물 운영 디지털트윈의 운영 도우미다. 사용자는 건물 운영자다.
@@ -31,7 +36,9 @@ def system(b):
 - 지표·상태 질문은 query_spaces, 켜기·끄기·설정온도 요청은 create_schedule 도구로 처리한다. 도구 결과에 없는 수치는 만들지 않는다.
 - 대상 층이나 용도가 불분명하거나 이 건물에 없으면 도구를 쓰지 말고 후보를 들어 되묻는다.
 - 스케줄은 초안이며 운영자가 화면에서 확인해야 저장된다고 안내한다. 실제 설비 제어는 하지 않는다.
-- 답변은 한국어 3문장 이내로 쓰고, 마지막 문장에서 낭비를 줄일 다음 조치 1개를 제안한다."""
+- 답변은 한국어 3문장 이내로 쓰고, 마지막 문장에서 낭비를 줄일 다음 조치 1개를 제안한다.""" + (
+        f"\n- 이전 대화 메모리(JSON): {json.dumps(memory, ensure_ascii=False)}\n  사용자가 '그중', '방금 것', '아까 그 층'처럼 앞 대화를 가리키면 이 메모리로 해석한다. 메모리로 정할 수 없으면 되묻는다."
+        if memory else '')
 
 
 def clean(text):
@@ -55,13 +62,26 @@ def handler(event, context):
         return common.resp(400, {'error': 'text는 1~500자'})
     if not b:
         return common.resp(400, {'error': f"알 수 없는 건물: {req.get('buildingId')}"})
-    return common.resp(200, run(text, lambda e: None, b['id']))
+    return common.resp(200, converse(text, lambda e: None, b['id'], chat.user(event)))
 
 
-def run(text, emit, bid=None):
+def converse(text, emit, bid, sub):
+    """로그인 사용자 질의: 대화 메모리 주입, 완료 후 대화 기록과 메모리 저장(저장 실패는 응답에 영향 없음)"""
+    mem = chat.get_memory(sub, bid)
+    result = run(text, emit, bid, mem)
+    try:
+        chat.append(sub, bid, [{'role': 'user', 'text': text},
+                               {'role': 'assistant', 'text': result['answer'], 'steps': result['steps'], 'highlight': result['highlight'], 'draft': result['draft']}])
+        chat.put_memory(sub, bid, chat.make_memory(mem, text, result))
+    except Exception:
+        logging.exception('대화 기록 저장 실패')
+    return result
+
+
+def run(text, emit, bid=None, memory=None):
     """질의 처리 후 {answer, highlight, draft, steps} 반환. emit 예외(연결 종료)는 그대로 전파해 모델 호출 중단"""
     b = buildings.get(bid)
-    prompt, t, schedules = system(b), sim.now(), common.list_schedules()
+    prompt, t, schedules = system(b, memory), sim.now(), common.list_schedules()
     messages, ui = [{'role': 'user', 'content': text}], {'highlight': [], 'draft': None}
     trace, started, t0 = {}, {}, time.monotonic()
 
