@@ -38,7 +38,7 @@ LLM 호출과 도구 실행은 query Lambda가 담당합니다. 모든 HTTP API�
 | 웹 | React, TypeScript, Vite → S3(비공개) + CloudFront(OAC) | 정적 배포, HTTPS |
 | API | API Gateway HTTP API(CORS) | Lambda 연동, 요청 단가가 REST API보다 낮음 |
 | 실시간 전송 | API Gateway WebSocket API(`ask` 라우트), ws Lambda | AI 질의 단계와 답변 텍스트를 진행 시점에 전송. 연결 실패 시 HTTP API로 대체 |
-| 인증 | Amazon Cognito 사용자 풀(관리자 발급), HTTP API JWT 권한 부여자, WebSocket REQUEST 권한 부여자(auth Lambda) | 운영자 계정만 사용, 공개 API의 Bedrock 비용 위험 차단 |
+| 인증 | Amazon Cognito 사용자 풀(허용 목록 자체 가입, 가입 전 검사 signup Lambda), HTTP API JWT 권한 부여자, WebSocket REQUEST 권한 부여자(auth Lambda), 관리자 그룹 `admin`(사용자 관리 API `/admin/*`) | 허용된 운영자만 사용, 공개 API의 Bedrock 비용 위험 차단([허용 목록 회원가입](decisions/2026-11-20%28%ED%97%88%EC%9A%A9%20%EB%AA%A9%EB%A1%9D%20%ED%9A%8C%EC%9B%90%EA%B0%80%EC%9E%85%29.md)) |
 | 대화 저장 | DynamoDB 대화 테이블(기록 90일, 메모리 24시간 TTL), chat Lambda(`GET·DELETE /chat`) | 사용자·건물별 대화 기록, 후속 질문 해석용 메모리 |
 | 처리 | Lambda Python 3.12(arm64): status, query, ws, schedules, recommend, anomalies, history, portfolio | IFC 파싱·분석 코드와 같은 언어 |
 | 데이터 | DynamoDB(스케줄), 건물·호실 목록은 Lambda 패키지의 `buildings.json`, `rooms.json` | 서버리스, 소량 데이터 |

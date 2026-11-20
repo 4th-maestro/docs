@@ -45,17 +45,24 @@ sam build && sam deploy --guided --profile maestro
 
 모델은 bedrock-runtime global 추론 프로필 `global.anthropic.claude-sonnet-5-5`입니다. bedrock-mantle 엔드포인트는 Sonnet 5.5를 제공하지 않습니다(2026-11-20 확인). 출력값 `ApiUrl`을 Frontend의 `VITE_API_BASE_URL`에, `WsUrl`을 `VITE_WS_URL`에 넣고, `WebBucketName`에 Frontend 빌드를 올리십시오.
 
-### 운영자 계정 발급
+### 운영자 계정
 
-로그인 계정은 관리자가 발급합니다. 자체 가입은 없습니다. 아래 명령의 이메일을 바꿔 실행하면 Cognito가 임시 비밀번호를 그 이메일로 보내고, 첫 로그인 때 새 비밀번호로 바꾸게 합니다. 사용자 풀 ID는 스택 출력값 `UserPoolId`입니다.
+허용 목록(개별 이메일 또는 @도메인)에 있는 이메일만 웹에서 회원가입할 수 있습니다. 허용 목록은 관리자 그룹 계정이 웹의 "사용자 관리" 화면에서 관리합니다. 첫 관리자는 아래 명령으로 만드십시오. 임시 비밀번호가 메일로 발송되고, 첫 로그인 때 새 비밀번호로 바꿉니다.
 
 ```bash
 POOL=$(aws cloudformation describe-stacks --stack-name maestro --profile maestro --query "Stacks[0].Outputs[?OutputKey=='UserPoolId'].OutputValue" --output text)
-aws cognito-idp admin-create-user --user-pool-id "$POOL" --username 운영자@회사.com \
-  --user-attributes Name=email,Value=운영자@회사.com Name=email_verified,Value=true --profile maestro
+aws cognito-idp admin-create-user --user-pool-id "$POOL" --username 관리자@회사.com \
+  --user-attributes Name=email,Value=관리자@회사.com Name=email_verified,Value=true --profile maestro
+aws cognito-idp admin-add-user-to-group --user-pool-id "$POOL" --username 관리자@회사.com --group-name admin --profile maestro
 ```
 
-웹 빌드에는 `VITE_COGNITO_CLIENT_ID`(출력값 `UserPoolClientId`)를 함께 지정하십시오. 비어 있으면 로그인 없이 목업으로 실행합니다(로컬 확인용).
+| 경로 | 내용 |
+|---|---|
+| `src/signup.py` | 가입 전 검사(PreSignUp): 허용 목록 밖 이메일 거부, CLI 발급은 검사 생략 |
+| `src/admin.py` | `GET·POST /admin/allow`, `DELETE /admin/allow/{entry}`, `GET /admin/users`(관리자 그룹 전용) |
+| `src/allow.py` | 허용 목록 테이블(키 `entry`) 공용 함수 |
+
+웹 빌드에는 `VITE_COGNITO_CLIENT_ID`(출력값 `UserPoolClientId`)를 함께 지정하십시오. 비어 있으면 로그인 없이 목업으로 실행합니다(로컬 확인용). 메일은 Cognito 기본 메일(하루 50통)입니다.
 
 ## 규칙
 
