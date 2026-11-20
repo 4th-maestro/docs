@@ -8,8 +8,8 @@
 > - 공개 IFC 실험에서 호실 269개 추출, 공조 단말 448개 매핑, 처리 약 10초를 확인함. Frontend와 Lambda 첫 구현은 `frontend/`, `lambda/`
 >
 > - 2026-11-20 배포: 웹 https://d2y0m857hv27mz.cloudfront.net, WebSocket 질의 첫 단계 4.7초·완료 11.8초(콜드 스타트 1건), REST 질의 3.8~8.5초(2건), 운영 패널 API 4종 응답 확인
-> - 2026-11-20 운영 패널 API 4종 추가(미배포): 추천, 이상 감지 상세, 전력 추이, 스케줄 취소
-> - 2026-11-20 여러 건물 지원(미배포): 건물 4곳(본관 공개 IFC, 가상 3곳, 호실 533개), 조회 API 전체에 `building` 쿼리, 전체 현황 `GET /buildings`(로컬 0.42초, 5회)
+> - 2026-11-20 배포 반영: 운영 패널 API 4종, 여러 건물(4곳, 호실 533개, `building` 쿼리, `GET /buildings`), 전력 분석 API 4종(`/energy/*`), 로그인(Cognito, 전체 API·WebSocket 인증), AI 대화 기록·메모리(`/chat`)
+> - 화면 틀: 상단바(로고, 건물 토글, 운영·전력 분석 탭), 왼쪽 사이드바(전체 현황, 층 3F→1F), 오른쪽 AI 운영 도우미(채팅형)
 >
 > **다음 작업**: 질의 테스트 문장 30개 작성(미정)
 
@@ -27,7 +27,7 @@
 
 **2-1. AWS 서비스만 사용하며, 웹은 CloudFront·S3로 배포하고 API는 API Gateway와 Lambda로 처리합니다.**
 
-LLM 호출과 도구 실행은 query Lambda가 담당합니다. 실시간 연동은 WebSocket 대신 Frontend가 5초마다 상태를 다시 조회하는 목업이며(값은 5초 구간마다 범위 안에서 변동), Lambda 호출이 실패하면 Frontend 목업(`frontend/src/mock.ts`)으로 대체합니다. 3D 트윈은 팀원이 만든 화면을 iframe으로 임베드하며, 연동 규약은 [3D 트윈 임베드 규약](../reference/twin-embed.md)에 있습니다.
+LLM 호출과 도구 실행은 query Lambda가 담당합니다. 모든 HTTP API와 WebSocket 연결은 Cognito 로그인이 필요합니다([로그인과 AI 대화 메모리](decisions/2026-11-20%28%EB%A1%9C%EA%B7%B8%EC%9D%B8%EA%B3%BC%20AI%20%EB%8C%80%ED%99%94%20%EB%A9%94%EB%AA%A8%EB%A6%AC%29.md)). AI에는 원문 대화 대신 1KB 이하 대화 메모리만 전달합니다. 실시간 연동은 WebSocket 대신 Frontend가 5초마다 상태를 다시 조회하는 목업이며(값은 5초 구간마다 범위 안에서 변동), Lambda 호출이 실패하면 Frontend 목업(`frontend/src/mock.ts`)으로 대체합니다. 3D 트윈은 팀원이 만든 화면을 iframe으로 임베드하며, 연동 규약은 [3D 트윈 임베드 규약](../reference/twin-embed.md)에 있습니다.
 
 ![AWS 구조](img/d-a-aws.png)
 
@@ -38,6 +38,8 @@ LLM 호출과 도구 실행은 query Lambda가 담당합니다. 실시간 연동
 | 웹 | React, TypeScript, Vite → S3(비공개) + CloudFront(OAC) | 정적 배포, HTTPS |
 | API | API Gateway HTTP API(CORS) | Lambda 연동, 요청 단가가 REST API보다 낮음 |
 | 실시간 전송 | API Gateway WebSocket API(`ask` 라우트), ws Lambda | AI 질의 단계와 답변 텍스트를 진행 시점에 전송. 연결 실패 시 HTTP API로 대체 |
+| 인증 | Amazon Cognito 사용자 풀(관리자 발급), HTTP API JWT 권한 부여자, WebSocket REQUEST 권한 부여자(auth Lambda) | 운영자 계정만 사용, 공개 API의 Bedrock 비용 위험 차단 |
+| 대화 저장 | DynamoDB 대화 테이블(기록 90일, 메모리 24시간 TTL), chat Lambda(`GET·DELETE /chat`) | 사용자·건물별 대화 기록, 후속 질문 해석용 메모리 |
 | 처리 | Lambda Python 3.12(arm64): status, query, ws, schedules, recommend, anomalies, history, portfolio | IFC 파싱·분석 코드와 같은 언어 |
 | 데이터 | DynamoDB(스케줄), 건물·호실 목록은 Lambda 패키지의 `buildings.json`, `rooms.json` | 서버리스, 소량 데이터 |
 | 자연어 질의 | Bedrock Claude Sonnet 5.5(`global.anthropic.claude-sonnet-5-5`, bedrock-runtime global 추론 프로필) | 사용자 지정 상한, 템플릿에서 Haiku 5.5로만 하향 가능. Mantle은 Sonnet 5.5 미제공([장애 기록](troubleshooting/2026-11-20%28Bedrock%20Sonnet%205.5%20%EB%AA%A8%EB%8D%B8%20ID%20404%29.md)) |
@@ -281,9 +283,8 @@ docs/              문서(현재 구조 유지)
 | LLM 도구 정의 초안과 질의 테스트 문장 30개 작성 | 미정 | 미정 |
 | 가상 데이터 생성 규칙의 계수(정격 용량, 부하율) 확정 | 미정 | 미정 |
 | 추천 LLM 도구(`recommend`)를 `GET /recommendations` 규칙과 연결 | 미정 | 미정 |
-| 운영 패널 4종 화면 배치(`App.tsx`)와 1440px, 390px 화면 확인 | 미정 | 주 작업자 |
-| 전체 현황, 건물 선택, 건물별 3D 도면 화면 확인(밝은·어두운 화면, 1440px, 390px) | 미정 | 주 작업자 |
-| `GET /buildings` 배포 후 Lambda 응답 시간 측정(로컬 0.42초, 제한 10초) | 미정 | 주 작업자 |
+| 운영자 계정 발급 후 로그인 상태 실서버 화면 확인(밝은·어두운 화면, 1440px, 390px) | 미정 | 사용자, 주 작업자 |
+| `GET /buildings`, `/energy/compare?period=month` Lambda 응답 시간 측정 | 미정 | 주 작업자 |
 
 ## 관련 자료
 

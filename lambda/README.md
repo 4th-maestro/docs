@@ -45,6 +45,18 @@ sam build && sam deploy --guided --profile maestro
 
 모델은 bedrock-runtime global 추론 프로필 `global.anthropic.claude-sonnet-5-5`입니다. bedrock-mantle 엔드포인트는 Sonnet 5.5를 제공하지 않습니다(2026-11-20 확인). 출력값 `ApiUrl`을 Frontend의 `VITE_API_BASE_URL`에, `WsUrl`을 `VITE_WS_URL`에 넣고, `WebBucketName`에 Frontend 빌드를 올리십시오.
 
+### 운영자 계정 발급
+
+로그인 계정은 관리자가 발급합니다. 자체 가입은 없습니다. 아래 명령의 이메일을 바꿔 실행하면 Cognito가 임시 비밀번호를 그 이메일로 보내고, 첫 로그인 때 새 비밀번호로 바꾸게 합니다. 사용자 풀 ID는 스택 출력값 `UserPoolId`입니다.
+
+```bash
+POOL=$(aws cloudformation describe-stacks --stack-name maestro --profile maestro --query "Stacks[0].Outputs[?OutputKey=='UserPoolId'].OutputValue" --output text)
+aws cognito-idp admin-create-user --user-pool-id "$POOL" --username 운영자@회사.com \
+  --user-attributes Name=email,Value=운영자@회사.com Name=email_verified,Value=true --profile maestro
+```
+
+웹 빌드에는 `VITE_COGNITO_CLIENT_ID`(출력값 `UserPoolClientId`)를 함께 지정하십시오. 비어 있으면 로그인 없이 목업으로 실행합니다(로컬 확인용).
+
 ## 규칙
 
 - `ModelId`는 Sonnet 5.5와 Haiku 5.5만 허용합니다. Opus 계열을 추가하지 마십시오.

@@ -9,6 +9,9 @@ Maestro 운영 대시보드(React, Vite, TypeScript)입니다. 디자인 기준�
 | `src/portfolio/Portfolio.tsx` | 전체 현황: 전체 요약 4개, 건물 카드(점검 필요 순), 카드 아래 `compare` 영역 |
 | `src/heat.ts` | 지표별 순차 색 척도 |
 | `src/twin.ts` | 3D 트윈 iframe 연동([규약](../docs/human/reference/twin-embed.md)) |
+| `src/shell/` | 화면 틀: 상단바(로고, 건물 토글, 운영·전력 분석 탭, 로그아웃), 왼쪽 사이드바(전체 현황, 층 3F→1F와 층별 이상·전력), 휴대폰 메뉴 서랍. 해시 경로는 `route.ts` |
+| `src/auth/` | 로그인 화면과 Cognito 호출(USER_PASSWORD_AUTH, 첫 로그인 비밀번호 변경, 토큰 갱신). `VITE_COGNITO_CLIENT_ID`가 없으면 로그인 생략 |
+| `src/ai/ChatPanel.tsx` | AI 운영 도우미(말풍선 대화, 처리 단계 접기, 초안 카드, 대상 호실 3D 보기, 대화 지우기). 기록은 `GET /chat`, 실패 시 화면에만 기록 |
 | `src/twin3d/Twin3D.tsx` | Three.js 층 3D 트윈: `public/floorplans/<건물>.json` 호실 다각형, 지표 색, HVAC 운전·이상 표시, 호실 선택, 시점 초기화·위에서 보기 |
 | `src/api.ts` | Lambda API 호출(모든 조회에 `building` 전달), 실패하면 목업으로 대체하고 화면에 목업 표시 |
 | `src/ai/useAsk.ts` | AI 질의 훅. `buildingId` 전송, WebSocket 단계 이벤트 수신, 연결 실패 시 `api.ts` 질의로 대체, 45초 제한 |
