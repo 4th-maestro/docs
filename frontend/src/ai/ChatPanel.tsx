@@ -231,7 +231,9 @@ function Assistant({ onOpsDone, m, rooms, busy, onSave, onClose, onFocus, onSele
         <div className="draft fade-in">
           <h3>스케줄 초안</h3>
           <dl>
-            <dt>대상</dt><dd>{d.roomIds.length}곳({d.floor === 'all' ? '전체 층' : d.floor}, {d.use === 'all' ? '전체 용도' : d.use})</dd>
+            <dt>대상</dt><dd>{d.roomIds.length}곳({d.pick === 'rooms'
+              ? d.roomNames.slice(0, 3).join(', ') + (d.roomIds.length > 3 ? ` 외 ${d.roomIds.length - 3}곳` : '')
+              : `${d.floor === 'all' ? '전체 층' : d.floor}, ${d.use === 'all' ? '전체 용도' : d.use}`})</dd>
             <dt>조건</dt><dd>{d.time} 이후{d.condition === 'unused' ? ', 재실 없을 때' : ''}</dd>
             <dt>동작</dt><dd>{ACTION[d.action]}{d.setpoint ? ` ${d.setpoint}℃` : ''}</dd>
             <dt>예상 절감</dt><dd>{d.estimatedSavingKwh}kWh/일(가상)</dd>

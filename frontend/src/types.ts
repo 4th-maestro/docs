@@ -61,6 +61,7 @@ export type Draft = {
   condition: 'unused' | 'always'
   setpoint: number | null
   estimatedSavingKwh: number
+  pick?: 'rooms' | 'group' // 대상 선택 방식: 호실 이름(rooms) 또는 층·용도(group)
 }
 
 // AI 답변 그래프(lambda/src/tools.py chart와 같은 형식): 숫자는 서버 도구 결과

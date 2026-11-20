@@ -21,7 +21,7 @@
 | `src/admin/convert.ts` | 트윈 `building.json` → 서버 저장 형식 `{twin, rooms, plan}` 변환. 건물 id `b-` + 소문자·숫자 8자(브라우저 생성), 모든 호실 id와 호실 참조에 `<건물 id>.` 접두어(이미 붙은 값은 유지). `rooms`는 실내기가 있는 실만(`web-demo.js` `webStatus` 기준), `plan`은 같은 호실의 내장 3D 형식([도면 저장 규약](../docs/human/reference/plan-storage.md), y 부호 반전). 자가 점검 `node src/admin/convert.check.mjs` |
 | `src/settings/SettingsPage.tsx` | 고객사 기업 정보(`#/settings`, 조회 전용): 기본 정보(기업 코드 미표시), 건물(용도, 층·호실 수, 운영 시간, 주말 운영), 변경 이력(최신 50건). 수정 기능 없음 |
 | `src/ai/ChartView.tsx` | AI 답변 그래프: 막대(한 색, 값 글자), 선(이번 기간 실선, 이전 기간 점선, 마우스·키보드 값 표시), 그래프·표 전환, 크게 보기 창(`<dialog>`) |
-| `src/ai/ChatPanel.tsx` | AI 운영 도우미(말풍선 대화, 처리 단계 접기, 초안 카드와 저장 안내, 근거 문서 목록(`sources`, http(s) 링크만, 새 탭), 대상 호실 3D 보기, 대화 지우기, 머리글 최적 제어 추천 배지). 기록은 `GET /chat`, 실패 시 화면에만 기록 |
+| `src/ai/ChatPanel.tsx` | AI 운영 도우미(말풍선 대화, 처리 단계 접기, 초안 카드와 저장 안내(대상은 호실 이름 선택 초안(`pick: 'rooms'`)이면 이름 3개와 외 N곳, 그 외 층·용도), 근거 문서 목록(`sources`, http(s) 링크만, 새 탭), 대상 호실 3D 보기, 대화 지우기, 머리글 최적 제어 추천 배지). 기록은 `GET /chat`, 실패 시 화면에만 기록 |
 | `src/ai/ChatRecommend.tsx` | 최적 제어 추천: 머리글 배지 "추천 N"(누름 높이 44px, 기본 접힘), 대화 위 펼침 목록(카드 높이 절반까지, 내부 스크롤). 목록은 예상 절감 합계와 건수, 데이터 기준(시뮬레이터 적용 전후 비교, 가상), 절감량 큰 순 항목(규칙, 호실, HVAC, 근거, 절감량, 3D에서 보기, 초안 만들기). 건물 전체 보기는 항목에 층 이름 표시 |
 | `src/ai/useRecommend.ts` | 최적 제어 추천 조회 훅(`GET /recommendations`, 층이 비어 있으면 건물 전체). 60초 주기, 스케줄 저장 후 다시 조회 |
 | `src/ops/` | 자동 운영 화면: `OpsMessages.tsx`(AI 운영 도우미 대화 안 알림 카드와 마지막 상태 메시지의 ON/OFF 스위치), `types.ts`(응답 형식), `mock.ts`(API 없는 목업, 건물별 메모리). 규칙은 [자동 운영 화면 규약](../docs/human/reference/auto-operations.md) |

@@ -1993,37 +1993,58 @@ function floorSurface(r){
   if (r.kind === 'lecture') return { tex:carpetTex(), tile:1 };
   return { tex:tileTex(), tile:1.2 };
 }
-// 가구는 그리지 않는다. 재실자는 방 안 격자 위치(앞쪽부터)에 결정적으로 배치.
+// 가구는 그리지 않음.
+// 재실자 클레이 인형: 머리·머리카락·눈·몸통·팔·손·다리·신발 인스턴스, 걷기 팔다리 교차
+// - 크기: 키 약 1.62m, 머리 지름 0.38m(몸 대비 큰 머리), 팔 바깥까지 반폭 약 0.28m(걷기 경로 벽 이격 0.23m)
+// - 재질: 무광 클레이(거칠기 0.9, 금속성 0), 피부·머리카락·상의·하의·신발 색은 인스턴스 번호 해시로 결정
+// - 걷기: 다리 ±0.36rad, 팔은 같은 쪽 다리와 반대로 ±0.45rad, 보폭만큼 몸 높이 하강, 좌우 기울기 ±0.03rad
+// - 정지: 모든 관절 0
 function peopleMesh(group, limit, shadows = false){
-  const material = color => new THREE.MeshStandardMaterial({ color, roughness:.68 });
-  const make = (geometry, color, count) => {
-    const mesh = new THREE.InstancedMesh(geometry,material(color),count);
+  const make = (geometry, count, color = 0xffffff) => {
+    const mesh = new THREE.InstancedMesh(geometry,new THREE.MeshStandardMaterial({ color, roughness:.9, metalness:0 }),count);
     mesh.count = 0; mesh.frustumCulled = false; mesh.castShadow = shadows;
     mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage); group.add(mesh); return mesh;
   };
-  const bodies = make(new THREE.CapsuleGeometry(.17,.48,3,8),0x6b88aa,limit);
-  const heads = make(new THREE.SphereGeometry(.12,8,6),0xe1c4ad,limit);
-  const legs = make(new THREE.CapsuleGeometry(.065,.42,3,6),0x384b64,limit*2);
-  const dummy = new THREE.Object3D();
-  const shirts = [0x7398b6,0xc78168,0x82a093,0x957fa9,0xc4a266].map(color => new THREE.Color(color));
-  for (let i=0;i<limit;i++) bodies.setColorAt(i,shirts[i%shirts.length]);
+  const HIP = .72, LEG = .52, ARM = .32, HEAD = HIP+.70;
+  const limbGeometry = (r, len) => new THREE.CapsuleGeometry(r,len,4,10).translate(0,-len/2,0);   // 위쪽 반구 중심 = 관절
+  const torso = make(new THREE.CapsuleGeometry(.19,.2,6,16).scale(1,1,.85),limit);
+  const head = make(new THREE.SphereGeometry(.19,20,16),limit);
+  const hair = make(new THREE.SphereGeometry(.2,20,12).scale(1.04,.8,1.02),limit);
+  const eyes = make(new THREE.SphereGeometry(.024,8,6).scale(1,1.35,.6),limit*2,0x2b2522);
+  const arms = make(limbGeometry(.064,ARM),limit*2);
+  const hands = make(new THREE.SphereGeometry(.074,12,8),limit*2);
+  const legs = make(limbGeometry(.098,LEG),limit*2);
+  const shoes = make(new THREE.SphereGeometry(.082,12,8).scale(1.1,.85,1.6),limit*2);
+  const palette = hexes => hexes.map(hex => new THREE.Color(hex));
+  const SKIN = palette([0xf3d5c0,0xe8bc9a,0xd29c78,0xa8734f,0x7c5238]);
+  const HAIR = palette([0x2d2420,0x4a3326,0x17161a,0x7a5233,0xb08a5a]);
+  const SHIRT = palette([0x8fb8de,0xf2a59b,0xa6d6b8,0xc6b5e8,0xf5d18c,0x96d2d4,0xf3b3c6]);
+  const PANTS = palette([0x52708f,0x5f6470,0x3f4b5f,0x8a7560,0xc9b89c]);
+  const SHOES = palette([0xf2efe8,0x3b3e45,0x8b5e3f,0xe7e2d6]);
+  for (let i=0;i<limit;i++) {
+    const h = Math.imul(i+1,2654435761) >>> 0, skin = SKIN[h%5], shirt = SHIRT[(h>>>8)%7];
+    torso.setColorAt(i,shirt); head.setColorAt(i,skin); hair.setColorAt(i,HAIR[(h>>>4)%5]);
+    for (const k of [i*2,i*2+1]) { arms.setColorAt(k,shirt); hands.setColorAt(k,skin); legs.setColorAt(k,PANTS[(h>>>12)%5]); shoes.setColorAt(k,SHOES[(h>>>16)%4]); }
+  }
+  const root = new THREE.Object3D(), part = new THREE.Object3D(), tip = new THREE.Object3D();
+  root.add(part); part.add(tip);
+  const put = (mesh, k, x, y, z, rx = 0, rz = 0) => { part.position.set(x,y,z); part.rotation.set(rx,0,rz); part.updateMatrixWorld(); mesh.setMatrixAt(k,part.matrixWorld); };
+  const end = (mesh, k, y, z) => { tip.position.set(0,y,z); tip.updateMatrixWorld(); mesh.setMatrixAt(k,tip.matrixWorld); };
   return actors => {
-    bodies.count = heads.count = actors.length; legs.count = actors.length*2;
-    actors.forEach((actor,i) => {
-      const { x,y,angle,walking,phase } = actor;
-      const sway = walking ? Math.sin(phase) : 0, bob = Math.abs(sway)*.045;
-      dummy.position.set(x-W/2, 1.11+bob, y-D/2); dummy.rotation.set(0,angle,0);
-      dummy.updateMatrix(); bodies.setMatrixAt(i,dummy.matrix);
-      dummy.position.y = 1.61+bob; dummy.updateMatrix(); heads.setMatrixAt(i,dummy.matrix);
-      for (let leg=0;leg<2;leg++) {
-        const sign = leg ? 1 : -1, side = sign*.085;
-        const stride = sign*sway*.14;
-        dummy.position.set(x-W/2 + side*Math.cos(angle) + stride*Math.sin(angle),.33 + Math.max(0,sign*sway)*.065,
-          y-D/2 - side*Math.sin(angle) + stride*Math.cos(angle));
-        dummy.rotation.set(sign*sway*.4,angle,0,'YXZ'); dummy.updateMatrix(); legs.setMatrixAt(i*2+leg,dummy.matrix);
+    torso.count = head.count = hair.count = actors.length;
+    eyes.count = arms.count = hands.count = legs.count = shoes.count = actors.length*2;
+    actors.forEach(({ x,y,angle,walking,phase },i) => {
+      const s = walking ? Math.sin(phase) : 0, c = walking ? Math.cos(phase) : 0;
+      root.position.set(x-W/2, -(HIP-.06)*(1-Math.cos(s*.36)), y-D/2); root.rotation.set(0,angle,c*.03); root.updateMatrixWorld();
+      put(torso,i,0,HIP+.27,0); put(head,i,0,HEAD,0); put(hair,i,0,HEAD+.06,-.04);
+      for (const k of [0,1]) {
+        const sign = k ? 1 : -1, j = i*2+k;
+        put(eyes,j,sign*.066,HEAD-.01,.176);
+        put(arms,j,sign*.215,HIP+.45,0,-sign*s*.45,sign*.05); end(hands,j,-ARM-.05,0);
+        put(legs,j,sign*.1,HIP+Math.max(0,-sign*c)*.03,0,sign*s*.36); end(shoes,j,-HIP+.07,.05);
       }
     });
-    bodies.instanceMatrix.needsUpdate = heads.instanceMatrix.needsUpdate = legs.instanceMatrix.needsUpdate = true;
+    for (const mesh of [torso,head,hair,eyes,arms,hands,legs,shoes]) mesh.instanceMatrix.needsUpdate = true;
   };
 }
 const FLOOR_PEOPLE_LIMIT = 120;
