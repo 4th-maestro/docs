@@ -36,9 +36,11 @@ def mode(t):
 
 
 def occupants(room, t):
-    if t.weekday() >= 5 or not 9 <= t.hour < 18:
-        return 0
+    # 운영 프로필(buildings.py): 운영 시간 hours, 주말 운영 weekend(주말은 60% 시간대 비어 있음)
+    h0, h1 = room.get('hours', (9, 18))
     key, area = (room['id'], t.date(), t.hour), room['areaM2']
+    if not h0 <= t.hour < h1 or (t.weekday() >= 5 and (not room.get('weekend') or _u(*key, 'wk') < 0.6)):
+        return 0
     use = room['use']
     if use == '회의실':
         return 0 if _u(*key, 'resv') > 0.35 else 2 + int(_u(*key, 'n') * max(1, area / 3))
@@ -64,10 +66,11 @@ def rated(room):
 
 def state(room, t, schedules=()):
     m, occ, out = mode(t), occupants(room, t), outdoor_temp(t)
-    wasteful = _u(room['id'], 'waste') < 0.12
+    wasteful = _u(room['id'], 'waste') < room.get('waste', 0.12)
+    h0, h1 = room.get('hours', (9, 18))
     overset = _u(room['id'], 'over') < 0.10
     fault = _u(room['id'], 'fault') < 0.03
-    on = occ > 0 or (wasteful and 8 <= t.hour < 21)
+    on = occ > 0 or (wasteful and h0 - 1 <= t.hour < h1 + 3)
     sp = (22 if overset else 26) if m == 'cooling' else (24 if overset else 20)
     for s in _scheduled(room, t, occ, schedules):
         if s['action'] == 'off':

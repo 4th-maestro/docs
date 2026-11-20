@@ -1,0 +1,6 @@
+[
+  {"id": "main", "name": "본관", "use": "의료", "virtual": false, "basis": "공개 IFC 의원 도면", "floors": {"1F": "1F", "2F": "2F"}, "mirror": false, "hours": [9, 18], "weekend": false, "waste": 0.12, "remap": {}},
+  {"id": "office", "name": "업무동", "use": "업무", "virtual": true, "basis": "의원 도면 변형(좌우 반전, 3F는 2F 복제)", "floors": {"1F": "1F", "2F": "2F", "3F": "2F"}, "mirror": true, "hours": [8, 19], "weekend": false, "waste": 0.18, "remap": {"진료실": "사무실"}},
+  {"id": "edu", "name": "교육관", "use": "교육", "virtual": true, "basis": "의원 도면 변형(1F만 사용)", "floors": {"1F": "1F"}, "mirror": false, "hours": [9, 21], "weekend": true, "waste": 0.08, "remap": {"진료실": "회의실", "사무실": "회의실"}},
+  {"id": "lab", "name": "연구동", "use": "연구", "virtual": true, "basis": "의원 도면 변형(2F를 1F·2F로 복제, 좌우 반전)", "floors": {"1F": "2F", "2F": "2F"}, "mirror": true, "hours": [7, 22], "weekend": true, "waste": 0.15, "remap": {"진료실": "사무실"}}
+]

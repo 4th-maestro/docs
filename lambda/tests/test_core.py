@@ -35,6 +35,28 @@ class SimTest(unittest.TestCase):
         self.assertEqual(sim.occupants(MEETING, T + dt.timedelta(days=3)), 0)
 
 
+class BuildingsTest(unittest.TestCase):
+    def test_main_keeps_ifc_ids(self):
+        import buildings
+        self.assertEqual([r['id'] for r in buildings.rooms('main')], [r['id'] for r in sim.ROOMS])
+
+    def test_rooms_unique_and_profiled(self):
+        import buildings
+        ids = [r['id'] for b in buildings.LIST for r in buildings.rooms(b['id'])]
+        self.assertEqual(len(ids), len(set(ids)))
+        office = buildings.rooms('office')
+        self.assertEqual({r['floor'] for r in office}, {'1F', '2F', '3F'})
+        self.assertNotIn('진료실', {r['use'] for r in office})
+        with self.assertRaises(ValueError):
+            buildings.get('nope')
+
+    def test_weekend_building_has_weekend_occupants(self):
+        import buildings
+        sat = T + dt.timedelta(days=3)
+        self.assertTrue(any(sim.occupants(r, sat) for r in buildings.rooms('edu')))
+        self.assertFalse(any(sim.occupants(r, sat) for r in buildings.rooms('main')))
+
+
 class ToolsTest(unittest.TestCase):
     def test_query_sorts_and_limits(self):
         out, view = tools.run('query_spaces', {'floor': '1F', 'use': 'all', 'metric': 'powerKw', 'order': 'desc', 'limit': 3}, T, [])
