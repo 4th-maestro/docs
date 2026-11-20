@@ -1,0 +1,28 @@
+/* 데이터 흐름 모달: 수집 데이터 → 트윈 정보 → 받는 사람 3단, 연결선은 SVG */
+.flow-modal { width: min(1200px, 94vw); max-height: 90vh; padding: 0; border: 0; border-radius: var(--r-md); background: var(--canvas); color: var(--ink); box-shadow: var(--shadow); }
+.flow-modal::backdrop { background: rgba(0, 0, 0, 0.45); }
+.flow-modal[open] { animation: m-fade var(--t-fast) ease-out; }
+.flow-body { padding: 24px; }
+.flow-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.flow-head h2 { margin: 0; font-size: 22px; font-weight: 700; }
+.flow-lead { margin: 8px 0 20px; font-size: 15px; line-height: 1.5; color: var(--body); }
+.flow-cols { position: relative; display: grid; grid-template-columns: 1fr 1.25fr 1fr; gap: 64px; align-items: start; }
+.flow-cols > svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+.flow-cols path { fill: none; stroke: var(--border-strong); stroke-width: 1.5; }
+.flow-cols path.on { stroke: var(--ink); stroke-width: 2.4; }
+.flow-cols path.dim { opacity: 0.25; }
+.flow-col h3 { margin: 0 0 8px; font-size: 16px; font-weight: 600; }
+.flow-node { position: relative; display: block; width: 100%; margin-bottom: 8px; padding: 8px 12px; border: 1px solid var(--hairline); border-radius: var(--r-sm); background: var(--canvas); color: var(--ink); font: inherit; font-size: 15px; font-weight: 600; line-height: 1.4; text-align: left; transition: opacity 0.15s; }
+.flow-node small { display: block; margin-top: 2px; font-size: 14px; font-weight: 400; color: var(--muted); }
+.flow-node .v { display: block; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.flow-node.dim { opacity: 0.35; }
+.flow-node.hot { padding: 7px 11px; border: 2px solid var(--ink); }
+button.flow-node { min-height: 48px; padding: 12px; font-size: 16px; font-weight: 700; cursor: pointer; }
+button.flow-node.hot { padding: 11px; }
+.flow-node .cnt { margin-top: 6px; font-weight: 600; color: var(--ink); }
+.flow-org { display: inline-block; margin-right: 6px; padding: 0 8px; border-radius: var(--r-full); background: var(--surface-strong); font-size: 14px; font-weight: 500; color: var(--body); }
+@media (max-width: 760px) {
+  .flow-body { padding: 16px; }
+  .flow-cols { grid-template-columns: 1fr; gap: 16px; }
+  .flow-cols > svg { display: none; }
+}

@@ -91,6 +91,7 @@
 | 트윈 안 요소 | 대시보드 위치 |
 |---|---|
 | 역할(에너지 총괄, 현장 엔지니어, 시설 관리자), 데이터 흐름, 설비 연결 | 운영 탭 3D 카드 도구 줄 |
+| 데이터 흐름 패널(수집 데이터, 트윈 정보, 받는 사람 연결도) | 앱 화면 위 모달(`src/panels/FlowModal.tsx`), 트윈 안 패널은 숨김 |
 | 호실 보기 도구(평면도로, 온도장, 바닥 등온선, 습도, 기류) | 호실 보기일 때 같은 도구 줄 |
 | 층 칩, 지표 버튼, 범례 | 왼쪽 층 목록, 3D 카드 지표 버튼과 범례(기존) |
 | 지표 칩(오늘 누적 사용량, 전기요금, 절감 가능, 재실 인원 등) | 운영 탭 상단 요약 카드(앱과 겹치는 칸 제외) |
@@ -100,9 +101,10 @@
 
 | 방향 | 메시지 | 필드 |
 |---|---|---|
-| 대시보드 → 트윈 | `{source: "maestro", type: "ui", action}` | `persona:<owner·engineer·facility·sim>`, `flow`, `pipes`, `back`, `rv:<vol·slice·hum·air>` |
-| 트윈 → 대시보드 | `{source: "twin", type: "twinUi", ui, kpis, actions}` | `ui`(보기, 역할, 토글 눌림), `kpis`(라벨, 값, 단위, 경고), `actions`(제목, 범위, 요약, 호실 항목). 1초마다 바뀐 경우만 |
+| 대시보드 → 트윈 | `{source: "maestro", type: "ui", action}` | `persona:<owner·engineer·facility·sim>`, `flow`(토글), `flow:off`(닫기 전용, 여러 번 받아도 같은 결과), `pipes`, `back`, `rv:<vol·slice·hum·air>` |
+| 트윈 → 대시보드 | `{source: "twin", type: "twinUi", ui, kpis, actions, flow}` | `ui`(보기, 역할, 토글 눌림), `kpis`(라벨, 값, 단위, 경고), `actions`(제목, 범위, 요약, 호실 항목), `flow`(데이터 흐름을 켠 경우만: `sources`, `infos`(현재 값, 출처, 받는 역할), `personas`). 1초마다 바뀐 경우만 |
 
 - 운영 탭과 시뮬레이션 탭은 같은 iframe을 유지합니다. 시뮬레이션 탭에 들어가면 역할을 운전 시뮬레이션으로 바꾸고 데이터 흐름과 설비 연결을 끄며, 운영 탭으로 돌아오면 에너지 총괄로 바꿉니다.
 - 역할을 바꾸면 트윈은 운전 시뮬레이션 상태(`sim`)를 다시 보냅니다. 시뮬레이션 탭의 패널은 탭을 열 때 새로 생기므로 이전 보고를 받지 못하기 때문입니다.
-- 코드: 트윈 `twin/digital-twin.html`(`hostUi`, `hostUiReport`), 대시보드 `src/twin.ts`(`onTwinReport`, `postUi`), `src/panels/TwinTools.tsx`, `src/panels/TwinActions.tsx`.
+- 데이터 흐름 모달은 연결선을 앱이 다시 그립니다. 강조 규칙은 트윈 `drawFlow`와 같습니다(역할: 그 역할이 받는 정보와 출처, 정보: 출처와 받는 역할, 출처: 그 출처를 쓰는 정보와 받는 역할). 2026-11-20 사용자 결정으로 3D를 가리던 트윈 안 패널 대신 사용합니다.
+- 코드: 트윈 `twin/digital-twin.html`(`hostUi`, `hostUiReport`, `flowModel`), 대시보드 `src/twin.ts`(`onTwinReport`, `postUi`), `src/panels/TwinTools.tsx`, `src/panels/TwinActions.tsx`, `src/panels/FlowModal.tsx`.

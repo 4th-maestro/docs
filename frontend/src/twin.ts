@@ -79,12 +79,18 @@ export type TwinUi = { view: 'building' | 'floor' | 'room'; persona: string; flo
 export type TwinKpi = { key: string; label: string; value: string; unit: string; bad: boolean }
 export type TwinActionItem = { room: string; floor: string; title: string; detail: string; lv: number }
 export type TwinActions = { title: string; scope: string; hero: { label: string; value: string; note: string } | null; items: TwinActionItem[] }
-export type TwinReport = { ui: TwinUi; kpis: TwinKpi[]; actions: TwinActions | null }
+// 데이터 흐름(트윈 보고, 흐름을 켰을 때만): 수집 데이터 → 트윈 정보(현재 값) → 받는 사람
+export type TwinFlow = {
+  sources: { key: string; org: string; label: string; name: string; what: string }[]
+  infos: { id: string; label: string; value: string; src: string[]; to: string[] }[]
+  personas: { key: string; name: string; why: string }[]
+}
+export type TwinReport = { ui: TwinUi; kpis: TwinKpi[]; actions: TwinActions | null; flow: TwinFlow | null }
 export function onTwinReport(frame: () => HTMLIFrameElement | null, handler: (r: TwinReport) => void) {
   const listener = (e: MessageEvent) => {
     if (!TWIN_URL || e.origin !== twinOrigin() || e.data?.source !== 'twin' || e.data.type !== 'twinUi') return
     if (e.source !== frame()?.contentWindow || !e.data.ui) return
-    handler({ ui: e.data.ui as TwinUi, kpis: (e.data.kpis ?? []) as TwinKpi[], actions: (e.data.actions ?? null) as TwinActions | null })
+    handler({ ui: e.data.ui as TwinUi, kpis: (e.data.kpis ?? []) as TwinKpi[], actions: (e.data.actions ?? null) as TwinActions | null, flow: (e.data.flow ?? null) as TwinFlow | null })
   }
   window.addEventListener('message', listener)
   return () => window.removeEventListener('message', listener)

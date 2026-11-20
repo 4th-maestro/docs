@@ -20,6 +20,7 @@ import ScheduleTimeline from './panels/ScheduleTimeline'
 import SimPanel from './panels/SimPanel'
 import TwinActions from './panels/TwinActions'
 import TwinTools from './panels/TwinTools'
+import FlowModal from './panels/FlowModal'
 import ExperimentPanel from './panels/ExperimentPanel'
 import { usePoll } from './panels/usePoll'
 import Portfolio from './portfolio/Portfolio'
@@ -207,7 +208,7 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
   useEffect(() => {
     if (sim && persona && persona !== 'sim') postUi(frame.current, 'persona:sim')
     if (ops && persona === 'sim') postUi(frame.current, 'persona:owner')
-    if (sim && flowOn) postUi(frame.current, 'flow')
+    if (sim && flowOn) postUi(frame.current, 'flow:off')
     if (sim && pipesOn) postUi(frame.current, 'pipes')
   }, [sim, ops, persona, flowOn, pipesOn])
 
@@ -364,6 +365,9 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
                     </div>}
                   </div>
                   {ops && twinOn && report && <TwinTools ui={report.ui} onAction={(a) => postUi(frame.current, a)} />}
+                  {ops && twinOn && report?.ui.flow && report.flow && (
+                    <FlowModal flow={report.flow} persona={report.ui.persona} onPersona={(k) => postUi(frame.current, `persona:${k}`)} onClose={() => postUi(frame.current, 'flow:off')} />
+                  )}
                   {twinOn ? (
                     <iframe ref={frame} className="embed" src={src} title="3D 디지털트윈" onLoad={() => { postTheme(frame.current); postState(frame.current, building, floor, mode, rooms, highlight, twinData) }} />
                   ) : sim ? (
@@ -386,13 +390,13 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
                 {/* 운전 시뮬레이션은 시뮬레이션 탭(2026-11-20 이동). 이 탭의 트윈 iframe에 계산 요청을 보냄 */}
                 {sim && twinOn && <SimPanel frame={() => frame.current} onLocate={locate} />}
                 {sim && import.meta.env.DEV && building === 'eng6' && <ExperimentPanel />}
-                {ops && twinOn && report?.actions && <TwinActions actions={report.actions} at={status?.generatedAt} onLocate={locate} />}
                 {ops && <ChatPanel
                   ai={ai} messages={messages} rooms={rooms} suggestions={suggestions} busy={busy} history={history}
                   onSend={send} onClear={clear} onSave={save}
                   onClose={(m) => { setMessages((ms) => ms.map((x) => (x.id === m.id ? { ...x, draftState: 'closed' as const } : x))); setFocus(NO_IDS) }}
                   onFocus={setFocus} onSelect={setSelected}
                 />}
+                {ops && twinOn && report?.actions && <TwinActions actions={report.actions} at={status?.generatedAt} onLocate={locate} />}
                 {ops && floor && <AnomalyPanel building={building} floor={floor} onLocate={(id) => { setMode('anomaly'); locate(id) }} />}
                 {ops && floor && <RecommendPanel key={`${floor}-${scheduleKey}`} building={building} floor={floor} onDraft={showDraft} onLocate={locate} />}
               </aside>

@@ -346,7 +346,7 @@
      범례는 앱 카드에 있으므로 숨김(시뮬레이션 역할도 같은 온도 척도) */
   body.hosted #bar, body.hosted #hostLink, body.hosted #kpis, body.hosted #actions, body.hosted #floorPicker, body.hosted #floorTags,
   body.hosted #floorTabs, body.hosted #roomBack, body.hosted #infoBtn, body.hosted #roomTools, body.hosted #roomTitle,
-  body.hosted #inspector, body.hosted #legend{display:none !important}
+  body.hosted #inspector, body.hosted #legend, body.hosted #flow{display:none !important}  /* 데이터 흐름은 앱 모달(보고의 flow)로 표시 */
   body.hosted #floorView{padding:16px !important}
   @media (min-width:761px){ #floorView{padding-right:372px} }
   @media (max-width:760px){ #actions{display:none} #persona button span{display:none} }
@@ -2527,6 +2527,12 @@ function drawFlow(focus){
   }
   cols.querySelectorAll('.node').forEach(n => n.classList.toggle('dim', !on.has(n.dataset.n)));
 }
+// 앱 모달용 데이터 흐름(호스트 모드 보고): 수집 데이터, 트윈 정보와 현재 값, 받는 사람(시뮬레이션 역할 제외)
+function flowModel(){
+  return { sources:Object.entries(SRC).map(([k, v]) => ({ key:k, org:v.org, label:v.label, name:v.full, what:v.what })),
+    infos:FLOW.map(f => ({ id:f.id, label:f.label, value:flowValue(f.id), src:f.src, to:f.to })),
+    personas:Object.entries(PERSONA).filter(([k]) => k !== 'sim').map(([k, v]) => ({ key:k, name:v.name, why:v.why })) };
+}
 function setFlow(open){
   if (open) setDataPanel(false);
   const el = $('#flow'); el.classList.toggle('open', open); el.setAttribute('aria-hidden', !open); $('#flowBtn').setAttribute('aria-pressed', open);
@@ -2974,6 +2980,8 @@ function hostUi(a){
   if (p) { setPersona(p[1]); simReport(true); return hostUiReport(true); }
   const el = UI_ACT[a] && document.querySelector(UI_ACT[a]);
   if (el) { el.click(); hostUiReport(true); }
+  // 앱 모달 닫기: 토글이 아닌 닫기 전용(여러 번 받아도 같은 결과)
+  else if (a === 'flow:off') { setFlow(false); hostUiReport(true); }
 }
 // 앱으로 보고: 화면 상태(버튼 눌림 표시), 지표 칸, 조치 목록. 숨긴 #kpis·#actions가 그린 내용을 읽어 전달, 같으면 보내지 않음
 const LV_OF = c => c.includes('danger') ? 2 : c.includes('caution') ? 1 : 0;
@@ -2989,9 +2997,10 @@ function hostUiReport(force){
     hero:hero ? { label:hero.firstChild?.textContent || '', value:hb?.textContent || '', note:hero.textContent.replace(hero.firstChild?.textContent || '', '').replace(hb?.textContent || '', '').trim() } : null,
     items:[...A.querySelectorAll('.list .it')].map(b => { const t = b.querySelector('.t'), fl = t?.querySelector('em')?.textContent || '';
       return { room:b.dataset.room, floor:fl, title:(t?.textContent || '').slice(0, -fl.length || undefined).trim(), detail:b.querySelector('.d')?.textContent || '', lv:LV_OF(t?.querySelector('span')?.getAttribute('style') || '') }; }) };
-  const sig = JSON.stringify([ui, kpis, actions]);
+  const flow = ui.flow ? flowModel() : null;
+  const sig = JSON.stringify([ui, kpis, actions, flow]);
   if (!force && sig === hostUiReport.sig) return;
-  hostUiReport.sig = sig; emit('twinUi', { source:'twin', ui, kpis, actions });
+  hostUiReport.sig = sig; emit('twinUi', { source:'twin', ui, kpis, actions, flow });
 }
 
 /* ═════════════════════════ start ═════════════════════════ */
