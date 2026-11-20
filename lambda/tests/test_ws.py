@@ -97,6 +97,19 @@ class RunTest(unittest.TestCase):
         self.assertTrue(query.floor_given('15:30', {'draft': {'floor': 'all'}}))
         self.assertFalse(query.floor_given('사무실 꺼줘', {'turns': [{'q': '전체 현황'}, {'q': '1층'}, {'q': '회의실'}]}))
 
+    def test_operations_draft_reaches_done_event_without_writes(self):
+        from unittest.mock import patch
+        import operations
+        draft = {'action': 'undo', 'buildingId': 'main', 'decisionIds': ['d1'], 'rooms': ['Room 1']}
+        with patch.object(operations, 'run', return_value=({'executed': False}, {'opsDraft': draft, 'highlight': ['r1']})):
+            result, events = self.ask(
+                msg('tool_use', tool('operations_action', {'action': 'undo', 'floor': 'all', 'use': 'all', 'scope': 'latest'})),
+                msg('end_turn', text(answer('되돌리기 초안을 만들었습니다.'))),
+                text='방금 자동으로 끈 거 되돌려')
+        self.assertEqual(result['opsDraft'], draft)
+        self.assertEqual(events[-1]['result']['opsDraft'], draft)
+        self.assertEqual(result['highlight'], ['r1'])
+
     def test_tool_round_event_order(self):
         result, events = self.ask(msg('tool_use', tool('query_spaces', QUERY)), msg('end_turn', text(ANSWER_JSON)))
         self.assertEqual(steps(events), [
@@ -179,7 +192,7 @@ class HttpTest(unittest.TestCase):
         res = query.handler({'body': json.dumps({'text': '1층 전력 높은 곳'})}, None)
         self.assertEqual(res['statusCode'], 200)
         body = json.loads(res['body'])
-        self.assertEqual(set(body), {'answer', 'highlight', 'draft', 'steps', 'charts', 'sources'})
+        self.assertEqual(set(body), {'answer', 'highlight', 'draft', 'opsDraft', 'steps', 'charts', 'sources'})
         self.assertEqual(body['answer'], ANSWER)
 
     def test_rejects_empty_and_long_text(self):

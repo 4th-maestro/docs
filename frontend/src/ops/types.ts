@@ -16,3 +16,5 @@ export type Decision = {
 }
 export type OpsOverview = { settings: OpsSettings; decisions: Decision[]; pendingCount: number; mock?: boolean }
 export type OpsAction = 'accept' | 'reject' | 'undo'
+
+export type OpsDraft = { action: OpsAction; buildingId: string; decisionIds: string[]; rooms: string[] }

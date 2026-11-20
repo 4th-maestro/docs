@@ -6,11 +6,12 @@
 - 건물 소속: GET /admin/buildings(소속 없는 건물 포함), PUT /admin/buildings/{id}/company {companyId | null}
 - 건물 관리: POST /admin/companies/{id}/buildings(등록), PUT /buildings/{id}/twin(트윈·도면·호실 확정 저장, twin 함수),
   PATCH /admin/buildings/{id}(이름, 용도, 운영 시간, 주말 운영), DELETE /admin/buildings/{id}(영구 삭제, 변경 이력만 남김)
-- 사용자: GET /admin/users(가입한 사용자 이메일, 상태, 관리자 여부, 가입일)
-- 관리자 판정: 액세스 토큰 cognito:groups 클레임에 admin 포함(HTTP API JWT 권한 부여자가 서명 검증)
+- 사용자: GET /admin/users(가입한 사용자 sub, 이메일, 상태, 판매사 관리자 여부, 소속 기업, 가입일),
+  PUT /admin/users/{sub}/admin {admin: bool}(판매사 관리자 지정·해제, 자기 계정 해제는 409, 2026-11-21)
+- 관리자 판정: Cognito admin 그룹 구성원(tenant.admins, 변경 후 3초 안 반영). 사용자 풀이 없는 로컬·테스트는 토큰 cognito:groups 클레임
 - 공용 함수: 기업 상세, 변경 이력 조회, 건물 정보 수정은 고객사 설정 API(customer.py)도 사용
 - 변경 이력 action: company.create, company.update, company.delete, company.code, building.assign, building.create, building.update,
-  building.plan, building.delete, member.join, member.role, member.remove
+  building.plan, building.delete, member.join, member.role, member.remove, user.admin(기업 id 대신 VENDOR_AUDIT에 기록)
 """
 import json
 import math
@@ -53,6 +54,9 @@ def _client():
 
 def users():
     admins, out, kw = set(), [], {'UserPoolId': POOL_ID, 'Limit': 60}
+    # 소속 기업 이름: 구성원·기업 테이블 전체 조회(사용자 수십 명 규모)
+    names = {c['companyId']: c.get('name', '') for c in tenant.scan('COMPANIES_TABLE')} if tenant.enabled() else {}
+    company = {m['sub']: names.get(m.get('companyId'), '') for m in tenant.scan('MEMBERS_TABLE')} if tenant.enabled() else {}
     gk = {'UserPoolId': POOL_ID, 'GroupName': tenant.ADMIN, 'Limit': 60}
     while True:
         r = _client().list_users_in_group(**gk)
@@ -64,11 +68,38 @@ def users():
         r = _client().list_users(**kw)
         for u in r['Users']:
             attrs = {a['Name']: a['Value'] for a in u.get('Attributes', [])}
-            out.append({'email': attrs.get('email', ''), 'status': u['UserStatus'], 'enabled': u['Enabled'],
-                        'admin': u['Username'] in admins, 'createdAt': u['UserCreateDate'].isoformat()})
+            sub = attrs.get('sub', u['Username'])
+            out.append({'sub': sub, 'email': attrs.get('email', ''), 'status': u['UserStatus'], 'enabled': u['Enabled'],
+                        'admin': u['Username'] in admins, 'company': company.get(sub, ''), 'createdAt': u['UserCreateDate'].isoformat()})
         if 'PaginationToken' not in r:
             return sorted(out, key=lambda x: x['createdAt'], reverse=True)
         kw['PaginationToken'] = r['PaginationToken']
+
+
+VENDOR_AUDIT = 'vendor'
+SUB = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')
+SELF_ADMIN = '자기 계정의 판매사 관리자 권한은 해제할 수 없습니다. 다른 판매사 관리자에게 요청하십시오.'
+
+
+def set_admin(event):
+    """PUT /admin/users/{sub}/admin {admin: bool}: Cognito admin 그룹 추가·제거, 자기 계정 해제는 409(관리자 0명 방지)"""
+    sub = str((event.get('pathParameters') or {}).get('sub', ''))
+    req = common.body(event)
+    on = req.get('admin') if isinstance(req, dict) else None
+    if not SUB.fullmatch(sub) or not isinstance(on, bool):
+        return common.resp(400, {'error': 'sub는 사용자 id, admin은 true 또는 false입니다.'})
+    me = actor(event)
+    if not on and sub == me['sub']:
+        return common.resp(409, {'error': SELF_ADMIN})
+    found = _client().list_users(UserPoolId=POOL_ID, Filter=f'sub = "{sub}"', Limit=1)['Users']
+    if not found:
+        return common.resp(404, {'error': '사용자를 찾을 수 없습니다.'})
+    u = found[0]
+    (_client().admin_add_user_to_group if on else _client().admin_remove_user_from_group)(UserPoolId=POOL_ID, Username=u['Username'], GroupName=tenant.ADMIN)
+    tenant.changed()
+    email = next((a['Value'] for a in u.get('Attributes', []) if a['Name'] == 'email'), '')
+    tenant.audit(VENDOR_AUDIT, me, 'user.admin', sub, {'email': email, 'admin': on})
+    return common.resp(200, {'sub': sub, 'admin': on})
 
 
 def view(c):
@@ -601,6 +632,7 @@ def twin(event, context):
 
 ROUTES = {
     'GET /admin/users': lambda e: common.resp(200, {'users': users()}),
+    'PUT /admin/users/{sub}/admin': set_admin,
     'GET /admin/companies': list_companies,
     'POST /admin/companies': create_company,
     'GET /admin/companies/{id}': get_company,

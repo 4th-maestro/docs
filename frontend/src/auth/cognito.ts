@@ -135,7 +135,8 @@ function idClaims(): Record<string, unknown> {
 }
 
 export const currentEmail = () => String(idClaims().email ?? '')
-// 관리자 메뉴 표시 여부(실제 권한은 admin API가 액세스 토큰 그룹으로 판정)
+export const currentSub = () => String(idClaims().sub ?? '')
+// 관리자 여부(토큰 발급 시점 값): GET /me 응답 전에만 사용, 실제 권한은 서버가 Cognito admin 그룹으로 판정
 export const isAdmin = () => ((idClaims()['cognito:groups'] as string[] | undefined) ?? []).includes('admin')
 
 export function authMessage(e: unknown): string {

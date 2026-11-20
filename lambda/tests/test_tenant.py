@@ -815,6 +815,59 @@ class AdminMemberTest(Tenancy):
         self.assertEqual(call(http('GET /admin/companies/{id}/audit', path={'id': 'co-a'}))[0], 403)
 
 
+
+class VendorAdminTest(Tenancy):
+    """판매사 관리자 지정·해제: Cognito admin 그룹이 판정 기준(토큰 클레임 무시), 자기 해제 409, 변경 즉시 반영"""
+    BOSS = '11111111-1111-4111-8111-111111111111'
+    USER = '22222222-2222-4222-8222-222222222222'
+
+    def setUp(self):
+        super().setUp()
+        self.group = {self.BOSS}
+        idp = types.SimpleNamespace(
+            list_users_in_group=lambda **kw: {'Users': [{'Username': f'n-{s}', 'Attributes': [{'Name': 'sub', 'Value': s}]} for s in self.group]},
+            list_users=lambda **kw: {'Users': [{'Username': f'n-{s}', 'Attributes': [{'Name': 'sub', 'Value': s}, {'Name': 'email', 'Value': f'{s[:2]}@x.com'}]}
+                                               for s in (self.BOSS, self.USER) if 'Filter' not in kw or s in kw['Filter']]},
+            admin_add_user_to_group=lambda UserPoolId, Username, GroupName: self.group.add(Username[2:]),
+            admin_remove_user_from_group=lambda UserPoolId, Username, GroupName: self.group.discard(Username[2:]))
+        self.patches += [patch.dict(os.environ, {'USER_POOL_ID': 'pool'}), patch.object(tenant, '_idp', idp), patch.object(admin, '_idp', idp)]
+        for x in self.patches[-3:]:
+            x.start()
+        tenant.forget()
+
+    def put(self, sub, on, me=None):
+        return call(http('PUT /admin/users/{sub}/admin', sub=me or self.BOSS, path={'sub': sub}, body={'admin': on}))
+
+    def test_group_decides_role(self):
+        # 토큰에 admin 클레임이 있어도 그룹에 없으면 판매사 관리자 아님, 그룹에 있으면 클레임 없이도 관리자
+        self.assertEqual(call(http('GET /admin/users', sub=self.USER, groups='[admin]'))[0], 403)
+        self.assertEqual(tenant.caller(http('GET /me', sub=self.BOSS))['role'], 'admin')
+
+    def test_grant_and_revoke_apply_immediately(self):
+        self.assertEqual(self.put(self.USER, True), (200, {'sub': self.USER, 'admin': True}))
+        self.assertEqual(tenant.caller(http('GET /me', sub=self.USER))['role'], 'admin')
+        self.assertEqual(self.put(self.USER, False)[0], 200)
+        self.assertNotEqual(tenant.caller(http('GET /me', sub=self.USER))['role'], 'admin')
+        # 같은 밀리초 기록은 정렬 키(시각#uuid) 순서가 임의라 순서 없이 비교
+        self.assertCountEqual([a['detail']['admin'] for a in self.audits('user.admin')], [True, False])
+        self.assertEqual({a['companyId'] for a in self.audits('user.admin')}, {admin.VENDOR_AUDIT})
+
+    def test_self_revoke_blocked_and_validation(self):
+        self.assertEqual(self.put(self.BOSS, False)[0], 409)
+        self.assertIn(self.BOSS, self.group)
+        self.assertEqual(self.put('u-a', True)[0], 400)  # sub 형식 아님
+        self.assertEqual(call(http('PUT /admin/users/{sub}/admin', sub=self.BOSS, path={'sub': self.USER}, body={'admin': 'yes'}))[0], 400)
+        self.assertEqual(self.put('33333333-3333-4333-8333-333333333333', True)[0], 404)
+        self.assertEqual(self.put(self.USER, True, me=self.USER)[0], 403)  # 판매사 관리자가 아니면 지정 불가
+
+    def test_lookup_failure_falls_back_to_token(self):
+        def boom(**kw):
+            raise RuntimeError('throttled')
+        with patch.object(tenant._idp, 'list_users_in_group', boom):
+            tenant.forget()
+            self.assertEqual(tenant.caller(http('GET /me', sub=self.USER, groups='[admin]'))['role'], 'admin')
+
+
 class MigrateTest(Tenancy):
     def test_idempotent(self):
         sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / 'tools'))

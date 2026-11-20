@@ -2,9 +2,11 @@
 
 - 호출자: HTTP API는 JWT 권한 부여자 claims(sub, cognito:groups), WebSocket은 REQUEST 권한 부여자 context(sub, groups)
 - 역할: admin(판매사 총관리자, Cognito admin 그룹, 모든 건물), manager(고객사 관리자), operator(운영자). 고객사 역할은 MembersTable에서 읽음
+- 판매사 관리자 판정: USER_POOL_ID가 있으면 Cognito admin 그룹 구성원 조회(admins, 60초 캐시), 없으면(로컬·테스트) 토큰 그룹 클레임.
+  토큰 클레임은 발급 시점 값이라 지정·해제가 다시 로그인 전까지 반영되지 않음(2026-11-21 그룹 조회로 전환)
 - 권한 분리(2026-11-20): 기업·구성원·건물·도면·트윈 변경은 admin 전용. 고객사 구성원(manager·operator)은 조회와 운영(AI 질의, 대화 기록, 스케줄 저장·취소)만
 - 건물 소속: BuildingOwnersTable(buildingId → companyId). 소속 기업이 없는 건물은 admin만 접근
-- 캐시: 실행 환경별 60초(구성원, 건물 소속, 기업 상태). 역할·소속·상태 변경은 최대 60초 뒤 다른 실행 환경에 반영
+- 캐시: 실행 환경별 60초(구성원, 건물 소속, 기업 상태, 판매사 관리자). 변경 요청은 changed()로 변경 표시를 갱신하고, 도면 버킷이 있는 실행 환경은 3초 안에 반영
 - 중지 기업: 기업 status가 suspended면 구성원의 건물 API·/company API는 403(code COMPANY_SUSPENDED), GET /me는 허용, admin은 검사 안 함
 - 검사 해제: 환경 변수 MEMBERS_TABLE이 없으면(로컬·테스트) 모든 건물 허용
 - 가입 대기: MembersTable 키 pending#<소문자 이메일>, {companyId, ttl 2일}. 가입 전 검사가 쓰고 가입 확인 트리거가 구성원으로 전환
@@ -26,6 +28,7 @@ CODE_DAYS = 30
 FORBIDDEN = '이 건물에 접근할 권한이 없습니다.'
 SUSPENDED = '서비스가 중지된 기업입니다. 판매사에 문의하십시오.'
 _tables, _members, _owners, _emails, _status = {}, {}, {'at': 0.0, 'map': None}, {}, {}
+_admins = {'at': 0.0, 'set': None}
 _idp = None
 
 
@@ -169,10 +172,42 @@ def company_status(cid):
 
 
 def forget():
-    """이 실행 환경의 소속·구성원·기업 상태 캐시 비움(변경 표시를 갱신하지 않음)"""
+    """이 실행 환경의 소속·구성원·기업 상태·판매사 관리자 캐시 비움(변경 표시를 갱신하지 않음)"""
     _members.clear()
     _status.clear()
     _owners['map'] = None
+    _admins['set'] = None
+
+
+def idp():
+    global _idp
+    if _idp is None:
+        import boto3
+        _idp = boto3.client('cognito-idp')
+    return _idp
+
+
+def admins():
+    """판매사 관리자 sub 집합(Cognito admin 그룹, 60초 캐시). USER_POOL_ID가 없거나 조회 실패면 None(토큰 그룹으로 판정)"""
+    pool = os.environ.get('USER_POOL_ID')
+    if not pool:
+        return None
+    import buildings  # 순환 import 회피: 변경 표시가 바뀌었으면 buildings._data가 forget 호출(3초마다 확인)
+    buildings.version()
+    if _admins['set'] is None or time.monotonic() - _admins['at'] > TTL:
+        subs, kw = set(), {'UserPoolId': pool, 'GroupName': ADMIN, 'Limit': 60}
+        try:
+            while True:
+                r = idp().list_users_in_group(**kw)
+                subs |= {next((x['Value'] for x in u.get('Attributes', []) if x['Name'] == 'sub'), u['Username']) for u in r['Users']}
+                if 'NextToken' not in r:
+                    break
+                kw['NextToken'] = r['NextToken']
+        except Exception as e:  # 조회 실패 시 요청을 막지 않고 토큰 그룹으로 판정, 다음 요청에서 다시 조회
+            print('admins lookup failed:', type(e).__name__)
+            return None
+        _admins.update(at=time.monotonic(), set=subs)
+    return _admins['set']
 
 
 def changed():
@@ -187,7 +222,8 @@ def caller(event):
     a = (event.get('requestContext') or {}).get('authorizer') or {}
     c = (a.get('jwt') or {}).get('claims') or {}
     sub = c.get('sub') or a.get('sub')
-    if ADMIN in _groups(c.get('cognito:groups') if c else a.get('groups')):
+    adm = admins()
+    if (sub in adm) if adm is not None else ADMIN in _groups(c.get('cognito:groups') if c else a.get('groups')):
         return {'sub': sub, 'role': ADMIN, 'companyId': None, 'email': None}
     m = member(sub) or {}
     return {'sub': sub, 'role': m.get('role'), 'companyId': m.get('companyId'), 'email': m.get('email')}
@@ -221,11 +257,7 @@ def email(sub):
     if not (sub and pool):
         return None
     if sub not in _emails:
-        global _idp
-        if _idp is None:
-            import boto3
-            _idp = boto3.client('cognito-idp')
-        users = _idp.list_users(UserPoolId=pool, Filter=f'sub = "{sub}"', Limit=1)['Users']
+        users = idp().list_users(UserPoolId=pool, Filter=f'sub = "{sub}"', Limit=1)['Users']
         _emails[sub] = next((a['Value'] for u in users for a in u.get('Attributes', []) if a['Name'] == 'email'), None)
     return _emails[sub]
 

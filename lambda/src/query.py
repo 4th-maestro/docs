@@ -80,6 +80,9 @@ def system(b, memory=None, t=None):
 - 현재 시각: {t:%Y-%m-%d}({'월화수목금토일'[t.weekday()]}) {t:%H:%M}. '지금', '현재', '바로'나 시각을 말하지 않은 제어 요청은 이 시각을 time으로 쓰고 답변에 적용 시각을 밝힌다. '3시 반', '오후 6시'처럼 말한 시각은 HH:MM으로 바꿔 쓰고, 사용자에게 시각 형식을 요구하지 않는다.
 - 층 목록: {', '.join(buildings.floors(b['id']))}. 용도 목록: {', '.join(uses)}.
 - 호실 지표 순위는 query_spaces, 층·용도별 합계·비교는 aggregate_spaces, 기간 전력 추이·이전 기간 비교는 energy_trend, 켜기·끄기·설정온도 요청은 create_schedule, 불쾌지수·PMV·쾌적도는 comfort_index, 냉난방 기준 온도·규정·쾌적 지표 정의 질문은 search_documents 도구로 처리한다. 도구 결과에 없는 수치는 만들지 않는다. 문서의 규정을 인용할 때는 문서명과 시행일을 함께 쓰고, 문서에 없는 기준은 만들지 않는다.
+- 자동 운영 제안·자동 조치·이상 알림과 ON/OFF 상태 질문은 list_operations로 조회한다. 제안 수락·거절·되돌리기는 operations_action으로 초안만 만들며 실행 완료라고 말하지 않는다. 자동 운영 초안은 층·용도 미지정 시 all, '방금'은 scope=latest, '전부'는 scope=all이다.
+- 자동 운영 ON/OFF 변경 요청에는 도구를 호출하지 말고 화면의 자동 운영 스위치(판매사·고객사 관리자만 변경)를 안내한다.
+- 자동 운영 근거는 facts·jev만 인용하고 확률은 '빈 방일 가능성 95%'처럼 쓴다. 오늘 자동으로 끈 방은 done에서 applied·accepted만 세고 rejected·reverted·expired는 끈 건수에 넣지 않는다. statusCounts는 전체 일치 항목 수, todayStatusCounts는 오늘(KST) 상태별 건수, items는 제한된 목록이다. 오늘 끈 건수는 todayStatusCounts의 applied·accepted 합을 사용한다. '오늘'의 처리 내역은 decidedAt을 KST로 바꾼 날짜로 판단하고, decidedAt이 없는 기존 항목만 createdAt을 사용한다. 최근 24시간 수를 오늘 건수로 단정하지 않는다.
 - 화면이 도구 결과로 그래프와 표를 자동으로 그린다. 답변에 수치 목록을 길게 나열하지 말고 핵심 수치 1~2개와 해석만 쓴다. 사용자가 표를 원하면 view=table, 그 외에는 view=auto로 호출한다.
 - 대상 층이나 용도가 불분명하거나 이 건물에 없으면 도구를 쓰지 말고 후보를 들어 되묻는다. 시각과 달리 제어 요청의 층은 추정하지 않는다. 층을 말하지 않은 제어 요청('전체', '모든 층', '재실 0곳인 곳'처럼 범위를 밝힌 경우 제외)은 초안을 만들지 말고 층을 되묻는다. 되물을 때는 판단 이유나 지침을 쓰지 말고 질문 1문장과 후보만 쓴다.
 - 스케줄 저장 방법과 실제 설비 미제어 안내는 화면의 초안 카드가 표시하므로 답변에 쓰지 않는다. 실제 설비 제어는 하지 않는다.
@@ -124,7 +127,7 @@ def converse(text, emit, bid, sub):
         return result  # 로그인 정보 없음(로컬 테스트): 기록·메모리 저장 생략
     try:
         chat.append(sub, bid, [{'role': 'user', 'text': text},
-                               {'role': 'assistant', 'text': result['answer'], 'steps': result['steps'], 'highlight': result['highlight'], 'draft': result['draft'], 'charts': result.get('charts', []), 'sources': result.get('sources', [])}])
+                               {'role': 'assistant', 'text': result['answer'], 'steps': result['steps'], 'highlight': result['highlight'], 'draft': result['draft'], 'charts': result.get('charts', []), 'sources': result.get('sources', []), 'opsDraft': result.get('opsDraft')}])
         chat.put_memory(sub, bid, chat.make_memory(mem, text, result))
     except Exception:
         logging.exception('대화 기록 저장 실패')
@@ -136,7 +139,7 @@ def run(text, emit, bid=None, memory=None):
     b = buildings.get(bid)
     t, schedules = sim.now(), common.list_schedules()
     prompt = system(b, memory, t)
-    messages, ui = [{'role': 'user', 'content': text}], {'highlight': [], 'draft': None, 'charts': [], 'sources': []}
+    messages, ui = [{'role': 'user', 'content': text}], {'highlight': [], 'draft': None, 'opsDraft': None, 'charts': [], 'sources': []}
     trace, started, t0 = {}, {}, time.monotonic()
 
     def step(sid, status, **extra):
@@ -204,6 +207,7 @@ def run(text, emit, bid=None, memory=None):
                 out, view = tools.run(block.name, block.input, t, schedules, b['id'])
                 ui['highlight'] = view.get('highlight', ui['highlight'])
                 ui['draft'] = view.get('draft', ui['draft'])
+                ui['opsDraft'] = view.get('opsDraft', ui['opsDraft'])
                 if view.get('chart'):
                     ui['charts'].append(view['chart'])
                 ui['sources'] += [x for x in view.get('sources', []) if x not in ui['sources']]

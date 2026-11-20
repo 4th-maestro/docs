@@ -1,0 +1,767 @@
+{
+ "summary": {
+  "at": "2026-11-21T00:14:15",
+  "model": "global.anthropic.claude-sonnet-5-5",
+  "building": "main",
+  "total": 8,
+  "passed": 8,
+  "tokens": {
+   "input": 94873,
+   "output": 2476
+  },
+  "over3Sentences": [],
+  "jevReview": []
+ },
+ "rows": [
+  {
+   "id": "o01",
+   "text": "지금 자동 운영 제안 뭐 있어?",
+   "expected": "list_operations",
+   "calls": [
+    {
+     "name": "list_operations",
+     "args": {
+      "status": "pending",
+      "floor": "all",
+      "use": "all",
+      "hours": 24,
+      "limit": 10
+     },
+     "result": {
+      "available": true,
+      "autoApply": false,
+      "pendingCount": 2,
+      "totalCount": 2,
+      "statusCounts": {
+       "pending": 2
+      },
+      "todayStatusCounts": {
+       "pending": 2
+      },
+      "hours": 24,
+      "since": "2026-11-20T00:13:36+09:00",
+      "truncated": false,
+      "items": [
+       {
+        "decisionId": "20261121T0012-00000000",
+        "roomId": "0ztdC3L1HAzhbhMHypqbH5",
+        "floor": "1F",
+        "use": "대기·휴게",
+        "status": "pending",
+        "message": "빈 방 냉난방 끄기 제안",
+        "createdAt": "2026-11-21T00:12:36+09:00",
+        "room": "Central Waiting",
+        "facts": {
+         "idleOnMinutes": 60,
+         "minutesSinceClose": 100
+        },
+        "jev": {
+         "choice": "empty",
+         "confidence": 0.92,
+         "probabilities": {
+          "empty": 0.95
+         },
+         "emptyProb": 0.95
+        },
+        "expiresInMin": 10
+       },
+       {
+        "decisionId": "20261121T0011-00000001",
+        "roomId": "0ztdC3L1HAzhbhMHypqbH5",
+        "floor": "1F",
+        "use": "대기·휴게",
+        "status": "pending",
+        "message": "빈 방 냉난방 끄기 제안",
+        "createdAt": "2026-11-21T00:11:36+09:00",
+        "room": "Central Waiting",
+        "facts": {
+         "idleOnMinutes": 60,
+         "minutesSinceClose": 100
+        },
+        "jev": {
+         "choice": "empty",
+         "confidence": 0.92,
+         "probabilities": {
+          "empty": 0.95
+         },
+         "emptyProb": 0.95
+        },
+        "expiresInMin": 10
+       }
+      ]
+     }
+    }
+   ],
+   "ok": true,
+   "why": "일치",
+   "answer": "대기 중인 자동 운영 제안은 2건으로, 모두 1F 대기·휴게 Central Waiting의 빈 방 냉난방 끄기 제안입니다.\n빈 방일 가능성 95%이고 냉난방이 켜진 채 60분째 비어 있으며 마감 후 100분이 지났습니다.\n두 제안 모두 약 10분 뒤 만료되니 수락하려면 \"방금 제안 수락해줘\"라고 말씀해 주세요.",
+   "charts": 0,
+   "sec": 9.9,
+   "sentences": 3,
+   "jev": null
+  },
+  {
+   "id": "o02",
+   "text": "오늘 자동으로 끈 방 알려줘",
+   "expected": "list_operations",
+   "calls": [
+    {
+     "name": "list_operations",
+     "args": {
+      "status": "done",
+      "floor": "all",
+      "use": "all",
+      "hours": 24,
+      "limit": 20
+     },
+     "result": {
+      "available": true,
+      "autoApply": false,
+      "pendingCount": 2,
+      "totalCount": 4,
+      "statusCounts": {
+       "applied": 1,
+       "accepted": 1,
+       "rejected": 1,
+       "expired": 1
+      },
+      "todayStatusCounts": {
+       "applied": 1,
+       "accepted": 1,
+       "rejected": 1,
+       "expired": 1
+      },
+      "hours": 24,
+      "since": "2026-11-20T00:13:46+09:00",
+      "truncated": false,
+      "items": [
+       {
+        "decisionId": "20261121T0010-00000002",
+        "roomId": "0ztdC3L1HAzhbhMHypqbH5",
+        "floor": "1F",
+        "use": "대기·휴게",
+        "status": "applied",
+        "message": "자동 운영 기록",
+        "createdAt": "2026-11-21T00:10:36+09:00",
+        "room": "Central Waiting",
+        "facts": {
+         "idleOnMinutes": 60,
+         "minutesSinceClose": 100
+        },
+        "jev": {
+         "choice": "empty",
+         "confidence": 0.92,
+         "probabilities": {
+          "empty": 0.95
+         },
+         "emptyProb": 0.95
+        }
+       },
+       {
+        "decisionId": "20261121T0009-00000003",
+        "roomId": "0ztdC3L1HAzhbhMHypqbH5",
+        "floor": "1F",
+        "use": "대기·휴게",
+        "status": "accepted",
+        "message": "자동 운영 기록",
+        "createdAt": "2026-11-21T00:09:36+09:00",
+        "room": "Central Waiting",
+        "facts": {
+         "idleOnMinutes": 60,
+         "minutesSinceClose": 100
+        },
+        "jev": {
+         "choice": "empty",
+         "confidence": 0.92,
+         "probabilities": {
+          "empty": 0.95
+         },
+         "emptyProb": 0.95
+        }
+       },
+       {
+        "decisionId": "20261121T0008-00000004",
+        "roomId": "0ztdC3L1HAzhbhMHypqbH5",
+        "floor": "1F",
+        "use": "대기·휴게",
+        "status": "rejected",
+        "message": "자동 운영 기록",
+        "createdAt": "2026-11-21T00:08:36+09:00",
+        "room": "Central Waiting",
+        "facts": {
+         "idleOnMinutes": 60,
+         "minutesSinceClose": 100
+        },
+        "jev": {
+         "choice": "empty",
+         "confidence": 0.92,
+         "probabilities": {
+          "empty": 0.95
+         },
+         "emptyProb": 0.95
+        }
+       },
+       {
+        "decisionId": "20261121T0007-00000005",
+        "roomId": "0ztdC3L1HAzhbhMHypqbH5",
+        "floor": "1F",
+        "use": "대기·휴게",
+        "status": "expired",
+        "message": "자동 운영 기록",
+        "createdAt": "2026-11-21T00:07:36+09:00",
+        "room": "Central Waiting",
+        "facts": {
+         "idleOnMinutes": 60,
+         "minutesSinceClose": 100
+        },
+        "jev": {
+         "choice": "empty",
+         "confidence": 0.92,
+         "probabilities": {
+          "empty": 0.95
+         },
+         "emptyProb": 0.95
+        }
+       }
+      ]
+     }
+    },
+    {
+     "name": "list_operations",
+     "args": {
+      "status": "done",
+      "floor": "all",
+      "use": "all",
+      "hours": 24,
+      "limit": 20
+     },
+     "result": {
+      "available": true,
+      "autoApply": false,
+      "pendingCount": 2,
+      "totalCount": 4,
+      "statusCounts": {
+       "applied": 1,
+       "accepted": 1,
+       "rejected": 1,
+       "expired": 1
+      },
+      "todayStatusCounts": {
+       "applied": 1,
+       "accepted": 1,
+       "rejected": 1,
+       "expired": 1
+      },
+      "hours": 24,
+      "since": "2026-11-20T00:13:46+09:00",
+      "truncated": false,
+      "items": [
+       {
+        "decisionId": "20261121T0010-00000002",
+        "roomId": "0ztdC3L1HAzhbhMHypqbH5",
+        "floor": "1F",
+        "use": "대기·휴게",
+        "status": "applied",
+        "message": "자동 운영 기록",
+        "createdAt": "2026-11-21T00:10:36+09:00",
+        "room": "Central Waiting",
+        "facts": {
+         "idleOnMinutes": 60,
+         "minutesSinceClose": 100
+        },
+        "jev": {
+         "choice": "empty",
+         "confidence": 0.92,
+         "probabilities": {
+          "empty": 0.95
+         },
+         "emptyProb": 0.95
+        }
+       },
+       {
+        "decisionId": "20261121T0009-00000003",
+        "roomId": "0ztdC3L1HAzhbhMHypqbH5",
+        "floor": "1F",
+        "use": "대기·휴게",
+        "status": "accepted",
+        "message": "자동 운영 기록",
+        "createdAt": "2026-11-21T00:09:36+09:00",
+        "room": "Central Waiting",
+        "facts": {
+         "idleOnMinutes": 60,
+         "minutesSinceClose": 100
+        },
+        "jev": {
+         "choice": "empty",
+         "confidence": 0.92,
+         "probabilities": {
+          "empty": 0.95
+         },
+         "emptyProb": 0.95
+        }
+       },
+       {
+        "decisionId": "20261121T0008-00000004",
+        "roomId": "0ztdC3L1HAzhbhMHypqbH5",
+        "floor": "1F",
+        "use": "대기·휴게",
+        "status": "rejected",
+        "message": "자동 운영 기록",
+        "createdAt": "2026-11-21T00:08:36+09:00",
+        "room": "Central Waiting",
+        "facts": {
+         "idleOnMinutes": 60,
+         "minutesSinceClose": 100
+        },
+        "jev": {
+         "choice": "empty",
+         "confidence": 0.92,
+         "probabilities": {
+          "empty": 0.95
+         },
+         "emptyProb": 0.95
+        }
+       },
+       {
+        "decisionId": "20261121T0007-00000005",
+        "roomId": "0ztdC3L1HAzhbhMHypqbH5",
+        "floor": "1F",
+        "use": "대기·휴게",
+        "status": "expired",
+        "message": "자동 운영 기록",
+        "createdAt": "2026-11-21T00:07:36+09:00",
+        "room": "Central Waiting",
+        "facts": {
+         "idleOnMinutes": 60,
+         "minutesSinceClose": 100
+        },
+        "jev": {
+         "choice": "empty",
+         "confidence": 0.92,
+         "probabilities": {
+          "empty": 0.95
+         },
+         "emptyProb": 0.95
+        }
+       }
+      ]
+     }
+    }
+   ],
+   "ok": true,
+   "why": "일치",
+   "answer": "오늘 자동으로 끈 방은 1F 대기·휴게의 Central Waiting 1곳이고, 적용(applied)과 수락(accepted)을 합해 2건입니다.\n근거는 켜진 채 60분 동안 비어 있었고 폐점 후 100분이 지났으며 빈 방일 가능성이 95%라는 점입니다.\nCentral Waiting의 운영 시간대 설정을 확인해 보세요.",
+   "charts": 0,
+   "sec": 5.8,
+   "sentences": 3,
+   "jev": null
+  },
+  {
+   "id": "o03",
+   "text": "2층 이상 알림 있어?",
+   "expected": "list_operations",
+   "calls": [
+    {
+     "name": "list_operations",
+     "args": {
+      "status": "alert",
+      "floor": "2F",
+      "use": "all",
+      "hours": 24,
+      "limit": 10
+     },
+     "result": {
+      "available": true,
+      "autoApply": false,
+      "pendingCount": 0,
+      "totalCount": 1,
+      "statusCounts": {
+       "alert": 1
+      },
+      "todayStatusCounts": {
+       "alert": 1
+      },
+      "hours": 24,
+      "since": "2026-11-20T00:13:52+09:00",
+      "truncated": false,
+      "items": [
+       {
+        "decisionId": "20261121T0005-00000007",
+        "roomId": "0ClPCUC7jCQRnj1dhupMQo",
+        "floor": "2F",
+        "use": "기타",
+        "status": "alert",
+        "message": "자동 운영 기록",
+        "createdAt": "2026-11-21T00:05:36+09:00",
+        "room": "Cl. Utl. / Kitchenet",
+        "facts": {
+         "idleOnMinutes": 60,
+         "minutesSinceClose": 100
+        },
+        "jev": {
+         "choice": "empty",
+         "confidence": 0.92,
+         "probabilities": {
+          "empty": 0.95
+         },
+         "emptyProb": 0.95
+        }
+       }
+      ]
+     }
+    }
+   ],
+   "ok": true,
+   "why": "일치",
+   "answer": "2층에 최근 24시간 이상 알림이 1건 있고, 오늘 00:05에 발생했습니다.\n대상은 2층 기타 용도의 Cl. Utl. / Kitchenet이고, 빈 방일 가능성 95%이며 냉난방이 60분째 켜져 있고 운영 종료 후 100분이 지났습니다.\n해당 호실의 냉난방을 끄는 스케줄 초안을 만들어 확인해 보세요.",
+   "charts": 0,
+   "sec": 5.1,
+   "sentences": 3,
+   "jev": null
+  },
+  {
+   "id": "o04",
+   "text": "1층 제안 다 수락해 줘",
+   "expected": "operations_action",
+   "calls": [
+    {
+     "name": "operations_action",
+     "args": {
+      "action": "accept",
+      "floor": "1F",
+      "use": "all",
+      "scope": "all"
+     },
+     "result": {
+      "count": 2,
+      "rooms": [
+       "Central Waiting",
+       "Central Waiting"
+      ],
+      "executed": false,
+      "message": "초안입니다. 화면 카드에서 실행을 확인하세요."
+     }
+    },
+    {
+     "name": "list_operations",
+     "args": {
+      "status": "pending",
+      "floor": "1F",
+      "use": "all",
+      "hours": 24,
+      "limit": 10
+     },
+     "result": {
+      "available": true,
+      "autoApply": false,
+      "pendingCount": 2,
+      "totalCount": 2,
+      "statusCounts": {
+       "pending": 2
+      },
+      "todayStatusCounts": {
+       "pending": 2
+      },
+      "hours": 24,
+      "since": "2026-11-20T00:13:57+09:00",
+      "truncated": false,
+      "items": [
+       {
+        "decisionId": "20261121T0012-00000000",
+        "roomId": "0ztdC3L1HAzhbhMHypqbH5",
+        "floor": "1F",
+        "use": "대기·휴게",
+        "status": "pending",
+        "message": "빈 방 냉난방 끄기 제안",
+        "createdAt": "2026-11-21T00:12:36+09:00",
+        "room": "Central Waiting",
+        "facts": {
+         "idleOnMinutes": 60,
+         "minutesSinceClose": 100
+        },
+        "jev": {
+         "choice": "empty",
+         "confidence": 0.92,
+         "probabilities": {
+          "empty": 0.95
+         },
+         "emptyProb": 0.95
+        },
+        "expiresInMin": 9
+       },
+       {
+        "decisionId": "20261121T0011-00000001",
+        "roomId": "0ztdC3L1HAzhbhMHypqbH5",
+        "floor": "1F",
+        "use": "대기·휴게",
+        "status": "pending",
+        "message": "빈 방 냉난방 끄기 제안",
+        "createdAt": "2026-11-21T00:11:36+09:00",
+        "room": "Central Waiting",
+        "facts": {
+         "idleOnMinutes": 60,
+         "minutesSinceClose": 100
+        },
+        "jev": {
+         "choice": "empty",
+         "confidence": 0.92,
+         "probabilities": {
+          "empty": 0.95
+         },
+         "emptyProb": 0.95
+        },
+        "expiresInMin": 9
+       }
+      ]
+     }
+    }
+   ],
+   "ok": true,
+   "why": "일치",
+   "answer": "1층 대기 제안 2건(Central Waiting)을 모두 수락하는 초안을 만들었고, 아직 실행은 되지 않았습니다.\n두 건 모두 빈 방일 가능성 95%이고, 냉난방을 60분째 켜 둔 상태이며 약 9분 뒤 만료됩니다.\n화면 카드에서 수락 실행을 확인해 주세요.",
+   "charts": 0,
+   "sec": 6.1,
+   "sentences": 3,
+   "jev": null
+  },
+  {
+   "id": "o05",
+   "text": "방금 자동으로 끈 거 되돌려",
+   "expected": "operations_action",
+   "calls": [
+    {
+     "name": "operations_action",
+     "args": {
+      "action": "undo",
+      "floor": "all",
+      "use": "all",
+      "scope": "latest"
+     },
+     "result": {
+      "count": 1,
+      "rooms": [
+       "Central Waiting"
+      ],
+      "executed": false,
+      "message": "초안입니다. 화면 카드에서 실행을 확인하세요."
+     }
+    }
+   ],
+   "ok": true,
+   "why": "일치",
+   "answer": "가장 최근에 자동으로 끈 Central Waiting 1곳을 되돌리는 초안을 만들었습니다.\n아직 실행된 것은 아니고, 화면 카드에서 확인해야 적용됩니다.\n화면 카드에서 되돌리기 내용을 확인하고 실행해 주세요.",
+   "charts": 0,
+   "sec": 3.2,
+   "sentences": 3,
+   "jev": null
+  },
+  {
+   "id": "o06",
+   "text": "자동 운영 켜 줘",
+   "expected": null,
+   "calls": [],
+   "ok": true,
+   "why": "도구 없이 안내",
+   "answer": "자동 운영 ON/OFF는 채팅으로 변경할 수 없고, 화면의 자동 운영 스위치에서 바꾸셔야 합니다.\n이 스위치는 판매사·고객사 관리자만 변경할 수 있습니다.\n관리자 권한 계정으로 화면의 자동 운영 스위치를 켜 주세요.",
+   "charts": 0,
+   "sec": 2.0,
+   "sentences": 3,
+   "jev": null
+  },
+  {
+   "id": "o07",
+   "text": "자동 운영 켜져 있어?",
+   "expected": "list_operations",
+   "calls": [
+    {
+     "name": "list_operations",
+     "args": {
+      "status": "all",
+      "floor": "all",
+      "use": "all",
+      "hours": 24,
+      "limit": 5
+     },
+     "result": {
+      "available": true,
+      "autoApply": false,
+      "pendingCount": 2,
+      "totalCount": 7,
+      "statusCounts": {
+       "pending": 2,
+       "applied": 1,
+       "accepted": 1,
+       "rejected": 1,
+       "expired": 1,
+       "alert": 1
+      },
+      "todayStatusCounts": {
+       "pending": 2,
+       "applied": 1,
+       "accepted": 1,
+       "rejected": 1,
+       "expired": 1,
+       "alert": 1
+      },
+      "hours": 24,
+      "since": "2026-11-20T00:14:08+09:00",
+      "truncated": true,
+      "items": [
+       {
+        "decisionId": "20261121T0012-00000000",
+        "roomId": "0ztdC3L1HAzhbhMHypqbH5",
+        "floor": "1F",
+        "use": "대기·휴게",
+        "status": "pending",
+        "message": "빈 방 냉난방 끄기 제안",
+        "createdAt": "2026-11-21T00:12:36+09:00",
+        "room": "Central Waiting",
+        "facts": {
+         "idleOnMinutes": 60,
+         "minutesSinceClose": 100
+        },
+        "jev": {
+         "choice": "empty",
+         "confidence": 0.92,
+         "probabilities": {
+          "empty": 0.95
+         },
+         "emptyProb": 0.95
+        },
+        "expiresInMin": 9
+       },
+       {
+        "decisionId": "20261121T0011-00000001",
+        "roomId": "0ztdC3L1HAzhbhMHypqbH5",
+        "floor": "1F",
+        "use": "대기·휴게",
+        "status": "pending",
+        "message": "빈 방 냉난방 끄기 제안",
+        "createdAt": "2026-11-21T00:11:36+09:00",
+        "room": "Central Waiting",
+        "facts": {
+         "idleOnMinutes": 60,
+         "minutesSinceClose": 100
+        },
+        "jev": {
+         "choice": "empty",
+         "confidence": 0.92,
+         "probabilities": {
+          "empty": 0.95
+         },
+         "emptyProb": 0.95
+        },
+        "expiresInMin": 9
+       },
+       {
+        "decisionId": "20261121T0010-00000002",
+        "roomId": "0ztdC3L1HAzhbhMHypqbH5",
+        "floor": "1F",
+        "use": "대기·휴게",
+        "status": "applied",
+        "message": "자동 운영 기록",
+        "createdAt": "2026-11-21T00:10:36+09:00",
+        "room": "Central Waiting",
+        "facts": {
+         "idleOnMinutes": 60,
+         "minutesSinceClose": 100
+        },
+        "jev": {
+         "choice": "empty",
+         "confidence": 0.92,
+         "probabilities": {
+          "empty": 0.95
+         },
+         "emptyProb": 0.95
+        }
+       },
+       {
+        "decisionId": "20261121T0009-00000003",
+        "roomId": "0ztdC3L1HAzhbhMHypqbH5",
+        "floor": "1F",
+        "use": "대기·휴게",
+        "status": "accepted",
+        "message": "자동 운영 기록",
+        "createdAt": "2026-11-21T00:09:36+09:00",
+        "room": "Central Waiting",
+        "facts": {
+         "idleOnMinutes": 60,
+         "minutesSinceClose": 100
+        },
+        "jev": {
+         "choice": "empty",
+         "confidence": 0.92,
+         "probabilities": {
+          "empty": 0.95
+         },
+         "emptyProb": 0.95
+        }
+       },
+       {
+        "decisionId": "20261121T0008-00000004",
+        "roomId": "0ztdC3L1HAzhbhMHypqbH5",
+        "floor": "1F",
+        "use": "대기·휴게",
+        "status": "rejected",
+        "message": "자동 운영 기록",
+        "createdAt": "2026-11-21T00:08:36+09:00",
+        "room": "Central Waiting",
+        "facts": {
+         "idleOnMinutes": 60,
+         "minutesSinceClose": 100
+        },
+        "jev": {
+         "choice": "empty",
+         "confidence": 0.92,
+         "probabilities": {
+          "empty": 0.95
+         },
+         "emptyProb": 0.95
+        }
+       }
+      ]
+     }
+    }
+   ],
+   "ok": true,
+   "why": "일치",
+   "answer": "자동 운영은 현재 꺼져 있고, 처리를 기다리는 제안이 2건 있습니다.\n대기 중인 제안은 Central Waiting(1F 대기·휴게)의 빈 방 냉난방 끄기 제안이며, 빈 방일 가능성은 95%입니다.\n자동 운영을 켜려면 화면의 자동 운영 스위치를 사용하세요.",
+   "charts": 0,
+   "sec": 4.2,
+   "sentences": 3,
+   "jev": null
+  },
+  {
+   "id": "o08",
+   "text": "1층 제안 전부 거절해 줘",
+   "expected": "operations_action",
+   "calls": [
+    {
+     "name": "operations_action",
+     "args": {
+      "action": "reject",
+      "floor": "1F",
+      "use": "all",
+      "scope": "all"
+     },
+     "result": {
+      "count": 2,
+      "rooms": [
+       "Central Waiting",
+       "Central Waiting"
+      ],
+      "executed": false,
+      "message": "초안입니다. 화면 카드에서 실행을 확인하세요."
+     }
+    }
+   ],
+   "ok": true,
+   "why": "일치",
+   "answer": "1층 자동 운영 제안 2건을 모두 거절하는 초안을 만들었습니다.\n대상은 Central Waiting 관련 제안 2건이며 아직 실행되지 않았습니다.\n화면 카드에서 거절 내용을 확인하고 실행해 주세요.",
+   "charts": 0,
+   "sec": 3.1,
+   "sentences": 3,
+   "jev": null
+  }
+ ]
+}

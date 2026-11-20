@@ -7,8 +7,9 @@ import { ThinkingBadge, ThinkingPanel } from './ThinkingPanel'
 import type { AskState, Step } from './types'
 import './chat.css'
 import { SkBubbles } from '../skeleton/Skeleton'
+import OpsDraftCard from '../ops/OpsDraftCard'
 import { OpsCard, OpsStatusCard } from '../ops/OpsMessages'
-import type { Decision, OpsAction, OpsOverview } from '../ops/types'
+import type { Decision, OpsAction, OpsDraft, OpsOverview } from '../ops/types'
 
 // 대화 메시지: 서버 기록(GET /chat)과 화면에서 추가한 메시지 공용
 // - draftState: pending(저장 대기, 초안 카드 표시), saved(저장됨), closed(닫음·지난 기록)
@@ -18,6 +19,9 @@ export type ChatMsg = {
   text: string
   steps?: Step[]
   highlight?: string[]
+  opsDraft?: OpsDraft | null
+  opsDraftActive?: boolean
+  opsDraftResult?: string
   draft?: Draft | null
   draftState?: 'pending' | 'saved' | 'closed'
   mock?: boolean
@@ -57,6 +61,7 @@ function msgTimes(ms: ChatMsg[]): number[] {
 
 type Props = {
   ai: AskState
+  onOpsDone: (m: ChatMsg, notice: string) => void
   ops?: OpsView | null
   messages: ChatMsg[]
   rooms: Room[]
@@ -73,7 +78,7 @@ type Props = {
 
 // AI 운영 도우미(메신저형): 위는 대화 목록, 아래는 입력창
 // - 자동 스크롤: 사용자가 아래쪽(120px 이내)을 보고 있을 때만, 이전 대화를 읽는 중에는 유지
-export default function ChatPanel({ ai, ops, messages, rooms, suggestions, busy, history, onSend, onClear, onSave, onClose, onFocus, onSelect }: Props) {
+export default function ChatPanel({ onOpsDone, ai, ops, messages, rooms, suggestions, busy, history, onSend, onClear, onSave, onClose, onFocus, onSelect }: Props) {
   const [text, setText] = useState('')
   const [confirmClear, setConfirmClear] = useState(false)
   const [big, setBig] = useState<Chart | null>(null)
@@ -148,7 +153,7 @@ export default function ChatPanel({ ai, ops, messages, rooms, suggestions, busy,
           ? <OpsCard key={x.d.decisionId} d={x.d} now={now} busy={ops!.busy === x.d.decisionId} onAct={(a) => ops!.onAct(x.d, a)} onLocate={ops!.onLocate} />
           : x.m.role === 'user'
             ? <div key={x.m.id} className={x.m.fresh ? 'msg me rise-in' : 'msg me'}><p>{x.m.text}</p></div>
-            : <Assistant key={x.m.id} m={x.m} rooms={rooms} busy={busy} onSave={onSave} onClose={onClose} onFocus={onFocus} onSelect={onSelect} onExpand={setBig} />))}
+            : <Assistant onOpsDone={onOpsDone} key={x.m.id} m={x.m} rooms={rooms} busy={busy} onSave={onSave} onClose={onClose} onFocus={onFocus} onSelect={onSelect} onExpand={setBig} />))}
         {live && (
           <div className="msg ai">
             <ThinkingPanel state={ai} />
@@ -177,7 +182,7 @@ export default function ChatPanel({ ai, ops, messages, rooms, suggestions, busy,
   )
 }
 
-function Assistant({ m, rooms, busy, onSave, onClose, onFocus, onSelect, onExpand }: { m: ChatMsg; rooms: Room[]; busy: boolean; onExpand: (c: Chart) => void } & Pick<Props, 'onSave' | 'onClose' | 'onFocus' | 'onSelect'>) {
+function Assistant({ onOpsDone, m, rooms, busy, onSave, onClose, onFocus, onSelect, onExpand }: { m: ChatMsg; rooms: Room[]; busy: boolean; onExpand: (c: Chart) => void } & Pick<Props, 'onOpsDone' | 'onSave' | 'onClose' | 'onFocus' | 'onSelect'>) {
   const byId = new Map(rooms.map((r) => [r.id, r]))
   const targets = (m.highlight ?? []).map((id) => byId.get(id)).filter((r): r is Room => !!r)
   const d = m.draft
@@ -192,6 +197,7 @@ function Assistant({ m, rooms, busy, onSave, onClose, onFocus, onSelect, onExpan
         </details>
       )}
       <p className="msg-text">{m.note && <span className="pop-in"><Check size={16} aria-hidden /></span>}{m.text}</p>
+      {m.opsDraft && <OpsDraftCard draft={m.opsDraft} active={!!m.opsDraftActive} result={m.opsDraftResult} onDone={(notice) => onOpsDone(m, notice)} />}
       {m.charts?.map((c, i) => <ChartView key={`${m.id}-${i}`} chart={c} onExpand={() => onExpand(c)} />)}
       {sources.length > 0 && (
         <div className="msg-sources">

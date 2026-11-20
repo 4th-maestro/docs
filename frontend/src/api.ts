@@ -2,12 +2,12 @@ import { applyOverrides, demoStatus, kstNow, live, mockAsk, summarize } from './
 import { mockAnomalies, mockBuildings, mockCancelSchedule, mockHistory, mockRecommendations, mockSaveSchedule, mockSchedules } from './panels/mock'
 import type { Anomalies, History, Recommendations, Schedules } from './panels/types'
 import { mockOps, mockOpsAct, mockOpsSettings } from './ops/mock'
-import type { Decision, OpsAction, OpsOverview, OpsSettings } from './ops/types'
+import type { Decision, OpsAction, OpsDraft, OpsOverview, OpsSettings } from './ops/types'
 import { AUTH_ON, getAccessToken, signOut } from './auth/cognito'
 import type { Step } from './ai/types'
 import type { Chart, Draft, Portfolio, QueryResult, Source, Status } from './types'
 
-export type ChatRecord = { sk: string; role: 'user' | 'assistant'; text: string; steps?: Step[]; highlight?: string[]; draft?: Draft | null; charts?: Chart[]; sources?: Source[] }
+export type ChatRecord = { opsDraft?: OpsDraft | null; sk: string; role: 'user' | 'assistant'; text: string; steps?: Step[]; highlight?: string[]; draft?: Draft | null; charts?: Chart[]; sources?: Source[] }
 
 const BASE = import.meta.env.VITE_API_BASE_URL as string | undefined
 // API 주소 설정 여부: 없으면 화면 전체가 목업 모드
@@ -129,7 +129,8 @@ export type CompanyDetail = {
   members: Member[]
 }
 export type AdminBuilding = { id: string; name: string; companyId: string | null; companyName: string | null }
-export type UserRow = { email: string; status: string; enabled: boolean; admin: boolean; createdAt: string }
+// admin: 판매사 관리자(Cognito admin 그룹), company: 고객사 소속 기업 이름(없으면 빈 문자열)
+export type UserRow = { sub: string; email: string; status: string; enabled: boolean; admin: boolean; company: string; createdAt: string }
 const json = (method: string, body?: object): RequestInit => ({ method, body: body && JSON.stringify(body) })
 export const co = (id: string) => `/admin/companies/${encodeURIComponent(id)}`
 export const listCompanies = () => call<{ companies: CompanyRow[] }>('/admin/companies')
@@ -142,6 +143,9 @@ export const listAdminBuildings = () => call<{ buildings: AdminBuilding[] }>('/a
 export const assignBuilding = (buildingId: string, companyId: string | null) =>
   call<{ buildingId: string; companyId: string | null }>(`/admin/buildings/${encodeURIComponent(buildingId)}/company`, json('PUT', { companyId }))
 export const listUsers = () => call<{ users: UserRow[] }>('/admin/users')
+// 판매사 관리자 지정·해제: 서버가 즉시 판정(다시 로그인 불필요), 자기 계정 해제는 409
+export const setVendorAdmin = (sub: string, admin: boolean) =>
+  call<{ sub: string; admin: boolean }>(`/admin/users/${encodeURIComponent(sub)}/admin`, json('PUT', { admin }))
 
 // 판매사 건물 관리: 추가(id는 브라우저 생성 b-xxxxxxxx), 정보 수정, 도면 교체·편집 저장, 영구 삭제
 // - 도면 저장 경로: PUT /buildings/{id}/twin(도면 변환 규약 docs/human/reference/plan-ingest.md 4절과 공용, 판매사 권한은 서버 판정)

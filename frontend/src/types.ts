@@ -1,3 +1,4 @@
+import type { OpsDraft } from './ops/types'
 // Lambda 응답 형식(lambda/src/status.py, query.py, schedules.py와 같은 필드)
 export type Room = {
   id: string
@@ -68,6 +69,6 @@ export type Chart = BarChart | LineChart
 // AI 답변 근거 문서(lambda 응답 sources): date는 시행일 또는 기준일, checked는 원문 확인일(YYYY-MM-DD)
 export type Source = { title: string; url: string; date: string; checked?: string }
 
-export type QueryResult = { answer: string; highlight: string[]; draft: Draft | null; charts?: Chart[]; sources?: Source[]; mock?: boolean }
+export type QueryResult = { opsDraft?: OpsDraft | null; answer: string; highlight: string[]; draft: Draft | null; charts?: Chart[]; sources?: Source[]; mock?: boolean }
 
 export type Mode = 'temp' | 'powerKw' | 'humidity' | 'comfort' | 'anomaly'

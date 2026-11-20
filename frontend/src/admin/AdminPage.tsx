@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
-import { ArrowLeft, Building2, Copy, FileImage, Link2, Pencil, PencilRuler, Plus, RefreshCw, ShieldCheck, Trash2, Unlink } from 'lucide-react'
+import { ArrowLeft, Building2, Copy, FileImage, Link2, Pencil, PencilRuler, Plus, RefreshCw, ShieldCheck, Trash2, Unlink, UserRound } from 'lucide-react'
+import { currentSub } from '../auth/cognito'
 import {
-  assignBuilding, buildingsChanged, co, createCompany, deleteBuilding, deleteCompany, getCompany, listAdminBuildings, listCompanies, listUsers, patchBuilding, renewCode, updateCompany,
+  assignBuilding, buildingsChanged, co, createCompany, deleteBuilding, deleteCompany, getCompany, listAdminBuildings, listCompanies, listUsers, patchBuilding, setVendorAdmin, renewCode, updateCompany,
   type AdminBuilding, type Company, type CompanyDetail, type CompanyRow, type UserRow,
 } from '../api'
 import type { AdminSub } from '../shell/route'
@@ -98,22 +99,76 @@ function CompanyList() {
       <section className="card adm-card" aria-labelledby="adm-users">
         <h2 id="adm-users">가입한 사용자 {users ? `${users.length}명` : ''}</h2>
         {users === null && !error && <SkWrap label="사용자 목록을 불러오는 중입니다"><SkTable rows={4} cols={3} /></SkWrap>}
-        {!!users?.length && (
-          <table className="adm-table">
-            <thead><tr><th>이메일</th><th>상태</th><th>가입일</th></tr></thead>
-            <tbody>
-              {users.map((u) => (
-                <tr key={u.email}>
-                  <td>{u.email}{u.admin && <span className="tag adm-tag"><ShieldCheck size={14} aria-hidden />관리자</span>}</td>
-                  <td>{!u.enabled ? '사용 중지' : STATUS[u.status] ?? u.status}</td>
-                  <td>{day(u.createdAt)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+        {!!users?.length && <VendorUsers users={users} onChange={(u) => setUsers(users.map((x) => (x.sub === u.sub ? u : x)))} />}
       </section>
     </main>
+  )
+}
+
+// 가입한 사용자: 판매사 관리자 지정·해제(재확인 후 실행, 2026-11-21)
+// - 서버가 Cognito admin 그룹으로 즉시 판정. 대상자는 화면 새로고침 후 기업 관리 메뉴가 바뀜
+// - 자기 계정 해제는 버튼 비활성(서버도 409): 판매사 관리자 0명 방지
+// - 고객사 소속은 유지하고 판매사 권한이 우선, 해제하면 고객사 역할로 돌아감
+function VendorUsers({ users, onChange }: { users: UserRow[]; onChange: (u: UserRow) => void }) {
+  const me = currentSub()
+  const [ask, setAsk] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [out, setOut] = useState<{ text: string; bad?: boolean } | null>(null)
+
+  async function run(u: UserRow) {
+    setBusy(true); setAsk(null); setOut(null)
+    try {
+      await setVendorAdmin(u.sub, !u.admin)
+      onChange({ ...u, admin: !u.admin })
+      setOut({ text: u.admin ? `${u.email} 사용자의 판매사 관리자 권한을 해제했습니다.` : `${u.email} 사용자를 판매사 관리자로 지정했습니다. 해당 사용자가 화면을 새로고침하면 기업 관리 메뉴가 표시됩니다.` })
+    } catch (e) {
+      setOut({ text: msg(e), bad: true })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <>
+      <ul className="adm-list">
+        {users.map((u) => {
+          const self = u.sub === me
+          const open = ask === u.sub
+          const company = u.company ? `${u.company} 소속` : '소속 기업 없음'
+          return (
+            <li key={u.sub || u.email} className="adm-mem">
+              {u.admin ? <ShieldCheck size={18} aria-hidden /> : <UserRound size={18} aria-hidden />}
+              <span className="adm-entry">
+                <span>{u.email}{u.admin && <span className="tag adm-tag">판매사 관리자</span>}</span>
+                <small>{self ? '본인 계정, ' : ''}{company}, {!u.enabled ? '사용 중지' : STATUS[u.status] ?? u.status}, {day(u.createdAt)} 가입</small>
+              </span>
+              <span className="adm-acts">
+                <button
+                  className="adm-mini" type="button" disabled={busy || (self && u.admin)} onClick={() => setAsk(open ? null : u.sub)} aria-expanded={open}
+                  aria-label={self && u.admin ? '본인 계정의 판매사 관리자 권한은 다른 판매사 관리자만 해제할 수 있습니다' : `${u.email} ${u.admin ? '판매사 관리자 해제' : '판매사 관리자로 지정'}`}
+                >
+                  {u.admin ? '관리자 해제' : '관리자로 지정'}
+                </button>
+              </span>
+              {open && (
+                <div className="adm-ask fade-in">
+                  <p className="adm-help">
+                    {u.admin
+                      ? `${u.email} 사용자의 판매사 관리자 권한을 해제합니다. 기업 관리 메뉴와 건물 추가·수정·삭제를 사용할 수 없게 됩니다.${u.company ? ` ${u.company} 구성원 역할로 돌아갑니다.` : ''}`
+                      : `${u.email} 사용자를 판매사 관리자로 지정합니다. 모든 기업, 구성원, 건물을 관리할 수 있게 됩니다.${u.company ? ` ${u.company} 소속은 유지되고 판매사 권한이 우선합니다.` : ''}`}
+                  </p>
+                  <div className="adm-btns">
+                    <button className={u.admin ? 'adm-danger adm-btn' : 'adm-dark adm-btn'} type="button" disabled={busy} onClick={() => run(u)}>{u.admin ? '해제' : '지정'}</button>
+                    <button className="secondary adm-btn" type="button" onClick={() => setAsk(null)}>취소</button>
+                  </div>
+                </div>
+              )}
+            </li>
+          )
+        })}
+      </ul>
+      {out && <p key={out.text} className={out.bad ? 'adm-warn fade-in' : 'ok fade-in'} role={out.bad ? 'alert' : 'status'}>{out.text}</p>}
+    </>
   )
 }
 

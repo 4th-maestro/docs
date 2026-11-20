@@ -51,8 +51,10 @@ def sentences(text):
 
 def match(expected, calls):
     # 정답 비교: 도구 이름과 정답에 적힌 인자 키만 비교(나머지 인자는 자유)
+    if expected.get('noTools'):
+        return not calls, '도구 없이 안내' if not calls else '불필요한 도구 호출'
     if expected['tool'] is None:
-        made = [c for c in calls if c['name'] == 'create_schedule']
+        made = [c for c in calls if c['name'] in ('create_schedule', 'operations_action')]
         return not made, '초안 없음' + (f"(조회 {len(calls)}회)" if calls else '') if not made else '불필요한 초안 생성'
     if not calls:
         return False, '도구 호출 없음'
@@ -123,9 +125,9 @@ def main():
             try:
                 res = query.run(text, lambda e: None, a.building, mem)
             except Exception as e:  # 실패도 결과로 기록
-                res = {'answer': f'오류: {e}', 'charts': []}
+                res = {'answer': f'오류: {e}', 'charts': [], 'error': str(e)}
             history, mem = (mem or {}).get('turns', []), chat.make_memory(mem, text, res)
-        ok, why = match(q, calls)
+        ok, why = (False, '실행 오류') if res.get('error') else match(q, calls)
         row = {'id': q['id'], 'text': ' → '.join(texts), 'expected': q.get('tool'), 'calls': list(calls), 'ok': ok, 'why': why,
                'answer': res.get('answer', ''), 'charts': len(res.get('charts') or []), 'sec': round(time.monotonic() - t0, 1)}
         row['sentences'] = sentences(row['answer'])

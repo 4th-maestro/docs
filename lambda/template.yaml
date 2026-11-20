@@ -18,6 +18,11 @@ Parameters:
   AllowedOrigin:
     Type: String
     Default: '*'
+  OpsPrefix:
+    Type: String
+    Default: maestro
+    AllowedPattern: '[A-Za-z0-9_-]+'
+    Description: Existing auto operations stack table prefix (read only)
   TwinPrefix:
     Type: String
     # 트윈 테이블: maestro-twin 스택(infra/twin/template.yaml)의 <Prefix>-Buildings, -Rooms, -Equipment, -State. 이름으로만 참조
@@ -286,7 +291,8 @@ Resources:
               Resource: !Sub '${PlansBucket.Arn}/jobs/*'
         - Statement:
             - Effect: Allow
-              Action: [cognito-idp:ListUsers, cognito-idp:ListUsersInGroup]
+              # 판매사 관리자 조회(tenant.admins)와 지정·해제(admin.set_admin)
+              Action: [cognito-idp:ListUsers, cognito-idp:ListUsersInGroup, cognito-idp:AdminAddUserToGroup, cognito-idp:AdminRemoveUserFromGroup]
               Resource: !GetAtt UserPool.Arn
             # 목록 권한은 접두어 조건 없이 버킷 전체: 없는 키 조회가 403 대신 NoSuchKey(404)가 되려면 필요
             - Effect: Allow
@@ -315,6 +321,7 @@ Resources:
         Heatmap: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /energy/heatmap, Method: GET}}
         Breakdown: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /energy/breakdown, Method: GET}}
         Users: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /admin/users, Method: GET}}
+        SetVendorAdmin: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: '/admin/users/{sub}/admin', Method: PUT}}
         ListCompanies: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /admin/companies, Method: GET}}
         CreateCompany: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /admin/companies, Method: POST}}
         GetCompany: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: '/admin/companies/{id}', Method: GET}}
@@ -348,14 +355,26 @@ Resources:
 
   QueryFunction:
     Type: AWS::Serverless::Function
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: Query automatic operations through the existing chatbot tools.
+        must: Read operations tables only; mutations require confirmation through the operations API.
     Properties:
       Architectures: [arm64]
       Handler: query.handler
       Runtime: python3.12
       Timeout: 30
       Environment:
-        Variables: {MODEL_ID: !Ref ModelId, BEDROCK_REGION: !Ref BedrockRegion, KB_ID: !Ref KnowledgeBase}
+        Variables:
+          MODEL_ID: !Ref ModelId
+          BEDROCK_REGION: !Ref BedrockRegion
+          KB_ID: !Ref KnowledgeBase
+          DECISIONS_TABLE: !Sub '${OpsPrefix}-Decisions'
+          OPS_SETTINGS_TABLE: !Sub '${OpsPrefix}-OpsSettings'
+          USER_POOL_ID: !Ref UserPool
       Policies:
+        - DynamoDBReadPolicy: {TableName: !Sub '${OpsPrefix}-Decisions'}
+        - DynamoDBReadPolicy: {TableName: !Sub '${OpsPrefix}-OpsSettings'}
         - DynamoDBReadPolicy: {TableName: !Sub '${TwinPrefix}-Buildings'}
         - DynamoDBReadPolicy: {TableName: !Sub '${TwinPrefix}-Rooms'}
         - DynamoDBReadPolicy: {TableName: !Ref SchedulesTable}
@@ -365,6 +384,10 @@ Resources:
         - DynamoDBReadPolicy: {TableName: !Ref BuildingOwnersTable}
         - DynamoDBReadPolicy: {TableName: !Ref CompaniesTable}
         - Statement:
+            # 판매사 관리자 판정(tenant.admins, Cognito admin 그룹 구성원 조회)
+            - Effect: Allow
+              Action: cognito-idp:ListUsersInGroup
+              Resource: !GetAtt UserPool.Arn
             - Effect: Allow
               # 응답 스트리밍(messages.stream)은 InvokeModelWithResponseStream 권한 필요
               Action: [bedrock:InvokeModel, bedrock:InvokeModelWithResponseStream]
@@ -434,6 +457,10 @@ Resources:
 
   WsFunction:
     Type: AWS::Serverless::Function
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: Share automatic operations tools with the HTTP chatbot.
+        must: Keep operations table access read only and enforce building authorization before querying.
     Properties:
       Architectures: [arm64]
       Handler: ws.handler
@@ -441,8 +468,16 @@ Resources:
       # 통합 응답 대기는 29초에서 끊기지만 함수는 계속 실행되어 이벤트 전송, 화면 제한 45초보다 길게 설정
       Timeout: 60
       Environment:
-        Variables: {MODEL_ID: !Ref ModelId, BEDROCK_REGION: !Ref BedrockRegion, KB_ID: !Ref KnowledgeBase}
+        Variables:
+          MODEL_ID: !Ref ModelId
+          BEDROCK_REGION: !Ref BedrockRegion
+          KB_ID: !Ref KnowledgeBase
+          DECISIONS_TABLE: !Sub '${OpsPrefix}-Decisions'
+          OPS_SETTINGS_TABLE: !Sub '${OpsPrefix}-OpsSettings'
+          USER_POOL_ID: !Ref UserPool
       Policies:
+        - DynamoDBReadPolicy: {TableName: !Sub '${OpsPrefix}-Decisions'}
+        - DynamoDBReadPolicy: {TableName: !Sub '${OpsPrefix}-OpsSettings'}
         - DynamoDBReadPolicy: {TableName: !Sub '${TwinPrefix}-Buildings'}
         - DynamoDBReadPolicy: {TableName: !Sub '${TwinPrefix}-Rooms'}
         - DynamoDBReadPolicy: {TableName: !Ref SchedulesTable}
@@ -452,6 +487,10 @@ Resources:
         - DynamoDBReadPolicy: {TableName: !Ref BuildingOwnersTable}
         - DynamoDBReadPolicy: {TableName: !Ref CompaniesTable}
         - Statement:
+            # 판매사 관리자 판정(tenant.admins, Cognito admin 그룹 구성원 조회)
+            - Effect: Allow
+              Action: cognito-idp:ListUsersInGroup
+              Resource: !GetAtt UserPool.Arn
             - Effect: Allow
               Action: [bedrock:InvokeModel, bedrock:InvokeModelWithResponseStream]
               Resource:

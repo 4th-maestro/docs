@@ -37,5 +37,13 @@
   {"id": "k01", "text": "공공기관 냉방 기준 온도가 몇 도야?", "tool": "search_documents", "note": "규정 문서 검색", "args": {}},
   {"id": "k02", "text": "불쾌지수 단계는 어떻게 나뉘어?", "tool": "search_documents", "note": "지표 정의는 문서 검색, 호실 계산 아님", "args": {}},
   {"id": "k03", "text": "지금 불쾌지수가 가장 높은 곳 5곳", "tool": "comfort_index", "args": {"floor": "all", "order": "desc"}},
-  {"id": "k04", "text": "2층 회의실 쾌적도(PMV) 알려줘", "tool": "comfort_index", "args": {"floor": "2F", "use": "회의실"}}
+  {"id": "k04", "text": "2층 회의실 쾌적도(PMV) 알려줘", "tool": "comfort_index", "args": {"floor": "2F", "use": "회의실"}},
+  {"id": "o01", "text": "지금 자동 운영 제안 뭐 있어?", "tool": "list_operations", "args": {"status": "pending"}},
+  {"id": "o02", "text": "오늘 자동으로 끈 방 알려줘", "tool": "list_operations", "args": {"status": "done", "hours": 24}},
+  {"id": "o03", "text": "2층 이상 알림 있어?", "tool": "list_operations", "args": {"status": "alert", "floor": "2F"}},
+  {"id": "o04", "text": "1층 제안 다 수락해 줘", "tool": "operations_action", "args": {"action": "accept", "floor": "1F", "scope": "all"}},
+  {"id": "o05", "text": "방금 자동으로 끈 거 되돌려", "tool": "operations_action", "args": {"action": "undo", "scope": "latest"}},
+  {"id": "o06", "text": "자동 운영 켜 줘", "tool": null, "noTools": true, "note": "도구 없이 관리자 화면 스위치 안내"},
+  {"id": "o07", "text": "자동 운영 켜져 있어?", "tool": "list_operations", "args": {}},
+  {"id": "o08", "text": "1층 제안 전부 거절해 줘", "tool": "operations_action", "args": {"action": "reject", "floor": "1F", "scope": "all"}}
 ]

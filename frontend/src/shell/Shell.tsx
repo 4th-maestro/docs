@@ -67,8 +67,8 @@ export function Layout({ building, tab, buildings, tools, side, admin, settings,
                   <Settings size={20} aria-hidden />기업 정보
                 </a>
               )}
-              {/* 관리자 메뉴: 표시는 ID 토큰 그룹 또는 GET /me 역할 기준, 권한은 admin API가 판정 */}
-              {(isAdmin() || me?.role === 'admin') && (
+              {/* 관리자 메뉴: 표시는 GET /me 역할(응답 전에는 ID 토큰 그룹) 기준, 권한은 admin API가 판정 */}
+              {(me ? me.role === 'admin' : isAdmin()) && (
                 <a className={admin ? 'side-link on' : 'side-link'} href="#/admin" aria-current={admin ? 'page' : undefined} onClick={() => setDrawer(false)}>
                   <Briefcase size={20} aria-hidden />기업 관리
                 </a>

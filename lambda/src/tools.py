@@ -17,6 +17,7 @@ import re
 import buildings
 import comfort
 import energy
+import operations
 import sim
 
 METRICS = {'powerKw': '전력(kW)', 'temp': '실내온도(℃)', 'humidity': '습도(%)', 'setpoint': '설정온도(℃)'}
@@ -100,6 +101,37 @@ def _definitions(version):
         },
     },
     {
+        'name': 'list_operations',
+        'description': '자동 운영 제안·처리 내역·이상 알림과 자동 운영 ON/OFF 설정을 조회한다. done은 처리된 모든 상태이며, 껐던 방은 applied·accepted만 집계한다.',
+        'strict': True,
+        'input_schema': {
+            'type': 'object', 'additionalProperties': False,
+            'required': ['status', 'floor', 'use', 'hours', 'limit'],
+            'properties': {
+                'status': {'type': 'string', 'enum': ['pending', 'done', 'alert', 'all']},
+                'floor': {'type': 'string', 'enum': FLOORS + ['all']},
+                'use': {'type': 'string', 'enum': USES + ['all']},
+                'hours': {'type': 'integer', 'description': '최근 1~24시간, 기본 24'},
+                'limit': {'type': 'integer', 'description': '1~20개, 기본 10'},
+            },
+        },
+    },
+    {
+        'name': 'operations_action',
+        'description': '자동 운영 제안 수락·거절 또는 조치 되돌리기 초안만 만든다. 실제 실행은 사용자가 화면 카드에서 확인한다. 최근 24시간 중 latest는 가장 최근 대상 1건, all은 조건에 맞는 전부다.',
+        'strict': True,
+        'input_schema': {
+            'type': 'object', 'additionalProperties': False,
+            'required': ['action', 'floor', 'use', 'scope'],
+            'properties': {
+                'action': {'type': 'string', 'enum': ['accept', 'reject', 'undo']},
+                'floor': {'type': 'string', 'enum': FLOORS + ['all']},
+                'use': {'type': 'string', 'enum': USES + ['all']},
+                'scope': {'type': 'string', 'enum': ['latest', 'all']},
+            },
+        },
+    },
+    {
         'name': 'search_documents',
         'description': '냉난방 기준 온도, 공공기관 에너지 규정, 불쾌지수·PMV 같은 쾌적 지표의 정의와 단계, 설비·요금 기준 문서를 검색한다. 규정·기준·이론 질문에 사용하고 호실 수치 조회에는 쓰지 않는다.',
         'strict': True,
@@ -152,6 +184,10 @@ def chips(name, args):
         out += ['층별' if args.get('group_by') == 'floor' else '용도별', AGG.get(args.get('metric'), ('',))[0]]
     elif name == 'comfort_index':
         out += [f"불쾌지수 {'낮은' if args.get('order') == 'asc' else '높은'} 순", args.get('limit') and f"{args['limit']}곳"]
+    elif name == 'list_operations':
+        out += ['자동 운영 조회', args.get('status', 'pending')]
+    elif name == 'operations_action':
+        out += ['자동 운영 초안', {'accept': '수락', 'reject': '거절', 'undo': '되돌리기'}.get(args.get('action'))]
     elif name == 'create_schedule':
         action = {'off': '운전 OFF', 'on': '운전 ON'}.get(args.get('action')) or f"설정온도 {args.get('setpoint', 0):g}℃"
         out += [args.get('time') and f"{args['time']} 이후", '재실 없을 때' if args.get('condition') == 'unused' else None, action]
@@ -164,6 +200,8 @@ def _pick(rooms, floor, use):
 
 def run(name, args, t, schedules, bid=None):
     """(모델에 돌려줄 결과, 화면 반영 정보) 반환. 잘못된 인자는 ValueError(모델이 고칠 수 있게 허용 값 포함)"""
+    if name in ('list_operations', 'operations_action'):
+        args = {'floor': 'all', 'use': 'all', **args}
     rooms = buildings.rooms(bid)
     floors, uses = buildings.floors(bid), sorted({r['use'] for r in rooms})
     view = args.get('view', 'auto')
@@ -175,6 +213,8 @@ def run(name, args, t, schedules, bid=None):
         raise ValueError(f"floor는 {', '.join(floors)}, all 중 하나")
     if args.get('use') not in uses + ['all']:
         raise ValueError(f"use는 {', '.join(uses)}, all 중 하나")
+    if name in ('list_operations', 'operations_action'):
+        return operations.run(name, args, t, buildings.get(bid)['id'])
     if name == 'query_spaces':
         if args['metric'] not in METRICS or args['order'] not in ('desc', 'asc'):
             raise ValueError('metric 또는 order 값 오류')
