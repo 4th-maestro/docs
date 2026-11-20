@@ -243,6 +243,12 @@
       "type": "explanation"
     },
     {
+      "path": "docs/human/explanation/improvements/2026-11-21(3D 트윈 만들기 진행률 막대).md",
+      "title": "3D 트윈 만들기 진행률 막대",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
       "path": "docs/human/explanation/improvements/2026-11-21(3D 호버 테두리와 방 이름 홀로그램).md",
       "title": "3D 호버 테두리와 방 이름 홀로그램",
       "audience": "human",
