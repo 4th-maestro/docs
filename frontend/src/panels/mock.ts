@@ -13,11 +13,12 @@ function draft(r: Room, action: Draft['action'], condition: Draft['condition'], 
 }
 
 // 절감량 가정: OFF는 재실 없는 운전 5시간/일, 설정온도 조정은 부하 10% 감소 9시간/일
+// 층 ''이면 건물 전체(lambda/src/recommend.py의 floor 생략과 같음)
 export async function mockRecommendations(floor: string, building: string): Promise<Recommendations> {
   const { iso, h } = nowParts()
   const business = h >= 9 && h < 18
   const items: Recommendation[] = []
-  for (const r of (await demoStatus(building)).rooms.filter((x) => x.floor === floor && x.onOff)) {
+  for (const r of (await demoStatus(building)).rooms.filter((x) => (!floor || x.floor === floor) && x.onOff)) {
     const base = { roomId: r.id, roomName: r.name, idu: r.idu, floor: r.floor, use: r.use }
     if (r.occupants === 0) {
       const saving = r1(r.powerKw * 5)

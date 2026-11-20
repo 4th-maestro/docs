@@ -131,13 +131,13 @@ export function SkBubbles() {
   )
 }
 
-// 층 목록 버튼 n개
+// 층 목록 한 줄 행 n개(층, kW, 상태)
 export function SkFloors({ n = 2 }: { n?: number }) {
   return (
     <SkWrap label="층 정보를 불러오는 중입니다" className="sk-floors">
-      <Sk w={24} h={14} style={{ marginLeft: 12 }} />
+      <Sk w={24} h={14} style={{ marginLeft: 12, marginBottom: 6 }} />
       {Array.from({ length: n }, (_, i) => (
-        <div key={i} className="sk-floor"><div className="sk-line"><Sk w={34} h={24} /><Sk w={64} h={16} /></div><div className="sk-line"><Sk w={52} h={14} /><Sk w={80} h={14} /></div></div>
+        <div key={i} className="sk-floor"><Sk w={34} h={18} /><Sk w={64} h={16} style={{ justifySelf: 'end' }} /><Sk w={52} h={14} /></div>
       ))}
     </SkWrap>
   )

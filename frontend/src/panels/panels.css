@@ -73,9 +73,6 @@
    - 왼쪽 64px 시각 열, 1시간 36px, 시간표 영역 최대 520px(내부 스크롤, 처음에는 지금 선 근처)
    - 칸 색: 동작별(OFF 파랑, ON 초록, 설정온도 주황) 왼쪽 굵은 선 + 옅은 면, 예정은 점선 테두리, 글자와 아이콘 병행
    - 선택 칸: primary 외곽선(DESIGN.md 선택 상태) */
-/* 층 버튼(.en-seg): 층이 많으면 패널 안 가로 스크롤, 버튼 너비 64px 이상 1:1, 여백 4px는 포커스 외곽선 잘림 방지 */
-.tt-floors { overflow-x: auto; padding: 4px; margin: -4px; }
-.tt-floors .en-seg { grid-auto-columns: minmax(64px, 1fr); }
 .tt-sum { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; font-size: 15px; color: var(--muted); }
 .tt-sum b { font-size: 22px; font-weight: 800; color: var(--ink); margin-right: 2px; font-variant-numeric: tabular-nums; }
 .tt-key { display: inline-flex; align-items: center; gap: 6px; }
@@ -110,7 +107,7 @@
 /* 지금 선은 칸 뒤(z-index 1), 시각 열의 표시만 보임: 칸 글자를 가리지 않음 */
 .tt-now { position: absolute; left: 0; right: 0; height: 0; border-top: 3px solid var(--ink); z-index: 1; pointer-events: none; }
 /* 지금 표시: 선과 분리해 칸보다 앞(z-index 4) */
-.tt-nowtag { position: absolute; z-index: 4; left: 4px; transform: translateY(-50%); padding: 2px 8px; border-radius: var(--r-full); background: var(--ink); color: var(--on-ink); font-size: 13px; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.tt-nowtag { position: absolute; z-index: 4; left: 4px; transform: translateY(-50%); padding: 2px 8px; border-radius: var(--r-full); background: var(--ink); color: var(--on-ink); font-size: 14px; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .tt-empty { position: absolute; left: 72px; right: 16px; top: 45%; margin: 0; text-align: center; font-size: 15px; color: var(--muted); }
 .tt-detail { display: flex; flex-direction: column; gap: 6px; padding: 14px 16px; border: 1px solid var(--hairline); border-radius: var(--r-sm); }
 .tt-detail-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 17px; }
@@ -120,6 +117,17 @@
 @media (max-width: 743px) { .tt-lanes { grid-template-columns: repeat(var(--n), minmax(128px, 1fr)); } }
 .pn-confirm { flex-basis: 100%; display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: var(--r-sm); background: var(--surface-soft); }
 .pn-confirm p { margin: 0; font-size: 15px; }
+/* 사이드바 오늘 스케줄(744px 이상, 층 목록 아래)
+   - 높이: 사이드바 남은 높이를 채움, 시간표는 최소 240px에서 내부 스크롤. 남은 높이가 부족하면 사이드바 스크롤
+   - 좁은 너비(내용 230px): 상세 머리 세로 배치, 버튼은 한 줄 1개 전체 너비 48px */
+.side > .pn { flex: 1 0 auto; padding: 12px; }
+.side > .pn h2 { font-size: 17px; }
+.side .pn-body { flex-grow: 1; }
+.side .tt { flex: 1 0 240px; max-height: none; }
+.side .tt-detail { padding: 12px; }
+.side .tt-detail-head { flex-direction: column; align-items: flex-start; gap: 2px; }
+.side .pn-btns { grid-template-columns: 1fr; }
+.side .pn-btn { height: 48px; }
 
 /* 전력 추이 */
 .pn-keys { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; font-size: 14px; color: var(--muted); }

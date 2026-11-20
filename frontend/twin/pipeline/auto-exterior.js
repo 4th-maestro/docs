@@ -8,11 +8,20 @@ const area = loop => Math.abs(loop.reduce((sum, [x, y], i) => {
   return sum + x * v - y * u;
 }, 0)) / 2;
 
-export function fitAnalysisImage(image, maxSize) {
+export function fitAnalysisImage(image, maxSize, preserveInk = false) {
   const scale = Math.min(1, maxSize / Math.max(image.width, image.height));
   if (scale === 1) return image;
   const width = Math.max(1, Math.round(image.width * scale)), height = Math.max(1, Math.round(image.height * scale));
   const data = new Uint8ClampedArray(width * height * 4);
+  if (preserveInk) {
+    data.fill(255);
+    for (let y = 0; y < image.height; y++) for (let x = 0; x < image.width; x++) {
+      if (image.data[4 * (y * image.width + x)] !== 0) continue;
+      const index = 4 * (Math.floor(y * height / image.height) * width + Math.floor(x * width / image.width));
+      data[index] = data[index+1] = data[index+2] = 0;
+    }
+    return { width, height, data };
+  }
   for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
     const offset = 4 * (Math.floor(y * image.height / height) * image.width + Math.floor(x * image.width / width));
     data.set(image.data.subarray(offset, offset + 4), 4 * (y * width + x));
@@ -20,8 +29,8 @@ export function fitAnalysisImage(image, maxSize) {
   return { width, height, data };
 }
 
-export function inferPlanFootprint(rect, width, depth, params, darkPlan = false) {
-  const image = fitAnalysisImage(rect, 720);
+export function inferPlanFootprint(rect, width, depth, params, darkPlan = false, preserveInk = false) {
+  const image = fitAnalysisImage(rect, 720, preserveInk);
   const walls = wallMask(image, width, depth, { ...params, dark:Math.min(params.dark, 32), close:2 }, [], false);
   const toMeter = (value, source, sample, limit) => Math.min(limit, Math.max(0, Math.round((value * source / sample / RES - MARGIN) * 100) / 100));
   const toFootprints = contours => contours.map(loop => loop.map(([x, y]) => [
@@ -55,6 +64,15 @@ export function inferPlanFootprint(rect, width, depth, params, darkPlan = false)
     if (coverage >= .14 && coverage > bestCoverage * 1.35) { best = distinct; bestCoverage = coverage; }
   }
   return bestCoverage >= .12 ? footprintOf(best) : null;
+}
+
+export function inferPlanFootprintFromLines(rect, lines, width, depth, params, darkPlan) {
+  const clean = inferPlanFootprint(lines, width, depth, params, false, true);
+  const raw = inferPlanFootprint(rect, width, depth, params, darkPlan);
+  if (!clean || !raw) return clean ?? raw;
+  const sumArea = footprint => loopsOf(footprint).reduce((sum, loop) => sum + area(loop), 0);
+  const ratio = sumArea(clean) / sumArea(raw);
+  return ratio >= .8 && ratio <= 1.25 ? clean : raw;
 }
 
 export function hasDrawingFrame(footprint, width, depth) {

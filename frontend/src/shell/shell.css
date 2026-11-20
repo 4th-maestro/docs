@@ -1,4 +1,4 @@
-/* 화면 틀: 상단바 64px 고정, 왼쪽 사이드바 240px(층 목록), 본문
+/* 화면 틀: 상단바 64px 고정, 왼쪽 사이드바 280px(층 목록, 운영 탭은 아래에 오늘 스케줄), 본문
    - 글자: 메뉴 16~17px, 보조 14px(DESIGN.md 운영자 화면 기준), 누름 영역 44px 이상
    - 743px 이하: 사이드바는 메뉴 버튼으로 여는 서랍 */
 .app { min-height: 100vh; }
@@ -36,7 +36,7 @@
 .vtabs a[aria-current='page'] { color: var(--ink); border-bottom-color: var(--ink); }
 
 /* 본문과 사이드바 */
-.body { display: grid; grid-template-columns: 240px minmax(0, 1fr); }
+.body { display: grid; grid-template-columns: 280px minmax(0, 1fr); }
 .side { position: sticky; top: 64px; height: calc(100vh - 64px); overflow-y: auto; display: flex; flex-direction: column; gap: 16px; padding: 16px 12px; border-right: 1px solid var(--hairline); background: var(--canvas); }
 .side-link { display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 12px; border-radius: var(--r-sm); font-size: 17px; font-weight: 700; color: var(--ink); text-decoration: none; }
 .side-link:hover { background: var(--surface-soft); }
@@ -51,17 +51,18 @@
 .content > .page { max-width: 1320px; padding: 24px 0 0; }
 .scrim { display: none; }
 
-/* 층 목록 */
+/* 층 목록: 한 줄 행 44px(층, kW, 이상 상태)
+   - 열 너비: 층 44px, 상태 76px 이상으로 행 사이 kW 오른쪽 끝 정렬
+   - 선택 행: 2px ink 테두리(기본 행은 같은 두께 투명 테두리로 크기 고정) */
 .floors h2 { margin: 0 0 8px 12px; font-size: 15px; font-weight: 600; color: var(--muted); }
-.floors ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
-.fl { width: 100%; display: grid; grid-template-columns: auto 1fr; grid-template-areas: 'name kw' 'st on'; gap: 2px 8px; padding: 12px; border: 1px solid var(--hairline); border-radius: var(--r-sm); background: var(--canvas); color: var(--ink); text-align: left; }
+.floors ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.fl { width: 100%; min-height: 44px; display: grid; grid-template-columns: minmax(44px, auto) minmax(0, 1fr) minmax(76px, auto); align-items: center; gap: 8px; padding: 0 10px; border: 2px solid transparent; border-radius: var(--r-sm); background: none; color: var(--ink); text-align: left; }
 .fl:hover { background: var(--surface-soft); }
-.fl.on { border: 2px solid var(--ink); padding: 11px; }
-.fl-name { grid-area: name; font-size: 22px; font-weight: 800; line-height: 1.2; }
-.fl-kw { grid-area: kw; justify-self: end; align-self: center; font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; }
-.fl-st { grid-area: st; display: inline-flex; align-items: center; gap: 4px; font-size: 14px; font-weight: 700; color: var(--ok); }
+.fl.on { border-color: var(--ink); }
+.fl-name { font-size: 18px; font-weight: 800; line-height: 1.2; }
+.fl-kw { justify-self: end; font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.fl-st { display: inline-flex; align-items: center; gap: 4px; font-size: 14px; font-weight: 700; color: var(--ok); white-space: nowrap; }
 .fl-st.bad { color: var(--danger); }
-.fl-on { grid-area: on; justify-self: end; font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .bt-btn:focus-visible, .side-link:focus-visible, .fl:focus-visible, .vtabs a:focus-visible, .user:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 
 @media (max-width: 1127px) {

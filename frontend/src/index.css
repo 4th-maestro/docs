@@ -110,7 +110,7 @@ h3 { font-size: 17px; font-weight: 600; margin: 0 0 8px; }
 .sw.bad { background: #fdecec; outline: 2px solid var(--danger); margin-right: 6px; }
 
 .rail { display: flex; flex-direction: column; gap: 24px; min-width: 0; }
-/* 왼쪽 열: 3D, 전력 추이, 스케줄. 오른쪽 열(AI, 이상 감지, 추천)과 높이 균형 */
+/* 왼쪽 열: 3D(휴대폰은 아래에 오늘 스케줄, 그 외 너비는 사이드바). 오른쪽 열(AI, 이상 감지, 추천)과 높이 균형 */
 .main-col { display: flex; flex-direction: column; gap: 24px; min-width: 0; }
 .pick-hint { margin: 16px 0 0; }
 .room { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--hairline); }

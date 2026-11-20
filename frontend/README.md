@@ -5,12 +5,12 @@
 | 경로 | 내용 |
 |---|---|
 | `src/App.tsx` | 해시 경로, 머리글(전체 현황 링크, 건물 선택, 층 탭), 건물 화면 탭(운영, 전력 분석), 밝은/어두운 화면 전환 |
-| `src/App.tsx` 운영 탭 | 상단: 운영 상태 카드(운전 중, 정지, 이상 감지, 재실 인원)와 전력·요금 카드(현재 전력, 오늘 누적 사용량, 오늘 전기요금 추정, 마지막 줄 전력 추이). 왼쪽 열: 3D 트윈, 선택 호실 HVAC 상태, 오늘 스케줄. 오른쪽 열: AI 응답, 이상 감지, 최적 제어 추천. 한 열 화면은 3D 다음에 오른쪽 열 |
+| `src/App.tsx` 운영 탭 | 상단: 운영 상태 카드(운전 중, 정지, 이상 감지, 재실 인원)와 전력·요금 카드(현재 전력, 오늘 누적 사용량, 오늘 전기요금 추정, 마지막 줄 전력 추이). 왼쪽 열: 3D 트윈, 선택 호실 HVAC 상태. 오른쪽 열: AI 운영 도우미(머리글 추천 배지와 대화 위 추천 펼침 목록), 이상 감지. 한 열 화면은 3D 다음에 오른쪽 열. 오늘 스케줄은 사이드바 층 목록 아래, 743px 이하(사이드바 서랍)는 3D 아래. 너비에 따라 한 곳에만 표시 |
 | `src/App.tsx` 호실 상세 | 선택 호실 카드의 `이름·용도 변경`(고객사 관리자·판매사 관리자만 표시): 이름 1~40자, 용도 9개 중 선택, 바뀐 항목만 `PATCH /buildings/{id}/rooms/{roomId}`. 아래 "호실 이름·용도 변경" 절 |
 | `src/portfolio/Portfolio.tsx` | 전체 현황: 전체 요약 4개, 건물 카드(점검 필요 순), 카드 아래 `compare` 영역 |
 | `src/heat.ts` | 지표별 순차 색 척도 |
 | `src/twin.ts` | 3D 트윈 iframe 연동([규약](../docs/human/reference/twin-embed.md)): 트윈·파이프라인 주소(`theme=light\|dark` 포함), 테마 전환 메시지 `{source:'maestro', type:'theme', theme}`(iframe 로드 시, 테마 전환 시), 서버 건물의 `needBuilding` 요청에 `GET /buildings/{id}/twin` 응답 전달(없으면 `null`) |
-| `src/shell/` | 화면 틀: 상단바(로고, 건물 토글, 운영·전력 분석 탭, 로그아웃), 왼쪽 사이드바(전체 현황, 층 3F→1F와 층별 이상·전력, 아래에 소속 기업 이름·역할, 고객사 구성원용 기업 정보 메뉴, 관리자용 기업 관리 메뉴), 휴대폰 메뉴 서랍. 해시 경로는 `route.ts` |
+| `src/shell/` | 화면 틀: 상단바(로고, 건물 토글, 운영·전력 분석 탭, 로그아웃), 왼쪽 사이드바 280px(전체 현황, 층 목록 한 줄 행 44px: 맨 위 전체(트윈 건물만, 층 합계 전력·이상, 선택 시 건물 보기)와 3F→1F 층별 전력·이상, 운영 탭은 층 목록 아래 오늘 스케줄, 아래에 소속 기업 이름·역할, 고객사 구성원용 기업 정보 메뉴, 관리자용 기업 관리 메뉴), 휴대폰 메뉴 서랍. 해시 경로는 `route.ts` |
 | `src/auth/` | 로그인 화면과 Cognito 호출: 로그인, 회원가입(기업 코드 `EGE-XXXX-XXXX`, `ClientMetadata.companyCode`로 가입 전 검사에 전달), 이메일 인증 코드, 비밀번호 재설정, 첫 로그인 비밀번호 변경, 토큰 갱신. `VITE_COGNITO_CLIENT_ID`가 없으면 로그인 생략 |
 | `src/auth/me.ts` | 로그인 사용자 소속(`GET /me`) 컨텍스트와 역할 이름, 다시 조회 이벤트(`ME_CHANGED`). 역할이 없는 계정(판매사 관리자 제외)은 건물 화면 대신 "소속 기업 없음" 화면(`LoginScreen.tsx`의 `NoCompany`, 기업 코드 입력 후 `POST /me/join`). 조회 실패는 확인 생략 |
 | `src/auth/LoginScreen.tsx` `Suspended` | 서비스 중지 화면: 소속 기업이 사용 중지(`GET /me`의 `company.status`가 `suspended`)이거나 API가 403 `COMPANY_SUSPENDED`를 반환하면 건물 화면 대신 서버 문구와 로그아웃 버튼 표시(판매사 관리자 제외) |
@@ -21,22 +21,24 @@
 | `src/admin/convert.ts` | 트윈 `building.json` → 서버 저장 형식 `{twin, rooms, plan}` 변환. 건물 id `b-` + 소문자·숫자 8자(브라우저 생성), 모든 호실 id와 호실 참조에 `<건물 id>.` 접두어(이미 붙은 값은 유지). `rooms`는 실내기가 있는 실만(`web-demo.js` `webStatus` 기준), `plan`은 같은 호실의 내장 3D 형식([도면 저장 규약](../docs/human/reference/plan-storage.md), y 부호 반전). 자가 점검 `node src/admin/convert.check.mjs` |
 | `src/settings/SettingsPage.tsx` | 고객사 기업 정보(`#/settings`, 조회 전용): 기본 정보(기업 코드 미표시), 건물(용도, 층·호실 수, 운영 시간, 주말 운영), 변경 이력(최신 50건). 수정 기능 없음 |
 | `src/ai/ChartView.tsx` | AI 답변 그래프: 막대(한 색, 값 글자), 선(이번 기간 실선, 이전 기간 점선, 마우스·키보드 값 표시), 그래프·표 전환, 크게 보기 창(`<dialog>`) |
-| `src/ai/ChatPanel.tsx` | AI 운영 도우미(말풍선 대화, 처리 단계 접기, 초안 카드와 저장 안내, 근거 문서 목록(`sources`, http(s) 링크만, 새 탭), 대상 호실 3D 보기, 대화 지우기). 기록은 `GET /chat`, 실패 시 화면에만 기록 |
+| `src/ai/ChatPanel.tsx` | AI 운영 도우미(말풍선 대화, 처리 단계 접기, 초안 카드와 저장 안내, 근거 문서 목록(`sources`, http(s) 링크만, 새 탭), 대상 호실 3D 보기, 대화 지우기, 머리글 최적 제어 추천 배지). 기록은 `GET /chat`, 실패 시 화면에만 기록 |
+| `src/ai/ChatRecommend.tsx` | 최적 제어 추천: 머리글 배지 "추천 N"(누름 높이 44px, 기본 접힘), 대화 위 펼침 목록(카드 높이 절반까지, 내부 스크롤). 목록은 예상 절감 합계와 건수, 데이터 기준(시뮬레이터 적용 전후 비교, 가상), 절감량 큰 순 항목(규칙, 호실, HVAC, 근거, 절감량, 3D에서 보기, 초안 만들기). 건물 전체 보기는 항목에 층 이름 표시 |
+| `src/ai/useRecommend.ts` | 최적 제어 추천 조회 훅(`GET /recommendations`, 층이 비어 있으면 건물 전체). 60초 주기, 스케줄 저장 후 다시 조회 |
 | `src/ops/` | 자동 운영 화면: `OpsMessages.tsx`(AI 운영 도우미 대화 안 알림 카드와 마지막 상태 메시지의 ON/OFF 스위치), `types.ts`(응답 형식), `mock.ts`(API 없는 목업, 건물별 메모리). 규칙은 [자동 운영 화면 규약](../docs/human/reference/auto-operations.md) |
 | `src/twin3d/Twin3D.tsx` | Three.js 층 3D 트윈: 도면 API(`GET /buildings/{id}/plan`, 실패 시 `public/floorplans/<건물>.json`) 호실 다각형, 지표 색, HVAC 운전·이상 표시, 호실 선택, 시점 초기화·위에서 보기 |
 | `src/api.ts` | Lambda API 호출(모든 조회에 `building` 전달), 실패하면 목업으로 대체하고 화면에 목업 표시. 건물 목록(`GET /buildings`)은 목업 대체 없이 오류 표시. `GET /me`, `POST /me/join`, 기업 정보 조회 API(`GET /company`, `GET /company/audit`), 트윈 조회(`GET /buildings/{id}/twin`), 판매사 관리 API(`/admin/companies`, `/admin/buildings`, `/admin/users`, 건물 추가 `POST /admin/companies/{id}/buildings`, 정보 수정 `PATCH /admin/buildings/{id}`, 삭제 `DELETE /admin/buildings/{id}`), 도면 교체·편집 저장(`PUT /buildings/{id}/twin`, 판매사 권한은 서버 판정)는 목업 대체 없이 오류 표시. 도면 본문이 5MB를 넘으면 보내기 전에 안내. 403 `COMPANY_SUSPENDED`는 서비스 중지 화면 전환 이벤트(`SUSPENDED`) 발생 |
 | `src/ai/useAsk.ts` | AI 질의 훅. `buildingId` 전송, WebSocket 단계 이벤트 수신, 연결 실패 시 `api.ts` 질의로 대체, 45초 제한 |
 | `src/ai/ThinkingPanel.tsx` | AI 사고 과정 패널(단계, 조건 칩, 스트리밍 답변)과 진행 표시 `ThinkingBadge` |
 | `src/mock.ts` | 목업: 건물별 데모 상태, 정규식 기반 질의 해석 |
-| `src/panels/` | 운영 패널 4종: 최적 제어 추천, 이상 감지, 오늘 스케줄(세로 시간표: 시작 시각부터 그날 끝까지 칸, 지금 선, 칸 선택 시 상세와 취소, 층 선택 버튼으로 층별 보기), 전력 추이(전력·요금 카드 안 오늘·어제 SVG 추이선). 60초마다 다시 조회 |
+| `src/panels/` | 운영 패널 3종: 이상 감지, 오늘 스케줄(세로 시간표: 시작 시각부터 그날 끝까지 칸, 지금 선, 칸 선택 시 상세와 취소, 표시 범위는 층 목록 선택을 따르고 제목에 표시), 전력 추이(전력·요금 카드 안 오늘·어제 SVG 추이선). 60초마다 다시 조회 |
 | `src/energy/` | 에너지 분석: `BuildingCompare`(건물별 kWh·1㎡당·전기요금 막대), `EnergyPage`(일·주·월 추이, 사용 구성 흐름도, 최근 4주 요일×시간 히트맵). API 실패 시 `mock.ts` 목업([설계](../docs/human/explanation/architecture.md) 11절) |
-| `src/panels/mock.ts` | 운영 패널·전체 현황 목업: 데모 상태 기반 추천·이상 감지·전력 곡선, 건물별 브라우저 메모리 스케줄 저장소 |
+| `src/panels/mock.ts` | 운영 패널·전체 현황 목업: 데모 상태 기반 추천(층이 비어 있으면 건물 전체)·이상 감지·전력 곡선, 건물별 브라우저 메모리 스케줄 저장소 |
 | `src/BuildingEditor.tsx` | 평면도 편집: 방 이름, 벽 설치, 벽 삭제, 벽 이동, 칸막이, 실내기(`src/ingest/UnitTool.tsx`), 문(`src/ingest/DoorTool.tsx`), 위치 맞춤, 실행 취소 |
 | `src/ingest/PlanIngest.tsx` | 도면 업로드, 2D 실내기 매핑, 확정 저장 진입 컴포넌트(판매사 건물 화면에서 사용). 입력 IFC, DXF, DWG, PDF, PNG, JPG |
 | `src/ingest/api.ts` | 도면 변환 API(작업 생성, S3 업로드, 시작, 3초 상태 조회), 기호 인식, 확정 저장 어댑터 `saveTwin` |
-| `src/ingest/UnitTool.tsx` | 실내기 도구(유형 6종 추가, 끌어서 이동, 삭제, 유형 변경, 냉방 용량과 모델 수정, 확인 필요 목록)와 도면 위치 맞춤(기준점 2쌍) |
+| `src/ingest/UnitTool.tsx` | 실내기 도구(유형 6종 추가, 끌어서 이동, 삭제, 유형 변경, 확인 필요 목록)와 도면 위치 맞춤(기준점 2쌍) |
 | `src/ingest/DoorTool.tsx` | 문 도구(`floors[].doors`): 모든 도구에서 문 기호 표시, 벽 가까이 눌러 폭 0.9m 문 추가, 끌어서 가까운 호실 변으로 이동, 경첩 뒤집기, 열림 방향 뒤집기, 확인 완료, 삭제, 문 확인 필요 목록 |
-| `src/ingest/units.ts` | 기준점 2쌍 유사 변환, 인식 결과 → 실내기와 문, 문 구간 벽 맞춤(`snapDoor`), 호실 배정, 실내기 모델 대응(`modelFor`). 유형표 `hvac-types.json`은 `../ml/hvac_types.json` 복사본 |
+| `src/ingest/units.ts` | 기준점 2쌍 유사 변환, 인식 결과 → 실내기와 문, 문 구간 벽 맞춤(`snapDoor`), 호실 배정. 유형표 `hvac-types.json`은 `../ml/hvac_types.json` 복사본 |
 | `public/demo/<건물>.json` | 건물별 데모 상태와 건물 id 목록 `index.json`(`python3 tools/demo_status.py`를 `lambda` 폴더에서 실행해 생성) |
 | `public/floorplans/<건물>.json` | 건물별 3D 도면, API를 쓸 수 없을 때의 대체 파일. `python3 tools/build_floorplans.py`를 `lambda` 폴더에서 실행해 `public/floorplan.json`에서 생성. 운영 도면은 도면 버킷(`lambda/tools/upload_plans.py`) |
 
@@ -129,9 +131,6 @@ npm run dev
 - 파이프라인은 보정 평면도마다 기호 인식을 요청하고(`detectRequest`), 대시보드가 `POST /plans/detect`로 처리합니다. 메시지 목록은 [twin/README.md](twin/README.md) "호스트 연동 메시지"에 있습니다.
 - 2D 매핑 화면은 평면도 편집의 **실내기**, **문**, **위치 맞춤** 도구입니다. 위치 맞춤은 도면 이미지 점 2개와 평면 점 2개로 회전, 축척, 이동을 구하고, 위치를 맞추지 않은 인식 결과(`floors[].detections`)를 실내기와 문으로 바꿉니다.
 - 인식 결과 중 `cls: door`는 실내기로 바꾸지 않습니다. 상자 중심에서 가장 가까운 호실 변(거리가 상자 긴 변 이하) 위에 폭이 상자 긴 변인 구간을 두고, 열리는 쪽은 상자 중심 쪽, 경첩은 `a`입니다. 맞는 변이 없거나 폭이 0.6~2.0m 밖이면 확인 필요입니다.
-- 실내기 모델은 [도면 변환 규약](../docs/human/reference/plan-ingest.md) 3-5절 순서로 정합니다. 순서는 원본 모델명(`source`), 장비 번호와 장비일람표(`meta.ingest.schedule`, `schedule`), 용량(`hvac-types.json` `types[].models`, `exact`, `nearest`), 유형 예시(`type`)입니다. 용량 근사(`nearest`)는 확인 필요입니다.
-- 인식 결과의 용량 표기(`kw`)와 장비 번호(`tag`)는 실내기 `coolKw`(`kwSource: pdf-text`), `tag`로 옮깁니다. 빈 호실 추정 실내기는 추정 용량으로 모델을 정하고 `kwSource`를 비웁니다.
-- 실내기 카드는 장비 번호, 모델 근거, 냉방 용량(kW), 모델을 표시합니다. 용량을 고치면 `kwSource: manual`로 저장하고 용량으로 모델을 다시 정합니다. 원본 모델명, 장비일람표, 직접 입력 모델은 용량을 고쳐도 유지합니다. 모델을 입력하면 `modelMatch: manual`, 비우면 용량 또는 유형 예시로 다시 정합니다. 유형을 바꾸면 원본 모델명과 직접 입력 모델만 유지합니다.
 - 문 기호는 경첩에서 문짝 선과 열리는 쪽 1/4 호입니다. `side: 1`은 `a`→`b` 기준 화면 왼쪽(평면 y 아래쪽)입니다. 확인 필요 문은 주황 점선 사각형과 "문 확인 필요 N개" 목록으로 표시합니다. 벽을 옮기거나 방을 나눠도 문 위치는 바뀌지 않으므로 문 도구로 다시 맞추십시오.
 - 3D 트윈(`twin/digital-twin.html`)은 `doors`가 있는 층에서 호실마다 임의로 만들던 문 대신 이 문을 평면도와 호실 3D 보기에 그립니다. 호실 문은 호실 다각형 변 위(중심 거리 0.3m 이내, 같은 방향)에 놓인 문입니다. 3D 벽은 자르지 않고 문 판을 벽 위에 겹쳐 그립니다.
 - 확정 저장은 `saveTwin(buildingId, twin, convert)`입니다. 호출 쪽이 변환 함수(`src/admin/convert.ts`)를 넘기면 `PUT /buildings/{id}/twin` `{twin, rooms, plan}`, 없으면 이 브라우저에만 저장합니다(데모).
@@ -146,7 +145,7 @@ node src/admin/convert.check.mjs   # building.json 변환 자가 점검(접두�
 
 화면을 바꾸면 1440px와 390px 너비에서 버튼 높이·너비와 라벨 잘림을 확인하십시오.
 
-실내기 매핑 계산은 `node src/ingest/units.check.mjs`로 자가 점검합니다(Node 23.6 이상, 기준점 변환, 호실 배정, 인식 결과 변환, 문 인식 결과 변환과 벽 맞춤, 인식용 보정 해상도, 실외기 연결, 빈 호실 추정, 모델 대응).
+실내기 매핑 계산은 `node src/ingest/units.check.mjs`로 자가 점검합니다(Node 23.6 이상, 기준점 변환, 호실 배정, 인식 결과 변환, 문 인식 결과 변환과 벽 맞춤, 인식용 보정 해상도, 실외기 연결, 빈 호실 추정).
 
 ## 배포
 

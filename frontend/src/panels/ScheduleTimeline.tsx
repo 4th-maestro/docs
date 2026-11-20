@@ -2,8 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { Bot, CheckCircle2, Clock, LocateFixed, Power, PowerOff, Thermometer } from 'lucide-react'
 import { cancelSchedule, listSchedules } from '../api'
-import { Seg } from '../energy/parts'
-import '../energy/energy.css'
 import { kstNow } from '../mock'
 import { SkTimetable } from '../skeleton/Skeleton'
 import type { Room } from '../types'
@@ -31,9 +29,10 @@ function target(s: Schedule, byId: Map<string, Room>, ids = s.roomIds) {
 }
 
 // 오늘 스케줄(세로 시간표): 왼쪽 시각, 스케줄은 시작 시각부터 그날 끝까지 칸을 채움(스케줄은 매일 지정 시각부터 적용, lambda/src/sim.py)
+// - 표시 범위: 층 목록 선택(floor), 'all'이면 건물 전체. 패널 제목에 범위 표시
 // - 지금 선으로 현재 시각 표시, 지난 시간은 옅은 면
 // - 칸을 누르면 아래 상세 카드에서 대상 호실, 3D 보기, 취소(2단계 확인)
-export default function ScheduleTimeline({ building, floor, floors, refreshKey, rooms = [], onLocate }: { building: string; floor: string; floors: string[]; refreshKey: number; rooms?: Room[]; onLocate?(roomId: string): void }) {
+export default function ScheduleTimeline({ building, floor, refreshKey, rooms = [], onLocate }: { building: string; floor: string; refreshKey: number; rooms?: Room[]; onLocate?(roomId: string): void }) {
   // refreshKey: 스케줄 저장 후 App이 올리는 값, 바뀌면 다시 조회
   const load = useCallback((_key: number) => listSchedules(building), [building])
   const { data, error, reload } = usePoll(load, refreshKey)
@@ -41,22 +40,23 @@ export default function ScheduleTimeline({ building, floor, floors, refreshKey, 
   const [confirm, setConfirm] = useState(false)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState({ ok: '', err: '' })
-  // 층 보기: 기본은 왼쪽 목록의 선택 층, 그 층이 바뀌면 다시 맞춤
-  // 렌더 중 상태 조정 패턴: key 재마운트는 재조회로 스켈레톤이 다시 표시됨
-  const [view, setView] = useState(floor)
+  // 범위 변경 시 취소 확인 닫기. 렌더 중 상태 조정 패턴: key 재마운트는 재조회로 스켈레톤이 다시 표시됨
   const [lastFloor, setLastFloor] = useState(floor)
-  if (floor !== lastFloor) { setLastFloor(floor); setView(floor); setConfirm(false) }
+  if (floor !== lastFloor) { setLastFloor(floor); setConfirm(false) }
   const box = useRef<HTMLDivElement>(null)
   const now = kstNow().slice(11, 16)
   const nowMin = minutes(now)
   const byId = useMemo(() => new Map(rooms.map((r) => [r.id, r])), [rooms])
   // 층 보기의 대상 호실: 그 층 호실만, 호실 목록에 없는 호실은 '전체'에서만 표시
-  const idsOf = useCallback((s: Schedule) => (view === 'all' ? s.roomIds : s.roomIds.filter((id) => byId.get(id)?.floor === view)), [view, byId])
-  const items = useMemo(() => (data?.schedules ?? []).filter((s) => view === 'all' || idsOf(s).length).sort((a, b) => a.time.localeCompare(b.time)), [data, view, idsOf])
+  const idsOf = useCallback((s: Schedule) => (floor === 'all' ? s.roomIds : s.roomIds.filter((id) => byId.get(id)?.floor === floor)), [floor, byId])
+  const items = useMemo(() => (data?.schedules ?? []).filter((s) => floor === 'all' || idsOf(s).length).sort((a, b) => a.time.localeCompare(b.time)), [data, floor, idsOf])
   // 표시 범위: 06시와 가장 이른 스케줄, 현재 시각 중 이른 시각부터 24시까지
   const startH = Math.min(6, Math.floor(nowMin / 60), ...items.map((s) => Math.floor(minutes(s.time) / 60)))
   const y = (m: number) => ((m - startH * 60) / 60) * ROW
   const hours = Array.from({ length: 24 - startH + 1 }, (_, i) => startH + i)
+  // 지금 표시와 겹치는 시각 글자만 숨김(지금 표시가 정확한 시각을 대신 표시)
+  // - 범위(실측): 시각 글자는 줄 아래 5~27.5px, 지금 표시는 높이 25px(지금 선 위아래 12.5px), 여유 1px → 지금 선이 시각 줄 위 9px ~ 아래 41px
+  const nearNow = (h: number) => y(nowMin) > y(h * 60) - 9 && y(nowMin) < y(h * 60) + 41
   const sel = items.find((s) => s.id === picked) ?? items.find((s) => s.time > now) ?? items[0]
   const selIds = sel ? idsOf(sel) : []
 
@@ -82,23 +82,20 @@ export default function ScheduleTimeline({ building, floor, floors, refreshKey, 
   }
 
   return (
-    <Panel title="오늘 스케줄" mock={data?.mock} error={error || msg.err} loading={!data && !error} skeleton={<SkTimetable />}>
+    <Panel title={`오늘 스케줄 ${floor === 'all' ? '전체' : floor}`} mock={data?.mock} error={error || msg.err} loading={!data && !error} skeleton={<SkTimetable />}>
       {data && (
         <>
-          <div className="tt-floors">
-            <Seg label="층별로 보기" options={[['all', '전체'], ...floors.map((f): [string, string] => [f, f])]} value={view} onChange={(v) => { setView(v); setConfirm(false) }} />
-          </div>
           <div className="tt-sum">
             <span><b>{items.length}</b>건</span>
             <span className="tt-key"><i className="tt-sw on" />적용 중</span>
             <span className="tt-key"><i className="tt-sw next" />적용 예정</span>
             <span className="tt-key"><i className="tt-sw now" />지금 {now}</span>
           </div>
-          <div className="tt" ref={box} tabIndex={0} aria-label={`오늘 스케줄 시간표${view === 'all' ? '' : `, ${view}`}, ${startH}시부터 24시까지, 스케줄 ${items.length}건`}>
+          <div className="tt" ref={box} tabIndex={0} aria-label={`오늘 스케줄 시간표${floor === 'all' ? '' : `, ${floor}`}, ${startH}시부터 24시까지, 스케줄 ${items.length}건`}>
             <div className="tt-grid" style={{ height: y(24 * 60) + 96 }}>
               <div className="tt-past" style={{ height: Math.max(0, y(nowMin)) }} aria-hidden />
               {hours.map((h) => (
-                <div key={h} className="tt-hour" style={{ top: y(h * 60) }} aria-hidden><span>{String(h).padStart(2, '0')}시</span></div>
+                <div key={h} className="tt-hour" style={{ top: y(h * 60) }} aria-hidden>{!nearNow(h) && <span>{String(h).padStart(2, '0')}시</span>}</div>
               ))}
               <ol className="tt-lanes" style={{ '--n': Math.max(1, items.length) } as CSSProperties}>
                 {items.map((s, i) => {
@@ -130,7 +127,7 @@ export default function ScheduleTimeline({ building, floor, floors, refreshKey, 
               </ol>
               <div className="tt-now" style={{ top: y(nowMin) }} aria-hidden />
               <span className="tt-nowtag" style={{ top: y(nowMin) }} aria-hidden>지금 {now}</span>
-              {items.length === 0 && <p className="tt-empty">{view === 'all' ? '오늘 저장된 스케줄이 없습니다. AI 운영 도우미나 최적 제어 추천에서 만들 수 있습니다.' : `${view}에 오늘 저장된 스케줄이 없습니다.`}</p>}
+              {items.length === 0 && <p className="tt-empty">{floor === 'all' ? '오늘 저장된 스케줄이 없습니다. AI 운영 도우미나 최적 제어 추천에서 만들 수 있습니다.' : `${floor}에 오늘 저장된 스케줄이 없습니다.`}</p>}
             </div>
           </div>
           {msg.ok && <p className="pn-ok" role="status">{msg.ok}</p>}

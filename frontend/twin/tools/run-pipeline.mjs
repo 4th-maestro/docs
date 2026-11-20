@@ -8,7 +8,8 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import * as P from '../pipeline/pipeline-core.js';
 import { expandFloorGroups, floorResultFor } from '../pipeline/plan-upload.js';
-import { applyAutomaticExterior, applyFacadeTaper, floorForRoomDetection } from '../pipeline/auto-exterior.js';
+import { applyAutomaticExterior, applyFacadeTaper, floorForRoomDetection, inferPlanFootprintFromLines } from '../pipeline/auto-exterior.js';
+import { normalizePlanLines, resolvePlanGeometry } from '../pipeline/plan-lines.js';
 import { decode, encodePng } from './image-io.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -21,11 +22,15 @@ const base = path.resolve(root, R.base || '');
 
 const imgs = new Map(), img = f => { if (!imgs.has(f)) imgs.set(f, decode(path.resolve(base, f))); return imgs.get(f); };
 
-const W = R.building.size.w, D = R.building.size.d, results = {}, rects = {};
+const W = R.building.size.w, D = R.building.size.d, results = {}, rects = {}, lines = {};
 for (const f of R.floors) {
   const rect = f.mode !== 'manual' && f.image && f.corners ? P.rectify(img(f.image), f.corners, W, D, f.darkPlan) : null;
   rects[f.id] = rect;
-  results[f.id] = P.floorRooms(f, P.resolveFloor(f, rect, W, D), W, D);
+  if (rect && f.normalizeLines && f.mode === 'auto') {
+    lines[f.id] = normalizePlanLines(rect, W, D, f.params);
+    if (R.autoExterior && !f.footprint) f.footprint = inferPlanFootprintFromLines(rect, lines[f.id], W, D, f.params, f.darkPlan) ?? undefined;
+  }
+  results[f.id] = resolvePlanGeometry(f, rect, W, D, lines[f.id]).out;
 }
 for (const p of R.interior || []) for (const k of ['floorBox', 'wallBox']) if (p[k]) p[k === 'floorBox' ? 'floor' : 'wall'] = P.medianColor(img(p.file), p[k]);
 // 외부 사진의 창 높이 (pipeline.html의 calcWindow와 같은 계산)
@@ -49,7 +54,7 @@ for (const [index, floor] of recipe.floors.entries()) {
     expandedResults[floor.id] = floorResultFor(results[src], src, floor.id);
   } else {
     recipe.floors[index] = bounded;
-    expandedResults[floor.id] = P.floorRooms(bounded, P.resolveFloor(bounded, rects[floor.id], W, D), W, D);
+    expandedResults[floor.id] = resolvePlanGeometry(bounded, rects[floor.id], W, D, lines[src]).out;
   }
 }
 const out = P.assemble(recipe, expandedResults);

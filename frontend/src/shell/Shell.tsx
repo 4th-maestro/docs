@@ -124,23 +124,24 @@ function BuildingToggle({ buildings, current, tab }: { buildings: BuildingCard[]
   )
 }
 
-// 층 목록: 위층이 위(건물 단면 순서), 층마다 이상 건수와 전력 표시
-export function FloorList({ floors, floor, onFloor }: { floors: FloorSummary[]; floor: string; onFloor: (f: string) => void }) {
+// 층 목록: 한 줄 행(층, kW, 이상), 위층이 위(건물 단면 순서), 맨 위 전체(건물 보기)
+// - 전체 행: 층 값 '', 전력·이상 건수는 층 합계. all이 false면 숨김
+export function FloorList({ floors, floor, all, onFloor }: { floors: FloorSummary[]; floor: string; all?: boolean; onFloor: (f: string) => void }) {
+  const total = { floor: '', powerKw: Math.round(floors.reduce((s, f) => s + f.powerKw, 0) * 10) / 10, anomaly: floors.reduce((s, f) => s + f.anomaly, 0) }
   return (
     <nav className="floors" aria-label="층 선택">
       <h2>층</h2>
       <ol>
-        {[...floors].reverse().map((f) => (
-          <li key={f.floor}>
+        {[...(all ? [total] : []), ...[...floors].reverse()].map((f) => (
+          <li key={f.floor || 'all'}>
             <button className={f.floor === floor ? 'fl on' : 'fl'} aria-pressed={f.floor === floor} onClick={() => onFloor(f.floor)}>
-              <span className="fl-name">{f.floor}</span>
+              <span className="fl-name">{f.floor || '전체'}</span>
               <span className="fl-kw"><CountUp value={f.powerKw} />kW</span>
               <span className={f.anomaly ? 'fl-st bad' : 'fl-st'}>
                 {/* 상태가 바뀔 때만 아이콘 다시 등장(key) */}
                 <span key={f.anomaly ? 'bad' : 'ok'} className="pop-in">{f.anomaly ? <AlertTriangle size={16} aria-hidden /> : <CheckCircle2 size={16} aria-hidden />}</span>
                 {f.anomaly ? `이상 ${f.anomaly}` : '정상'}
               </span>
-              <span className="fl-on">운전 {f.on}/{f.total}대</span>
             </button>
           </li>
         ))}

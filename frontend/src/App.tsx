@@ -17,7 +17,6 @@ import { comfortOf, comfortText } from './comfort'
 import { setRoomSetpoint, summarize } from './mock'
 import AnomalyPanel from './panels/AnomalyPanel'
 import PowerTrend from './panels/PowerTrend'
-import RecommendPanel from './panels/RecommendPanel'
 import ScheduleTimeline from './panels/ScheduleTimeline'
 import SimPanel from './panels/SimPanel'
 import TwinTools from './panels/TwinTools'
@@ -59,6 +58,17 @@ const NO_IDS: string[] = []
 const fetchOps = (b: string) => (b ? getOps(b) : Promise.resolve(null))
 // 전기요금 단가(서버 전력 분석과 같은 값): 쿼리 문자열이 빈 값(운영 탭 아님)이면 조회하지 않음
 const fetchPrice = (q: string) => (q ? getCompare(q) : Promise.resolve(null))
+// 휴대폰 너비 여부: 743px 이하는 사이드바가 메뉴 서랍(shell.css)
+const PHONE = window.matchMedia('(max-width: 743px)')
+function usePhone() {
+  const [phone, setPhone] = useState(PHONE.matches)
+  useEffect(() => {
+    const on = () => setPhone(PHONE.matches)
+    PHONE.addEventListener('change', on)
+    return () => PHONE.removeEventListener('change', on)
+  }, [])
+  return phone
+}
 const uid = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`
 
 const STOPPED = '서비스가 중지된 기업입니다. 판매사에 문의하십시오.'
@@ -182,6 +192,7 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
   // 시뮬레이션 탭도 트윈(운전 시뮬레이션 역할)과 층 목록을 쓰므로 운영 탭과 같은 5초 조회
   const sim = tab === 'sim'
   const live = ops || sim
+  const phone = usePhone()
   // 내장 3D 도면은 층 단위로만 그리므로 트윈 화면(TWIN_URL)이 없으면 첫 층으로 시작, 트윈은 건물 전체('')로 시작
   const [floor, setFloor] = useState(TWIN_URL ? '' : (info?.floors[0] ?? '1F'))
   const [mode, setMode] = useState<Mode>('temp')
@@ -447,9 +458,16 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
     </>
   )
 
+  // 오늘 스케줄: 층 목록 선택이 범위(빈 층은 건물 전체). 사이드바 층 목록 아래, 휴대폰은 사이드바가 서랍이라 3D 아래
+  // - 너비에 따라 한 곳에만 표시: 조회 1회
+  const schedule = ops && <ScheduleTimeline building={building} floor={floor || 'all'} refreshKey={scheduleKey} rooms={all} onLocate={locate} />
   return (
     <Layout building={building} tab={tab} buildings={buildings} tools={tools}
-      side={live && (status && (!(twinOn || twinWait) || twin) ? <FloorList floors={floorSummaries} floor={floor} onFloor={(f) => { setFloor(f); setSelected(null) }} /> : <SkFloors n={info?.floors.length ?? 2} />)}>
+      side={live && <>
+        {/* 전체 행은 트윈 건물만: 트윈이 없으면 내장 3D가 층 단위라 빈 층을 첫 층으로 되돌림(setFloor(floors[0])) */}
+        {status && (!(twinOn || twinWait) || twin) ? <FloorList floors={floorSummaries} floor={floor} all={twinOn} onFloor={(f) => { setFloor(f); setSelected(null) }} /> : <SkFloors n={(info?.floors.length ?? 2) + (TWIN_URL && info?.hasTwin !== false ? 1 : 0)} />}
+        {!phone && schedule}
+      </>}>
       <div className="page">
         {tab === 'energy' && <EnergyPage building={building} />}
         {live && (
@@ -517,8 +535,7 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
                   <Legend mode={sim ? 'temp' : mode} status={status} units={twinOn ? report?.ui.idu : undefined} />
                   {room ? <RoomDetail key={room.id} r={room} building={building} canEdit={canEditRoom} onSaved={roomSaved} /> : <p className="muted pick-hint">{floor ? '호실을 누르면 HVAC 상태가 여기에 표시됩니다.' : '층을 선택하면 평면도가 표시됩니다.'}</p>}
                 </section>
-                {/* 트윈 건물은 층이 비어 있을 수 있음: 빈 층이면 시간표는 전체 층 보기(2026-11-20 결정) */}
-                {ops && <ScheduleTimeline building={building} floor={floor || 'all'} floors={floors} refreshKey={scheduleKey} rooms={all} onLocate={locate} />}
+                {phone && schedule}
               </div>
 
               <aside className="rail">
@@ -535,9 +552,9 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
                   onSend={send} onClear={clear} onSave={save}
                   onClose={(m) => { setMessages((ms) => ms.map((x) => (x.id === m.id ? { ...x, draftState: 'closed' as const } : x))); setFocus(NO_IDS) }}
                   onFocus={setFocus} onSelect={setSelected}
+                  recommend={{ building, floor, refreshKey: scheduleKey, onDraft: showDraft, onLocate: locate }}
                 />}
                 {ops && floor && <AnomalyPanel building={building} floor={floor} onLocate={(id) => { setMode('anomaly'); locate(id) }} />}
-                {ops && floor && <RecommendPanel key={`${floor}-${scheduleKey}`} building={building} floor={floor} onDraft={showDraft} onLocate={locate} />}
               </aside>
             </main>
           </>

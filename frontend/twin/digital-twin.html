@@ -95,8 +95,7 @@
   /* 3D 무대: 앱 3D 도면(.t3)과 같은 surface-soft 바탕 */
   #stage{position:absolute;inset:0;overflow:hidden;background:var(--scene-bot)}
   #gl{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
-  #fade{position:absolute;inset:0;background:var(--scene-bot);opacity:0;pointer-events:none;transition:opacity .28s;z-index:8}
-  #fade.on{opacity:1}
+  .scene-transition{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 
   /* 상단 도구 줄: 높이 44px 통일, 같은 묶음 버튼은 너비 1:1, 선택은 ink 채움(앱 .pill.on) */
   #bar{position:absolute;left:16px;right:16px;top:16px;z-index:6;display:flex;align-items:center;gap:8px;pointer-events:none;flex-wrap:wrap}
@@ -196,6 +195,7 @@
   /* 층 평면도 */
   #floorView{position:absolute;inset:0;display:none;padding:76px 16px 16px 16px;z-index:3;opacity:0;transition:opacity .55s ease}
   #floorView.pre{display:flex}
+  body.diving #floorView.pre{pointer-events:none}
   #kpis,#floorTags,#legend{transition:opacity .45s}
   body.diving #kpis, body.diving #floorTags, body.diving #legend{opacity:0;pointer-events:none}
   #floorView.pre.in{opacity:1}
@@ -348,7 +348,7 @@
     #roomTitle{display:none !important}
     #roomTools button{padding:0 8px;font-size:14px}
   }
-  @media (prefers-reduced-motion: reduce){ #plan .tint, #fade, #introTitle, .ftag{transition:none} #plan.intro .tint, #plan.intro .chip, #plan.intro .idu{animation:none} }
+  @media (prefers-reduced-motion: reduce){ #plan .tint, #introTitle, .ftag{transition:none} #plan.intro .tint, #plan.intro .chip, #plan.intro .idu{animation:none} }
   /* 앱 안에 임베드된 상태: 연동 상태 칩(오른쪽 아래). 앱에서 바꾼 값은 1.8초 외곽선 표시 후 원래대로(반복 없음) */
   /* 위치: 아래 가운데(오른쪽 아래 정보 패널, 왼쪽 아래 범례와 겹치지 않음), 방 보기는 보기 도구 위, 층 보기는 평면 패널 아래 여백 */
   #hostLink{position:absolute;left:50%;transform:translateX(-50%);bottom:16px;white-space:nowrap;z-index:9;display:none;align-items:center;gap:8px;min-height:36px;padding:4px 14px;border-radius:var(--r-full);font-size:14px;font-weight:500;color:var(--muted);pointer-events:none;transition:box-shadow .3s,color .3s}
@@ -580,7 +580,6 @@
     </div>
     <aside id="inspector" class="glass"></aside>
     <div id="tip" class="glass"></div>
-    <div id="fade"></div>
   </main>
 </div>
 
@@ -1835,7 +1834,7 @@ function seatGrid(r){
   out.sort((u, v) => u.row - v.row || u.lat - v.lat);
   return out.map(o => o.p);
 }
-function buildRoom(r, held = false){
+function buildRoom(r){
   const f = FLOOR[r.floorId], p = f.plan, b = r.b;
   const sc = new THREE.Scene(); sc.background = bg; sc.environment = ENV;
   sc.add(new THREE.HemisphereLight(0xffffff, 0x7d8aa3, .45));
@@ -2100,11 +2099,11 @@ function buildRoom(r, held = false){
     winD[i] = best;
   }
 
-  let t0 = null, sinking = false;
+  let t0 = null;
   function update(dt, t){
-    if (t0 == null || held) t0 = reduceMotion ? t - 9 : t;
-    { const k = clamp((t - t0) / 1.1, 0, 1), c1 = 1.70158, eb = 1 + (c1 + 1) * Math.pow(k - 1, 3) + c1 * Math.pow(k - 1, 2);
-      root.scale.y = sinking ? Math.max(.02, root.scale.y - dt * 2.2) : Math.max(.02, eb); }
+    if (t0 == null) t0 = reduceMotion ? t - 9 : t;
+    const growth = clamp((t - t0) / 1.05, 0, 1);
+    root.scale.y = Math.max(.02, 1 - (1 - growth) ** 3);
     airMat.uniforms.uTime.value = t;
     volMat.uniforms.uCam.value.copy(camera.position).sub(vol.position);
     placePeople();
@@ -2163,7 +2162,7 @@ function buildRoom(r, held = false){
           px[o] = px[o + 1] = px[o + 2] = 255; px[o + 3] = major ? 250 : 150; } }
       sCtx.putImageData(sImg, 0, 0); sTex.needsUpdate = true;
     }
-    const vis = sinking ? Math.max(0, root.scale.y - .02) : clamp((t - t0 - 1.1) / 1.4, 0, 1);
+    const vis = clamp((t - t0 - 1.1) / 1.4, 0, 1);
     vol.visible = state.rv.vol;
     volMat.uniforms.uDensity.value = (state.rv.slice ? 1.0 : 1.4) * vis;
     slice.visible = mHot.g.visible = mCold.g.visible = state.rv.slice;
@@ -2232,24 +2231,59 @@ function buildRoom(r, held = false){
     if (lv === 2) wallMat.color.setHex(0xf0a0a3); else wallMat.color.set(r.finish?.wall || 0xa9bacb);
     wallMat.opacity = lv === 2 ? .1 + .08 * pulse : r.finish?.wall ? .22 : .13;
   }
-  return { scene:sc, update, center:toWorld(b.cx, b.cy, 1.1), span:Math.max(b.w, b.h), room:r, release(){ held = false; }, sink(){ sinking = true; } };
+  return { scene:sc, update, center:toWorld(b.cx, b.cy, 1.1), span:Math.max(b.w, b.h) };
 }
 
 /* ═════════════════════════ camera tween / transitions ═════════════════════════ */
 let tween = null;
 const FOV0 = 42, FOV_PLAN = 16;
-function flyTo(pos, target, dur = 900, done, fov){
+function flyTo(pos, target, dur = 900, done, fov, progress){
   const p0 = camera.position.clone(), t0 = controls.target.clone(), start = performance.now(), f0 = camera.fov;
   if (reduceMotion) dur = 1;
   tween = { update(now){
-    const k = clamp((now - start) / dur, 0, 1), e = k < .5 ? 4*k*k*k : 1 - Math.pow(-2*k + 2, 3) / 2;
+    const k = clamp((now - start) / dur, 0, 1), e = k * k * (3 - 2 * k);
     camera.position.lerpVectors(p0, pos, e); controls.target.lerpVectors(t0, target, e);
     if (fov != null) { camera.fov = lerp(f0, fov, e); camera.updateProjectionMatrix(); }
+    progress?.(k);
     if (k >= 1) { tween = null; done && done(); }
   } };
 }
-const fadeEl = $('#fade');
-function crossfade(fn){ fadeEl.classList.add('on'); setTimeout(() => { fn(); requestAnimationFrame(() => fadeEl.classList.remove('on')); }, 280); }
+const floorView = $('#floorView');
+let floorFade = null, landingFloor = null;
+function clearPlanTransition(keepDiving = false){
+  floorFade?.cancel(); floorFade = null;
+  floorView.classList.remove('pre', 'in', 'leaving');
+  if (!keepDiving) document.body.classList.remove('diving');
+}
+function cancelNavigation(){
+  tween = null; planAnim = false; landingFloor = null;
+  clearPlanTransition();
+  stage.querySelector('.scene-transition')?.remove();
+}
+function fadePlanOut(){
+  floorView.classList.add('pre', 'leaving');
+  const animation = floorView.animate([{ opacity:1 }, { opacity:0 }], {
+    duration:360, easing:'ease-out', fill:'forwards',
+  });
+  floorFade = animation;
+  animation.onfinish = () => { if (floorFade === animation) clearPlanTransition(!!landingFloor); };
+}
+function dissolveScene(scene){
+  // Capture only at the handoff. The destination continues rendering during the dissolve.
+  stage.querySelector('.scene-transition')?.remove();
+  camera.lookAt(controls.target);
+  renderPass.scene = scene; composer.render();
+  const image = document.createElement('canvas');
+  image.className = 'scene-transition';
+  image.width = canvas.width; image.height = canvas.height;
+  image.getContext('2d').drawImage(canvas, 0, 0);
+  canvas.after(image);
+  image.animate([{ opacity:1 }, { opacity:0 }], { duration:340, easing:'ease-out', fill:'forwards' }).onfinish = () => image.remove();
+}
+function cameraHeading(){
+  const heading = camera.position.clone().sub(controls.target).setY(0);
+  return (heading.lengthSq() > 1 ? heading : homePos().sub(HOME.target).setY(0)).normalize();
+}
 // where the floor rectangle sits on screen in the 2D plan (stage px) — the 3D camera dives to exactly that framing
 const FULL = () => ({ x:0, y:0, w:W, h:D });
 function planScreenRect(f, box = FULL()){
@@ -2259,7 +2293,13 @@ function planScreenRect(f, box = FULL()){
 }
 // top-down camera that puts `box` (m, plan coords) at plane height y exactly on `rect` (stage px)
 function planCamera(f, rect, box = FULL(), y = floorY(f.index) + 1.2 + .012){
-  const st = stage.getBoundingClientRect(), wpp = box.h / rect.h;
+  const st = stage.getBoundingClientRect();
+  if (!(rect.h > 0 && st.height > 0)) {
+    const tgt = toWorld(box.x + box.w / 2, box.y + box.h / 2, y);
+    const height = .6 * Math.max(box.h, box.w / camera.aspect) / Math.tan(FOV_PLAN * Math.PI / 360);
+    return { pos:tgt.clone().add(new THREE.Vector3(0,height,.01)), tgt };
+  }
+  const wpp = box.h / rect.h;
   const h = st.height * wpp / 2 / Math.tan(FOV_PLAN * Math.PI / 360);
   const cx = (rect.x + rect.w / 2 - st.width / 2) * wpp, cz = (rect.y + rect.h / 2 - st.height / 2) * wpp;
   const wx = box.x + box.w / 2 - W / 2, wz = box.y + box.h / 2 - D / 2;
@@ -2270,204 +2310,219 @@ function snapExplode(f){
   for (const grp of floorGroups) { const g = grp.userData.floor, up = g.index > f.index;
     grp.userData.lift = up ? 8 + (g.index - f.index) * 6 : g === f ? 1.2 : 0; grp.userData.fade = g === f ? 1 : up ? 0 : .1; }
 }
+function alignPlanCamera(f, box = FULL(), height){
+  if (camera.view?.enabled) camera.clearViewOffset();
+  viewShift = 0;
+  const pc = planCamera(f, planScreenRect(f, box), box, height);
+  camera.fov = FOV_PLAN; camera.updateProjectionMatrix();
+  camera.position.copy(pc.pos); controls.target.copy(pc.tgt); camera.lookAt(pc.tgt);
+}
 // frozen 3D backdrop behind the (glass) plan panel
 function renderBackdrop(f){
-  snapExplode(f); hoverFloor = f; if (camera.view && camera.view.enabled) camera.clearViewOffset(); viewShift = 0;
-  const pc = planCamera(f, planScreenRect(f));
-  camera.fov = FOV_PLAN; camera.updateProjectionMatrix(); camera.position.copy(pc.pos); controls.target.copy(pc.tgt); camera.lookAt(pc.tgt);
+  snapExplode(f); hoverFloor = f; alignPlanCamera(f);
   const v = state.view; state.view = 'building'; updateBuilding(clock.elapsedTime, 0); state.view = v;
   renderPass.scene = bScene; composer.render();
 }
 // 층 보기 3D: 평면도 대신 그 층만 띄운 3D 모델을 비스듬히 (다른 층은 snapExplode로 비켜 있음), 마우스로 돌려 보고 방을 누르면 방 3D로
-let plan3d = false, planAnim = false, planTiltAt = 0, planSeq = 0;   // planAnim: 3D→2D로 돌아가는 동안에도 3D를 계속 그림
+let plan3d = false, planAnim = false;   // planAnim: 3D→2D로 돌아가는 동안에도 3D를 계속 그림
 try { plan3d = localStorage.getItem('twin:plan3d') === '1'; } catch {}
 function planTiltCamera(f){
-  const t = new THREE.Vector3(0, floorY(f.index) + 1.2, 0), c = homePos().sub(HOME.target).setY(0).normalize(), k = (Math.max(W, D) * 1.05 + 12) * 1.6;
+  const t = new THREE.Vector3(0, floorY(f.index) + 1.2, 0), c = cameraHeading(), k = (Math.max(W, D) * 1.05 + 12) * 1.6;
   return { pos:t.clone().add(c.multiplyScalar(k * .78)).setY(t.y + k * .72), tgt:t };
 }
 function enterPlan3d(f, animate = true){
   if (!f) return;
-  const seq = ++planSeq;
-  snapExplode(f); hoverFloor = f; viewShift = 0; if (camera.view && camera.view.enabled) camera.clearViewOffset();
-  controls.enabled = true; controls.autoRotate = false; controls.minDistance = 6; controls.maxDistance = 400 * SC;
+  explodeF = f; hoverFloor = f;
+  controls.autoRotate = false; controls.minDistance = 6; controls.maxDistance = 400 * SC;
   const pc = planTiltCamera(f);
+  const settle = () => { controls.enabled = true; };
   if (animate && !reduceMotion) {
-    // 평면도가 녹아 사라지는 동안(같은 위에서 본 3D라 화면이 그대로) 잠시 머문 뒤, 천천히 기울며 물러남
-    planTiltAt = performance.now() + 260;
-    tween = { update(){} };
-    setTimeout(() => { if (seq === planSeq && plan3d) flyTo(pc.pos, pc.tgt, 1500, null, FOV0); }, 260);
-  } else { planTiltAt = 0; camera.fov = FOV0; camera.updateProjectionMatrix(); camera.position.copy(pc.pos); controls.target.copy(pc.tgt); }
+    controls.enabled = false;
+    flyTo(pc.pos, pc.tgt, 1250, settle, FOV0);
+  } else {
+    tween = null; snapExplode(f);
+    camera.fov = FOV0; camera.updateProjectionMatrix(); camera.position.copy(pc.pos); controls.target.copy(pc.tgt); settle();
+  }
 }
 function setPlan3d(on){
   if (plan3d === on && !planAnim) return;
+  const wasPlan = !plan3d && !planAnim;
   plan3d = on; if (on) document.body.classList.add('plan3d');
   try { localStorage.setItem('twin:plan3d', on ? '1' : '0'); } catch {}
   for (const b of document.querySelectorAll('#planMode button')) b.setAttribute('aria-pressed', String((b.dataset.pm === '3d') === on));
   if (state.view !== 'floor' || !state.floor) return;
-  if (on) { planAnim = false; enterPlan3d(state.floor); return; }
+  cancelNavigation();
+  if (on) {
+    if (wasPlan && !reduceMotion) alignPlanCamera(state.floor);
+    enterPlan3d(state.floor);
+    return;
+  }
   // 3D → 2D: 3D를 켜 둔 채 평면도와 똑같은 위 시점으로 천천히 돌아온 뒤, 그 위로 평면도가 서서히 떠오름
-  const f = state.floor, pc = planCamera(f, planScreenRect(f)), seq = ++planSeq; controls.enabled = false;
-  const land = () => { if (seq !== planSeq || plan3d) return; renderBackdrop(f); document.body.classList.remove('plan3d'); setTimeout(() => { if (seq === planSeq) planAnim = false; }, 600); };
-  if (reduceMotion) { planAnim = false; document.body.classList.remove('plan3d'); renderBackdrop(f); return; }
+  const f = state.floor, pc = planCamera(f, planScreenRect(f));
+  const land = () => { renderBackdrop(f); document.body.classList.remove('plan3d'); planAnim = false; };
+  if (reduceMotion) { land(); return; }
   planAnim = true; document.body.classList.add('plan3d');
-  flyTo(pc.pos, pc.tgt, 1300, land, FOV_PLAN);
+  controls.enabled = false; controls.minDistance = .1; controls.maxDistance = Infinity;
+  flyTo(pc.pos, pc.tgt, 1050, land, FOV_PLAN);
 }
 document.body.classList.toggle('plan3d', plan3d);
 for (const b of document.querySelectorAll('#planMode button')) b.setAttribute('aria-pressed', String((b.dataset.pm === '3d') === plan3d));
 $('#planMode').addEventListener('click', e => { const b = e.target.closest('[data-pm]'); if (b) setPlan3d(b.dataset.pm === '3d'); });
 function setBodyView(v){ document.body.classList.remove('v-building', 'v-floor', 'v-room'); document.body.classList.add('v-' + v); state.view = v; }
 
+function lockCamera(){
+  controls.enabled = false; controls.autoRotate = false;
+  controls.minDistance = .1; controls.maxDistance = Infinity;
+}
+function moveCameraHeight(delta){
+  camera.position.y += delta; controls.target.y += delta;
+}
 function goBuilding(animate = true){
-  hideTip(); hoverFloor = null;
-  const fromFloor = state.floor;
-  if (fromFloor) tellHost('floorSelected', { floor:'' });
-  if (state.view === 'floor' && fromFloor && animate && !reduceMotion) {
-    // 층 → 건물: 한 번의 이어진 비행으로 물러남 (중간에 멈췄다 다시 출발하지 않게)
-    //   2D: 평면도와 같은 위 시점의 3D 위에서 평면도가 녹아 사라진 뒤 출발 · 3D: 지금 보던 기울인 시점에서 바로 출발
-    //   벌어져 있던 층들은 비행이 시작되면 제자리로 천천히 내려앉음
-    const fv = $('#floorView'), tilted = plan3d || planAnim;
-    ++planSeq; planAnim = false;
-    snapExplode(fromFloor);
-    if (!tilted) { const pc = planCamera(fromFloor, planScreenRect(fromFloor));
-      camera.fov = FOV_PLAN; camera.updateProjectionMatrix(); camera.position.copy(pc.pos); controls.target.copy(pc.tgt); }
-    fv.classList.add('pre', 'in', 'leaving'); document.body.classList.add('diving');
-    setBodyView('building'); state.floor = null; state.room = null; setInspector(false);
-    controls.enabled = true; controls.autoRotate = false; controls.minDistance = 20; controls.maxDistance = 400 * SC;
-    renderCrumbs(); recolorBuilding(); renderFloorPicker(); renderLegend(); renderKpis(); renderTags();
-    tween = { update(){} };
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      fv.classList.remove('in'); setTimeout(() => { fv.classList.remove('pre', 'leaving'); document.body.classList.remove('diving'); }, 700);
-      setTimeout(() => {
-        setTimeout(() => { explodeF = null; hoverFloor = null; }, 350);
-        flyTo(homePos(), HOME.target, 1900, () => { controls.autoRotate = !reduceMotion; controls.maxDistance = 240 * SC; }, FOV0);
-      }, tilted ? 0 : 420);
-    }));
-    emit('twin:view', { view:'building' });
-    return;
+  const from = state.floor, view = state.view, wasPlan = view === 'floor' && !plan3d && !planAnim;
+  const initial = !goBuilding.done, useMotion = animate && !reduceMotion;
+  hideTip(); cancelNavigation();
+  if (from) tellHost('floorSelected', { floor:'' });
+  if (useMotion && from && view === 'room') {
+    dissolveScene(room3d.scene);
+    snapExplode(from);
+    moveCameraHeight(floorY(from.index) + 1.2);
+  } else if (useMotion && wasPlan) {
+    alignPlanCamera(from); fadePlanOut(); document.body.classList.add('diving');
   }
-  const enter = () => {
-    camera.fov = FOV0; camera.updateProjectionMatrix();
-    setBodyView('building'); state.floor = null; state.room = null; disposeRoom(); setInspector(false); explodeF = null;
+
+  disposeRoom(); setInspector(false);
+  setBodyView('building'); state.floor = null; state.room = null; explodeF = null; hoverFloor = null;
+  lockCamera();
+  const settle = () => {
     controls.enabled = true; controls.autoRotate = !reduceMotion; controls.autoRotateSpeed = .45;
     controls.minDistance = 20; controls.maxDistance = 240 * SC;
-    if (fromFloor && animate) {
-      const y = floorY(fromFloor.index);
-      camera.position.set(0, y + 46 * SC, .5); controls.target.set(0, y, 0);
-      flyTo(homePos(), HOME.target, 1600);
-    } else if (!goBuilding.done && !reduceMotion) {
-      const tgt = HOME.target, k = fitK();
-      camera.position.set(-95 * k, 4, 70 * k); controls.target.copy(tgt).setY(2);
-      controls.autoRotate = false;
-      flyTo(homePos(), tgt, 3600, () => { controls.autoRotate = true; });
-    } else { camera.position.copy(homePos()); controls.target.copy(HOME.target); }
-    goBuilding.done = true;
-    renderCrumbs(); recolorBuilding(); renderFloorPicker(); renderLegend(); renderKpis(); renderTags(); emit('twin:view', { view:'building' });
   };
-  state.view === 'building' ? enter() : crossfade(enter);
+  if (initial && !reduceMotion) {
+    const k = fitK();
+    camera.position.set(-95 * k, 4, 70 * k); controls.target.copy(HOME.target).setY(2);
+  }
+  if ((useMotion || initial) && !reduceMotion) flyTo(homePos(), HOME.target, initial ? 2200 : 1450, settle, FOV0);
+  else {
+    camera.position.copy(homePos()); controls.target.copy(HOME.target); camera.fov = FOV0;
+    camera.updateProjectionMatrix(); camera.lookAt(controls.target); settle();
+  }
+  goBuilding.done = true;
+  renderCrumbs(); recolorBuilding(); renderFloorPicker(); renderLegend(); renderKpis(); renderTags();
+  emit('twin:view', { view:'building' });
+}
+
+function prepareFloor(f, intro){
+  state.floor = f;
+  svg.style.transition = 'none';
+  resetPlanZoom(); buildPlanSvg(f, intro);
+  updatePlanSvg(); renderFloorStats();
+  svg.getBoundingClientRect();
+  svg.style.transition = '';
+}
+function showFloor(f){
+  disposeRoom(); setInspector(false);
+  setBodyView('floor'); state.floor = f; state.room = null;
+  renderCrumbs(); renderLegend();
+  emit('twin:view', { view:'floor', floor:f.id });
 }
 function goFloor(f){
-  hideTip(); controls.autoRotate = false;
-  if (state.floor !== f || state.view !== 'floor') tellHost('floorSelected', { floor:f.id });
-  const enter = (seamless) => {
-    disposeRoom(); setInspector(false); setBodyView('floor'); state.floor = f; state.room = null; controls.enabled = false; resetPlanZoom();
-    if (!seamless) { buildPlanSvg(f); updatePlanSvg(); }
-    renderFloorStats(); renderCrumbs(); renderLegend();
-    if (!seamless) renderBackdrop(f);
-    if (plan3d) enterPlan3d(f, true);
-    emit('twin:view', { view:'floor', floor:f.id });
-  };
-  if (state.view === 'building' && !reduceMotion) {
-    hoverFloor = f; explodeF = f; hideTip();
-    const fv = $('#floorView');
-    // lay the 2D plan out invisibly first, so the camera can land on exactly the same framing
-    state.floor = f; buildPlanSvg(f, true); updatePlanSvg(); renderFloorStats(); fv.classList.add('pre');
-    const y = floorY(f.index) + 1.2, c = camera.position.clone().sub(controls.target).setY(0).normalize();
-    controls.maxDistance = 400 * SC;
-    flyTo(new THREE.Vector3(c.x * 62 * fitK(), y + 40 * SC, c.z * 62 * fitK()), new THREE.Vector3(0, y, 0), 1000, () => {
-      const pc = planCamera(f, planScreenRect(f)); document.body.classList.add('diving');
-      flyTo(pc.pos, pc.tgt, 1150, () => {
-        fv.classList.add('in');                                   // the 2D plan dissolves in over the matching 3D top view
-        setTimeout(() => { enter(true); fv.classList.remove('pre', 'in'); document.body.classList.remove('diving'); }, 560);
-      }, FOV_PLAN);
-    });
-  } else if (state.view === 'floor' && state.floor && state.floor !== f && !reduceMotion) {
-    // 층 → 다른 층 (검은 화면 없이): 지금 평면도가 같은 각도의 3D 위에서 녹아 사라지고 → 위로 빠지며 건물이 보이고
-    //   → 층들이 새 층 기준으로 다시 벌어지고 → 새 층 위로 내려가 그 층 평면도가 다시 떠오름
-    const from = state.floor, fv = $('#floorView'), pc0 = planCamera(from, planScreenRect(from));
-    snapExplode(from); hoverFloor = from;
-    camera.fov = FOV_PLAN; camera.updateProjectionMatrix(); camera.position.copy(pc0.pos); controls.target.copy(pc0.tgt); camera.lookAt(pc0.tgt);
-    fv.classList.add('pre', 'in', 'leaving'); document.body.classList.add('diving');
-    setInspector(false); setBodyView('building'); state.room = null; controls.enabled = false; controls.maxDistance = 400 * SC;
-    const c = homePos().sub(HOME.target).setY(0).normalize(), k = 62 * fitK(), y0 = floorY(from.index) + 1.2, y1 = floorY(f.index) + 1.2;
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      fv.classList.remove('in');
-      setTimeout(() => {
-        fv.classList.remove('pre', 'leaving');
-        // 두 층이 다 보이게 조금 더 위·뒤에서
-        flyTo(new THREE.Vector3(c.x * k * 1.08, Math.max(y0, y1) + 46 * SC, c.z * k * 1.08), new THREE.Vector3(0, (y0 + y1) / 2, 0), 850, () => {
-          explodeF = f; hoverFloor = f;                            // 층들이 새 층 기준으로 다시 벌어짐 (updateBuilding이 부드럽게)
-          state.floor = f; buildPlanSvg(f, true); updatePlanSvg(); renderFloorStats(); renderCrumbs(); fv.classList.add('pre');
-          flyTo(new THREE.Vector3(c.x * k, y1 + 40 * SC, c.z * k), new THREE.Vector3(0, y1, 0), 750, () => {
-            const pc = planCamera(f, planScreenRect(f));
-            flyTo(pc.pos, pc.tgt, 1050, () => {
-              fv.classList.add('in');
-              setTimeout(() => { enter(true); fv.classList.remove('pre', 'in'); document.body.classList.remove('diving'); }, 560);
-            }, FOV_PLAN);
-          }, FOV0);
-        }, FOV0);
-      }, 520);
-    }));
-  } else if (state.view === 'room' && room3d && state.room && !reduceMotion) {
-    // room → plan: walls sink, camera rises to the room's exact spot on the plan, plan dissolves back in
-    const r = state.room, fv = $('#floorView');
-    setInspector(false); state.floor = f;
-    buildPlanSvg(f); updatePlanSvg(); renderFloorStats(); fv.classList.add('pre', 'leaving');
-    const pc = planCamera(f, planScreenRect(f, r.b), r.b, 0);
-    controls.maxDistance = 600; controls.minDistance = .1; room3d.sink();
-    flyTo(pc.pos, pc.tgt, 1100, () => {
-      fv.classList.add('in');
-      setTimeout(() => { enter(true); fv.classList.remove('pre', 'in', 'leaving'); renderBackdrop(f); }, 560);
-    }, FOV_PLAN);
-  } else crossfade(() => enter(false));
-}
-function goRoom(r){
-  hideTip();
-  if (state.view === 'floor' && state.floor && state.floor.id === r.floorId && !reduceMotion) {
-    // plan → room: the room's 3D floor sits exactly under its 2D footprint, the plan dissolves away, then the camera tilts in while walls rise
-    const f = state.floor, fv = $('#floorView'), pc = planCamera(f, planScreenRect(f, r.b), r.b, 0);
-    disposeRoom(); room3d = buildRoom(r, true);
-    camera.fov = FOV_PLAN; camera.updateProjectionMatrix(); camera.position.copy(pc.pos); controls.target.copy(pc.tgt); camera.lookAt(pc.tgt);
-    controls.enabled = true; controls.autoRotate = false; controls.minDistance = .1; controls.maxDistance = 600;
-    fv.classList.add('pre', 'in', 'leaving');
-    setBodyView('room'); state.room = r;
-    renderCrumbs(); renderRoomTitle(); if (state.inspector) renderInspector();
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      fv.classList.remove('in'); setTimeout(() => fv.classList.remove('pre', 'leaving'), 650);
-      tween = { update(){} };
-      setTimeout(() => {
-        if (!room3d || room3d.room !== r) return;
-        room3d.release();
-        const c = room3d.center, dist = (room3d.span * .95 + 4.5) * fitK();
-        flyTo(new THREE.Vector3(c.x + dist * .55, c.y + dist * .62, c.z + dist * .85), c, 1500, () => {
-          controls.minDistance = 3; controls.maxDistance = room3d ? room3d.span * 3 + 14 : 60;
-        }, FOV0);
-      }, 480);
-    }));
-    emit('twin:view', { view:'room', floor:r.floorId, room:r.id }); emit('roomSelected', { source:'twin', roomId:r.id }); if (HOST.on) hostSay(`트윈 → 대시보드 <b>${esc(r.name)} 선택</b>`);
+  if (landingFloor === f || (state.view === 'floor' && state.floor === f)) return;
+  const from = state.floor, view = state.view;
+  const wasPlan = view === 'floor' && !plan3d && !planAnim;
+  const fromRoom = view === 'room' && room3d;
+  const matchedRoom = fromRoom && state.room.floorId === f.id && !plan3d;
+  hideTip(); cancelNavigation(); lockCamera();
+  setInspector(false); tellHost('floorSelected', { floor:f.id });
+  document.body.classList.toggle('plan3d', plan3d);
+
+  if (fromRoom && !matchedRoom && !reduceMotion) {
+    dissolveScene(room3d.scene);
+    snapExplode(from);
+    moveCameraHeight(floorY(from.index) + 1.2);
+  }
+  if (plan3d || reduceMotion) {
+    prepareFloor(f, false); showFloor(f);
+    if (plan3d) enterPlan3d(f);
+    else renderBackdrop(f);
     return;
   }
-  crossfade(() => {
-    disposeRoom(); setBodyView('room'); state.floor = FLOOR[r.floorId]; state.room = r; camera.fov = FOV0; camera.updateProjectionMatrix();
-    room3d = buildRoom(r);
-    controls.enabled = true; controls.autoRotate = false;
-    controls.minDistance = 3; controls.maxDistance = room3d.span * 3 + 14;
-    const c = room3d.center;
-    camera.position.set(c.x, c.y + room3d.span * 1.6 + 6, c.z + .2); controls.target.copy(c);
-    const dist = (room3d.span * .95 + 4.5) * fitK();
-    flyTo(new THREE.Vector3(c.x + dist * .55, c.y + dist * .62, c.z + dist * .85), c, 1400);
-    renderCrumbs(); renderRoomTitle(); if (state.inspector) renderInspector();
-    emit('twin:view', { view:'room', floor:r.floorId, room:r.id }); emit('roomSelected', { source:'twin', roomId:r.id }); if (HOST.on) hostSay(`트윈 → 대시보드 <b>${esc(r.name)} 선택</b>`);
+
+  landingFloor = f;
+  const box = matchedRoom ? state.room.b : FULL();
+  const pc = () => planCamera(f, planScreenRect(f, box), box, matchedRoom ? 0 : undefined);
+  if (!matchedRoom) {
+    explodeF = f; hoverFloor = f;
+    setBodyView('building'); state.room = null; disposeRoom();
+  }
+
+  // While the old 2D overlay fades, the 3D camera can already leave its matching top view.
+  let prepared = !wasPlan;
+  if (prepared) {
+    floorView.classList.add('pre'); prepareFloor(f, true);
+  } else {
+    fadePlanOut();
+    alignPlanCamera(from);
+  }
+  document.body.classList.add('diving');
+  const initial = pc(), dest = { pos:initial.pos.clone(), tgt:initial.tgt.clone() };
+  const arc = wasPlan ? cameraHeading().multiplyScalar(14 * fitK()).setY(9 * SC) : null;
+  let adjusted;
+  flyTo(dest.pos, dest.tgt, 1500, () => {
+    if (!prepared) prepareFloor(f, true);
+    if (matchedRoom) dissolveScene(room3d.scene);
+    floorView.classList.add('pre', 'in');
+    showFloor(f); renderBackdrop(f); clearPlanTransition(); landingFloor = null;
+  }, FOV_PLAN, k => {
+    if (arc) camera.position.addScaledVector(arc, Math.sin(Math.PI * k) ** 2);
+    if (!prepared && k >= .32) {
+      prepared = true; clearPlanTransition(true);
+      floorView.classList.add('pre');
+      prepareFloor(f, true);
+      adjusted = pc();
+    }
+    if (adjusted) {
+      const kFit = clamp((k - .32) / .36, 0, 1), fit = kFit * kFit * (3 - 2 * kFit);
+      dest.pos.lerpVectors(initial.pos, adjusted.pos, fit);
+      dest.tgt.lerpVectors(initial.tgt, adjusted.tgt, fit);
+    }
+    if (prepared && k >= (matchedRoom ? .72 : .82)) floorView.classList.add('in');
   });
+}
+function goRoom(r, animate = true){
+  if (state.view === 'room' && state.room === r) return;
+  const from = state.floor, view = state.view, previousRoom = view === 'room' && room3d;
+  const f = FLOOR[r.floorId], useMotion = animate && !reduceMotion;
+  const wasPlan = view === 'floor' && !plan3d && !planAnim;
+  const matchPlan = wasPlan && from === f;
+  const heading = cameraHeading();
+  hideTip(); cancelNavigation();
+  if (useMotion && matchPlan) {
+    alignPlanCamera(f, r.b, 0);
+    fadePlanOut();
+  } else if (useMotion) {
+    dissolveScene(previousRoom ? room3d.scene : bScene);
+    if (wasPlan) fadePlanOut();
+    moveCameraHeight(previousRoom ? floorY(from.index) - floorY(f.index) : -floorGroups[f.index].position.y);
+  }
+
+  disposeRoom(); room3d = buildRoom(r);
+  setBodyView('room'); state.floor = f; state.room = r;
+  lockCamera();
+  const c = room3d.center, dist = (room3d.span * .95 + 4.5) * fitK() / SC;
+  const pos = c.clone().addScaledVector(heading, dist).setY(c.y + dist * .62);
+  const settle = () => { controls.enabled = true; controls.minDistance = 3; controls.maxDistance = room3d.span * 3 + 14; };
+  if (useMotion) flyTo(pos, c, 1120, settle, FOV0);
+  else {
+    camera.fov = FOV0; camera.updateProjectionMatrix();
+    camera.position.copy(pos); controls.target.copy(c); camera.lookAt(c); settle();
+  }
+  renderCrumbs(); renderRoomTitle(); if (state.inspector) renderInspector();
+  reportRoomSelected(r);
+}
+function reportRoomSelected(r){
+  emit('twin:view', { view:'room', floor:r.floorId, room:r.id });
+  emit('roomSelected', { source:'twin', roomId:r.id });
+  if (HOST.on) hostSay(`트윈 → 대시보드 <b>${esc(r.name)} 선택</b>`);
 }
 function disposeRoom(){ if (room3d) { dispose(room3d.scene); room3d = null; } }
 
@@ -3211,7 +3266,7 @@ canvas.addEventListener('pointerup', e => {
     if (moved < 6) { const r = pickRoom(e); if (r) goRoom(r); }
     return;
   }
-  if (!downAt || state.view !== 'building') return;
+  if (!downAt || state.view !== 'building' || (tween && explodeF)) return;
   const moved = Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]); downAt = null;
   if (moved < 6) { const f = pick(e); if (f) goFloor(f); }
 });
@@ -3224,9 +3279,16 @@ document.addEventListener('visibilitychange', () => { visible = !document.hidden
 new IntersectionObserver(es => { visible = es[0].isIntersecting && !document.hidden; }).observe(stage);
 const clock = new THREE.Clock();
 let viewShift = 0;
+function shiftView(want, dt){
+  const sw = stage.clientWidth, sh = stage.clientHeight;
+  viewShift = lerp(viewShift, want, reduceMotion ? 1 : 1 - Math.exp(-dt * 9));
+  if (Math.abs(viewShift - want) < .5) viewShift = want;
+  if (viewShift) camera.setViewOffset(sw, sh, viewShift, 0, sw, sh);
+  else if (camera.view?.enabled) camera.clearViewOffset();
+}
 function frame(now){
   requestAnimationFrame(frame);
-  const dt = Math.min(clock.getDelta(), .05);
+  const elapsed = clock.getDelta(), dt = Math.min(elapsed, .05);
   if (!visible || (state.view === 'floor' && !plan3d && !planAnim)) return;
   const t = clock.elapsedTime;
   if (tween) tween.update(now);
@@ -3236,18 +3298,16 @@ function frame(now){
     if (Math.abs(nr - camera.near) > camera.near * .1) { camera.near = nr; camera.updateProjectionMatrix(); } }
   if (state.view === 'building') {
     // 단독 화면은 왼쪽 패널만큼 모델을 오른쪽으로 비킴. 앱에 넣으면(hosted) 버튼·정보가 앱 쪽에 있으므로 가운데
-    const sw = stage.clientWidth, sh = stage.clientHeight, want = explodeF == null && !tween && sw > 760 && !document.body.classList.contains('hosted') ? Math.min(340, sw * .3) / 2 : (explodeF == null ? viewShift : 0);
-    viewShift += (want - viewShift) * .08;
-    if (Math.abs(viewShift) < .5 && want === 0) { if (camera.view && camera.view.enabled) camera.clearViewOffset(); viewShift = 0; } else camera.setViewOffset(sw, sh, viewShift, 0, sw, sh);
+    const sw = stage.clientWidth, want = !explodeF && sw > 760 && !document.body.classList.contains('hosted') ? Math.min(340, sw * .3) / 2 : 0;
+    shiftView(want, elapsed);
     updateBuilding(t, dt); renderPass.scene = bScene; bloom.strength = exteriorFirst && !explodeF && !state.pipes ? .035 : isDarkNow ? .48 : .22; composer.render(); }
   else if (state.view === 'floor' && (plan3d || planAnim)) {   // 층 3D: 건물 화면과 같은 장면을 그 층만 띄워서
     // 단독 화면은 오른쪽 정보 패널(372px)만큼 모델을 왼쪽으로 비킴(기울기 시작과 함께 천천히), 앱에 넣으면 가운데
-    const sw = stage.clientWidth, sh = stage.clientHeight, want = plan3d && now >= planTiltAt && sw > 760 && !document.body.classList.contains('hosted') ? -186 : 0;
-    viewShift += (want - viewShift) * .05;
-    if (Math.abs(viewShift) < .5 && want === 0) { if (camera.view && camera.view.enabled) camera.clearViewOffset(); viewShift = 0; } else camera.setViewOffset(sw, sh, -viewShift, 0, sw, sh);
+    const want = plan3d && stage.clientWidth > 760 && !document.body.classList.contains('hosted') ? 186 : 0;
+    shiftView(want, elapsed);
     state.view = 'building'; updateBuilding(t, dt); state.view = 'floor';
     renderPass.scene = bScene; bloom.strength = isDarkNow ? .48 : .22; composer.render(); }   // 평면도 뒤 배경과 같은 밝기 → 전환 때 번쩍임 없음
-  else if (room3d) { if (camera.view && camera.view.enabled) { camera.clearViewOffset(); viewShift = 0; } room3d.update(dt, t); renderPass.scene = room3d.scene; bloom.strength = isDarkNow ? .14 : .06; composer.render(); }
+  else if (room3d) { shiftView(0, elapsed); room3d.update(dt, t); renderPass.scene = room3d.scene; bloom.strength = isDarkNow ? .14 : .06; composer.render(); }
 }
 requestAnimationFrame(frame);
 
@@ -3416,8 +3476,8 @@ goBuilding.done = !!(startRoom || startFloor);
 goBuilding(false);
 if (startRoom || startFloor || reduceMotion) introStart = -99;
 else { const ti = $('#introTitle'); ti.querySelector('b').textContent = CFG.buildingName; setTimeout(() => ti.classList.add('on'), 600); setTimeout(() => ti.classList.remove('on'), 4600); setTimeout(() => ti.remove(), 6000); }
-if (startRoom) { state.floor = FLOOR[startRoom.floorId]; goRoom(startRoom); }
-else if (startFloor) { setBodyView('floor'); state.floor = startFloor; controls.enabled = false; buildPlanSvg(startFloor); updatePlanSvg(); renderFloorStats(); renderCrumbs(); renderLegend(); requestAnimationFrame(() => renderBackdrop(startFloor)); }
+if (startRoom) goRoom(startRoom, false);
+else if (startFloor) { setBodyView('floor'); state.floor = startFloor; controls.enabled = false; buildPlanSvg(startFloor); updatePlanSvg(); renderFloorStats(); renderCrumbs(); renderLegend(); requestAnimationFrame(() => plan3d ? enterPlan3d(startFloor, false) : renderBackdrop(startFloor)); }
 refresh();
 emit('twin:ready', { floors: API.model() });
 </script>

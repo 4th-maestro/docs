@@ -10,6 +10,8 @@ import { SkBubbles } from '../skeleton/Skeleton'
 import OpsDraftCard from '../ops/OpsDraftCard'
 import { OpsCard, OpsStatusCard } from '../ops/OpsMessages'
 import type { Decision, OpsAction, OpsDraft, OpsOverview } from '../ops/types'
+import { RecommendBadge, RecommendList } from './ChatRecommend'
+import { useRecommend, type RecommendProps } from './useRecommend'
 
 // 대화 메시지: 서버 기록(GET /chat)과 화면에서 추가한 메시지 공용
 // - draftState: pending(저장 대기, 초안 카드 표시), saved(저장됨), closed(닫음·지난 기록)
@@ -74,17 +76,22 @@ type Props = {
   onClose: (m: ChatMsg) => void
   onFocus: (ids: string[]) => void
   onSelect: (id: string) => void
+  // 최적 제어 추천(머리글 배지, 대화 위 펼침 목록)
+  recommend: RecommendProps
 }
 
 // AI 운영 도우미(메신저형): 위는 대화 목록, 아래는 입력창
 // - 자동 스크롤: 사용자가 아래쪽(120px 이내)을 보고 있을 때만, 이전 대화를 읽는 중에는 유지
-export default function ChatPanel({ onOpsDone, ai, ops, messages, rooms, suggestions, busy, history, onSend, onClear, onSave, onClose, onFocus, onSelect }: Props) {
+export default function ChatPanel({ onOpsDone, ai, ops, messages, rooms, suggestions, busy, history, onSend, onClear, onSave, onClose, onFocus, onSelect, recommend }: Props) {
   const [text, setText] = useState('')
   const [confirmClear, setConfirmClear] = useState(false)
   const [big, setBig] = useState<Chart | null>(null)
   const log = useRef<HTMLDivElement>(null)
   const input = useRef<HTMLTextAreaElement>(null)
   const running = ai.status === 'running'
+  const rec = useRecommend(recommend)
+  // 추천 목록 펼침: 기본 접힘, 화면 상태로만 유지
+  const [recOpen, setRecOpen] = useState(false)
   // 제안 남은 시간 표시용 현재 시각(30초마다 갱신)
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
@@ -124,6 +131,7 @@ export default function ChatPanel({ onOpsDone, ai, ops, messages, rooms, suggest
       <div className="chat-head">
         <h2>AI 운영 도우미</h2>
         {!!ops?.overview.pendingCount && <span className="ops-badge" aria-label={`자동 운영 응답 대기 ${ops.overview.pendingCount}건`}><AlertCircle size={16} aria-hidden />제안 {ops.overview.pendingCount}</span>}
+        <RecommendBadge poll={rec} open={recOpen} onToggle={() => setRecOpen((v) => !v)} />
         <ThinkingBadge state={ai} />
         {messages.length > 0 && (confirmClear ? (
           <span className="chat-confirm">
@@ -134,6 +142,7 @@ export default function ChatPanel({ onOpsDone, ai, ops, messages, rooms, suggest
           <button className="icon" onClick={() => setConfirmClear(true)} aria-label="대화 지우기" title="대화 지우기"><Trash2 size={18} /></button>
         ))}
       </div>
+      {recOpen && <RecommendList poll={rec} floor={recommend.floor} onDraft={recommend.onDraft} onLocate={recommend.onLocate} />}
 
       <div className="chat-log" ref={log} role="log" aria-live="polite" aria-busy={running}
         onScroll={(e) => { const el = e.currentTarget; stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120 }}>
