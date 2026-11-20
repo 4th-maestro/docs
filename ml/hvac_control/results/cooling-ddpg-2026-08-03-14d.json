@@ -1,0 +1,205 @@
+{
+  "controller": "ddpg",
+  "season": "cooling",
+  "start": "2026-08-03",
+  "days": 14,
+  "steps": 1344,
+  "energy_kwh": 1201.24,
+  "peak_kw": 12.26,
+  "occupied_zone_h": 250.0,
+  "discomfort_zone_h": 0.25,
+  "discomfort_degree_h": 0.01,
+  "zones": {
+    "SPACE1-1": {
+      "occupied_h": 90.0,
+      "discomfort_h": 0.25,
+      "discomfort_degree_h": 0.01,
+      "cold_h": 0.0,
+      "hot_h": 0.25
+    },
+    "SPACE2-1": {
+      "occupied_h": 17.0,
+      "discomfort_h": 0.0,
+      "discomfort_degree_h": 0.0,
+      "cold_h": 0.0,
+      "hot_h": 0.0
+    },
+    "SPACE3-1": {
+      "occupied_h": 23.0,
+      "discomfort_h": 0.0,
+      "discomfort_degree_h": 0.0,
+      "cold_h": 0.0,
+      "hot_h": 0.0
+    },
+    "SPACE4-1": {
+      "occupied_h": 20.0,
+      "discomfort_h": 0.0,
+      "discomfort_degree_h": 0.0,
+      "cold_h": 0.0,
+      "hot_h": 0.0
+    },
+    "SPACE5-1": {
+      "occupied_h": 100.0,
+      "discomfort_h": 0.0,
+      "discomfort_degree_h": 0.0,
+      "cold_h": 0.0,
+      "hot_h": 0.0
+    }
+  },
+  "energy_kwh_occupied": 672.09,
+  "energy_kwh_vacant": 529.15,
+  "cold_zone_h": 0.0,
+  "hot_zone_h": 0.25,
+  "discomfort_pct": 0.1,
+  "ddpg": {
+    "train_steps": 500000,
+    "best_steps": 400000,
+    "lam": 1.0,
+    "seed": 0,
+    "train_sec": 12108,
+    "ms_per_step": 24.22,
+    "test_reward": -482.599,
+    "curve": [
+      {
+        "steps": 25000,
+        "reward": -255.073,
+        "energy_kwh": 603.3,
+        "discomfort_zone_h": 2.0,
+        "peak_kw": 12.38
+      },
+      {
+        "steps": 50000,
+        "reward": -235.237,
+        "energy_kwh": 547.85,
+        "discomfort_zone_h": 3.0,
+        "peak_kw": 12.03
+      },
+      {
+        "steps": 75000,
+        "reward": -220.002,
+        "energy_kwh": 523.38,
+        "discomfort_zone_h": 1.25,
+        "peak_kw": 10.26
+      },
+      {
+        "steps": 100000,
+        "reward": -208.646,
+        "energy_kwh": 506.75,
+        "discomfort_zone_h": 0.0,
+        "peak_kw": 11.18
+      },
+      {
+        "steps": 125000,
+        "reward": -205.436,
+        "energy_kwh": 509.32,
+        "discomfort_zone_h": 0.0,
+        "peak_kw": 10.5
+      },
+      {
+        "steps": 150000,
+        "reward": -208.954,
+        "energy_kwh": 501.73,
+        "discomfort_zone_h": 1.75,
+        "peak_kw": 10.91
+      },
+      {
+        "steps": 175000,
+        "reward": -211.993,
+        "energy_kwh": 508.64,
+        "discomfort_zone_h": 1.75,
+        "peak_kw": 11.53
+      },
+      {
+        "steps": 200000,
+        "reward": -203.379,
+        "energy_kwh": 501.73,
+        "discomfort_zone_h": 0.5,
+        "peak_kw": 11.88
+      },
+      {
+        "steps": 225000,
+        "reward": -199.48,
+        "energy_kwh": 492.86,
+        "discomfort_zone_h": 0.25,
+        "peak_kw": 10.21
+      },
+      {
+        "steps": 250000,
+        "reward": -203.176,
+        "energy_kwh": 497.12,
+        "discomfort_zone_h": 0.5,
+        "peak_kw": 12.35
+      },
+      {
+        "steps": 275000,
+        "reward": -206.058,
+        "energy_kwh": 503.08,
+        "discomfort_zone_h": 0.75,
+        "peak_kw": 12.29
+      },
+      {
+        "steps": 300000,
+        "reward": -201.444,
+        "energy_kwh": 497.46,
+        "discomfort_zone_h": 0.25,
+        "peak_kw": 11.53
+      },
+      {
+        "steps": 325000,
+        "reward": -201.025,
+        "energy_kwh": 499.17,
+        "discomfort_zone_h": 0.25,
+        "peak_kw": 10.96
+      },
+      {
+        "steps": 350000,
+        "reward": -200.286,
+        "energy_kwh": 497.6,
+        "discomfort_zone_h": 0.0,
+        "peak_kw": 11.89
+      },
+      {
+        "steps": 375000,
+        "reward": -205.26,
+        "energy_kwh": 500.19,
+        "discomfort_zone_h": 1.0,
+        "peak_kw": 12.1
+      },
+      {
+        "steps": 400000,
+        "reward": -197.469,
+        "energy_kwh": 491.44,
+        "discomfort_zone_h": 0.0,
+        "peak_kw": 12.34
+      },
+      {
+        "steps": 425000,
+        "reward": -203.311,
+        "energy_kwh": 497.99,
+        "discomfort_zone_h": 1.0,
+        "peak_kw": 12.06
+      },
+      {
+        "steps": 450000,
+        "reward": -201.647,
+        "energy_kwh": 500.94,
+        "discomfort_zone_h": 0.25,
+        "peak_kw": 12.31
+      },
+      {
+        "steps": 475000,
+        "reward": -203.767,
+        "energy_kwh": 504.48,
+        "discomfort_zone_h": 0.25,
+        "peak_kw": 12.49
+      },
+      {
+        "steps": 500000,
+        "reward": -203.188,
+        "energy_kwh": 503.88,
+        "discomfort_zone_h": 0.25,
+        "peak_kw": 12.45
+      }
+    ]
+  }
+}
