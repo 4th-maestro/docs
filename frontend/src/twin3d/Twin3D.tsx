@@ -12,7 +12,7 @@ import './twin3d.css'
 type Pt = [number, number]
 // public/floorplan.json 형식(IFC 평면 좌표, m)
 type Plan = { floors: Record<string, { bounds: [number, number, number, number]; rooms: { id: string; polys: Pt[][]; hvac: Pt[] }[] }> }
-type Props = { floor: string; mode: Mode; rooms: Room[]; highlight: string[]; selectedId: string | null; onSelect: (id: string) => void }
+type Props = { floor: string; mode: Mode; rooms: Room[]; highlight: string[]; selectedId: string | null; onSelect: (id: string) => void; dark?: boolean }
 type RoomObj = {
   id: string
   mesh: THREE.Mesh<THREE.ExtrudeGeometry, THREE.MeshLambertMaterial>
@@ -25,7 +25,7 @@ type Shared = {
   on: THREE.MeshLambertMaterial; off: THREE.MeshLambertMaterial; bad: THREE.MeshLambertMaterial
   marker: THREE.CylinderGeometry
 }
-type Ctx = { canvas: HTMLCanvasElement; scene: THREE.Scene; shared: Shared; rooms: RoomObj[]; selected: RoomObj | null; radius: number; top: boolean; view: (top: boolean) => void; request: () => void }
+type Ctx = { canvas: HTMLCanvasElement; scene: THREE.Scene; shared: Shared; plate: THREE.Mesh<THREE.BoxGeometry, THREE.MeshLambertMaterial> | null; rooms: RoomObj[]; selected: RoomObj | null; radius: number; top: boolean; view: (top: boolean) => void; request: () => void }
 type Hover = { id: string; x: number; y: number; left: boolean; up: boolean }
 
 // 표시 치수(m)
@@ -36,13 +36,14 @@ const RAISE = 0.6
 const MARK_Y = H + 0.5
 const MAX_POLAR = 1.35 // 약 77도, 바닥 아래로 회전 차단
 // WebGL 재질 색: 재질은 CSS 변수를 읽지 못하므로 index.css 토큰 값을 사용
-const INK = '#222222'
+// - 밝은·어두운 테마: index.css :root, [data-theme=dark] 값과 같음
+// - dim: 질의 결과 외 호실을 바탕색 쪽으로 섞는 목표 색
+const THEME = {
+  light: { ink: '#222222', off: '#c1c1c1', noData: '#dddddd', plate: '#ffffff', dim: new THREE.Color('#ffffff') },
+  dark: { ink: '#e6e6e3', off: '#5b5e63', noData: '#3a3c40', plate: '#2a2c30', dim: new THREE.Color('#1f2023') },
+}
 // 선택 외곽선: 디자인 시스템 표 6.1 기준 primary
 const PRIMARY = '#ff385c'
-const OFF = '#c1c1c1'
-const NO_DATA = '#dddddd'
-const CANVAS = '#ffffff'
-const WHITE = new THREE.Color(CANVAS)
 
 const mean = (pts: Pt[]): Pt => [pts.reduce((s, p) => s + p[0], 0) / pts.length, pts.reduce((s, p) => s + p[1], 0) / pts.length]
 
@@ -64,7 +65,8 @@ function centroid(polys: Pt[][]): Pt {
   return [cx / (3 * a), cy / (3 * a)]
 }
 
-export default function Twin3D({ floor, mode, rooms, highlight, selectedId, onSelect }: Props) {
+export default function Twin3D({ floor, mode, rooms, highlight, selectedId, onSelect, dark = false }: Props) {
+  const pal = dark ? THEME.dark : THEME.light
   const stageRef = useRef<HTMLDivElement>(null)
   const labelRef = useRef<HTMLDivElement>(null)
   const ctxRef = useRef<Ctx | null>(null)
@@ -116,10 +118,10 @@ export default function Twin3D({ floor, mode, rooms, highlight, selectedId, onSe
     controls.minDistance = 8
 
     const shared: Shared = {
-      edge: new THREE.LineBasicMaterial({ color: INK, transparent: true, opacity: 0.45 }),
-      edgeDim: new THREE.LineBasicMaterial({ color: INK, transparent: true, opacity: 0.12 }),
-      on: new THREE.MeshLambertMaterial({ color: INK }),
-      off: new THREE.MeshLambertMaterial({ color: OFF }),
+      edge: new THREE.LineBasicMaterial({ transparent: true, opacity: 0.45 }),
+      edgeDim: new THREE.LineBasicMaterial({ transparent: true, opacity: 0.12 }),
+      on: new THREE.MeshLambertMaterial(),
+      off: new THREE.MeshLambertMaterial(),
       bad: new THREE.MeshLambertMaterial({ color: ANOMALY }),
       marker: new THREE.CylinderGeometry(0.35, 0.35, 0.18, 24),
     }
@@ -130,15 +132,10 @@ export default function Twin3D({ floor, mode, rooms, highlight, selectedId, onSe
     const request = () => {
       if (alive && !raf) raf = requestAnimationFrame(frame)
     }
-    const frame = (t: number) => {
+    // 장시간 모니터링 눈 피로: 이상 HVAC도 깜빡임 없이 정지 표시(크기·색으로 구분)
+    const frame = () => {
       raf = 0
       const moving = controls.update()
-      let pulsing = false
-      for (const o of ctx.rooms) {
-        if (!o.bad || reduced) continue
-        o.marker.scale.setScalar(1.15 + 0.15 * Math.sin(t / 300))
-        pulsing = true
-      }
       renderer.render(scene, camera)
       const label = labelRef.current
       const sel = ctx.selected
@@ -152,7 +149,7 @@ export default function Twin3D({ floor, mode, rooms, highlight, selectedId, onSe
         label.style.display = show ? 'block' : 'none'
         if (show) label.style.transform = `translate(${((v.x + 1) / 2) * canvas.clientWidth}px, ${((1 - v.y) / 2) * canvas.clientHeight}px) translate(-50%, -100%)`
       }
-      if (moving || pulsing) request()
+      if (moving) request()
     }
     controls.addEventListener('change', request)
 
@@ -173,7 +170,7 @@ export default function Twin3D({ floor, mode, rooms, highlight, selectedId, onSe
       controls.update()
       request()
     }
-    const ctx: Ctx = { canvas, scene, shared, rooms: [], selected: null, radius: 30, top: false, view, request }
+    const ctx: Ctx = { canvas, scene, shared, plate: null, rooms: [], selected: null, radius: 30, top: false, view, request }
     ctxRef.current = ctx
 
     const ray = new THREE.Raycaster()
@@ -234,7 +231,8 @@ export default function Twin3D({ floor, mode, rooms, highlight, selectedId, onSe
     const group = new THREE.Group()
     // 좌표 변환: 평면 (x, y) → 월드 (x, 높이, -y), 층 경계 중심을 원점에 배치
     group.position.set(-(x0 + x1) / 2, 0, (y0 + y1) / 2)
-    const plate = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0 + 4, 0.3, y1 - y0 + 4), new THREE.MeshLambertMaterial({ color: CANVAS }))
+    const plate = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0 + 4, 0.3, y1 - y0 + 4), new THREE.MeshLambertMaterial())
+    ctx.plate = plate
     plate.position.set((x0 + x1) / 2, -0.15, -(y0 + y1) / 2)
     group.add(plate)
 
@@ -267,8 +265,21 @@ export default function Twin3D({ floor, mode, rooms, highlight, selectedId, onSe
         o.edges.geometry.dispose()
       }
       ctx.rooms = []
+      ctx.plate = null
     }
   }, [plan, floor])
+
+  // 테마 색: 테두리, HVAC 표시, 바닥판
+  useEffect(() => {
+    const ctx = ctxRef.current
+    if (!ctx) return
+    ctx.shared.edge.color.set(pal.ink)
+    ctx.shared.edgeDim.color.set(pal.ink)
+    ctx.shared.on.color.set(pal.ink)
+    ctx.shared.off.color.set(pal.off)
+    ctx.plate?.material.color.set(pal.plate)
+    ctx.request()
+  }, [pal, plan, floor])
 
   // 상태 색, 강조, HVAC 표시: 5초 갱신마다 재질만 변경
   useEffect(() => {
@@ -279,16 +290,16 @@ export default function Twin3D({ floor, mode, rooms, highlight, selectedId, onSe
     ctx.rooms.forEach((o) => {
       const r = byId.get(o.id)
       const dim = hot.size > 0 && !hot.has(o.id)
-      o.mesh.material.color.set(r ? color(mode, r) : NO_DATA)
-      if (dim) o.mesh.material.color.lerp(WHITE, 0.65)
+      o.mesh.material.color.set(r ? color(mode, r) : pal.noData)
+      if (dim) o.mesh.material.color.lerp(pal.dim, 0.65)
       o.mesh.position.y = hot.has(o.id) ? RAISE : 0
       o.edges.material = dim ? ctx.shared.edgeDim : ctx.shared.edge
       o.bad = !!r?.anomaly
       o.marker.material = o.bad ? ctx.shared.bad : r?.onOff ? ctx.shared.on : ctx.shared.off
-      o.marker.scale.setScalar(1)
+      o.marker.scale.setScalar(o.bad ? 1.4 : 1)
     })
     ctx.request()
-  }, [plan, floor, rooms, mode, highlight])
+  }, [plan, floor, rooms, mode, highlight, pal])
 
   // 선택 호실: 굵은 외곽선, 이름 라벨 위치는 렌더 루프에서 갱신
   useEffect(() => {

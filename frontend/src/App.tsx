@@ -1,5 +1,5 @@
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react'
-import { AlertTriangle, ArrowUp, CalendarClock, Droplets, Info, RefreshCw, Zap } from 'lucide-react'
+import { AlertTriangle, ArrowUp, CalendarClock, Droplets, Info, Moon, RefreshCw, Sun, Zap } from 'lucide-react'
 import { ThinkingBadge, ThinkingPanel } from './ai/ThinkingPanel'
 import type { AskResult } from './ai/types'
 import { useAsk } from './ai/useAsk'
@@ -32,7 +32,15 @@ const LIVE_MS = 5_000
 const NO_ROOMS: Room[] = []
 const NO_IDS: string[] = []
 
+// 테마: index.html 인라인 스크립트가 첫 표시 전에 data-theme 지정, 여기서는 전환과 저장만 처리
+type Theme = 'light' | 'dark'
+function saveTheme(t: Theme) {
+  document.documentElement.dataset.theme = t
+  try { localStorage.setItem('maestro-theme', t) } catch { /* 저장 불가 브라우저는 이번 방문에만 적용 */ }
+}
+
 export default function App() {
+  const [theme, setTheme] = useState<Theme>(() => (document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light'))
   const [floor, setFloor] = useState('1F')
   const [mode, setMode] = useState<Mode>('temp')
   const [status, setStatus] = useState<Status | null>(null)
@@ -105,8 +113,15 @@ export default function App() {
           ))}
         </nav>
         <div className="meta">
-          {status && <span className={stale ? 'stale' : ''}>데이터 기준 {status.generatedAt.slice(11, 19)}, 5초 갱신(실시간 목업){status.virtual ? ', 가상 데이터' : ''}</span>}
-          <button className="icon" onClick={load} aria-label="새로고침"><RefreshCw size={16} /></button>
+          {status && (
+            <span className={stale ? 'live stale' : 'live'} title={`5초마다 갱신(실시간 목업)${status.virtual ? ', 가상 데이터' : ''}`}>
+              <i aria-hidden />{stale ? '갱신 지연' : '실시간'} {status.generatedAt.slice(11, 19)}
+            </span>
+          )}
+          <button className="icon" onClick={load} aria-label="새로고침"><RefreshCw size={18} /></button>
+          <button className="icon" onClick={() => { const t = theme === 'dark' ? 'light' : 'dark'; setTheme(t); saveTheme(t) }} aria-label={theme === 'dark' ? '밝은 화면으로 전환' : '어두운 화면으로 전환'}>
+            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
         </div>
       </header>
 
@@ -149,7 +164,7 @@ export default function App() {
             <iframe ref={frame} className="embed" src={TWIN_URL} title="3D 디지털트윈" onLoad={() => postState(frame.current, floor, mode, rooms, highlight)} />
           ) : (
             <Suspense fallback={<div className="embed" aria-label="3D 도면 불러오는 중" />}>
-              <Twin3D floor={floor} mode={mode} rooms={rooms} highlight={highlight} selectedId={selected} onSelect={setSelected} />
+              <Twin3D floor={floor} mode={mode} rooms={rooms} highlight={highlight} selectedId={selected} onSelect={setSelected} dark={theme === 'dark'} />
             </Suspense>
           )}
           <Legend mode={mode} status={status} />
