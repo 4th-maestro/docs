@@ -122,6 +122,39 @@ node tools/sim-server.mjs 8766
 
 고친 내용은 모두 레시피에 남습니다. 레시피를 저장하면 명령줄에서도 같은 결과가 나옵니다.
 
+### 호스트 연동 메시지: 평면도 넣기, 실내기 기호 인식
+
+대시보드의 도면 업로드 화면(`src/ingest/PlanIngest.tsx`)은 파이프라인을 `pipeline.html?quick=1&detect=1`로 엽니다. 메시지 코드는 `pipeline/host-bridge.js`(파이프라인)와 `src/ingest/bridge.ts`(대시보드)입니다. 규약 원본은 [도면 변환 규약](../../docs/human/reference/plan-ingest.md)입니다.
+
+| 방향 | 메시지 | 필드 | 처리 |
+|---|---|---|---|
+| 대시보드 → 파이프라인 | `plans` | `files`(File 목록) | 파일마다 층 행 1개(1F부터)를 만들고 평면도를 채움. PNG, JPG 업로드와 PDF 렌더링 페이지에 사용 |
+| 파이프라인 → 대시보드 | `detectRequest` | `id`, `floors`(층 id 목록), `image`(인식용 보정 평면도 PNG Blob), `pxPerM`(인식용 해상도) | `detect=1`일 때 3D 트윈 만들기 중 층 그룹마다 1회 요청 |
+| 대시보드 → 파이프라인 | `detectResult` | `id`, `detections`(`{cls, conf, box}`, 보정 이미지 픽셀), `key`(S3 키), `error` | 대시보드가 `POST /plans/detect`로 인식. 서버가 없거나 실패하면 빈 목록과 `error` |
+| 파이프라인 → 대시보드 | `buildingRendered`(기존) | `building` | `detect=1`이면 층마다 `background`(`toPlan` = 보정 이미지 픽셀 → m), `detections`, `meta.ingest.warnings`를 붙임 |
+
+- 메시지는 `source`(`maestro` 또는 `twin`)와 부모 창과 iframe 창으로 출처를 확인합니다.
+- 인식용 보정 이미지는 화면용 20px/m 보정 이미지와 따로, 원본 이미지에서 다시 보정합니다. 해상도 `pxPerM`은 인식 모델 학습 해상도 80px/m, 원본의 실제 해상도(외곽 4변 중 최대), 여백 포함 긴 변 8000px 중 가장 작은 값입니다(`pipeline/host-bridge.js` `detectRes`).
+- 인식용 보정 이미지 픽셀 (u, v)와 평면 좌표의 관계는 `x = u / pxPerM − 6`, `y = v / pxPerM − 6`입니다(`MARGIN` 6m).
+- 좌표 변환과 호실 배정은 대시보드(`src/ingest/units.ts`)가 합니다. 인식 결과가 있는 층은 면적 추정 실내기(`source: estimate`)를 빼고, 신뢰도 0.5 미만, `unknown`, 실 밖 실내기는 `review: true`로 표시합니다.
+- 대시보드가 응답하지 않으면 6분 뒤 빈 결과로 진행합니다. `detect=1`이 없으면 요청하지 않습니다.
+
+### 실내기 유형별 3D 형상
+
+`building.json`의 `idus[].cls`가 있으면 방 화면이 유형별 형상을 그립니다(`pipeline/idu-shapes.js`). `cls`가 없는 기존 데이터는 이전처럼 `type`, `model` 문자열의 `1WAY` 여부로 1방향 또는 4방향 카세트를 그립니다.
+
+| `cls` | 형상 | 위치 |
+|---|---|---|
+| `cassette_4way`, `cassette_2way`, `cassette_1way` | 천장 패널과 방향 수만큼의 토출구, 베인 | 천장면 |
+| `ceiling_duct` | 천장 위 본체, 천장면 공급구와 흡입구 격자 | 천장면 |
+| `wall_mounted` | 얇은 상자, 앞면 아래 토출구 | 바닥에서 2.2m(천장고 − 0.25m 이하) |
+| `floor_standing` | 높이 1.8m 상자, 위쪽 앞면 토출구 | 바닥 |
+| `unknown` | 4방향 카세트 형상 | 천장면 |
+
+- 토출 방향은 `rot`(도)입니다. 0은 평면 x+(오른쪽), 90은 평면 y+(아래쪽)입니다. 값이 없으면 실 중심 쪽 긴 변 방향입니다.
+- 크기는 `size`(`[w, d]`, 평면 x, y 방향 길이, m)이고, 없으면 유형별 기본값을 씁니다.
+- 실내기 목록의 모델 칸은 `type`과 `model`을 함께 표시합니다(예: `천장형 4방향 카세트 · ARNU12GTRB4`).
+
 ### 스카이뷰로 건물 모양 검증
 
 스카이뷰(지도 항공사진, 북쪽이 위)는 **화면에 깔지 않고** 도면이 실제 건물과 맞는지 확인하는 데만 씁니다. 레시피 `site`에 적습니다.
@@ -223,7 +256,7 @@ node tools/run-scenario.mjs data/busan-station/ --sp 26 [--start 07:00 --end 22:
 | 냉방 전력 | 냉방 열량 ÷ COP. COP는 실내기 정격(냉방능력 ÷ 소비전력)에 외기온도 보정 `1+0.02(T−35)`을 적용합니다. | 설비대장의 실내기 정격 |
 | 요금 | 시간별 전력 × 한전 단가. 부산역은 일반용(을) 고압A 선택Ⅱ **계시별** 요금입니다. 기본요금과 부가세는 비교에서 뺐습니다. | [한전 전기요금표](https://cyber.kepco.co.kr/ckepco/front/jsp/CY/E/E/CYEEHP00102.jsp) (2023-11-09 적용분 — 최신 단가 확인 필요) |
 | 열 불쾌도 | 재실 시간 동안 쾌적 범위(20~26°C) 밖으로 벗어난 온도 × 시간을 실마다 구해 평균합니다(K·h/실). | BOPTEST KPI `tdis_tot` 정의 |
-| 불만족 비율 | Fanger PMV/PPD를 재실 인원으로 가중 평균합니다. 불쾌 비율은 \|PMV\| > 0.5(ISO 7730 B등급 밖)인 비율입니다. 옷 0.5clo, 기류 0.15m/s를 가정합니다. | ISO 7730 (EnergyPlus 내장) |
+| 불만족 비율 | Fanger PMV/PPD를 재실 인원으로 가중 평균합니다. 불쾌 비율은 \|PMV\| > 0.5(ISO 7730 B등급 밖)인 비율입니다. 옷 0.5clo(난방철 1.0clo), 기류 0.15m/s를 가정합니다. | ISO 7730 (EnergyPlus 내장) |
 
 - **비교 조건**: 두 운전은 같은 건물, 같은 기상, 같은 내부 발열에서 계산합니다. 결과 차이는 운전 방식의 차이만 반영합니다.
 - **BOPTEST를 직접 쓰지 않은 이유**
@@ -232,6 +265,12 @@ node tools/run-scenario.mjs data/busan-station/ --sp 26 [--start 07:00 --end 22:
   - 그래서 KPI 정의(tdis, 에너지, 비용)만 그대로 가져와 우리 건물의 EnergyPlus 결과에 적용했습니다.
 - **기존 운전의 설정온도**: building.json의 `operation.coolSetpoint`를 씁니다. 값이 없으면 24°C로 가정합니다. BMS 설정값으로 바꾸면 정확해집니다.
 - **기상 조건**: EPW가 없으면 **여름 설계일 하루**만 계산합니다. 여름 전체(6~9월) 절감액을 보려면 부산 EPW를 `--epw`로 넣습니다.
+- **냉방·난방 모드**: 5~9월은 냉방, 그 밖은 난방으로 계산합니다 (웹 데모와 같은 기준). 화면이 `scenario.mode`('cool' / 'heat')를 함께 보냅니다.
+  - 난방이면 설정온도를 **난방 설정온도**로 쓰고 냉방은 끕니다. 기존 운전의 난방 설정은 `operation.heatSetpoint`, 없으면 20°C로 가정합니다.
+  - 난방 능력은 실내기 `heatKw`, 없으면 냉방 능력 × 1.1로 제한합니다. 전력 = 난방 열량 ÷ COP × 외기 보정 `1+0.02(7−T)`(외기 7°C 정격, 추울수록 효율 저하)입니다.
+  - 쾌적 범위는 18~24°C(정부 권장 겨울철 20°C 기준), PMV 계산의 옷은 1.0clo입니다.
+  - 실온이 25°C를 넘고 외기보다 2°C 이상 높으면 창을 연다고 봅니다(최대 시간당 3회). 이 가정이 없으면 단열 칸막이 모델에서 꽉 찬 강의실이 30°C를 넘어, 난방이 전혀 필요 없는 것처럼 계산됩니다.
+  - 기상 예보(`weather.json`)는 **예보 날짜가 오늘일 때만** 씁니다. 예제 파일은 6월 예보라 겨울에는 쓰지 않고, 남은 시간은 지금 외기를 이어 씁니다.
 - **결과 저장**: `sim/<건물>/runs/<해시>/`에 남습니다. 건물, 시나리오, 요금, 기상이 같으면 다시 계산하지 않고 저장된 결과를 씁니다.
 
 ## 실시간 데이터 넣기
@@ -248,6 +287,32 @@ DigitalTwin.ingest(snapshot);
   - 대시보드의 호실 id·실내기 id는 트윈 `building.json`의 id 그대로입니다. 데모 값도 트윈 도면에서 만듭니다(`node tools/export-web-demo.mjs` → 웹 `public/demo/`, 생성 코드는 `pipeline/web-demo.js`).
   - 건물 목록도 트윈을 따릅니다: `data/buildings.json`(6공학관 `eng6`, 부산역 역사 `busan-station`). 대시보드가 `?building=<id>`로 열면 그 건물 폴더를 읽습니다.
   - 대시보드의 **건물 추가하기**: 도면 이미지를 넣고 파이프라인에서 **트윈에서 렌더링**을 누르면 그때부터 그 건물 데이터가 만들어집니다. 그 전에는 만들지 않습니다.
+  - **채팅 what-if**: AI 도우미에 "3층 강의실 18도로 낮추면?"처럼 물으면 대시보드가 `{source:'maestro', type:'simAsk', id, rooms, setpoint, hours}`를 보냅니다.
+    - 트윈은 그 방들만 지금부터 N시간(기본 2시간) 설정을 바꿔 계산합니다. 기준은 현재 설정 유지 예측입니다.
+    - 두 번 답합니다(노션 3차 초안 설계: what-if는 5R1C, EnergyPlus는 오프라인 보정).
+      1. `stage:'fast'`: 브라우저에서 **5R1C**(ISO 13790, `pipeline/rc5.js`)로 수십 ms 안에 계산하고, EnergyPlus 대비 검증 오차(`accuracy`)를 같이 보냅니다.
+      2. `stage:'final'`: 계산 서버가 있으면 EnergyPlus로 다시 계산해 바꿉니다(서버에는 `scenario.window = {from, to, sp, rooms}`, 6초 안팎). 즉시 값은 `fast`에 남깁니다. 서버가 없으면 `onlyFast:true`로 5R1C 값만 확정합니다.
+    - 결과는 `{source:'twin', type:'simAnswer', id, ok, stage, engine, mode, window, ms, accuracy, fast, onlyFast}`입니다. 대시보드는 답변과 설정온도 스케줄 초안을 대화에 넣고, 최종 답이 오면 같은 메시지를 고칩니다.
+    - 시뮬레이션 패널의 결과는 바꾸지 않습니다.
+
+### 5R1C 보정 (EnergyPlus 기준)
+
+```
+node tools/calibrate-5r1c.mjs data/      # → data/rc5-calibration.json
+```
+
+- 방마다 EnergyPlus 모델과 같은 형상·재료로 5R1C 계수를 만듭니다(외벽 U≈0.38, 지붕 0.40, 창 1.8·SHGC 0.40, 열용량 165 kJ/m²K). 15분 간격, 3일 예열 후 하루를 계산합니다.
+- 난방·냉방을 따로 보정합니다. 날씨가 다른 **보정일 3일**에서 계수 배율(열용량·외피·일사·질량–표면 결합)과 전력 배율을 격자로 고르고, 쓰지 않은 **검증일 2일**에서 오차를 잽니다.
+- 목표는 시간별 전력 모양, 실온, **설정 변경 반응**(전 실 2시간 +2°C일 때 전력 변화)을 함께 맞추는 것입니다. what-if 답은 결국 '바꿨을 때의 차이'이기 때문입니다.
+- 합격 기준: ASHRAE Guideline 14 시간 단위 CV(RMSE) ≤ 30%, NMBE ±10%.
+- 6공학관 결과(검증일):
+
+| 모드 | CV(RMSE) | NMBE | 실온 RMSE | 설정 변경 반응 오차 | 판정 |
+|---|---|---|---|---|---|
+| 난방 | 25.7% | −0.3% | 0.56°C | −14% | 합격 |
+| 냉방 | 7.2% | 3.0% | 0.08°C | −1.2% | 합격 |
+
+- 보정 파일이 없는 건물(부산역, 도면 편집 중인 건물)은 기본 계수로 계산하고 답에 '보정 전 기본 계수'라고 표시합니다.
 - 대시보드 없이 혼자 열면 받은 값이 없으므로 도면만 보입니다. `postMessage`·`DigitalTwin.ingest`로 넣으면 그때부터 그립니다.
 
 ### 스냅샷 형식 (twin.realtime/v1)
@@ -288,6 +353,10 @@ DigitalTwin.ingest(snapshot);
 - 판정 기준:
   - 쾌적: |PMV| < 0.5 (ISO B등급, 불만족 10% 이하). 현장 엔지니어 화면의 '쾌적 비율'에 씁니다.
   - 알림: |PMV| ≥ 0.7 (C등급 밖), 1.5 이상이면 심각
+- **쾌적도 지표**(FR-21): 지표 버튼의 **쾌적도**를 고르면 방을 PMV로 칠합니다. 대시보드 버튼(`comfort`)과 연동됩니다.
+  - 색은 추움 파랑 · 쾌적 흰색 · 더움 주황이고, 대시보드 범례(`src/heat.ts`의 `COMFORT`)와 같습니다. 실내기가 없는 방은 회색입니다.
+  - 평면도 라벨에는 PMV 값을, 층 태그에는 사용 중인 방 중 쾌적(|PMV| < 0.5)한 방 수와 평균 PMV를 표시합니다.
+  - 대시보드 자체 3D·호실 상세도 같은 계산(`src/comfort.ts` → `pipeline/comfort.js`)을 씁니다.
 - 조치 문구는 계절에 맞춥니다.
   - 난방철에 더움 → 과난방(설정 하향, 절감)
   - 냉방철에 추움 → 과냉방(설정 상향, 절감)
@@ -331,7 +400,9 @@ node tools/run-scenario.mjs data/ --live 실시간.json --room 3F-6307 --room-sp
    - 호스트로 `twin:control {room, setTemp, idus}`(대시보드에는 `{source:'twin', type:'control'}`)를 보냅니다. 명령은 호스트가 실행하고, 바뀐 값이 다음 갱신에 들어옵니다.
    - 대시보드 목업은 기준값에 반영해서 웹·트윈이 함께 바뀝니다.
 
-대시보드에 넣으면 **운전 시뮬레이션** 패널은 트윈 안이 아니라 대시보드의 3D 도면 옆 패널에 나옵니다(트윈이 계산하고 결과를 `{source:'twin', type:'sim'}`로 보냄).
+대시보드에 넣으면 **운전 시뮬레이션** 패널은 트윈 안이 아니라 대시보드 시뮬레이션 탭의 패널에 나옵니다(트윈이 계산하고 결과를 `{source:'twin', type:'sim'}`로 보냄).
+
+대시보드에 넣은 상태(`body.hosted`)에서 트윈은 3D 렌더링과 호실 선택만 합니다(2026-11-20). 상단 바(역할, 데이터 흐름, 설비 연결, 지표, 데이터), 층 칩, 지표 칩, 우측 조치 패널, 범례, 호실 보기 도구를 숨깁니다. 대시보드가 `{source:'maestro', type:'ui', action}`(`persona:<역할>`, `flow`, `pipes`, `back`, `rv:<vol|slice|hum|air>`)으로 숨긴 버튼을 대신 누르고, 트윈은 1초마다 바뀐 경우에만 `{source:'twin', type:'twinUi', ui, kpis, actions}`를 보냅니다. 데이터 파일을 바꾸는 **데이터** 버튼은 관리 기능이라 대시보드에 옮기지 않았습니다.
 
 정적 데이터를 바꾸는 방법은 두 가지입니다.
 

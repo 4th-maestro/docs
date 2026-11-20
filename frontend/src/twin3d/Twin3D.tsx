@@ -344,7 +344,7 @@ export default function Twin3D({ building, floor, mode, rooms, highlight, select
             <>
               <strong>{hovered.name}</strong>
               <span>HVAC {hovered.idu}, {hovered.onOff ? '운전' : '정지'}</span>
-              <span>{mode === 'anomaly' ? value(mode, hovered) : `${SCALES[mode].label} ${value(mode, hovered)}`}</span>
+              <span>{mode === 'anomaly' ? value(mode, hovered) : mode === 'comfort' ? `쾌적도 ${value(mode, hovered)}` : `${SCALES[mode].label} ${value(mode, hovered)}`}</span>
               <span>재실 {hovered.occupants}명</span>
             </>
           ) : <span>상태 데이터 없음</span>}

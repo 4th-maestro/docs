@@ -6,6 +6,7 @@
 - level: alert(이상 1건 이상), warn(절감 가능량이 오늘 사용량의 10% 이상), ok
 - 정렬: alert, warn, ok 순, 같은 level은 이상 건수 내림차순
 - 소속: 판매사 총관리자는 전체, 고객사 구성원은 소속 기업 건물만, 소속 없으면 빈 목록, 중지 기업 구성원은 403
+- hasTwin: 트윈 도면(plans/<건물>/building.json) 저장 여부. 화면은 false면 트윈 화면을 불러오지 않고 내장 3D 도면 사용
 """
 import json
 import time
@@ -13,6 +14,7 @@ import time
 import buildings
 import common
 import history
+import plan
 import recommend
 import sim
 import status
@@ -34,7 +36,8 @@ def handler(event, context):
     key = json.dumps([buildings.version(), schedules], sort_keys=True, default=str)
     if not (_cache['key'] == key and time.monotonic() - _cache['at'] < TTL_S):
         t = sim.now()
-        items = sorted((card(b, t, schedules) for b in buildings.LIST), key=lambda c: (LEVELS.index(c['level']), -c['now']['anomaly']))
+        twins = plan.twin_ids()
+        items = sorted(({**card(b, t, schedules), 'hasTwin': b['id'] in twins} for b in buildings.LIST), key=lambda c: (LEVELS.index(c['level']), -c['now']['anomaly']))
         _cache.update(key=key, at=time.monotonic(), body={'generatedAt': t.isoformat(), 'virtual': True, 'buildings': items})
     body = _cache['body']
     if allowed is not None:

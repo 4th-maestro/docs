@@ -135,6 +135,114 @@
       "type": "explanation"
     },
     {
+      "path": "docs/human/explanation/improvements/2026-11-20(3D 카드 건물 전체 돌아가기 버튼 복원).md",
+      "title": "3D 카드 건물 전체 돌아가기 버튼 복원",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/improvements/2026-11-20(AI 답변 구조화 응답 3문장 보장).md",
+      "title": "AI 답변 구조화 응답 3문장 보장",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/improvements/2026-11-20(AI 답변 품질 JEV 판단 평가).md",
+      "title": "AI 답변 품질 JEV 판단 평가",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/improvements/2026-11-20(AI 대화 메모리 10턴과 현재 시각 전달).md",
+      "title": "AI 대화 메모리 10턴과 현재 시각 전달",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/improvements/2026-11-20(AI 저장 안내 화면 이동과 증감률 도구 계산).md",
+      "title": "AI 저장 안내 화면 이동과 증감률 도구 계산",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/improvements/2026-11-20(데이터 흐름 모달과 오른쪽 열 카드 순서).md",
+      "title": "데이터 흐름 모달과 오른쪽 열 카드 순서",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/improvements/2026-11-20(배포 명령 브랜치·미커밋 확인 단계).md",
+      "title": "배포 명령 브랜치·미커밋 확인 단계",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/improvements/2026-11-20(상단 지표 카드 묶음과 전체 너비 전력 추이).md",
+      "title": "상단 지표 카드 묶음과 전체 너비 전력 추이",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/improvements/2026-11-20(새로고침 후 3D 도면 즉시 표시).md",
+      "title": "새로고침 후 3D 도면 즉시 표시",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/improvements/2026-11-20(역할 조치 3D 플로팅 요약과 호실 표시).md",
+      "title": "역할 조치 3D 플로팅 요약과 호실 표시",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/improvements/2026-11-20(웹 배포 트윈 주소 누락 수정).md",
+      "title": "웹 배포 트윈 주소 누락 수정",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/improvements/2026-11-20(층 평면도 지표 카드 플로팅과 3D 영역 확대).md",
+      "title": "층 평면도 지표 카드 플로팅과 3D 영역 확대",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/improvements/2026-11-20(트윈 로딩 화면 고정과 전송 크기 축소).md",
+      "title": "트윈 로딩 화면 고정과 전송 크기 축소",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/improvements/2026-11-20(트윈 평면도 실내기 유형별 기호).md",
+      "title": "트윈 평면도 실내기 유형별 기호",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/improvements/2026-11-20(트윈 화면 앱 디자인 통일).md",
+      "title": "트윈 화면 앱 디자인 통일",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/improvements/2026-11-20(판매사 건물 관리와 고객사 관제 전용 화면).md",
+      "title": "판매사 건물 관리와 고객사 관제 전용 화면",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/improvements/2026-11-20(판매사·고객사 회원 구조와 데이터 출처 전환).md",
+      "title": "판매사·고객사 회원 구조와 데이터 출처 전환",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/improvements/README.md",
+      "title": "개선 기록",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
       "path": "docs/human/explanation/research/README.md",
       "title": "외부 조사 기록",
       "audience": "human",
@@ -267,8 +375,26 @@
       "type": "explanation"
     },
     {
+      "path": "docs/human/explanation/troubleshooting/2026-11-20(도면 변환 컨테이너 ifcopenshell GLIBC 불일치).md",
+      "title": "도면 변환 컨테이너 ifcopenshell GLIBC 불일치",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
       "path": "docs/human/explanation/troubleshooting/2026-11-20(새로고침 후 3D 도면 미표시).md",
       "title": "새로고침 후 3D 도면 미표시",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/troubleshooting/2026-11-20(전력 분석 인증 누락과 목업 대체).md",
+      "title": "전력 분석 인증 누락과 목업 대체",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/troubleshooting/2026-11-20(트윈 로딩 중 이전 화면 노출과 지연).md",
+      "title": "트윈 로딩 중 이전 화면 노출과 지연",
       "audience": "human",
       "type": "explanation"
     },
@@ -293,6 +419,12 @@
     {
       "path": "docs/human/reference/README.md",
       "title": "규칙·값 참조",
+      "audience": "human",
+      "type": "reference"
+    },
+    {
+      "path": "docs/human/reference/auto-operations.md",
+      "title": "자동 운영 화면 규약",
       "audience": "human",
       "type": "reference"
     },

@@ -8,6 +8,7 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import * as P from '../pipeline/pipeline-core.js';
 import { expandFloorGroups, floorResultFor } from '../pipeline/plan-upload.js';
+import { applyAutomaticExterior, applyFacadeTaper, floorForRoomDetection } from '../pipeline/auto-exterior.js';
 import { decode, encodePng } from './image-io.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -22,7 +23,7 @@ const imgs = new Map(), img = f => { if (!imgs.has(f)) imgs.set(f, decode(path.r
 
 const W = R.building.size.w, D = R.building.size.d, results = {}, rects = {};
 for (const f of R.floors) {
-  const rect = f.mode !== 'manual' && f.image && f.corners ? P.rectify(img(f.image), f.corners, W, D) : null;
+  const rect = f.mode !== 'manual' && f.image && f.corners ? P.rectify(img(f.image), f.corners, W, D, f.darkPlan) : null;
   rects[f.id] = rect;
   results[f.id] = P.floorRooms(f, P.resolveFloor(f, rect, W, D), W, D);
 }
@@ -38,10 +39,18 @@ for (const p of R.interior || []) for (const k of ['floorBox', 'wallBox']) if (p
 if (R.acModel?.file) { const f = path.resolve(base, R.acModel.file); if (fs.existsSync(f)) R.acModel.result = JSON.parse(fs.readFileSync(f, 'utf8')); else console.log('  확인: 모델 결과 파일 없음', R.acModel.file); }
 
 const { recipe, sources } = expandFloorGroups(R), expandedResults = {};
-for (const floor of recipe.floors) {
+if (R.autoExterior) applyAutomaticExterior(recipe.floors, R.autoRoof);
+applyFacadeTaper(recipe.floors, R.facadeTaper);
+for (const [index, floor] of recipe.floors.entries()) {
   const src = sources.get(floor.id).id;
-  expandedResults[floor.id] = floorResultFor(results[src], src, floor.id);
   rects[floor.id] = rects[src];
+  const bounded = floorForRoomDetection(floor);
+  if (bounded === floor) {
+    expandedResults[floor.id] = floorResultFor(results[src], src, floor.id);
+  } else {
+    recipe.floors[index] = bounded;
+    expandedResults[floor.id] = P.floorRooms(bounded, P.resolveFloor(bounded, rects[floor.id], W, D), W, D);
+  }
 }
 const out = P.assemble(recipe, expandedResults);
 fs.mkdirSync(path.dirname(outPath), { recursive:true });

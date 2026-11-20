@@ -1,0 +1,170 @@
+# 도면 변환 Lambda(ingest)
+
+> **요약** (기준일 2026-11-20)
+>
+> - 운영자가 올린 IFC, DXF·DWG, PDF, PNG·JPG를 `twin.building/v1` 초안으로 변환하는 컨테이너 Lambda입니다. 진입점은 `app.handler`이고, `op`는 `parse`와 `merge` 2종입니다.
+> - 실내기는 IFC 객체와 CAD 블록에서 우선 읽습니다. 실내기가 없는 층은 도면 이미지를 저장하고 `detect` 목록으로 인식 대상을 반환합니다.
+> - 변환 규약의 원본은 [도면 변환 규약](../../docs/human/reference/plan-ingest.md)입니다. 이 문서는 handler 입출력과 빌드·테스트 절차를 다룹니다.
+>
+> | 항목 | 값 | 비교 기준 |
+> |---|---|---|
+> | 테스트 | 17개(통과 15, DWG 환경 검사 2개 건너뜀) | 실제 Lambda x86_64 이미지, `dwg2dxf` 포함·`dxf2dwg` 미포함 |
+> | 공개 IFC 2개 파일(2.4MB, 17.9MB) | 0.3초(개발 PC), 호실 21개 | 의원 건물 추출 실험 약 10초(호실 269개) |
+> | 도면 이미지 1장 | 최대 6,400만 화소 | 인식 축척 1m당 80px |
+>
+> **다음 작업**: 실제 DWG·DXF 도면 검증(5절)
+
+## 1. handler 계약: parse와 merge 2종
+
+**1-1. 모든 요청은 `bucket`(도면 버킷 이름)을 포함하며, 결과 파일은 같은 버킷의 `jobs/<jobId>/`에 저장합니다.**
+
+**표 1.1 parse 요청과 응답**
+
+| 구분 | 필드 | 형식 |
+|---|---|---|
+| 요청 | `op`, `jobId`, `building`, `bucket` | `"parse"`, 문자열 |
+| 요청 | `kind` | `ifc`, `cad`, `pdf`, `image` |
+| 요청 | `keys` | 업로드 S3 키 목록 |
+| 요청 | `options` | `{scale?: 정수, pxPerM?: 숫자}`, 선택 |
+| 응답 | `draftKey` | `jobs/<jobId>/draft.json` |
+| 응답 | `detect` | `[{floor, imageKey, pxPerM, toPlan}]`, 인식이 필요한 층 |
+| 응답 | `warnings` | 문자열 목록(`meta.ingest.warnings`와 같음) |
+
+- `detect`는 인식 대상이 없어도 항상 목록(빈 목록 포함)입니다.
+- 도면 이미지가 있는 층에만 `floors[].background`(`{key, px, toPlan}`)가 있습니다. 이미지가 없는 층에는 `background` 키가 없습니다.
+
+- `detect` 대상은 IFC에서 실내기가 없고 설비도면 이미지가 있는 층, CAD에서 맞는 블록이 없는 층, PDF의 모든 쪽입니다.
+- 렌더링한 이미지는 `jobs/<jobId>/pages/<번호>.png`입니다. IFC와 함께 올린 PNG·JPG는 업로드 키를 그대로 `imageKey`로 씁니다.
+- `options.scale`은 PDF 축척 분모(예: 200)이며 도면 문자보다 우선합니다. `options.pxPerM`은 IFC와 함께 올린 이미지의 1m당 화소입니다.
+- `toPlan`은 CAD 렌더링 이미지만 값이 있고, IFC·PDF 이미지는 `null`입니다.
+
+**표 1.2 merge 요청과 응답**
+
+| 구분 | 필드 | 형식 |
+|---|---|---|
+| 요청 | `op`, `jobId`, `bucket`, `draftKey` | `"merge"`, 문자열 |
+| 요청 | `detections` | `{"<층>": [{cls, conf, box: [u0, v0, u1, v1]}]}` |
+| 응답 | `draftKey` | 요청 값 |
+| 응답 | `units` | `idus` 수와 `floors[].detections` 수의 합 |
+| 응답 | `review` | `review: true`인 `idus` 수와 `floors[].detections` 수의 합 |
+
+- `background.toPlan`이 있는 층은 상자 중심을 평면 좌표로 바꿔 `idus`(`source: "yolo"`)에 추가합니다. 없는 층은 `floors[].detections`에 저장합니다.
+- 같은 층을 다시 병합하면 해당 층의 이전 `yolo` 실내기와 `detections`를 지운 뒤 추가합니다.
+- 초안에 없는 층의 결과는 제외하고 `meta.ingest.warnings`에 기록합니다.
+
+**1-2. 초안의 실내기에는 규약 3절 필드 외에 `floor`(층 ID)를 추가합니다.**
+
+호실이 없는 층(PDF)의 실내기는 `room`이 `null`이므로 층을 별도 필드로 기록합니다.
+
+## 2. 형식별 처리: 호실과 실내기 출처
+
+**2-1. IFC는 여러 파일을 층 높이(0.1m 단위)로 묶어 1개 건물로 만듭니다.**
+
+| 항목 | 처리 |
+|---|---|
+| 층 ID | 모든 층 이름에 층 표기(`1F`, `1층`, `B1F`)가 있고 겹치지 않으면 이름, 아니면 높이 순서(-0.5m 이상 첫 층이 `1F`) |
+| 호실 | `IfcSpace` 형상 최저면 다각형. 0.5㎡ 미만과 기존 호실과 80% 이상 겹치는 공간 제외 |
+| 실내기 후보 | `IfcEnergyConversionDevice`, `IfcFlowTerminal`, `IfcFlowMovingDevice`, `IfcBuildingElementProxy` |
+| 실내기 판정 | 이름·ObjectType·유형 이름이 별칭과 맞으면 신뢰도 1. `IfcUnitaryEquipment`는 별칭이 없으면 치수 판정(신뢰도 0.6) |
+| 모델명 | `Pset_ManufacturerTypeInformation`의 `ModelLabel` 또는 `ModelReference`, 없으면 LG 예시 모델 |
+| 제외 층 | 호실과 실내기가 모두 없는 층(기초 등), 경고로 기록 |
+
+주: 덕트(`IfcFlowSegment`)와 벽 같은 객체는 검사하지 않습니다. 별칭 `duct`, `stand`가 덕트 구간과 `Standard` 이름 객체를 실내기로 판정하기 때문입니다.
+
+**2-2. DXF는 벽 선을 0.5m 팽창해 폭 1.0m 이하 문 개구부를 막은 뒤 벽 사이 빈 영역을 호실로 만듭니다.**
+
+| 항목 | 처리 |
+|---|---|
+| 단위 | `$INSUNITS`, 없으면 mm |
+| 벽 선 | 레이어 이름에 `wall`, `벽`, `구조`가 있는 객체. 없으면 치수·문자·해치·가구·설비 외 레이어의 선 |
+| 호실 | 빈 영역을 0.5m 다시 넓혀 벽 면까지 복원. 2㎡ 미만, 건물 바깥, 건물을 둘러싼 도면 틀 안쪽 영역 제외 |
+| 실 이름 | 영역 안 `TEXT`·`MTEXT` 앞 2개(면적 문자 제외). `101`, `6107-1` 형식은 `number` |
+| 실내기 | 블록 이름 또는 속성 값이 별칭과 맞는 `INSERT`. 위치는 블록 외곽 중심, 속성 태그에 `MODEL`이 있으면 모델명 |
+| 층 ID | 파일 이름의 층 표기, 없으면 업로드 순서(`1F`, `2F`), 겹치면 `P<순번>` |
+| 렌더링 | 맞는 블록이 없는 층만 1m당 80px 흑백 PNG. `toPlan`을 함께 저장 |
+
+주: 별칭 검사 전에 `_`를 공백으로 바꿉니다. `AC_WM` 같은 블록 이름에서도 `\bwm\b` 별칭이 맞도록 하기 위함입니다.
+
+**2-3. DWG는 libredwg `dwg2dxf`로 변환한 뒤 DXF와 같게 처리하고, PDF는 쪽마다 PNG로 렌더링합니다.**
+
+- `dwg2dxf`가 없으면 `RuntimeError('DWG 변환 도구 dwg2dxf(libredwg)가 없습니다. ...')`로 실패합니다.
+- PDF 축척 문자는 `1/200`, `1:100`, `S=1/200`, `축척 1/200`, `SCALE 1:50`입니다. 분모는 50~1,200의 표준 축척 12종만 인정하고 `구배 1/100`은 제외합니다.
+- 축척을 알면 1m가 80px가 되도록 렌더링하고, 모르면 200dpi로 렌더링해 `pxPerM: null`과 경고를 기록합니다.
+- 층 ID는 쪽 문자의 층 표기(`1층`, `일층`, `지하1층`, `1F`) 중 가장 많은 값입니다. 없거나 겹치면 `P<쪽 번호>`입니다.
+- PDF 호실은 만들지 않습니다. 트윈 파이프라인 평면도 단계가 쪽 이미지로 호실을 만듭니다.
+
+**2-4. PNG·JPG는 EXIF 회전을 적용한 RGB PNG를 `jobs/<작업>/pages/`에 저장합니다.**
+파일 이름의 층 표기를 사용하고 없거나 겹치면 `P<번호>`를 사용합니다. 최대 6,400만 화소이며
+실제 PNG·JPEG가 아니면 실패합니다. `options.pxPerM`을 인식 입력에 전달하고, 축척이 없으면
+경고를 남깁니다. PDF와 마찬가지로 호실은 보정 단계에서 만듭니다.
+
+## 3. 빌드와 배포 설정: 컨테이너 이미지 1개
+
+**3-1. 이미지는 2단계로 빌드합니다. 1단계에서 libredwg 0.13.3을 정적 빌드하고, 2단계에서 `dwg2dxf`와 파이썬 의존성을 설치합니다.**
+
+이미지는 x86_64로 빌드합니다. ifcopenshell 0.9.0.post1 휠은 태그가 `manylinux_2_31`이지만, aarch64 바이너리는 실제로 GLIBC 2.38을 요구합니다. 그래서 Lambda python:3.12 이미지(GLIBC 2.34)에서 import가 실패했습니다(2026-11-20 배포 후 확인). x86_64 바이너리는 GLIBC 2.34를 요구해 실행됩니다. libredwg는 휠이 아닌 C 소스 빌드입니다.
+
+Dockerfile은 의존성 설치 후 네이티브 모듈을 import해 호환성 오류를 빌드 단계에서 검출합니다.
+IFC 파서는 소유 SWIG 형상 객체를 유지한 상태로 정점·면 버퍼를 복사해 형상 누락을 방지합니다.
+
+```bash
+cd ingest
+docker build --platform linux/amd64 -t maestro-ingest .
+```
+
+| 항목 | 값 | 근거 |
+|---|---|---|
+| 기본 이미지 | `public.ecr.aws/lambda/python:3.12` | ifcopenshell 휠 `manylinux_2_31` 요구, 이미지 glibc 2.34 |
+| 아키텍처 | x86_64(`template.yaml` IngestFunction만 Globals arm64와 다름) | ifcopenshell 0.9.0 바이너리 요구 GLIBC: x86_64 2.34, aarch64 2.38(2026-11-20 확인) |
+| 메모리 권장 | 3,008MB | 6,400만 화소 RGB 이미지 약 192MB와 PNG 인코딩, 미측정 |
+| 임시 저장소 권장 | 2,048MB | 업로드 파일당 한도 200MB, 미측정 |
+| 제한 시간 권장 | 900초 | 대형 IFC 형상 처리, 미측정 |
+
+주: libredwg는 GPL-3.0입니다. 별도 실행 파일로 호출하며 파이썬 코드에 링크하지 않습니다. PDF 렌더링은 pypdfium2(Apache-2.0·BSD-3-Clause)를 사용하고 PyMuPDF(AGPL)는 사용하지 않습니다.
+
+**3-2. 실내기 유형표 `hvac_types.json`은 `_maestro/ml/hvac_types.json`의 복사본입니다.**
+
+원본을 고치면 이 파일에 다시 복사하십시오.
+
+## 4. 테스트: 도면 파일을 테스트 안에서 생성
+
+**4-1. 테스트는 IFC·DXF·PDF 파일을 코드로 만들고, S3는 메모리 대역(`tests/fixtures.py` `FakeS3`)으로 바꿉니다. 네트워크를 사용하지 않습니다.**
+
+```bash
+cd ingest
+python3.12 -m venv .venv && .venv/bin/pip install -r requirements.txt boto3 numpy
+.venv/bin/python -m unittest discover tests
+```
+
+| 테스트 | 확인 내용 |
+|---|---|
+| `IfcTest` | 층 1개·호실 2개, 별칭 일치 카세트, 치수 판정 스탠드형·벽걸이형, 디퓨저 제외, y축 반전, 설비도면 층 배정 |
+| `CadTest` | 문 개구부가 있는 내벽 분할, 실 이름·번호, 블록 이름·속성 일치, 벽 레이어 없는 도면과 도면 틀 제외, 렌더링과 `toPlan`, 병합 좌표·호실·재병합 |
+| `PdfTest` | 축척 문자와 층 표기, A4 1/200 렌더링 크기(4,753×3,359px), 위치 미맞춤 인식 결과 저장 |
+| `ImageTest` | PNG·JPG 입력·층 배정·축척 전달, EXIF 회전 반영, 잘못된 이미지·화소 상한 거부 |
+| `RuleTest` | 축척 문자, 층 표기, 별칭 판정, 화소 상한 |
+
+주: DWG 변환 테스트는 `dwg2dxf`와 `dxf2dwg`가 있는 환경(컨테이너 이미지)에서만 실행합니다.
+
+## 5. 제한 사항과 다음 작업
+
+**5-1. 자동 판정이 틀릴 수 있는 경우는 경고 또는 `review: true`로 남기고, 2D 화면에서 운영자가 교정합니다.**
+
+| 항목 | 제한 |
+|---|---|
+| DXF 호실 | 폭 1.0m 초과 개구부(양개문, 개방 복도)는 닫히지 않아 인접 호실과 합쳐짐. 폭 1.0m 미만 공간은 제외 |
+| DXF 벽 | 블록 안 벽, 외부 참조(XREF), 동적 블록 원래 이름(`*U` 이름) 미지원 |
+| DXF 실 이름 | 블록 속성으로 쓴 실 이름표 미지원 |
+| 여러 CAD 층 | 파일마다 원점이 같다고 가정. 원점이 다르면 층 위치가 어긋남 |
+| IFC 치수 판정 | 축 정렬 외곽 상자 기준. 회전한 벽걸이형은 깊이를 크게 계산함 |
+| IFC 중복 공간 | 먼저 읽은 파일의 공간 이름을 유지(업로드 순서 의존) |
+| PDF 축척 | PDF 용지를 원본 도면 용지로 가정. A1 도면을 A3로 저장한 PDF는 축척이 2배 틀림 |
+| PDF 문자 | 문자 층이 없는 스캔 PDF는 축척과 층 표기를 읽지 못함 |
+| 건물 크기 | PDF 초안은 호실이 없어 `size`가 0×0 |
+| 별칭 | `AC_WALL`처럼 `wall` 단독 표기는 벽걸이형 별칭(`wall mount`, `벽걸이`, `high wall`, `WM`)과 맞지 않음 |
+
+| 작업 | 기한 | 담당 |
+|---|---|---|
+| Lambda x86_64 이미지 빌드·import·파서 테스트 | 완료(2026-11-20) | 주 작업자 |
+| 실제 DXF·DWG·PDF 도면으로 호실·실내기 판정 검증 | 미정 | 미정 |
+| `meta.ingest.model`(인식 모델 버전) 기록 방식 결정 | 미정 | 미정 |

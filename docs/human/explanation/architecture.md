@@ -89,14 +89,17 @@ LLM 호출과 도구 실행은 query Lambda가 담당합니다. 모든 HTTP API�
 
 ## 4. 도면 파싱과 3D 생성: IFC 우선, PDF는 교정 화면
 
-**4-1. IFC는 IfcBuildingStorey와 IfcSpace를 읽어 층·호실 바닥 다각형을 만들고, PDF는 인식 결과를 교정 화면에서 확정합니다.**
+**4-1. IFC, CAD(DXF·DWG), PDF, 이미지 4종을 `twin.building/v1` 초안으로 만들고, 판매사 관리자가 2D 화면에서 실내기 매핑을 확정합니다.**
+
+형식, API, 상태 머신은 [도면 변환 규약](../reference/plan-ingest.md)에 있습니다. 2026-11-20 main에 반영해 배포했습니다.
 
 | 입력 | 방법 | 확인 상태 |
 |---|---|---|
 | IFC | 공간 형상의 최저 높이 삼각형을 합쳐 바닥 다각형 생성 | 의원 건물에서 호실 269개, 약 10초 |
-| DXF | 벽·호실 레이어와 닫힌 폴리라인 | 미실험 |
-| PDF | 벽·호실 인식 모델(CubiCasa5K 사전학습) 후 교정 | 미실험 |
-| 도면 실내기 기호 | YOLO 기호 검출(합성 데이터와 실제 도면 라벨 학습) 후 유형별 LG 모델 표(`ml/hvac_types.json`) 조회 | v1 실제 도면 mAP50 0.006, v2 재학습 준비(12-2절) |
+| DXF·DWG | 벽 선을 0.5m 팽창해 문 개구부를 막고 빈 영역을 호실로 생성, 블록 이름 별칭으로 실내기 판정. DWG는 libredwg로 DXF 변환 | 합성 도면 테스트만 통과, 실제 도면 미확인 |
+| PDF | 페이지 렌더링(`1/200` 문자가 있으면 1m당 80px) 후 트윈 파이프라인 평면도 단계로 호실 생성 | 구현, 실제 도면 통합 미확인 |
+| 이미지 | 트윈 파이프라인(원근 보정, 벽 검출, 공간 분할) | 기존 구현 |
+| 도면 실내기 기호 | IFC 실내기 객체·CAD 블록 우선, 없으면 YOLO 기호 검출 후 유형별 LG 모델 표(`ml/hvac_types.json`) 조회, 2D 화면에서 교정 | 실제 도면 mAP50 v1 0.006, v2 0.337, v3 0.689, v4 0.776(12-2절) |
 | 층·호실 표 | 호실 번호, 용도(회의실 등)를 다각형과 이름으로 연결 | 미실험 |
 
 3D는 바닥 다각형을 층고만큼 돌출해 glTF로 만듭니다. 층고 정보가 없으면 3.6m를 기본값으로 씁니다.
@@ -322,21 +325,21 @@ docs/              문서(현재 구조 유지)
 | AI 서비스 | Bedrock Knowledge Base, S3, S3 Vectors | 규정·쾌적 기준 문서 RAG, 답변 근거 목록 | 구현(FR-18). query Lambda가 Retrieve API로 조회(7절) |
 | AI 서비스 | Jev(TypeSafe AI) 판단 API(외부) | 빈 방·이상 판단 | 규칙 기반과 비교 실험 중(`ml/hvac_control/`) |
 | AI 서비스 | SageMaker Endpoint | DRL 최적 제어 추천 | 계획. 현재 추천은 규칙 3종(8절) |
-| 3D 모델 생성 | Step Functions | 도면 변환 워크플로 | 계획 |
-| 3D 모델 생성 | SageMaker Endpoint | 도면 인식 | 계획. 학습 모델은 12-2 |
-| 3D 모델 생성 | Lambda(컨테이너) | IFC·glb 생성 | 계획. IFC 추출은 실험 스크립트만 존재(4절) |
-| 모델 학습 | S3, Processing, Training, Model Registry | 학습 데이터, 전처리, 학습, 모델 등록 후 Endpoint 배포 | 도면 인식 구현 중(12-2). DRL, EnergyPlus 보정은 계획 |
+| 3D 모델 생성 | Step Functions | 도면 변환 워크플로 | 구현·배포(파싱, 인식, 병합) |
+| 3D 모델 생성 | SageMaker Endpoint | 도면 인식 | Serverless Endpoint 배포(v4, 호출 시에만 과금) |
+| 3D 모델 생성 | Lambda(컨테이너) | IFC·glb 생성 | 도면 파서(IFC, DXF, DWG, PDF → `twin.building/v1`) 배포(x86_64). 3D는 팀 트윈이 `twin.building/v1`을 직접 렌더링, glb 파일 생성은 미구현 |
+| 모델 학습 | S3, Processing, Training, Model Registry | 학습 데이터, 전처리, 학습, 모델 등록 후 Endpoint 배포 | 도면 인식 v1~v4 등록(12-2). DRL, EnergyPlus 보정은 계획 |
 
 **12-2. 도면 인식 학습은 실내기 기호 검출부터 구현했으며, 코드는 `ml/`입니다.**
 
-CubiCasa5K 평면도에 실내기 기호 6종(단순 선 기호와 국내 CAD 기호)을 합성한 데이터와 나라장터 실제 설계도면 라벨로 YOLO를 미세조정합니다. 합성 기호만 학습한 v1은 실제 도면 mAP50 0.006이었습니다. 학습은 SageMaker Processing(합성)과 Training(학습)으로 실행하고, 학습 결과는 Model Registry에 승인 대기 상태로 등록합니다. 도면 인식 Endpoint는 3D 변환 워크플로를 만들 때 배포합니다. 선택 근거와 결과는 [도면 실내기 기호 검출 모델](decisions/2026-11-20%28%EB%8F%84%EB%A9%B4%20%EC%8B%A4%EB%82%B4%EA%B8%B0%20%EA%B8%B0%ED%98%B8%20%EA%B2%80%EC%B6%9C%20%EB%AA%A8%EB%8D%B8%29.md) 기록에 있습니다.
+CubiCasa5K 평면도에 실내기 기호 6종(단순 선 기호와 국내 CAD 기호)을 합성한 데이터와 나라장터 실제 설계도면 라벨로 YOLO를 미세조정합니다. 합성 기호만 학습한 v1은 실제 도면 mAP50 0.006이었습니다. 국내 CAD 기호를 합성한 v2는 실제 도면 mAP50 0.337, 2방향 비율과 스탠드형 크기 범위를 보정한 v3는 0.689, 스탠드형 기호를 실제 모양으로 바꾼 v4는 0.776입니다(스탠드형 0.543, 2방향 0.847). 학습은 SageMaker Processing(합성)과 Training(학습)으로 실행하고, 학습 결과는 Model Registry에 승인 대기 상태로 등록합니다. 추론은 ONNX를 Serverless Endpoint(`hvac-symbol-detector-sls`)로 배포했습니다. 선택 근거와 결과는 [도면 실내기 기호 검출 모델](decisions/2026-11-20%28%EB%8F%84%EB%A9%B4%20%EC%8B%A4%EB%82%B4%EA%B8%B0%20%EA%B8%B0%ED%98%B8%20%EA%B2%80%EC%B6%9C%20%EB%AA%A8%EB%8D%B8%29.md) 기록에 있습니다.
 
 ## 다음 작업
 
 | 작업 | 기한 | 담당 |
 |---|---|---|
 | 완성안 구조도 이미지를 `img/`에 추가하고 12절에 연결 | 미정 | 사용자 |
-| 도면 인식 Endpoint 배포와 Step Functions 3D 변환 워크플로 구현 | 미정 | 미정 |
+| 판매사 관리자 화면에서 도면 변환 실제 업로드 확인 | 미정 | 사용자 |
 | LLM 도구 정의 초안과 질의 테스트 문장 30개 작성 | 미정 | 미정 |
 | 가상 데이터 생성 규칙의 계수(정격 용량, 부하율) 확정 | 미정 | 미정 |
 | 추천 LLM 도구(`recommend`)를 `GET /recommendations` 규칙과 연결 | 미정 | 미정 |

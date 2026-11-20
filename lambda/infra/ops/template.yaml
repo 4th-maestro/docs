@@ -1,0 +1,255 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Maestro ③ 자동 운영(auto-operator 5분 판단, 건물별 자동 운영 스위치, 제안 수락·거절 API) - maestro·maestro-twin 스택과 분리
+
+# 배포: infra/ops/README.md (스택 maestro-ops, main 기준)
+# - 판단: 빈 방 운전·이상 후보 → Jev → 스위치 ON이면 끄기 스케줄 자동 저장, OFF면 제안(pending)
+# - API: maestro 스택의 기존 HTTP API(ApiId)에 경로만 추가, 같은 Cognito JWT 권한 부여자(AuthorizerId) 사용
+# - 권한 검사·스케줄 저장은 src/(tenant.py, common.py)를 Layer로 import(팀 코드 수정 없음)
+
+Parameters:
+  Prefix:
+    Type: String
+    Default: maestro
+    Description: 테이블 이름 앞머리
+  ApiId:
+    Type: String
+    Description: maestro 스택 HTTP API id(경로 추가 대상)
+  AuthorizerId:
+    Type: String
+    Description: 위 API의 Cognito JWT 권한 부여자 id
+  SchedulesTableName:
+    Type: String
+    Description: maestro 스택 SchedulesTable 실제 이름(자동 조치·수락 시 끄기 스케줄 저장)
+  MembersTableName:
+    Type: String
+    Description: maestro 스택 MembersTable(고객사 역할)
+  OwnersTableName:
+    Type: String
+    Description: maestro 스택 BuildingOwnersTable(건물 소속·수정 정보)
+  CompaniesTableName:
+    Type: String
+    Description: maestro 스택 CompaniesTable(중지 기업 검사)
+  OperatorEnabled:
+    Type: String
+    Default: 'false'
+    AllowedValues: ['true', 'false']
+    Description: 5분 판단 스케줄 실행 여부. Jev 호출 비용이 있어 기본 꺼짐
+  AutoApplyConfidence:
+    Type: Number
+    Default: 0.8
+    MinValue: 0.5
+    MaxValue: 1
+    Description: 자동 조치·재실 판단에 쓰는 Jev 확신도 하한(Jev 확신도는 1위 확률보다 낮게 나옴)
+  AutoApplyEmptyProb:
+    Type: Number
+    Default: 0.9
+    MinValue: 0.5
+    MaxValue: 1
+    Description: 스위치 ON일 때 자동 조치할 Jev empty 확률 하한(확신도 기준과 함께 충족해야 함)
+  SuggestionTtlMinutes:
+    Type: Number
+    Default: 30
+    Description: 제안 응답 기한(분), 지나면 만료
+  CooldownMinutes:
+    Type: Number
+    Default: 120
+    Description: 거절·되돌림·재실 판단·알림 후 같은 호실을 다시 판단하지 않는 시간(분)
+  MaxJevPerRun:
+    Type: Number
+    Default: 10
+    Description: 실행당 Jev 호출 상한(비용 보호)
+  JevSecretName:
+    Type: String
+    Default: maestro/jev-api-key
+    Description: Jev(TypeSafe) API 키 시크릿 이름. 값은 키 소유자가 직접 입력
+  JevModel:
+    Type: String
+    Default: jev-latest
+
+Conditions:
+  OperatorOn: !Equals [!Ref OperatorEnabled, 'true']
+
+Globals:
+  Function:
+    Runtime: python3.12
+    Architectures: [arm64]
+    CodeUri: functions/
+    MemorySize: 1024
+    Layers: [!Ref OpsSrcLayer]
+    Environment:
+      Variables:
+        BUILDINGS_TABLE: !ImportValue maestro-twin-BuildingsTable
+        ROOMS_TABLE: !ImportValue maestro-twin-RoomsTable
+        SCHEDULES_TABLE: !Ref SchedulesTableName
+        MEMBERS_TABLE: !Ref MembersTableName
+        OWNERS_TABLE: !Ref OwnersTableName
+        COMPANIES_TABLE: !Ref CompaniesTableName
+        OPS_SETTINGS_TABLE: !Ref OpsSettingsTable
+        DECISIONS_TABLE: !Ref DecisionsTable
+
+Resources:
+  # 팀 공용 모듈(src/: sim, buildings, common, tenant)을 import만 하기 위한 Layer
+  OpsSrcLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: !Sub ${AWS::StackName}-src
+      Description: Lambda/src 모듈(auto-operator·자동 운영 API가 import)
+      ContentUri: ../../src/
+      CompatibleRuntimes: [python3.12]
+      CompatibleArchitectures: [arm64]
+    Metadata:
+      BuildMethod: python3.12
+      BuildArchitecture: arm64
+
+  # 건물별 자동 운영 스위치: {buildingId, autoApply, updatedAt, updatedBy}. 항목이 없으면 OFF
+  OpsSettingsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub ${Prefix}-OpsSettings
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions: [{AttributeName: buildingId, AttributeType: S}]
+      KeySchema: [{AttributeName: buildingId, KeyType: HASH}]
+
+  # 제안·자동 조치·알림 기록: decisionId = <YYYYMMDDTHHMM>-<hex8>(시각순), ttl 30일
+  DecisionsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub ${Prefix}-Decisions
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - {AttributeName: buildingId, AttributeType: S}
+        - {AttributeName: decisionId, AttributeType: S}
+      KeySchema:
+        - {AttributeName: buildingId, KeyType: HASH}
+        - {AttributeName: decisionId, KeyType: RANGE}
+      TimeToLiveSpecification: {AttributeName: ttl, Enabled: true}
+
+  # Jev API 키 그릇만 생성(값은 키 소유자가 직접 입력). 스택을 지워도 키는 보존
+  JevApiKey:
+    Type: AWS::SecretsManager::Secret
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      Name: !Ref JevSecretName
+      Description: Jev(TypeSafe) API key; enter the value directly using Secrets Manager.
+
+  # 5분 판단
+  OperatorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: auto_operator.handler
+      # Jev 호출 최대 10건 × 10초 제한 + 전 호실 계산
+      Timeout: 150
+      EventInvokeConfig: {MaximumRetryAttempts: 0}
+      Environment:
+        Variables:
+          JEV_SECRET_ID: !Ref JevApiKey
+          JEV_MODEL: !Ref JevModel
+          AUTO_APPLY_CONFIDENCE: !Ref AutoApplyConfidence
+          AUTO_APPLY_EMPTY_PROB: !Ref AutoApplyEmptyProb
+          SUGGESTION_TTL_MIN: !Ref SuggestionTtlMinutes
+          COOLDOWN_MIN: !Ref CooldownMinutes
+          MAX_JEV_PER_RUN: !Ref MaxJevPerRun
+      Policies:
+        - DynamoDBReadPolicy: {TableName: !ImportValue maestro-twin-BuildingsTable}
+        - DynamoDBReadPolicy: {TableName: !ImportValue maestro-twin-RoomsTable}
+        - DynamoDBReadPolicy: {TableName: !Ref OwnersTableName}
+        - DynamoDBCrudPolicy: {TableName: !Ref SchedulesTableName}
+        - DynamoDBReadPolicy: {TableName: !Ref OpsSettingsTable}
+        - DynamoDBCrudPolicy: {TableName: !Ref DecisionsTable}
+        - Statement:
+            - Effect: Allow
+              Action: secretsmanager:GetSecretValue
+              Resource: !Ref JevApiKey
+      Events:
+        Tick:
+          Type: Schedule
+          Properties:
+            Schedule: rate(5 minutes)
+            State: !If [OperatorOn, ENABLED, DISABLED]
+            RetryPolicy: {MaximumRetryAttempts: 0}
+
+  OperatorLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${OperatorFunction}
+      RetentionInDays: 14
+
+  # 스위치·제안 목록·수락/거절/되돌리기 API
+  OpsApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: ops_api.handler
+      Timeout: 15
+      Policies:
+        - DynamoDBReadPolicy: {TableName: !ImportValue maestro-twin-BuildingsTable}
+        - DynamoDBReadPolicy: {TableName: !ImportValue maestro-twin-RoomsTable}
+        - DynamoDBReadPolicy: {TableName: !Ref OwnersTableName}
+        - DynamoDBReadPolicy: {TableName: !Ref MembersTableName}
+        - DynamoDBReadPolicy: {TableName: !Ref CompaniesTableName}
+        - DynamoDBCrudPolicy: {TableName: !Ref SchedulesTableName}
+        - DynamoDBCrudPolicy: {TableName: !Ref OpsSettingsTable}
+        - DynamoDBCrudPolicy: {TableName: !Ref DecisionsTable}
+
+  OpsApiLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${OpsApiFunction}
+      RetentionInDays: 14
+
+  # 기존 HTTP API에 경로 추가(같은 주소·같은 Cognito 권한 부여자). maestro 스택 재배포와 무관하게 유지
+  OpsIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref ApiId
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !GetAtt OpsApiFunction.Arn
+      PayloadFormatVersion: '2.0'
+
+  OpsGetRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref ApiId
+      RouteKey: GET /buildings/{id}/operations
+      AuthorizationType: JWT
+      AuthorizerId: !Ref AuthorizerId
+      Target: !Sub integrations/${OpsIntegration}
+
+  OpsSettingsRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref ApiId
+      RouteKey: PUT /buildings/{id}/operations/settings
+      AuthorizationType: JWT
+      AuthorizerId: !Ref AuthorizerId
+      Target: !Sub integrations/${OpsIntegration}
+
+  OpsActRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref ApiId
+      RouteKey: POST /buildings/{id}/operations/decisions/{decisionId}/{action}
+      AuthorizationType: JWT
+      AuthorizerId: !Ref AuthorizerId
+      Target: !Sub integrations/${OpsIntegration}
+
+  OpsApiPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref OpsApiFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiId}/*/*/buildings/*
+
+Outputs:
+  OperatorFunctionName:
+    Value: !Ref OperatorFunction
+  OpsApiFunctionName:
+    Value: !Ref OpsApiFunction
+  JevSecretName:
+    Value: !Ref JevSecretName
+  DecisionsTableName:
+    Value: !Ref DecisionsTable
+  OpsSettingsTableName:
+    Value: !Ref OpsSettingsTable

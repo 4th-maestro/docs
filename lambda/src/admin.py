@@ -1,7 +1,7 @@
 """판매사 관리 API(Cognito admin 그룹 전용)
 
 - 기업: GET·POST /admin/companies, GET·PATCH·DELETE /admin/companies/{id}, POST /admin/companies/{id}/code(코드 재발급)
-- 구성원: PATCH·DELETE /admin/companies/{id}/members/{sub}(역할 변경, 소속 해제), 관리자(manager) 최소 1명
+- 구성원: PATCH·DELETE /admin/companies/{id}/members/{sub}(역할 변경, 소속 해제). 관리자(manager) 최소 인원 제한 없음(2026-11-20 해제)
 - 변경 이력: GET /admin/companies/{id}/audit?limit=(최신순, 기본 50, 최대 200)
 - 건물 소속: GET /admin/buildings(소속 없는 건물 포함), PUT /admin/buildings/{id}/company {companyId | null}
 - 건물 관리: POST /admin/companies/{id}/buildings(등록), PUT /buildings/{id}/twin(트윈·도면·호실 확정 저장, twin 함수),
@@ -39,7 +39,6 @@ TEXT = {'name': (40, '건물 이름'), 'use': (20, '건물 용도')}
 NO_COMPANY = '없는 기업입니다.'
 NO_MEMBER = '없는 구성원입니다.'
 VENDOR_ONLY = '판매사 관리자만 변경할 수 있습니다.'
-LAST_MANAGER = '관리자는 최소 1명이어야 합니다.'
 AUDIT_LIMIT, AUDIT_MAX = 50, 200
 _idp = None
 
@@ -222,17 +221,12 @@ def regenerate_code(event):
 
 # 구성원 관리
 # - 대상: 같은 기업의 구성원(가입 대기 항목 제외), 다른 기업 구성원은 404
-# - 관리자 최소 1명: 마지막 manager의 operator 변경·해제는 409
+# - 관리자 최소 인원 제한 없음: 마지막 manager도 변경·해제 가능(2026-11-20 사용자 지시로 해제)
 # - 소속 해제: 구성원 항목만 삭제, Cognito 계정은 유지(기업 코드로 다시 가입 가능)
 
 def _target(cid, sub):
     m = tenant.table('MEMBERS_TABLE').get_item(Key={'sub': str(sub or '')}).get('Item')
     return m if m and m.get('companyId') == cid and not m['sub'].startswith(tenant.PENDING) else None
-
-
-def _last_manager(cid, m):
-    # shortcut: 관리자 2명이 동시에 서로를 변경·해제하면 0명 가능, 구성원 관리가 잦아지면 기업 항목 조건부 쓰기로 교체
-    return m.get('role') == 'manager' and sum(x.get('role') == 'manager' for x in tenant.company_members(cid)) <= 1
 
 
 def set_role(event, cid, sub):
@@ -244,8 +238,6 @@ def set_role(event, cid, sub):
     if role not in ROLES:
         return common.resp(400, {'error': 'role은 manager 또는 operator입니다.'})
     if role != m.get('role'):
-        if _last_manager(cid, m):
-            return common.resp(409, {'error': LAST_MANAGER})
         prev, m['role'] = m.get('role'), role
         tenant.table('MEMBERS_TABLE').put_item(Item=m)
         tenant.forget()
@@ -257,8 +249,6 @@ def remove_member(event, cid, sub):
     m = _target(cid, sub)
     if not m:
         return common.resp(404, {'error': NO_MEMBER})
-    if _last_manager(cid, m):
-        return common.resp(409, {'error': LAST_MANAGER})
     tenant.table('MEMBERS_TABLE').delete_item(Key={'sub': m['sub']})
     tenant.forget()
     tenant.audit(cid, actor(event), 'member.remove', m['sub'], {'email': m.get('email', ''), 'role': m.get('role', '')})

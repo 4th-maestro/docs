@@ -352,7 +352,6 @@ class AdminTest(Tenancy):
         self.assertEqual(call(http('GET /me', sub='nobody'))[1], {'email': 'boss@vendor.com', 'role': None, 'company': None})
 
 INVALID = (400, {'error': '기업 코드가 올바르지 않거나 만료되었습니다.'})
-LAST_MANAGER = (409, {'error': '관리자는 최소 1명이어야 합니다.'})
 VENDOR_ONLY = (403, {'error': '판매사 관리자만 변경할 수 있습니다.'})
 ADMIN_ONLY = (403, {'error': '관리자만 사용할 수 있습니다.'})
 
@@ -623,6 +622,41 @@ class VendorBuildingTest(Tenancy):
     def rows(self, name, bid):
         return {k[1] for k in self.t[name].items if k[0] == bid}
 
+    def test_plan_job_confirmation_registers_and_replaces_with_existing_rules(self):
+        import plan_ingest
+        job = {'jobId': 'confirm-1', 'building': 'b-abcd1234', 'kind': 'ifc', 'status': 'review'}
+        def put(item, old=None):
+            if old and job['status'] != old:
+                return False
+            job.clear()
+            job.update(item)
+            return True
+        request = {'operation': 'create', 'companyId': 'co-a',
+                   'registration': {**NEW, **upload('b-abcd1234', 3)}}
+        def confirm(body):
+            return adm('POST /plans/jobs/{jobId}/confirm', path={'jobId': 'confirm-1'}, body=body)
+        with patch.object(plan_ingest, '_job', side_effect=lambda _: dict(job)), patch.object(plan_ingest, '_put', side_effect=put):
+            code, receipt = confirm(request)
+            self.assertEqual((code, receipt['status'], receipt['building']['roomCount']), (200, 'done', 3))
+            self.assertEqual(self.t['O'].items['b-abcd1234']['companyId'], 'co-a')
+            self.assertEqual(self.t['B'].items['b-abcd1234']['virtual'], False)
+            self.assertEqual(len(self.rows('R', 'b-abcd1234')), 3)
+            self.assertEqual(len(self.rows('E', 'b-abcd1234')), 3)
+            self.assertIn('plans/b-abcd1234/building.json', self.s3.objects)
+            self.assertIn('plans/b-abcd1234/current.json', self.s3.objects)
+            files = dict(self.s3.objects)
+            self.assertEqual(confirm(request), (code, receipt))
+            self.assertEqual(self.s3.objects, files)
+            self.assertEqual(len(self.audits('building.create')), 1)
+            # 새 변환 작업으로 기존 건물 보정본을 확정하면 기존 교체 규칙으로 호실·버전 갱신.
+            job.clear()
+            job.update(jobId='confirm-2', building='b-abcd1234', kind='ifc', status='review')
+            code, receipt = confirm({'operation': 'replace', 'registration': upload('b-abcd1234', 2)})
+            self.assertEqual((code, receipt['version'], job['status']), (200, 2, 'done'))
+            self.assertEqual(len(self.rows('R', 'b-abcd1234')), 2)
+            self.assertEqual(len(self.rows('E', 'b-abcd1234')), 2)
+            self.assertEqual(len(self.audits('building.plan')), 1)
+
     def test_create_with_id_visible_to_members(self):
         code, body = self.create(id='b-abcd1234', **upload('b-abcd1234', 3))
         self.assertEqual((code, body), (201, {'building': {'id': 'b-abcd1234', 'name': '새 건물', 'use': '업무', 'floors': ['1F', '2F'], 'roomCount': 3,
@@ -763,8 +797,8 @@ class AdminMemberTest(Tenancy):
     def test_role_remove_and_audit(self):
         role, delete = 'PATCH /admin/companies/{id}/members/{sub}', 'DELETE /admin/companies/{id}/members/{sub}'
         a = lambda sub: {'id': 'co-a', 'sub': sub}  # noqa: E731
-        self.assertEqual(adm(role, path=a('u-a'), body={'role': 'operator'}), LAST_MANAGER)
-        self.assertEqual(adm(delete, path=a('u-a')), LAST_MANAGER)
+        # 관리자 최소 인원 제한 없음: 마지막 manager도 운영자로 변경 가능(2026-11-20 해제)
+        self.assertEqual(adm(role, path=a('u-a'), body={'role': 'operator'})[1]['member']['role'], 'operator')
         self.assertEqual(adm(role, path={'id': 'co-x', 'sub': 'u-a'}, body={'role': 'operator'}), (404, {'error': '없는 기업입니다.'}))
         self.assertEqual(adm(delete, path=a('u-b')), (404, {'error': '없는 구성원입니다.'}))
         self.assertEqual(adm(role, path={'id': 'co-b', 'sub': 'u-b'}, body={'role': 'manager'})[1]['member']['role'], 'manager')
@@ -773,7 +807,7 @@ class AdminMemberTest(Tenancy):
         self.assertEqual(adm(delete, path=a('u-a')), (200, {'deleted': True}))
         self.assertNotIn('u-a', self.t['M'].items)
         code, body = adm('GET /admin/companies/{id}/audit', path={'id': 'co-a'})
-        self.assertEqual(sorted(i['action'] for i in body['items']), ['member.remove', 'member.role'])
+        self.assertEqual(sorted(i['action'] for i in body['items']), ['member.remove', 'member.role', 'member.role'])
         self.assertEqual(body['items'][0]['actor'], {'email': 'boss@vendor.com', 'role': 'admin'})
         self.assertEqual(len(adm('GET /admin/companies/{id}/audit', path={'id': 'co-a'}, query={'limit': '1'})[1]['items']), 1)
         self.assertEqual(adm('GET /admin/companies/{id}/audit', path={'id': 'co-x'})[0], 404)

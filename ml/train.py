@@ -22,6 +22,9 @@ ap.add_argument('--epochs', type=int, default=60)
 ap.add_argument('--imgsz', type=int, default=1024)
 ap.add_argument('--batch', type=int, default=16)
 ap.add_argument('--fraction', type=float, default=1.0)
+# v1(ml.g6.xlarge)은 vCPU 4개가 약 93% 사용되어 데이터 증강이 병목. vCPU 수만큼 로더를 쓰고 이미지를 RAM에 캐시
+ap.add_argument('--workers', type=int, default=min(os.cpu_count() or 4, 16))
+ap.add_argument('--cache', default='ram', help="'ram' 또는 ''. 메모리가 부족하면 ultralytics가 캐시를 끔")
 a = ap.parse_args()
 
 data = os.path.join(a.data, 'data.yaml')
@@ -43,7 +46,7 @@ if a.real:
 model = YOLO(a.model)
 # 도면은 방향 의미가 없어 상하 반전도 사용
 model.train(data=data, epochs=a.epochs, imgsz=a.imgsz, batch=a.batch, fraction=a.fraction, patience=15,
-            flipud=0.5, project=a.out, name='hvac', exist_ok=True)
+            flipud=0.5, workers=a.workers, cache=a.cache or False, project=a.out, name='hvac', exist_ok=True)
 
 
 def score(m):
@@ -59,6 +62,8 @@ if real_test:
     t = os.path.join(os.path.abspath(a.real), 'images', 'test')
     YAML.save(real_yaml, {'train': t, 'val': t, 'names': names})  # ultralytics는 train 키 필수
     result['real'] = score(model.val(data=real_yaml, split='val', imgsz=a.imgsz, project=a.out, name='real', exist_ok=True))
+# Serverless 추론용 ONNX(serve/inference.py). 저장 위치: hvac/weights/best.onnx
+model.export(format='onnx', imgsz=a.imgsz)
 with open(os.path.join(a.out, 'test_metrics.json'), 'w') as f:
     json.dump(result, f, ensure_ascii=False, indent=1)
 print(json.dumps(result, ensure_ascii=False))

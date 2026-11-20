@@ -3,6 +3,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { localTime, STEP, validateWeather } from './experiment-input.mjs';
 import { experimentActions, finite } from './experiment-policy.mjs';
+import { step5R1C } from '../pipeline/rc5.js';
 
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
@@ -13,27 +14,8 @@ const requireSupport = (condition, message) => {
 
 // Air and surface nodes are algebraic. The mass node is integrated exactly
 // for constant weather, gains, ventilation and HVAC power within the interval.
-export function step5R1C(model, massC, forcing, hvacW = 0) {
-  const { air_surface_W_K:hAs, mass_surface_W_K:hMs, mass_outdoor_W_K:hMe,
-    window_outdoor_W_K:hWe, mass_capacity_J_K:capacity } = model;
-  const { outdoorC, airExchangeWK:hVe, airGainW, surfaceGainW, massGainW } = forcing;
-  const airCoupling = hAs + hVe;
-  const airToOut = hAs * (hVe / airCoupling);
-  const surfaceCoupling = hMs + hWe + airToOut;
-  const airHeat = airGainW + hvacW;
-  const surfaceBase = ((hWe + airToOut) * outdoorC + surfaceGainW + hAs / airCoupling * airHeat) / surfaceCoupling;
-  const massLoss = hMe + hMs * ((hWe + airToOut) / surfaceCoupling);
-  const equilibrium = (hMe * outdoorC + hMs * surfaceBase + massGainW) / massLoss;
-  const x = massLoss * (STEP / 1000) / capacity;
-  const endWeight = -Math.expm1(-x);
-  const meanWeight = x < 1e-4 ? x * (0.5 - x / 6) : 1 - endWeight / x;
-  const meanMass = massC + (equilibrium - massC) * meanWeight;
-  const meanSurface = surfaceBase + hMs / surfaceCoupling * meanMass;
-  return {
-    massC:massC + (equilibrium - massC) * endWeight,
-    meanAirC:(hAs * meanSurface + hVe * outdoorC + airHeat) / airCoupling,
-  };
-}
+// 계산식은 pipeline/rc5.js로 옮겨 브라우저 즉시 계산(what-if)과 같이 씀 — 구간 길이 기본값 900초 = STEP
+export { step5R1C };
 
 function roomModel(input, room) {
   const config = input.settings.get(room);

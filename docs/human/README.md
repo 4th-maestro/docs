@@ -42,7 +42,7 @@
 
 ## 3. 문서 목록: 폴더 4개와 기록 3종
 
-**3-1. 문서는 독자의 목적에 따라 폴더 4개로 나누고, 기록은 조사·기술 선택·장애 3종으로 나눕니다.**
+**3-1. 문서는 독자의 목적에 따라 폴더 4개로 나누고, 기록은 조사·기술 선택·장애·개선 4종으로 나눕니다.**
 
 | 목적 | 폴더 |
 |---|---|
@@ -53,6 +53,7 @@
 | 외부 조사 | [외부 조사 기록](explanation/research/README.md) |
 | 기능 도입 전 비교 | [기술 선택 기록](explanation/decisions/README.md) |
 | 장애 조사 | [장애 조사 기록](explanation/troubleshooting/README.md) |
+| 화면·성능·절차 개선 | [개선 기록](explanation/improvements/README.md) |
 | 과거 보고서·초안 | [과거 자료](archive/README.md) |
 
 ## 다음 작업

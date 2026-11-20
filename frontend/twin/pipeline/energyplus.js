@@ -14,6 +14,11 @@
 const r3 = v => Math.round(v * 1000) / 1000;
 const area = p => { let s = 0; for (let i = 0; i < p.length; i++) { const [x0, y0] = p[i], [x1, y1] = p[(i + 1) % p.length]; s += x0 * y1 - x1 * y0; } return s / 2; };   // 부호 있음
 const inPoly = (x, y, p) => { let c = false; for (let i = 0, j = p.length - 1; i < p.length; j = i++) { const [xi, yi] = p[i], [xj, yj] = p[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c; } return c; };
+// 층 윤곽: 다각형 하나 또는 여러 개(떨어진 동). 없으면 W×D 사각형
+export const footLoops = (fp, W, D) => !fp?.length ? [[[0, 0], [W, 0], [W, D], [0, D]]] : Array.isArray(fp[0]?.[0]) ? fp.filter(l => l?.length >= 3) : [fp];
+export const inFootprint = (x, y, fp, W, D) => footLoops(fp, W, D).some(l => inPoly(x, y, l));
+// 위층이 이 점을 덮는지: 지붕 정원·데크(open)는 외기에 열려 있어 덮지 않음
+export const coveredBy = (above, x, y, W, D) => !!above && !above.open && inFootprint(x, y, above.footprint, W, D);
 
 // 용도별 가정값 (사람이 바꿀 수 있게 밖으로 뺌)
 export const EP_USE = {
@@ -49,10 +54,14 @@ const hm = s => +s.split(':')[0] + (+s.split(':')[1] || 0) / 60;
 //   coolSetpoint °C · hours [시작, 끝] · offWhenEmpty(재실 20% 미만 시간엔 끔) · precoolMin(사람 오기 전 미리 켜는 분) · rooms{ 실id:{ coolSetpoint, off } }
 // 기존 운전(기준) = building.operation (운영시간, coolSetpoint 없으면 24°C 가정)
 export const COMFORT = { lower:20, upper:26, source:'정부 권장 여름철 실내 냉방온도 26°C — 상한, 하한 20°C (BOPTEST처럼 재실 시간에만 집계)' };
-export function baselineOf(B){
-  const op = B.operation || {};
-  return { schema:'twin.scenario/v1', name:'기존 운전', coolSetpoint:op.coolSetpoint ?? 24, hours:op.weekday || ['08:00', '21:00'], offWhenEmpty:false, precoolMin:0, rooms:{},
-    note:op.coolSetpoint == null ? '설정온도 기록 없음 → 24°C 가정 (BMS 설정값으로 바꿀 것)' : 'BMS 운영 설정' };
+export const COMFORT_HEAT = { lower:18, upper:24, source:'정부 권장 겨울철 실내 난방온도 20°C — 쾌적 범위 18~24°C (재실 시간에만 집계)' };
+// 냉방·난방 모드: 5~9월 냉방, 그 밖 난방 (웹 데모 pipeline/web-demo.js와 같은 기준)
+//   시나리오의 coolSetpoint는 모드와 관계없이 '설정온도' (난방이면 난방 설정온도로 씀 — 필드 이름은 호환을 위해 그대로)
+export const modeOfMonth = m => (m >= 5 && m <= 9 ? 'cool' : 'heat');
+export function baselineOf(B, mode = 'cool'){
+  const op = B.operation || {}, heat = mode === 'heat', sp = heat ? op.heatSetpoint : op.coolSetpoint, d = heat ? 20 : 24;
+  return { schema:'twin.scenario/v1', name:'기존 운전', mode:heat ? 'heat' : 'cool', coolSetpoint:sp ?? d, hours:op.weekday || ['08:00', '21:00'], offWhenEmpty:false, precoolMin:0, rooms:{},
+    note:sp == null ? `설정온도 기록 없음 → ${d}°C 가정 (BMS 설정값으로 바꿀 것)` : 'BMS 운영 설정' };
 }
 export const occOf = use => hourly((EP_USE[use] || EP_USE.office).occ);
 // busy[h] = 그 시간에 사람이 있나 (표준 일정이면 재실 비율 20% 이상, 오늘 실측이면 1명 이상)
@@ -74,7 +83,8 @@ export function availOf(sc, use, room, busy = occOf(use).map(v => v >= .2 ? 1 : 
 
 export function toIdf(B, { weatherFile = false, site = BUSAN, cooling = 26, heating = 18, scenario = null, live = null, experiment = null } = {}){
   if (live) weatherFile = false;
-  const sc = scenario ? { ...baselineOf(B), ...scenario, rooms:scenario.rooms || {} } : null;
+  const sc = scenario ? { ...baselineOf(B, scenario.mode), ...scenario, rooms:scenario.rooms || {} } : null;
+  const heat = sc?.mode === 'heat', SPN = heat ? 'Heat SP' : 'Cool SP';   // 난방이면 설정온도 = 난방 설정, 냉방은 끔 (Cool SP 40°C)
   const W = B.building.size.w, D = B.building.size.d, FH = B.building.floorHeight || 3.6;
   const win = B.building.window || { sill:.8, head:2.3 }, head = Math.min(win.head, FH - .15), sill = Math.min(win.sill, head - .3);
   const out = [], zones = [];
@@ -92,12 +102,13 @@ export function toIdf(B, { weatherFile = false, site = BUSAN, cooling = 26, heat
   if (live) {       // 오늘 하루: 시간별 외기 온도·습도(예보, 지난 시간은 실측) 그대로
     const [, mo, dd] = live.date.split('-').map(Number), t = live.temp, h = live.hum, mx = Math.max(...t), mn = Math.min(...t);
     out.push(obj('Schedule:Day:Hourly', ['Live DB', 'Any', ...t.map(v => r3(v))]), obj('Schedule:Day:Hourly', ['Live RH', 'Any', ...h.map(v => r3(Math.min(100, Math.max(5, v))))]));
-    out.push(obj('SizingPeriod:DesignDay', [`Live ${live.date}`, mo, dd, 'SummerDesignDay', r3(mx), r3(mx - mn), 'TemperatureProfileSchedule', 'Live DB', 'RelativeHumiditySchedule', '', 'Live RH', '', '', '', '100500', live.wind ?? 2.5, 230, live.rain ? 'Yes' : 'No', 'No', 'No', 'ASHRAEClearSky', '', '', '', '', String(live.clear ?? 1)]));
+    out.push(obj('SizingPeriod:DesignDay', [`Live ${live.date}`, mo, dd, heat ? 'WinterDesignDay' : 'SummerDesignDay', r3(mx), r3(mx - mn), 'TemperatureProfileSchedule', 'Live DB', 'RelativeHumiditySchedule', '', 'Live RH', '', '', '', '100500', live.wind ?? 2.5, 230, live.rain ? 'Yes' : 'No', 'No', 'No', 'ASHRAEClearSky', '', '', '', '', String(live.clear ?? 1)]));
   } else if (!experiment) {
   out.push(obj('SizingPeriod:DesignDay', [`${site.name} Summer Cooling`, S.month, S.day, 'SummerDesignDay', S.db, S.range, 'DefaultMultipliers', '', 'WetBulb', S.wb, '', '', '', '', '100500', S.wind, S.windDir, 'No', 'No', 'No', 'ASHRAEClearSky', '', '', '', '', '1.0']));
   out.push(obj('SizingPeriod:DesignDay', [`${site.name} Winter Heating`, Wn.month, Wn.day, 'WinterDesignDay', Wn.db, Wn.range, 'DefaultMultipliers', '', 'WetBulb', Wn.db, '', '', '', '', '100500', Wn.wind, Wn.windDir, 'No', 'No', 'No', 'ASHRAEClearSky', '', '', '', '', '0.0']));
   }
   if (experiment) out.push(obj('RunPeriod', experiment.runPeriod));
+  else if (weatherFile && heat) out.push(obj('RunPeriod', ['Heating Season 1', '1', '1', '', '3', '31', '', '', 'Yes', 'Yes', 'No', 'Yes', 'Yes', 'No', '']), obj('RunPeriod', ['Heating Season 2', '11', '1', '', '12', '31', '', '', 'Yes', 'Yes', 'No', 'Yes', 'Yes', 'No', '']));
   else if (weatherFile) out.push(obj('RunPeriod', ['Cooling Season', '6', '1', '', '9', '30', '', '', 'Yes', 'Yes', 'No', 'Yes', 'Yes', 'No', '']));
   // 재료·구조 (일반적인 철근콘크리트 + 단열, 복층유리)
   out.push(obj('ScheduleTypeLimits', ['Fraction', '0', '1', 'Continuous', '']), obj('ScheduleTypeLimits', ['Temperature', '-60', '200', 'Continuous', 'Temperature']),
@@ -113,27 +124,30 @@ export function toIdf(B, { weatherFile = false, site = BUSAN, cooling = 26, heat
   // 일정: 운영시간(BMS) → 공조 가동, 온도 설정
   const op = B.operation?.weekday || ['08:00', '21:00'], avail = Array.from({ length:24 }, (_, h) => h >= Math.floor(hm(op[0])) && h < Math.ceil(hm(op[1])) ? 1 : 0);
   out.push(compact('HVAC Avail', 'Fraction', avail), obj('Schedule:Constant', ['Always On', 'Fraction', '1']), obj('Schedule:Constant', ['Always Off', 'Fraction', '0']), obj('Schedule:Constant', ['Activity', 'Any', '120']),
-    obj('Schedule:Constant', ['Cool SP', 'Temperature', String(sc ? sc.coolSetpoint : cooling)]), obj('Schedule:Constant', ['Heat SP', 'Temperature', String(heating)]),
+    obj('Schedule:Constant', ['Cool SP', 'Temperature', String(sc ? (heat ? 40 : sc.coolSetpoint) : cooling)]), obj('Schedule:Constant', ['Heat SP', 'Temperature', String(sc && heat ? sc.coolSetpoint : heating)]),
     obj('Schedule:Constant', ['Dual Control', 'ControlType', '4']), obj('ThermostatSetpoint:DualSetpoint', ['Dual SP', 'Heat SP', 'Cool SP']),
-    // 쾌적 계산(Fanger PMV·PPD) 입력: 여름 옷 0.5clo · 기류 0.15m/s · 일 효율 0
-    obj('Schedule:Constant', ['Work Eff', 'Any', '0']), obj('Schedule:Constant', ['Clothing', 'Any', '0.5']), obj('Schedule:Constant', ['Air Velocity', 'Any', '0.15']));
+    // 쾌적 계산(Fanger PMV·PPD) 입력: 옷 여름 0.5clo / 겨울 1.0clo (pipeline/comfort.js와 같은 가정) · 기류 0.15m/s · 일 효율 0
+    obj('Schedule:Constant', ['Work Eff', 'Any', '0']), obj('Schedule:Constant', ['Clothing', 'Any', heat ? '1.0' : '0.5']), obj('Schedule:Constant', ['Air Velocity', 'Any', '0.15']));
   const schedOnce = new Map(), sched = (prefix, limits, vals) => { const key = prefix + vals.join(','); if (!schedOnce.has(key)) { const n = `${prefix} ${schedOnce.size + 1}`; schedOnce.set(key, n); out.push(compact(n, limits, vals)); } return schedOnce.get(key); };
-  const spOnce = new Map(), setpoint = v => { if (!spOnce.has(v)) { const n = `Dual SP ${v}`; spOnce.set(v, n); out.push(obj('Schedule:Constant', [`Cool SP ${v}`, 'Temperature', String(v)]), obj('ThermostatSetpoint:DualSetpoint', [n, 'Heat SP', `Cool SP ${v}`])); } return spOnce.get(v); };
+  const dual = (n, sp) => obj('ThermostatSetpoint:DualSetpoint', heat ? [n, sp, 'Cool SP'] : [n, 'Heat SP', sp]);
+  const spOnce = new Map(), setpoint = v => { if (!spOnce.has(v)) { const n = `Dual SP ${v}`; spOnce.set(v, n); out.push(obj('Schedule:Constant', [`${SPN} ${v}`, 'Temperature', String(v)]), dual(n, `${SPN} ${v}`)); } return spOnce.get(v); };
   // 구간 설정온도: spWindow{ from, to (시, 15분 단위), sp, base } → 그 구간만 sp, 나머지는 base ('지금부터 N시간' 시뮬레이션)
   const hhmmQ = h => `${String(Math.floor(h)).padStart(2, '0')}:${String(Math.round((h % 1) * 60)).padStart(2, '0')}`;
-  const setpointWin = w => { const k = `W ${w.base}-${w.sp}-${w.from}-${w.to}`; if (!spOnce.has(k)) { const n = `Dual SP ${k}`, f = ['Cool SP ' + k, 'Temperature', 'Through: 12/31', 'For: AllDays'];
+  const setpointWin = w => { const k = `W ${w.base}-${w.sp}-${w.from}-${w.to}`; if (!spOnce.has(k)) { const n = `Dual SP ${k}`, f = [`${SPN} ${k}`, 'Temperature', 'Through: 12/31', 'For: AllDays'];
       if (w.from > 0) f.push(`Until: ${hhmmQ(w.from)}`, String(w.base)); f.push(`Until: ${hhmmQ(Math.min(24, w.to))}`, String(w.sp)); if (w.to < 24) f.push('Until: 24:00', String(w.base));
-      spOnce.set(k, n); out.push(obj('Schedule:Compact', f), obj('ThermostatSetpoint:DualSetpoint', [n, 'Heat SP', 'Cool SP ' + k])); } return spOnce.get(k); };
+      spOnce.set(k, n); out.push(obj('Schedule:Compact', f), dual(n, `${SPN} ${k}`)); } return spOnce.get(k); };
   for (const [u, s] of Object.entries(EP_USE)) out.push(compact(`Occ ${u}`, 'Fraction', hourly(s.occ)), compact(`Light ${u}`, 'Fraction', hourly(s.occ).map(v => Math.max(.1, Math.min(1, v + .2)))));
   // 기기 용량: 실내기 표에서 실별 합
-  const kw = {}, inKw = {}; for (const a of B.idus || []) { kw[a.room] = (kw[a.room] || 0) + (a.coolKw || 0); inKw[a.room] = (inKw[a.room] || 0) + (a.ratedKw || 0); }
+  //   난방 능력: heatKw가 없으면 냉방 능력 × 1.1 (시스템 에어컨 실내기 냉·난방 능력 비 근사)
+  const kw = {}, hkw = {}, inKw = {}; for (const a of B.idus || []) { kw[a.room] = (kw[a.room] || 0) + (a.coolKw || 0); hkw[a.room] = (hkw[a.room] || 0) + (a.heatKw || (a.coolKw || 0) * 1.1); inKw[a.room] = (inKw[a.room] || 0) + (a.ratedKw || 0); }
 
+  // 지하층(id 'B1'·'B2'… 또는 below:true): 지면(z=0) 아래로 내려 쌓고, 외벽은 흙에 닿음(Ground, 창·일사·바람 없음)
+  const below = f => f.below === true || /^B\d+F?$/i.test(f.id), NB = B.floors.filter(below).length;
   B.floors.forEach((f, li) => {
-    const z0 = li * FH, z1 = z0 + FH, above = B.floors[li + 1];
-    const foot = f.footprint?.length >= 3 ? f.footprint : [[0, 0], [W, 0], [W, D], [0, D]];
-    const covered = (x, y) => above && (above.footprint?.length >= 3 ? inPoly(x, y, above.footprint) : true);
+    const z0 = (li - NB) * FH, z1 = z0 + FH, above = B.floors[li + 1], under = below(f);
+    const covered = (x, y) => coveredBy(above, x, y, W, D);
     const ext = (p, q) => { const len = Math.hypot(q[0] - p[0], q[1] - p[1]) || 1, nx = -(q[1] - p[1]) / len * .4, ny = (q[0] - p[0]) / len * .4, mx = (p[0] + q[0]) / 2, my = (p[1] + q[1]) / 2;
-      return !inPoly(mx + nx, my + ny, foot) || !inPoly(mx - nx, my - ny, foot); };
+      return !inFootprint(mx + nx, my + ny, f.footprint, W, D) || !inFootprint(mx - nx, my - ny, f.footprint, W, D); };
     f.rooms.filter(r => r.type === 'room').forEach((r, ri) => {
       const zn = `Z${f.id}_${String(ri + 1).padStart(3, '0')}`;
       if (experiment && !experiment.rooms.has(r.id)) return;
@@ -149,7 +163,7 @@ export function toIdf(B, { weatherFile = false, site = BUSAN, cooling = 26, heat
       const xs = r.polygon.map(p => p[0]), ys = r.polygon.map(p => p[1]), cx = (Math.min(...xs) + Math.max(...xs)) / 2, cy = (Math.min(...ys) + Math.max(...ys)) / 2;
       // 바닥(아래를 향함 = 위에서 볼 때 시계 방향), 천장·지붕(반시계)
       out.push(obj('BuildingSurface:Detailed', [`${zn} Floor`, 'Floor', 'Slab', zn, '', li === 0 ? 'Ground' : 'Adiabatic', '', 'NoSun', 'NoWind', '0', poly.length, ...V([...poly].reverse().map(([x, y]) => [x, y, z0]))]));
-      const roof = !covered(cx, cy);
+      const roof = !under && !covered(cx, cy);      // 지하층 위가 비어 있어도 흙·광장 아래라 지붕으로 보지 않음
       out.push(obj('BuildingSurface:Detailed', [`${zn} Top`, roof ? 'Roof' : 'Ceiling', roof ? 'Roof' : 'Slab', zn, '', roof ? 'Outdoors' : 'Adiabatic', '', roof ? 'SunExposed' : 'NoSun', roof ? 'WindExposed' : 'NoWind', roof ? '0' : '0', poly.length, ...V(poly.map(([x, y]) => [x, y, z1]))]));
       // 외벽 + 창 (안쪽 벽은 단열로 보고 생략)
       const src = area(r.polygon.map(P)) < 0 ? [...r.polygon].reverse() : r.polygon;       // poly와 같은 순서의 원래 좌표
@@ -161,6 +175,7 @@ export function toIdf(B, { weatherFile = false, site = BUSAN, cooling = 26, heat
         const len = Math.hypot(q[0] - p[0], q[1] - p[1]); if (len < .3) return;
         const wn = `${zn} W${i + 1}`;
         if (!ext(a, b)) { intWall(p, q, wn); return; }    // 다른 실과 맞닿은 벽: 단열 경계(열은 안 넘기지만 실 안 복사·축열엔 참여)
+        if (under) { out.push(obj('BuildingSurface:Detailed', [wn, 'Wall', 'ExtWall', zn, '', 'Ground', '', 'NoSun', 'NoWind', '0', 4, ...V([[p[0], p[1], z1], [p[0], p[1], z0], [q[0], q[1], z0], [q[0], q[1], z1]])])); return; }
         out.push(obj('BuildingSurface:Detailed', [wn, 'Wall', 'ExtWall', zn, '', 'Outdoors', '', 'SunExposed', 'WindExposed', 'AutoCalculate', 4, ...V([[p[0], p[1], z1], [p[0], p[1], z0], [q[0], q[1], z0], [q[0], q[1], z1]])]));
         if (len < 1.2) return;
         const ux = (q[0] - p[0]) / len, uy = (q[1] - p[1]) / len, i0 = .3, i1 = len - .3, A = [p[0] + ux * i0, p[1] + uy * i0], Bq = [p[0] + ux * i1, p[1] + uy * i1];
@@ -184,12 +199,18 @@ export function toIdf(B, { weatherFile = false, site = BUSAN, cooling = 26, heat
       const availName = sc ? sched('Avail', 'Fraction', av) : 'HVAC Avail';
       // 냉방을 끈 시간엔 문·복도로 공기가 바뀜 (안쪽 벽을 단열로 봐서, 이게 없으면 꺼진 방이 40°C 넘게 갇힘) — 시간당 2회 환기
       if (sc && av.some(v => !v)) out.push(obj('ZoneVentilation:DesignFlowRate', [`${zn} Vent`, zn, sched('Vent', 'Fraction', av.map(v => v ? 0 : 1)), 'AirChanges/Hour', '', '', '', '2', 'Natural', '0', '1', '1', '0', '0', '0']));
+      // 난방철: 냉방이 없으니 사람·기기 열로 실온이 오르면 창을 엶 (실온 25°C 넘고 외기보다 2°C 이상 높을 때 최대 시간당 3회)
+      //   이게 없으면 단열 칸막이 모델에서 꽉 찬 강의실이 30°C를 넘어 난방이 전혀 필요 없는 것처럼 계산됨
+      if (heat) out.push(obj('ZoneVentilation:DesignFlowRate', [`${zn} Window`, zn, 'Always On', 'AirChanges/Hour', '', '', '', '3', 'Natural', '0', '1', '1', '0', '0', '0', '25', '', '100', '', '2']));
       const sp = sc ? (rs.spWindow ? setpointWin(rs.spWindow) : setpoint(rs.coolSetpoint ?? sc.coolSetpoint)) : 'Dual SP';
       out.push(obj('ZoneControl:Thermostat', [`${zn} Tstat`, zn, 'Dual Control', 'ThermostatSetpoint:DualSetpoint', sp]));
-      // 시나리오에서는 냉방 용량 = 설치된 실내기 용량 합 (없으면 냉방 없음) → 부족하면 실온이 올라감
-      const capW = kw[r.id] ? String(Math.round(kw[r.id] * 1000)) : '';
-      out.push(obj('ZoneHVAC:IdealLoadsAirSystem', [`${zn} Ideal`, availName, `${zn} Supply`, '', '', '50', '13', '0.0156', '0.0077', 'NoLimit', '', '',
-        sc && capW ? 'LimitCapacity' : 'NoLimit', '', sc ? capW : '', '', sc && !capW ? 'Always Off' : '', 'ConstantSensibleHeatRatio', '0.75', 'None']));
+      // 시나리오에서는 냉방 용량 = 설치된 실내기 용량 합 (없으면 냉방 없음) → 부족하면 실온이 올라감. 난방 모드면 난방 능력으로 제한하고 냉방은 끔
+      const capW = kw[r.id] ? String(Math.round(kw[r.id] * 1000)) : '', hcapW = hkw[r.id] ? String(Math.round(hkw[r.id] * 1000)) : '';
+      out.push(obj('ZoneHVAC:IdealLoadsAirSystem', heat
+        ? [`${zn} Ideal`, availName, `${zn} Supply`, '', '', '50', '13', '0.0156', '0.0077', hcapW ? 'LimitCapacity' : 'NoLimit', '', hcapW,
+          'NoLimit', '', '', hcapW ? '' : 'Always Off', 'Always Off', 'ConstantSensibleHeatRatio', '0.75', 'None']
+        : [`${zn} Ideal`, availName, `${zn} Supply`, '', '', '50', '13', '0.0156', '0.0077', 'NoLimit', '', '',
+          sc && capW ? 'LimitCapacity' : 'NoLimit', '', sc ? capW : '', '', sc && !capW ? 'Always Off' : '', 'ConstantSensibleHeatRatio', '0.75', 'None']));
       out.push(obj('ZoneHVAC:EquipmentList', [`${zn} Equipment`, 'SequentialLoad', 'ZoneHVAC:IdealLoadsAirSystem', `${zn} Ideal`, '1', '1', '', '']));
       out.push(obj('ZoneHVAC:EquipmentConnections', [zn, `${zn} Equipment`, `${zn} Supply`, '', `${zn} Air Node`, `${zn} Return`]));
     });
@@ -197,6 +218,7 @@ export function toIdf(B, { weatherFile = false, site = BUSAN, cooling = 26, heat
   if (!experiment) {
     if (sc) out.push(obj('Output:Variable', ['Environment', 'Site Outdoor Air Drybulb Temperature', 'Hourly', '']),
       obj('Output:Variable', ['*', 'Zone Ideal Loads Supply Air Total Cooling Energy', 'Hourly', '']),
+      obj('Output:Variable', ['*', 'Zone Ideal Loads Supply Air Total Heating Energy', 'Hourly', '']),
       obj('Output:Variable', ['*', 'Zone Thermal Comfort Fanger Model PMV', 'Hourly', '']),
       obj('Output:Variable', ['*', 'Zone Thermal Comfort Fanger Model PPD', 'Hourly', '']));
     out.push(obj('Output:Variable', ['*', 'Zone Ideal Loads Supply Air Total Cooling Rate', 'Hourly', '']),
@@ -238,19 +260,22 @@ export function priceAt(tariff, month, hour){
   return season.price[band];
 }
 const eir = T => Math.min(1.2, Math.max(.6, 1 + .02 * (T - 35)));
-export function readScenario(csv, zonesInfo, { tariff = null, comfort = COMFORT, defaultCop = 3.2 } = {}){
+const eirHeat = T => Math.min(1.4, Math.max(.8, 1 + .02 * (7 - T)));   // 난방: 외기 7°C 정격, 추울수록 효율 떨어짐
+export function readScenario(csv, zonesInfo, { tariff = null, comfort = null, defaultCop = 3.2 } = {}){
+  const heat = zonesInfo.scenario?.mode === 'heat';
+  comfort ||= heat ? COMFORT_HEAT : COMFORT;
   const lines = csv.trim().split(/\r?\n/), head = lines[0].split(',').map(h => h.trim().toUpperCase());
   let rows = lines.slice(1).map(l => l.split(','));
   const when = r => { const m = r[0].trim().match(/(\d+)\/(\d+)\s+(\d+):/); return { month:+m[1], day:+m[2], hour:(+m[3] + 23) % 24 }; };
-  // 냉방 기간만 (설계일이면 여름 설계일, EPW면 6~9월) · 오늘 실시간이면 그 날 하루
+  // 냉방 기간만 (설계일이면 여름 설계일, EPW면 6~9월) · 난방이면 겨울 설계일, EPW면 11~3월 · 오늘 실시간이면 그 날 하루
   const LD = zonesInfo.live?.date?.split('-').map(Number);
-  rows = rows.filter(r => { const w = when(r); return LD ? w.month === LD[1] && w.day === LD[2] : w.month >= 6 && w.month <= 9; });
+  rows = rows.filter(r => { const w = when(r); return LD ? w.month === LD[1] && w.day === LD[2] : heat ? w.month <= 3 || w.month >= 11 : w.month >= 6 && w.month <= 9; });
   const col = s => head.findIndex(h => h.startsWith(s.toUpperCase()));
   const tout = col('ENVIRONMENT:SITE OUTDOOR AIR DRYBULB TEMPERATURE');
   const rooms = {}; let E = 0, C = 0, Q = 0, tdisSum = 0, nz = 0, ppdW = 0, w = 0, bad = 0;
   const peakT = { t:-99 }, hourly = Array(24).fill(0), hourlyWon = Array(24).fill(0);
   for (const z of zonesInfo.zones) {
-    const cq = col(`${z.zone} IDEAL:ZONE IDEAL LOADS SUPPLY AIR TOTAL COOLING ENERGY`), ct = col(`${z.zone}:ZONE MEAN AIR TEMPERATURE`);
+    const cq = col(`${z.zone} IDEAL:ZONE IDEAL LOADS SUPPLY AIR TOTAL ${heat ? 'HEATING' : 'COOLING'} ENERGY`), ct = col(`${z.zone}:ZONE MEAN AIR TEMPERATURE`);
     const cpmv = col(`${z.zone} PEOPLE:ZONE THERMAL COMFORT FANGER MODEL PMV`), cppd = col(`${z.zone} PEOPLE:ZONE THERMAL COMFORT FANGER MODEL PPD`);
     if (ct < 0) continue;
     const occ = z.occ || occOf(z.use), cop = z.cop || defaultCop, busy = h => z.occ ? z.occ[h] * z.people >= 1 : occ[h] >= .2;
@@ -258,7 +283,7 @@ export function readScenario(csv, zonesInfo, { tariff = null, comfort = COMFORT,
     const hT = LD ? Array(24).fill(null) : null, hE = LD ? Array(24).fill(0) : null;
     for (const r of rows) {
       const { month, hour } = when(r), T = +r[ct], To = tout >= 0 ? +r[tout] : 30;
-      const qk = cq >= 0 ? +r[cq] / 3.6e6 : 0, ek = qk / cop * eir(To);
+      const qk = cq >= 0 ? +r[cq] / 3.6e6 : 0, ek = qk / cop * (heat ? eirHeat(To) : eir(To));
       const won = ek * priceAt(tariff, month, hour);
       q += qk; e += ek; c += won; hourly[hour] += ek; hourlyWon[hour] += won;
       if (hT) { hT[hour] = r3(T); hE[hour] = r3(hE[hour] + ek); }
@@ -275,7 +300,7 @@ export function readScenario(csv, zonesInfo, { tariff = null, comfort = COMFORT,
     E += e; C += c; Q += q; tdisSum += tdis; nz++; ppdW += zp; w += zw; bad += zbad;
   }
   const area = zonesInfo.zones.reduce((s, z) => s + z.area, 0), days = new Set(rows.map(r => r[0].trim().slice(0, 5))).size;
-  return { schema:'twin.scenario-result/v1', engine:`EnergyPlus ${zonesInfo.energyplus}`, building:zonesInfo.building, weather:zonesInfo.weather, days, scenario:zonesInfo.scenario,
+  return { schema:'twin.scenario-result/v1', engine:`EnergyPlus ${zonesInfo.energyplus}`, building:zonesInfo.building, weather:zonesInfo.weather, days, scenario:zonesInfo.scenario, mode:heat ? 'heat' : 'cool',
     comfort, tariff:tariff?.tou ? '계시별' : `${+tariff?.wonPerKwh || 130}원/kWh`,
     kpi:{ elecKwh:r3(E), coolKwh:r3(Q), costWon:Math.round(C), enerKwhM2:r3(E / area), tdisKhPerZone:r3(tdisSum / Math.max(nz, 1)), ppd:w ? r3(ppdW / w) : null,
       uncomfortPct:w ? r3(bad / w * 100) : null, hottest:peakT.t > -99 ? { room:peakT.room, tempC:r3(peakT.t) } : null },

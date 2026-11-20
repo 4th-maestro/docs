@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import type { LucideIcon } from 'lucide-react'
-import { AlertTriangle, ArrowUp, Check, ExternalLink, Info, MessageSquareText, Trash2 } from 'lucide-react'
+import { AlertCircle, AlertTriangle, ArrowUp, Check, ExternalLink, Info, MessageSquareText, Trash2 } from 'lucide-react'
 import type { Chart, Draft, Room, Source } from '../types'
 import ChartView, { ChartModal } from './ChartView'
 import { ThinkingBadge, ThinkingPanel } from './ThinkingPanel'
 import type { AskState, Step } from './types'
 import './chat.css'
 import { SkBubbles } from '../skeleton/Skeleton'
+import { OpsCard, OpsStatusCard } from '../ops/OpsMessages'
+import type { Decision, OpsAction, OpsOverview } from '../ops/types'
 
 // 대화 메시지: 서버 기록(GET /chat)과 화면에서 추가한 메시지 공용
 // - draftState: pending(저장 대기, 초안 카드 표시), saved(저장됨), closed(닫음·지난 기록)
@@ -32,8 +34,30 @@ const ACTION = { off: '운전 OFF', on: '운전 ON', setpoint: '설정온도 변
 const DONE: AskState = { status: 'done', steps: [], answer: '', result: null, startedAt: 0, elapsedMs: 0, transport: 'ws' }
 const secs = (steps: Step[]) => (steps.reduce((s, x) => s + (x.ms ?? 0), 0) / 1000).toFixed(1)
 
+// 자동 운영 알림(대화 안 AI 알림 카드와 마지막 상태 메시지). 값이 없으면 표시하지 않음
+export type OpsView = {
+  overview: OpsOverview
+  canToggle: boolean
+  busy: string | null
+  notice: string
+  onAct: (d: Decision, action: OpsAction) => void
+  onToggle: (v: boolean) => void
+  onLocate: (id: string) => void
+}
+
+// 대화 시각: 서버 기록 id는 "ISO 시각#순번", 화면에서 만든 id는 Date.now() 36진수로 시작. 읽지 못하면 앞 메시지 시각
+function msgTimes(ms: ChatMsg[]): number[] {
+  let prev = 0
+  return ms.map((m) => {
+    const t = /^\d{4}-/.test(m.id) ? Date.parse(m.id.split('#')[0]) : parseInt(m.id.slice(0, 8), 36)
+    prev = Number.isFinite(t) && t > 0 ? t : prev
+    return prev
+  })
+}
+
 type Props = {
   ai: AskState
+  ops?: OpsView | null
   messages: ChatMsg[]
   rooms: Room[]
   suggestions: { icon: LucideIcon; text: string }[]
@@ -49,19 +73,38 @@ type Props = {
 
 // AI 운영 도우미(메신저형): 위는 대화 목록, 아래는 입력창
 // - 자동 스크롤: 사용자가 아래쪽(120px 이내)을 보고 있을 때만, 이전 대화를 읽는 중에는 유지
-export default function ChatPanel({ ai, messages, rooms, suggestions, busy, history, onSend, onClear, onSave, onClose, onFocus, onSelect }: Props) {
+export default function ChatPanel({ ai, ops, messages, rooms, suggestions, busy, history, onSend, onClear, onSave, onClose, onFocus, onSelect }: Props) {
   const [text, setText] = useState('')
   const [confirmClear, setConfirmClear] = useState(false)
   const [big, setBig] = useState<Chart | null>(null)
   const log = useRef<HTMLDivElement>(null)
   const input = useRef<HTMLTextAreaElement>(null)
   const running = ai.status === 'running'
+  // 제안 남은 시간 표시용 현재 시각(30초마다 갱신)
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 30_000)
+    return () => clearInterval(id)
+  }, [])
   const live = running || (ai.status === 'error' && messages.at(-1)?.role === 'user')
 
+  // 아래 붙임 여부는 스크롤할 때 기록(내용이 늘어난 뒤 재면 새 알림 카드 높이 때문에 아래를 보던 중에도 붙지 않음)
+  const stick = useRef(true)
   useEffect(() => {
     const el = log.current
-    if (el && el.scrollHeight - el.scrollTop - el.clientHeight < 120) el.scrollTop = el.scrollHeight
-  }, [messages.length, ai.answer, ai.steps.length, ai.status])
+    if (el && stick.current) el.scrollTop = el.scrollHeight
+  }, [messages.length, ai.answer, ai.steps.length, ai.status, ops?.overview.decisions.length, ops?.overview.pendingCount])
+
+  // 대화와 자동 운영 알림을 시각 순으로 합침(같은 시각이면 대화 먼저). 알림은 서버가 최신순으로 주므로 뒤집어 오래된 것부터
+  const decisions = ops ? [...ops.overview.decisions].reverse() : []
+  const times = msgTimes(messages)
+  const timeline: ({ k: 'm'; m: ChatMsg } | { k: 'd'; d: Decision })[] = []
+  let di = 0
+  messages.forEach((m, i) => {
+    while (di < decisions.length && Date.parse(decisions[di].createdAt) < times[i]) timeline.push({ k: 'd', d: decisions[di++] })
+    timeline.push({ k: 'm', m })
+  })
+  while (di < decisions.length) timeline.push({ k: 'd', d: decisions[di++] })
 
   function send(q = text) {
     if (!q.trim() || running) return
@@ -75,6 +118,7 @@ export default function ChatPanel({ ai, messages, rooms, suggestions, busy, hist
     <section className="card chat" aria-label="AI 운영 도우미">
       <div className="chat-head">
         <h2>AI 운영 도우미</h2>
+        {!!ops?.overview.pendingCount && <span className="ops-badge" aria-label={`자동 운영 응답 대기 ${ops.overview.pendingCount}건`}><AlertCircle size={16} aria-hidden />제안 {ops.overview.pendingCount}</span>}
         <ThinkingBadge state={ai} />
         {messages.length > 0 && (confirmClear ? (
           <span className="chat-confirm">
@@ -86,9 +130,10 @@ export default function ChatPanel({ ai, messages, rooms, suggestions, busy, hist
         ))}
       </div>
 
-      <div className="chat-log" ref={log} role="log" aria-live="polite" aria-busy={running}>
+      <div className="chat-log" ref={log} role="log" aria-live="polite" aria-busy={running}
+        onScroll={(e) => { const el = e.currentTarget; stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120 }}>
         {history === 'loading' && <SkBubbles />}
-        {history !== 'loading' && messages.length === 0 && !live && (
+        {history !== 'loading' && messages.length === 0 && decisions.length === 0 && !live && (
           <div className="chat-empty">
             <MessageSquareText size={28} aria-hidden />
             <p>층, 용도, 시각을 넣어 질문하면 AI가 조회하거나 스케줄 초안을 만듭니다.</p>
@@ -99,14 +144,17 @@ export default function ChatPanel({ ai, messages, rooms, suggestions, busy, hist
             </ul>
           </div>
         )}
-        {messages.map((m) => (m.role === 'user'
-          ? <div key={m.id} className={m.fresh ? 'msg me rise-in' : 'msg me'}><p>{m.text}</p></div>
-          : <Assistant key={m.id} m={m} rooms={rooms} busy={busy} onSave={onSave} onClose={onClose} onFocus={onFocus} onSelect={onSelect} onExpand={setBig} />))}
+        {history !== 'loading' && timeline.map((x) => (x.k === 'd'
+          ? <OpsCard key={x.d.decisionId} d={x.d} now={now} busy={ops!.busy === x.d.decisionId} onAct={(a) => ops!.onAct(x.d, a)} onLocate={ops!.onLocate} />
+          : x.m.role === 'user'
+            ? <div key={x.m.id} className={x.m.fresh ? 'msg me rise-in' : 'msg me'}><p>{x.m.text}</p></div>
+            : <Assistant key={x.m.id} m={x.m} rooms={rooms} busy={busy} onSave={onSave} onClose={onClose} onFocus={onFocus} onSelect={onSelect} onExpand={setBig} />))}
         {live && (
           <div className="msg ai">
             <ThinkingPanel state={ai} />
           </div>
         )}
+        {ops && <OpsStatusCard s={ops.overview.settings} pending={ops.overview.pendingCount} canToggle={ops.canToggle} busy={ops.busy === 'settings'} notice={ops.notice} onToggle={ops.onToggle} />}
       </div>
 
       <form className="chat-input" onSubmit={(e) => { e.preventDefault(); send() }}>

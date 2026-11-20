@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState, type PointerEvent } from 'react'
 import { alignWallPoint, area, contains, distance, edges, floorBoundary, inRoom, interiorWallAt, intersectWallAxis, mergePolygons, moveInteriorWall, nearestSegment, overlapsWall, partitionTarget, projection, segmentInsideRoom, segmentWithout, sharedWallAt, solidWallSpans, splitPolygon, type Opening, type Plan, type PlanFloor, type PlanRoom, type Point, type Segment, type Wall, type WallAxis } from './floor-edit'
 import './building-editor.css'
+import { UnitLegend } from './ingest/UnitSymbol'
+import { useUnitTool } from './ingest/UnitTool'
 
-type Tool = 'select' | 'wall' | 'erase' | 'move' | 'cut' | 'partition' | 'ac-add' | 'ac-remove'
+type Tool = 'select' | 'wall' | 'erase' | 'move' | 'cut' | 'partition' | 'unit' | 'align'
 const TOOLS: { id: Tool; label: string; hint: string }[] = [
   { id: 'select', label: '방 선택', hint: '평면도에서 방을 클릭하면 이름을 수정할 수 있습니다.' },
   { id: 'wall', label: '벽 설치', hint: '벽에서 시작해 끝점을 찍으세요. 반대쪽 벽에 닿으면 방을 나눕니다. 점선이 뜨면 수직·수평으로 맞춰집니다.' },
@@ -10,15 +12,16 @@ const TOOLS: { id: Tool; label: string; hint: string }[] = [
   { id: 'move', label: '벽 이동', hint: '벽을 선택한 뒤 새 위치를 클릭하세요. 파란 선은 이동할 위치입니다.' },
   { id: 'cut', label: '부분 삭제', hint: '같은 벽의 시작점과 끝점을 찍어 그 구간만 엽니다.' },
   { id: 'partition', label: '부분 생성', hint: '두 점으로 칸막이를 만듭니다. 점선이 뜨면 수직·수평으로 맞춰지고, 열린 벽선 위를 찍으면 벽을 복원합니다.' },
-  { id: 'ac-add', label: '에어컨 추가', hint: '방 안에서 에어컨을 설치할 위치를 클릭하세요.' },
-  { id: 'ac-remove', label: '에어컨 삭제', hint: '평면도에서 에어컨 표시를 클릭하세요.' },
+  { id: 'unit', label: '실내기', hint: '추가할 유형을 고른 뒤 방 안을 누르십시오. 실내기를 누르면 선택되고, 끌어서 옮길 수 있습니다.' },
+  { id: 'align', label: '위치 맞춤', hint: '도면 이미지의 기준점 2개를 누른 뒤, 평면도에서 같은 위치 2개를 누르십시오.' },
 ]
 const pathOf = (room: PlanRoom) => [room.polygon, ...(room.holes ?? [])].map(loop => 'M' + loop.map(p => p.join(',')).join('L') + 'Z').join(' ')
 const wallPathOf = (room: PlanRoom, openings: Opening[]) => [room.polygon, ...(room.holes ?? [])]
   .flatMap(edges).flatMap(([a,b]) => solidWallSpans(a,b,room.id,openings))
   .map(([a,b]) => `M${a.join(',')}L${b.join(',')}`).join(' ')
 
-export default function BuildingEditor({ initial, floor, onSave, onCancel }: { initial: Plan; floor: string; onSave(plan: Plan, level: string): void; onCancel(): void }) {
+// draft: 도면 변환 초안(수정 없이도 저장 가능), backgrounds: 층 id → 도면 이미지 주소(floors[].background 표시용)
+export default function BuildingEditor({ initial, floor, onSave, onCancel, draft, backgrounds }: { initial: Plan; floor: string; onSave(plan: Plan, level: string): void; onCancel(): void; draft?: boolean; backgrounds?: Record<string, string> }) {
   const [model, setModel] = useState(initial)
   const [history, setHistory] = useState<Plan[]>([])
   const [level, setLevel] = useState(initial.floors.some(f => f.id === floor) ? floor : initial.floors[0].id)
@@ -29,7 +32,6 @@ export default function BuildingEditor({ initial, floor, onSave, onCancel }: { i
   const [cursor, setCursor] = useState<Point | null>(null)
   const [name, setName] = useState('')
   const [message, setMessage] = useState('')
-  const [capacityKw, setCapacityKw] = useState('7.2')
   const svg = useRef<SVGSVGElement>(null)
   const current = model.floors.find(f => f.id === level)!
   const { w, d } = model.building.size
@@ -60,7 +62,9 @@ export default function BuildingEditor({ initial, floor, onSave, onCancel }: { i
     setSelected(r?.id ?? '')
     setName(r?.name ?? '')
   }
-  const resetCursor = () => { setStart(null); setWallStart(null); setCursor(null); setMessage('') }
+  const unitTool = useUnitTool({ model, commit, level, current, tool, scale, backgrounds, say: setMessage,
+    onFloor: id => { setLevel(id); choose(); resetCursor() }, onTool: setTool })
+  const resetCursor = () => { setStart(null); setWallStart(null); setCursor(null); setMessage(''); unitTool.reset() }
 
   useEffect(() => {
     const esc = (event: KeyboardEvent) => { if (event.key === 'Escape') { setStart(null); setWallStart(null) } }
@@ -218,23 +222,6 @@ export default function BuildingEditor({ initial, floor, onSave, onCancel }: { i
     setMessage('내부 벽을 지우고 열린 구간을 만들었습니다.')
   }
 
-  function editUnit(p: Point) {
-    if (tool === 'ac-remove') {
-      const hit = units.reduce<(typeof units)[number] | undefined>((best,unit) =>
-        distance(p,unit.pos) < (best ? distance(p,best.pos) : wallTolerance*1.5) ? unit : best,undefined)
-      if (!hit) { setMessage('삭제할 에어컨 표시를 선택하세요.'); return }
-      commit({ ...model,idus:model.idus.filter(unit => unit.id !== hit.id) })
-      setMessage('에어컨을 삭제했습니다.')
-      return
-    }
-    const target = findRoom(p), coolKw = Number(capacityKw)
-    if (target?.type !== 'room') { setMessage('에어컨을 설치할 방 안을 클릭하세요.'); return }
-    if (!Number.isFinite(coolKw) || coolKw < .5 || coolKw > 100) { setMessage('냉방 용량을 0.5~100 kW로 입력하세요.'); return }
-    if (units.some(unit => distance(unit.pos,p) < .35)) { setMessage('기존 에어컨에서 조금 더 떨어진 위치를 고르세요.'); return }
-    commit({ ...model,idus:[...model.idus,{ id:'IDU-edit-'+crypto.randomUUID(),room:target.id,pos:p,model:'천장형 카세트',type:'4WAY 카세트',coolKw,ratedKw:Math.round(coolKw*31)/100,source:'manual',basis:'평면도 편집에서 추가' }] })
-    setMessage('에어컨을 추가했습니다.')
-  }
-
   function pointAt(event: PointerEvent<SVGSVGElement>): Point | null {
     const m = svg.current?.getScreenCTM()
     if (!m) return null
@@ -248,7 +235,7 @@ export default function BuildingEditor({ initial, floor, onSave, onCancel }: { i
     if (!p) return
     setMessage('')
     if (tool === 'select') { choose(findRoom(p)); return }
-    if (tool === 'ac-add' || tool === 'ac-remove') { editUnit(p); return }
+    if (tool === 'unit' || tool === 'align') { event.currentTarget.setPointerCapture(event.pointerId); unitTool.down(p); return }
     if (tool !== 'wall') { editWall(p); return }
     if (!start) {
       const boundary = (room && nearest(p,room)) || nearest(p)
@@ -314,7 +301,7 @@ export default function BuildingEditor({ initial, floor, onSave, onCancel }: { i
   const pendingName = room && name.trim() && name.trim() !== room.name
   const renamedRooms = () => current.rooms.map(r => r.id === room?.id ? { ...r, name: name.trim() } : r)
   function goBack() {
-    if ((!history.length && !pendingName) || window.confirm('저장하지 않은 수정 내용을 버릴까요?')) onCancel()
+    if ((!draft && !history.length && !pendingName) || window.confirm('저장하지 않은 수정 내용을 버릴까요?')) onCancel()
   }
 
   return (
@@ -330,7 +317,7 @@ export default function BuildingEditor({ initial, floor, onSave, onCancel }: { i
             resetCursor()
           }} disabled={!history.length}>실행 취소</button>
           <button className="pill" onClick={goBack}>나가기</button>
-          <button className="primary" disabled={!history.length && !pendingName} onClick={() => {
+          <button className="primary" disabled={!draft && !history.length && !pendingName} onClick={() => {
             const result = pendingName ? { ...model, floors: model.floors.map(f => f.id === level ? { ...f, rooms: renamedRooms() } : f) } : model
             onSave(result, level)
           }}>저장</button>
@@ -348,19 +335,19 @@ export default function BuildingEditor({ initial, floor, onSave, onCancel }: { i
             {TOOLS.map(t => <button className={tool === t.id ? 'pill on' : 'pill'} key={t.id} aria-pressed={tool === t.id}
               onClick={() => { setTool(t.id); resetCursor() }}>{t.label}</button>)}
             {!current.rooms.length && current.footprint && <button className="pill" onClick={() => {
-              if (!current.footprint) return
-              const space = { id: level+'-edit-'+crypto.randomUUID(), name: '새 공간', polygon: current.footprint, type: 'room' }
-              apply([space])
-              choose(space)
+              const spaces = outer.map((polygon, index) => ({
+                id: level+'-edit-'+crypto.randomUUID(), name: outer.length === 1 ? '새 공간' : '새 공간 ' + (index + 1), polygon, type: 'room',
+              }))
+              apply(spaces)
+              choose(spaces[0])
               setTool('select')
             }}>층 외곽을 편집 공간으로 만들기</button>}
           </div>
           <p className="muted">{TOOLS.find(t => t.id === tool)?.hint}</p>
-          {tool === 'ac-add' && <label className="edit-ac-capacity">냉방 용량 (kW) <input type="number" min=".5" max="100" step=".1" value={capacityKw} onChange={event => setCapacityKw(event.target.value)} /></label>}
+          {unitTool.panel}
           <svg ref={svg} aria-label={level+' 평면도'} className={'edit-plan '+tool} viewBox={[-1,-1,w+2,d+2].join(' ')}
-            onPointerDown={click} onPointerMove={e => setCursor(pointAt(e))} onPointerLeave={() => setCursor(null)}>
-            <rect x="0" y="0" width={w} height={d} className="edit-outline" />
-            {current.footprint && <polygon points={current.footprint.map(p => p.join(',')).join(' ')} className="edit-outline" />}
+            onPointerDown={click} onPointerMove={e => { const p = pointAt(e); setCursor(p); if (p) unitTool.move(p) }} onPointerUp={unitTool.up} onPointerLeave={() => setCursor(null)}>
+            {outer.map((polygon, i) => <polygon key={i} points={polygon.map(p => p.join(',')).join(' ')} className="edit-outline" />)}
             {current.rooms.map(r => {
               const [x,y] = r.polygon.reduce<Point>((p,q) => [p[0]+q[0]/r.polygon.length,p[1]+q[1]/r.polygon.length],[0,0])
               return <g key={r.id}>
@@ -368,11 +355,12 @@ export default function BuildingEditor({ initial, floor, onSave, onCancel }: { i
                 <text x={x} y={y} fontSize={scale*.013} textAnchor="middle" dominantBaseline="middle">{r.name}</text>
               </g>
             })}
+            {unitTool.layer}
             {current.rooms.map(r => <path key={r.id} d={wallPathOf(r,openings)} className={r.id === selected ? 'edit-wall selected' : 'edit-wall'} />)}
             {start && <circle className="edit-anchor" cx={start.point[0]} cy={start.point[1]} r={scale*.007} />}
             {start && preview && <line className="edit-preview" x1={start.point[0]} y1={start.point[1]} x2={preview[0]} y2={preview[1]} />}
             {partitions.map(({a,b},i) => <line key={i} className="edit-partition" x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]} />)}
-            {units.map(unit => <circle key={unit.id} className="edit-unit" cx={unit.pos[0]} cy={unit.pos[1]} r={Math.max(.22,scale*.007)}><title>{unit.model ?? '에어컨'}</title></circle>)}
+            {unitTool.marks}
             {aligned?.axis === 'vertical' && <line className="edit-alignment-guide" x1={aligned.point[0]} x2={aligned.point[0]} y1={0} y2={d} />}
             {aligned?.axis === 'horizontal' && <line className="edit-alignment-guide" x1={0} x2={w} y1={aligned.point[1]} y2={aligned.point[1]} />}
             {wallStart && <circle className="edit-anchor" cx={wallStart.point[0]} cy={wallStart.point[1]} r={scale*.007} />}
@@ -389,6 +377,7 @@ export default function BuildingEditor({ initial, floor, onSave, onCancel }: { i
               <button className="pill" disabled={!pendingName}>이름 적용</button>
             </form>}
             <p role="status" className="muted">{message}</p>
+            <UnitLegend />
           </div>
         </div>
       </div>

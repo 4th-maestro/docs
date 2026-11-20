@@ -23,10 +23,12 @@
 | PDF 보고서 원본 | `docs/reports/<날짜-주제>/report.md` |
 | 웹 대시보드 코드 | `frontend/`(실행·배포는 `frontend/README.md`) |
 | Lambda·AWS 리소스 코드 | `lambda/`(테스트·배포는 `lambda/README.md`) |
+| 도면 파서 컨테이너(IFC, DXF·DWG, PDF → `twin.building/v1`) | `lambda/ingest/`(계약·빌드는 `lambda/ingest/README.md`) |
 | AI 도우미 KB 문서(규정·쾌적 기준) | `lambda/kb/`(근거는 `docs/human/explanation/research/kb-sources.md`, 반영은 `lambda/tools/kb_sync.sh`) |
 | 도면 실내기 기호 검출 학습(SageMaker) | `ml/`(실행은 `ml/README.md`) |
 | HVAC 제어 방식 비교(규칙 기반, JEV, DDPG, EnergyPlus) | `ml/hvac_control/`(실행은 `ml/hvac_control/README.md`) |
 | 3D 트윈 임베드 규약 | `docs/human/reference/twin-embed.md` |
+| 도면 변환 규약(IFC·CAD·PDF·이미지 → 2D 실내기 매핑 → 3D) | `docs/human/reference/plan-ingest.md` |
 
 문서는 작업에 필요한 것부터 읽는 것이 원칙입니다. 기존 사용자 변경과 병합 충돌은 보존할 대상입니다.
 
@@ -95,6 +97,14 @@ UI를 바꾸는 작업은 `DESIGN.md` "운영자 화면 기준"(40~50대 운영�
 3. 결정을 바꾸면 새 기록을 추가하고 이전 기록에 대체 기록 링크를 남기십시오.
 
 <!-- devdog-docs:begin incident -->
+## 개선 기록
+
+화면 배치·표시 방식, 성능, AI 답변 품질, 배포·운영 절차를 개선한 작업의 완료 조건에는 개선 기록이 포함입니다(2026-11-20 사용자 지시). 개선 작업과 같은 작업에서 수행하십시오.
+
+1. `docs/human/explanation/improvements/`에 `YYYY-MM-DD(제목).md` 파일을 추가하십시오. 같은 폴더 `README.md`의 목록에도 한 줄을 추가하십시오.
+2. 구성은 해당 폴더 `README.md`의 "작성 방법"을 따르십시오. 수정 전후 수치와 측정 조건을 적으십시오.
+3. 장애 기록이나 기술 선택 기록이 있는 항목은 내용을 복사하지 말고 요약과 링크로 연결하십시오.
+
 ## 장애 기록
 
 배포된 서버·앱에서 확인된 오류를 수정하는 작업의 완료 조건에는 장애 기록이 포함입니다. 원인이 자명한 오타·문구 수정은 제외입니다. 수정과 같은 작업에서 수행하십시오.

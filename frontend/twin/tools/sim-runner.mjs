@@ -7,7 +7,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { execFile, execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { toIdf, readScenario, compareScenario, baselineOf, COMFORT, occOf } from '../pipeline/energyplus.js';
+import { toIdf, readScenario, compareScenario, baselineOf, COMFORT, COMFORT_HEAT, modeOfMonth } from '../pipeline/energyplus.js';
 
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -38,62 +38,14 @@ export function cleanScenario(s = {}, B, base = baselineOf(B)){
     for (const [id, r] of Object.entries(rooms)) merged[id] = { ...merged[id], ...r };
     return { ...base, name:String(s.name || '내 선택').slice(0, 40), inherit:'live', rooms:merged, changed:Object.keys(rooms) };
   }
-  return { schema:'twin.scenario/v1', name:String(s.name || '내 선택').slice(0, 40), coolSetpoint:num(s.coolSetpoint, 18, 30, base.coolSetpoint),
+  return { schema:'twin.scenario/v1', name:String(s.name || '내 선택').slice(0, 40), mode:base.mode || 'cool', coolSetpoint:num(s.coolSetpoint, 18, 30, base.coolSetpoint),
     hours:[hhmm(s.hours?.[0]) || base.hours[0], hhmm(s.hours?.[1]) || base.hours[1]], offWhenEmpty:!!s.offWhenEmpty, precoolMin:num(s.precoolMin, 0, 180, 0), rooms };
 }
 
-/* ═════════════ 오늘(실시간) 하루 만들기 ═════════════
-   트윈이 보낸 오늘 기록(twin.live/v1: 시간별 평균 재실·실내기 가동·설정온도·전력·외기 + 기상 예보)
-   → EnergyPlus 하루 입력: 외기 24시간(지난 시간 = 실측, 남은 시간 = 예보), 실별 재실 24시간(지난 = 실측, 남은 = 시간표·용도 패턴 × 오늘 보정비),
-     실별 가동 24시간(지난 = 실측, 남은 = 사람 있을 때 + 켜 두는 습관), 실별 설정온도(오늘 평균), 실측 냉방 전력(보정용) */
-const hmm = s => { const [h, m] = String(s).split(':').map(Number); return h * 60 + (m || 0); };
-export function liveDay(B, live, { schedule = null } = {}){
-  const H = live.hours || {}, at = h => H[h] || H[String(h)], date = String(live.date || '').slice(0, 10);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error('live.date가 없음 (YYYY-MM-DD)');
-  const day = live.day || ['일', '월', '화', '수', '목', '금', '토'][new Date(date + 'T12:00:00Z').getUTCDay()];
-  const now = Math.min(24, Math.max(0, +live.now || 0)), F = live.forecast || {};
-  const series = (k, fk, d) => { const v = Array.from({ length:24 }, (_, h) => { const o = at(h)?.out?.[k]; return typeof o === 'number' ? o : typeof F[h]?.[fk] === 'number' ? F[h][fk] : null; });
-    for (let h = 0; h < 24; h++) if (v[h] == null) { let a = h, b = h; while (a >= 0 && v[a] == null) a--; while (b < 24 && v[b] == null) b++; v[h] = a >= 0 && b < 24 ? v[a] + (v[b] - v[a]) * (h - a) / (b - a) : a >= 0 ? v[a] : b < 24 ? v[b] : d; }
-    return v.map(x => Math.round(x * 10) / 10); };
-  const temp = series('temp', 'TMP', 26), hum = series('hum', 'REH', 65);
-  const sky = Object.entries(F).filter(([h]) => h >= 9 && h <= 17).map(([, v]) => v.SKY).filter(Number.isFinite), skyAvg = sky.length ? sky.reduce((a, b) => a + b, 0) / sky.length : 1;
-  const clear = Math.round((skyAvg <= 1.5 ? 1 : skyAvg <= 3.3 ? .7 : .45) * 100) / 100;
-  const rain = Object.values(F).some(v => v.PTY > 0);
-  const op = B.operation?.[day === '토' || day === '일' ? 'weekend' : 'weekday'], opH = h => !!op && h >= Math.floor(hmm(op[0]) / 60) && h < Math.ceil(hmm(op[1]) / 60);
-  const cls = {}; for (const c of schedule?.classes || []) if (c.day === day) (cls[c.room] ||= []).push(c);
-  const rooms = {}, hvac = Array(24).fill(null), measuredHours = [];
-  for (let h = 0; h < 24; h++) { const x = at(h); if (!x?.rooms) continue; let k = 0, any = false;
-    for (const v of Object.values(x.rooms)) if (typeof v.kw === 'number') { k += v.kw; any = true; }
-    if (any && (x.minutes ?? 60) >= 10) { hvac[h] = Math.round(k * 100) / 100; measuredHours.push(h); } }
-  for (const f of B.floors) for (const r of f.rooms) { if (r.type !== 'room') continue;
-    const cap = r.capacity > 0 ? r.capacity : Math.max(1, Math.round(areaOf(r.polygon) * .05)), U = occOf(r.use);
-    const expect = h => { if (cls[r.id]) { let n = 0; for (const c of cls[r.id]) { const o = Math.max(0, Math.min((h + 1) * 60, hmm(c.end)) - Math.max(h * 60, hmm(c.start))) / 60; n = Math.max(n, c.enrolled * .9 * o); } return n; }
-      return U[h] > .05 ? U[h] * cap : 0; };
-    const meas = h => { const v = at(h)?.rooms?.[r.id]; return typeof v?.occ === 'number' ? v.occ : null; };
-    let sm = 0, se = 0; for (let h = 0; h < 24; h++) { const m = meas(h); if (m != null && !cls[r.id]) { sm += m; se += expect(h); } }
-    const ratio = se > .5 ? Math.min(2, Math.max(.3, sm / se)) : 1;
-    const occ = Array.from({ length:24 }, (_, h) => { const m = meas(h); return Math.round((m != null ? m : expect(h) * (cls[r.id] ? 1 : ratio)) * 10) / 10; });
-    // 가동: 지난 시간 = 실측(30분 이상 켬), 남은 시간 = 운영시간 안에서 사람 있을 때 (+ 빈 방에 켜 두는 습관이면 계속)
-    let habit = 0, onAny = false, sp = 0, sw = 0;
-    for (let h = 0; h < 24; h++) { const v = at(h)?.rooms?.[r.id]; if (typeof v?.on !== 'number') continue; onAny = true;
-      if (v.on >= .5 && (meas(h) ?? 1) < 1) habit++; if (typeof v.set === 'number' && v.on > 0) { sp += v.set * v.on; sw += v.on; } }
-    const avail = Array.from({ length:24 }, (_, h) => { const v = at(h)?.rooms?.[r.id];
-      if (h < Math.floor(now) && typeof v?.on === 'number') return v.on >= .5 ? 1 : 0;
-      return opH(h) && (occ[h] >= 1 || habit >= 2) ? 1 : 0; });
-    rooms[r.id] = { occ, avail, measured:onAny, ...(sw ? { set:Math.round(sp / sw * 2) / 2 } : {}) };
-  }
-  return { date, day, now, temp, hum, clear, rain, rooms, measured:{ hours:measuredHours, hvacKw:hvac } };
-}
-const areaOf = p => { let s = 0; for (let i = 0; i < p.length; i++) { const [x0, y0] = p[i], [x1, y1] = p[(i + 1) % p.length]; s += x0 * y1 - x1 * y0; } return Math.abs(s) / 2; };
-// 오늘 실제 운전 = 실별 실측 가동 시간·설정온도
-export function liveBaseline(B, L){
-  const b = baselineOf(B), rooms = {}; let t = 0, n = 0, h0 = 24, h1 = 0;
-  for (const [id, x] of Object.entries(L.rooms)) { rooms[id] = { avail:x.avail, ...(x.set != null ? { coolSetpoint:x.set } : {}) };
-    if (x.set != null) { t += x.set; n++; } x.avail.forEach((v, h) => { if (v) { h0 = Math.min(h0, h); h1 = Math.max(h1, h + 1); } }); }
-  const p = v => String(v).padStart(2, '0') + ':00';
-  return { ...b, name:'오늘 실제 운전', coolSetpoint:n ? Math.round(t / n * 2) / 2 : b.coolSetpoint, hours:h0 < h1 ? [p(h0), p(h1)] : b.hours, rooms, live:L.date,
-    note:`오늘 ${L.date} 중앙제어기 기록(가동 시간·설정온도) + ${Math.floor(L.now)}시 이후는 재실 예상으로 이어서` };
-}
+// 오늘(실시간) 하루: pipeline/live-day.js (브라우저 5R1C 즉시 계산과 같이 씀)
+import { liveDay, liveBaseline, hmm } from '../pipeline/live-day.js';
+export { liveDay, liveBaseline };
+
 // 실측 냉방 전력으로 보정: 지난 시간들의 (실측 합 ÷ 시뮬레이션 합) = 보정 계수 → 두 결과 모두에 곱함
 export function calibrate(base, sc, L){
   const hs = L.measured.hours.filter(h => base.hourlyKwh[h] > .01 || L.measured.hvacKw[h] > .01);
@@ -121,7 +73,7 @@ export async function runScenario(dataDir, scenario, { epw = null, ep = findEner
   const { idf, zones } = toIdf(B, { weatherFile:!!epw && !live, scenario, live });
   if (live) epw = null;
   // 캐시 키 = 실제로 돌릴 IDF 내용 + 결과 해석에 쓰는 값 (IDF 만드는 코드가 바뀌어도 자동으로 다시 계산)
-  const key = crypto.createHash('sha1').update(JSON.stringify([idf, zones, tariff, epw && fs.statSync(epw).size, COMFORT, readScenario.toString()])).digest('hex').slice(0, 12);
+  const key = crypto.createHash('sha1').update(JSON.stringify([idf, zones, tariff, epw && fs.statSync(epw).size, COMFORT, COMFORT_HEAT, readScenario.toString()])).digest('hex').slice(0, 12);
   const out = path.join(ROOT, 'sim', B.building.id, 'runs', key), cached = path.join(out, 'result.json');
   if (fs.existsSync(cached)) return { ...readJson(cached), cached:true };
   // 같은 입력이 동시에 두 번 오면(기존 = 선택 등) 한 번만 돌리고 결과 파일을 같이 씀
@@ -169,14 +121,14 @@ function windowKpi(b, s, L, w){
   const r = v => Math.round(v * 1000) / 1000, part = h => Math.max(0, Math.min(h + 1, w.to) - Math.max(h, w.from));
   const sum = (a, f = part) => a.reduce((t, v, h) => t + v * f(h), 0);
   const temps = R => { let t = 0, n = 0, mx = null;
-    for (const [id, x] of Object.entries(R.rooms)) { if (!x.hourlyT) continue;
+    for (const [id, x] of Object.entries(R.rooms)) { if (!x.hourlyT || (w.rooms && !w.rooms.includes(id))) continue;
       for (let h = Math.floor(w.from); h < Math.ceil(w.to); h++) { const T = x.hourlyT[h], p = part(h); if (T == null || !p || !L.rooms[id]?.avail[h]) continue; t += T * p; n += p; mx = Math.max(mx ?? T, T); } }
     return { avgT:n ? r(t / n) : null, maxT:mx }; };
   const side = R => ({ kwh:r(sum(R.hourlyKwh)), won:Math.round(sum(R.hourlyWon)), ...temps(R) });
   const B = side(b), S = side(s), after = h => h >= Math.ceil(w.to) ? 1 : 0;
   const hhmm = h => `${String(Math.floor(h)).padStart(2, '0')}:${String(Math.round((h % 1) * 60)).padStart(2, '0')}`;
-  return { from:w.from, to:w.to, hours:w.hours, label:`${hhmm(w.from)}~${hhmm(w.to)}`, clipped:w.to - w.from < w.hours, setpoint:w.sp, base:B, scenario:S,
-    savedKwh:r(B.kwh - S.kwh), savedWon:B.won - S.won, savedPct:B.kwh > 0 ? r((B.kwh - S.kwh) / B.kwh * 100) : 0,
+  return { from:w.from, to:w.to, hours:w.hours, rooms:w.rooms || null, label:`${hhmm(w.from)}~${hhmm(w.to)}`, clipped:w.to - w.from < w.hours, setpoint:w.sp, base:B, scenario:S,
+    savedKwh:r(B.kwh - S.kwh), savedWon:B.won - S.won, savedPct:B.kwh >= .5 ? r((B.kwh - S.kwh) / B.kwh * 100) : null,   // 기준이 거의 0이면 % 무의미
     afterSavedKwh:r(sum(b.hourlyKwh, after) - sum(s.hourlyKwh, after)) };
 }
 
@@ -185,15 +137,19 @@ function windowKpi(b, s, L, w){
 export async function compare(dataDir, scenario, opts = {}){
   const dir = path.resolve(ROOT, dataDir), B = readJson(path.join(dir, 'building.json'));
   const L = opts.live ? liveDay(B, opts.live, { schedule:readJson(path.join(dir, 'schedule.json')) }) : null;
-  const base = L ? liveBaseline(B, L) : baselineOf(B);
+  // 냉방·난방: 화면이 보낸 mode > 오늘 날짜(실시간) > 냉방 (설계일 비교는 지금까지처럼 여름)
+  const mode = ['cool', 'heat'].includes(scenario?.mode) ? scenario.mode : ['cool', 'heat'].includes(opts.live?.mode) ? opts.live.mode : L ? modeOfMonth(+L.date.slice(5, 7)) : 'cool';
+  const base = L ? liveBaseline(B, L, mode) : baselineOf(B, mode);
   // '지금부터 N시간': 기준 = 현재 설정을 그대로 유지했을 때의 예측(오늘 실제 운전 + 이후 재실 예상), 선택 = 같은 운전에서 그 구간만 설정온도 변경
   //   구간은 15분 단위(EnergyPlus Timestep 4), 오늘 24시를 넘기면 24시까지만
   const win = L && scenario?.window ? (() => { const n = Math.min(12, Math.max(.25, +scenario.window.hours || 2)), from = Math.floor(L.now * 4) / 4;
-    return { from, to:Math.min(24, from + Math.round(n * 4) / 4), hours:n, sp:Math.min(30, Math.max(18, +scenario.coolSetpoint || base.coolSetpoint)) }; })() : null;
-  const sc = win ? { ...JSON.parse(JSON.stringify(base)), name:`지금부터 ${win.hours}시간 ${win.sp}°C`, inherit:'live', coolSetpoint:win.sp, window:{ from:win.from, to:win.to, hours:win.hours } }
+    // window.rooms: 이 방들만 바꿈 (채팅 what-if "3층 강의실 18도로 낮추면?"), 없으면 건물 전체
+    const only = Array.isArray(scenario.window.rooms) ? scenario.window.rooms.filter(id => L.rooms[id]) : [];
+    return { from, to:Math.min(24, from + Math.round(n * 4) / 4), hours:n, sp:Math.min(30, Math.max(18, +scenario.coolSetpoint || base.coolSetpoint)), rooms:only.length ? only : null }; })() : null;
+  const sc = win ? { ...JSON.parse(JSON.stringify(base)), name:`지금부터 ${win.hours}시간 ${mode === 'heat' ? '난방' : '냉방'} ${win.sp}°C`, inherit:'live', window:{ from:win.from, to:win.to, hours:win.hours, sp:win.sp, ...(win.rooms ? { rooms:win.rooms } : {}) } }
     : cleanScenario(scenario, B, base);
   if (win) { base.name = '현재 설정 유지 (예측)';
-    for (const id of Object.keys(L.rooms)) sc.rooms[id] = { ...sc.rooms[id], spWindow:{ from:win.from, to:win.to, sp:win.sp, base:sc.rooms[id]?.coolSetpoint ?? base.coolSetpoint } }; }
+    for (const id of win.rooms || Object.keys(L.rooms)) sc.rooms[id] = { ...sc.rooms[id], spWindow:{ from:win.from, to:win.to, sp:win.sp, base:sc.rooms[id]?.coolSetpoint ?? base.coolSetpoint } }; }
   // 오늘 실측 기준에서 건물 전체 조건을 바꿀 땐: 방마다 오늘 실제로 켠 시간은 그대로 두고
   //   운전 시간대 밖은 끄고, '사람 적은 시간 끄기'면 실측·예상 재실 0명인 시간을 끄고, 사전 냉방이면 사람 오기 전 시간을 켬
   if (L && sc.inherit !== 'live' && !win) {
@@ -205,7 +161,7 @@ export async function compare(dataDir, scenario, opts = {}){
   }
   const o = { ...opts, live:L };
   const [b, s] = await Promise.all([runScenario(dataDir, base, o), runScenario(dataDir, sc, o)]);
-  const out = { schema:'twin.scenario-compare/v1', building:B.building.id, baseline:b, scenario:s };
+  const out = { schema:'twin.scenario-compare/v1', building:B.building.id, mode, baseline:b, scenario:s };
   if (L) {
     out.calibration = calibrate(b, s, L);
     const from = Math.floor(L.now), sum = (a, k) => a.slice(k).reduce((t, v) => t + v, 0), r = v => Math.round(v * 1000) / 1000;

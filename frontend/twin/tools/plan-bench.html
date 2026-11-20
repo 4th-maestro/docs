@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>평면도 인식 검증</title>
+<style>
+  :root{--bg:#fff;--ink:#1d2433;--muted:#667085;--line:#e3e7ee}
+  @media (prefers-color-scheme:dark){:root{--bg:#10141c;--ink:#e6eaf2;--muted:#98a2b3;--line:#2a3140}}
+  body{margin:0;padding:16px;font:13px/1.5 system-ui,sans-serif;background:var(--bg);color:var(--ink)}
+  h1{font-size:18px;margin:0 0 4px}.desc{color:var(--muted);margin:0 0 12px}
+  table{border-collapse:collapse;margin:12px 0;font-variant-numeric:tabular-nums}td,th{border:1px solid var(--line);padding:4px 8px;text-align:right}th{text-align:center}
+  .cases{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px}.case{border:1px solid var(--line);border-radius:8px;padding:6px}
+  .case canvas{width:100%;display:block;margin-top:4px}.good{color:#1a7f37}.bad{color:#cf222e}
+</style></head><body>
+<h1>평면도 사진 인식 검증 (가짜 안내도)</h1>
+<p class="desc">정답을 아는 안내도를 무작위로 그리고 반사·눈부심·원근·번호·글자·범례·여러 층을 섞어 사진처럼 만든 뒤, 칠한 칸 인식을 정답과 비교합니다.
+  기존 = 원본 사진에 fill 판정(색 방향) · 새 방식 = 전처리(plan-clean) 후. 주소 뒤 <code>?n=16&seed=1&hard=1</code></p>
+<div id="sum">계산 중…</div><div class="cases" id="cases"></div>
+<script type="module">
+import { cleanPlanPhoto } from '../pipeline/plan-clean.js';
+import { fillClasses } from '../pipeline/pipeline-core.js';
+const q = new URLSearchParams(location.search), N = +(q.get('n') || 12), SEED = +(q.get('seed') || 1), HARD = +(q.get('hard') || 1);
+
+/* 난수 (재현 가능) */
+function rng(seed){ let s = seed >>> 0 || 1; return () => ((s = Math.imul(s ^ s >>> 15, 1 | s), s ^= s + Math.imul(s ^ s >>> 7, 61 | s), (s ^ s >>> 14) >>> 0) / 4294967296); }
+
+/* ── 1. 가짜 안내판: 층 1~3개, 층마다 외곽(곡선·사선 가능) + 칸 ── */
+function makeSign(rnd){
+  const SW = 1500, SH = 1500, g = new OffscreenCanvas(SW, SH).getContext('2d'), truth = new OffscreenCanvas(SW, SH).getContext('2d');
+  const hue = rnd() < .7 ? 220 + rnd() * 25 : [20, 140, 330][Math.floor(rnd() * 3)];     // 대개 보라·남색, 가끔 다른 칠
+  const fill = `hsl(${hue} ${18 + rnd() * 20}% ${58 + rnd() * 10}%)`;
+  g.fillStyle = '#f6f6f4'; g.fillRect(0, 0, SW, SH); truth.fillStyle = '#000'; truth.fillRect(0, 0, SW, SH);
+  const nF = 1 + Math.floor(rnd() * 3), legend = rnd() < .8, LW = legend ? 380 : 0, floors = [];
+  const gap = 25 + rnd() * 60, fh = (SH - 60 - gap * (nF - 1)) / nF;
+  for (let f = 0; f < nF; f++) {
+    const x0 = 40, y0 = 30 + f * (fh + gap), x1 = SW - 40 - (f === 0 ? LW : 0) * (rnd() < .6 ? 1 : 0), y1 = y0 + fh, curve = rnd() < .6 ? (rnd() * .5 + .2) * (y1 - y0) * .5 : 0;
+    // 외곽: 아래 변이 곡선(가운데가 내려옴)이거나 직선, 왼쪽 위가 사선으로 잘림
+    const cut = rnd() < .5 ? 40 + rnd() * 80 : 0, bottom = x => y1 - curve + curve * Math.sin(Math.PI * (x - x0) / (x1 - x0));
+    const path = new Path2D(); path.moveTo(x0 + cut, y0); path.lineTo(x1, y0); path.lineTo(x1, bottom(x1));
+    for (let x = x1; x >= x0; x -= 10) path.lineTo(x, bottom(x)); path.lineTo(x0, y0 + cut); path.closePath();
+    g.fillStyle = '#e8e9eb'; g.fill(path); g.strokeStyle = '#6b6f76'; g.lineWidth = 5; g.stroke(path);
+    // 칸: 윗변을 따라 한 줄, 아래 곡선을 따라 한 줄(사다리꼴), 가운데 섬 몇 개
+    const shops = [], cw = 70 + rnd() * 50, ch = 50 + rnd() * 30;
+    for (let x = x0 + cut + 30; x + cw < x1 - 20; x += cw + (rnd() < .3 ? 30 + rnd() * 120 : 4)) if (rnd() < .8) shops.push([[x, y0 + 8], [x + cw, y0 + 8], [x + cw, y0 + 8 + ch], [x, y0 + 8 + ch]]);
+    for (let x = x0 + 20; x + cw < x1 - 20; x += cw + (rnd() < .3 ? 30 + rnd() * 100 : 4)) if (rnd() < .75) { const a = x, b = x + cw;
+      shops.push([[a, bottom(a) - 8 - ch], [b, bottom(b) - 8 - ch], [b, bottom(b) - 8], [a, bottom(a) - 8]]); }
+    for (let k = 0, m = Math.floor(rnd() * 5); k < m; k++) { const w = 60 + rnd() * 90, h = 40 + rnd() * 80, x = x0 + 80 + rnd() * (x1 - x0 - 240), y = y0 + ch + 40 + rnd() * Math.max(10, (fh - 2 * ch - curve - 140));
+      shops.push([[x, y], [x + w, y], [x + w, y + h], [x, y + h]]); }
+    for (const s of shops) { const p = new Path2D(); s.forEach(([x, y], i) => i ? p.lineTo(x, y) : p.moveTo(x, y)); p.closePath();
+      g.fillStyle = fill; g.fill(p); g.strokeStyle = '#ffffff'; g.lineWidth = 2; g.stroke(p); truth.fillStyle = '#fff'; truth.fill(p); }
+    // 빗금(계단), 화살표, 번호 동그라미, 글자, 아이콘
+    if (rnd() < .6) { const hx = x0 + 100 + rnd() * (x1 - x0 - 400), hy = bottom(hx) - 60; g.save(); g.beginPath(); g.rect(hx, hy - 50, 220, 50); g.clip(); g.strokeStyle = '#555'; g.lineWidth = 2;
+      for (let t = -60; t < 280; t += 9) { g.beginPath(); g.moveTo(hx + t, hy); g.lineTo(hx + t + 50, hy - 50); g.stroke(); } g.restore(); }
+    for (const s of shops) { const cx = (s[0][0] + s[2][0]) / 2, cy = (s[0][1] + s[2][1]) / 2;
+      g.fillStyle = `hsl(${rnd() * 360} 65% ${35 + rnd() * 25}%)`; g.beginPath(); g.arc(cx, cy, 13, 0, 7); g.fill(); g.fillStyle = '#fff'; g.font = 'bold 14px sans-serif'; g.textAlign = 'center'; g.fillText(String(1 + Math.floor(rnd() * 32)), cx, cy + 5); }
+    g.fillStyle = '#333'; g.font = '22px sans-serif'; g.textAlign = 'left';
+    for (let k = 0; k < 6; k++) g.fillText(['타는 곳', '출입문', '화장실', '에스컬레이터', '매표창구', 'Tracks'][k], x0 + 120 + rnd() * (x1 - x0 - 300), y0 + ch + 40 + rnd() * Math.max(20, fh - 2 * ch - curve - 80));
+    for (let k = 0; k < 4; k++) { const ax = x0 + 150 + rnd() * (x1 - x0 - 300), ay = y0 + ch + 50 + rnd() * Math.max(20, fh - 2 * ch - curve - 100); g.strokeStyle = '#1f6f6a'; g.lineWidth = 4; g.beginPath(); g.moveTo(ax, ay); g.lineTo(ax + 40, ay); g.lineTo(ax + 28, ay - 10); g.moveTo(ax + 40, ay); g.lineTo(ax + 28, ay + 10); g.stroke();
+      g.fillStyle = '#1d3f9e'; g.fillRect(ax + 60, ay - 14, 26, 26); }
+    floors.push({ box:[x0, y0, x1, Math.max(y1, bottom((x0 + x1) / 2))], shops });
+  }
+  if (legend) { const lx = SW - 40 - LW + 20; g.fillStyle = '#ffffff'; g.fillRect(lx, 40, LW - 30, Math.min(700, fh * .9));
+    for (let k = 0; k < 18; k++) { const yy = 70 + k * 36; if (yy > 40 + Math.min(700, fh * .9) - 20) break; g.fillStyle = `hsl(${rnd() * 360} 60% 45%)`; g.beginPath(); g.arc(lx + 25, yy, 12, 0, 7); g.fill();
+      g.fillStyle = '#222'; g.font = '18px sans-serif'; g.fillText('상호명 ' + (k + 1) + ' BAKERY', lx + 45, yy + 6); } }
+  return { sign:g.canvas, truth:truth.canvas, floors, nF, fill };
+}
+
+/* ── 2. 사진처럼: 원근 + 반사(하늘 판·철골 선·어두운 창) + 눈부심 + 흐림·잡음 ── */
+function homog(src, dst){   // src 4점 → dst 4점 (3×3)
+  const A = [], b = [];
+  for (let i = 0; i < 4; i++) { const [x, y] = src[i], [u, v] = dst[i]; A.push([x, y, 1, 0, 0, 0, -u * x, -u * y]); b.push(u); A.push([0, 0, 0, x, y, 1, -v * x, -v * y]); b.push(v); }
+  for (let c = 0; c < 8; c++) { let p = c; for (let r = c + 1; r < 8; r++) if (Math.abs(A[r][c]) > Math.abs(A[p][c])) p = r; [A[c], A[p]] = [A[p], A[c]]; [b[c], b[p]] = [b[p], b[c]];
+    for (let r = 0; r < 8; r++) if (r !== c) { const f = A[r][c] / A[c][c]; for (let k = c; k < 8; k++) A[r][k] -= f * A[c][k]; b[r] -= f * b[c]; } }
+  const h = b.map((v, i) => v / A[i][i]); return (x, y) => { const w = h[6] * x + h[7] * y + 1; return [(h[0] * x + h[1] * y + h[2]) / w, (h[3] * x + h[4] * y + h[5]) / w]; };
+}
+function photograph(S, rnd){
+  const PW = 1400, PH = 1400, j = () => (rnd() - .5) * .12 * PW * HARD;
+  const dst = [[60 + j(), 60 + j()], [PW - 60 + j(), 60 + j()], [PW - 60 + j(), PH - 60 + j()], [60 + j(), PH - 60 + j()]], src = [[0, 0], [1500, 0], [1500, 1500], [0, 1500]];
+  const inv = homog(dst, src), fwd = homog(src, dst);
+  const sd = S.sign.getContext('2d').getImageData(0, 0, 1500, 1500).data, td = S.truth.getContext('2d').getImageData(0, 0, 1500, 1500).data;
+  const out = new ImageData(PW, PH), truth = new Uint8Array(PW * PH);
+  for (let y = 0; y < PH; y++) for (let x = 0; x < PW; x++) { const [u, v] = inv(x, y), o = (y * PW + x) * 4;
+    if (u < 0 || v < 0 || u >= 1499 || v >= 1499) { out.data[o] = 120; out.data[o + 1] = 118; out.data[o + 2] = 112; out.data[o + 3] = 255; continue; }
+    const i = ((v | 0) * 1500 + (u | 0)) * 4; out.data[o] = sd[i]; out.data[o + 1] = sd[i + 1]; out.data[o + 2] = sd[i + 2]; out.data[o + 3] = 255; truth[y * PW + x] = td[i] > 127 ? 1 : 0; }
+  const c = new OffscreenCanvas(PW, PH), g = c.getContext('2d'); g.putImageData(out, 0, 0);
+  // 반사: 하늘 판(유리창 격자), 철골 선, 어두운 창, 사람 그림자, 눈부심
+  g.globalCompositeOperation = 'source-over';
+  for (let k = 0; k < 8 * HARD; k++) { g.fillStyle = `rgba(${160 + rnd() * 40},${190 + rnd() * 30},${225 + rnd() * 30},${.15 + rnd() * .35})`; g.fillRect(rnd() * PW, rnd() * PH * .6, 150 + rnd() * 400, 80 + rnd() * 250); }
+  for (let k = 0; k < 10 * HARD; k++) { const a = rnd() * Math.PI, x = rnd() * PW, y = rnd() * PH, L = 2000; g.strokeStyle = rnd() < .5 ? `rgba(60,65,75,${.2 + rnd() * .35})` : `rgba(255,255,255,${.3 + rnd() * .4})`; g.lineWidth = 3 + rnd() * 14;
+    g.beginPath(); g.moveTo(x - Math.cos(a) * L, y - Math.sin(a) * L); g.lineTo(x + Math.cos(a) * L, y + Math.sin(a) * L); g.stroke(); }
+  for (let k = 0; k < 2 * HARD; k++) { g.fillStyle = `rgba(40,45,55,${.15 + rnd() * .25})`; g.fillRect(rnd() * PW, PH * .3 + rnd() * PH * .6, 200 + rnd() * 300, 200 + rnd() * 400); }
+  { const gx = rnd() * PW, gy = rnd() * PH, gr = g.createRadialGradient(gx, gy, 10, gx, gy, 300 + rnd() * 400); gr.addColorStop(0, `rgba(255,255,250,${.35 + rnd() * .35 * HARD})`); gr.addColorStop(1, 'rgba(255,255,250,0)'); g.fillStyle = gr; g.fillRect(0, 0, PW, PH); }
+  { const gr = g.createLinearGradient(0, 0, PW, PH); gr.addColorStop(0, `rgba(0,0,0,${rnd() * .18})`); gr.addColorStop(1, `rgba(255,255,255,${rnd() * .15})`); g.fillStyle = gr; g.fillRect(0, 0, PW, PH); }
+  g.filter = 'blur(1px)'; g.drawImage(c, 0, 0); g.filter = 'none';
+  const img = g.getImageData(0, 0, PW, PH); for (let p = 0; p < img.data.length; p += 4) { const e = (rnd() - .5) * 16; img.data[p] += e; img.data[p + 1] += e; img.data[p + 2] += e; }
+  const boxes = S.floors.map(f => { const P = [[f.box[0], f.box[1]], [f.box[2], f.box[1]], [f.box[2], f.box[3]], [f.box[0], f.box[3]]].map(([a, b]) => fwd(a, b));
+    return [Math.min(...P.map(p => p[0])), Math.min(...P.map(p => p[1])), Math.max(...P.map(p => p[0])), Math.max(...P.map(p => p[1]))]; });
+  return { img, truth, boxes };
+}
+
+/* ── 3. 채점 ── */
+function score(pred, truth){ let tp = 0, fp = 0, fn = 0; for (let p = 0; p < truth.length; p++) { if (pred[p] && truth[p]) tp++; else if (pred[p]) fp++; else if (truth[p]) fn++; }
+  return { iou:tp / Math.max(1, tp + fp + fn), prec:tp / Math.max(1, tp + fp), rec:tp / Math.max(1, tp + fn) }; }
+const boxIou = (a, b) => { const ix = Math.max(0, Math.min(a[2], b[2]) - Math.max(a[0], b[0])), iy = Math.max(0, Math.min(a[3], b[3]) - Math.max(a[1], b[1])), I = ix * iy;
+  return I / ((a[2] - a[0]) * (a[3] - a[1]) + (b[2] - b[0]) * (b[3] - b[1]) - I); };
+function floorScore(pred, truthBoxes){   // 정답 층마다 가장 잘 겹치는 예측 영역의 IoU 평균, 개수 일치 여부
+  const ious = truthBoxes.map(t => Math.max(0, ...pred.map(p => boxIou(t, p)))); return { mean:ious.reduce((a, b) => a + b, 0) / ious.length, count:pred.length === truthBoxes.length }; }
+
+const rows = [], cases = document.getElementById('cases');
+const f2 = v => v.toFixed(2), pct = v => Math.round(v * 100) + '%';
+for (let i = 0; i < N; i++) {
+  const rnd = rng(SEED * 1000 + i), S = makeSign(rnd), P = photograph(S, rnd), n = P.img.width * P.img.height;
+  // 기존: 원본에 fill 판정(색 방향, 기본 보라 #8389b0) — 원근은 정답 그대로 두고 칠한 칸 판정만 비교
+  const old = fillClasses({ width:P.img.width, height:P.img.height, data:P.img.data }, 0, 0, { fill:'#8389b0', strength:.5 }), oldM = new Uint8Array(n); for (let p = 0; p < n; p++) oldM[p] = old[p] === 2 ? 1 : 0;
+  const t0 = performance.now(), C = cleanPlanPhoto({ width:P.img.width, height:P.img.height, data:P.img.data }, { noMerge:q.get('merge') === '0' }), ms = performance.now() - t0, newM = new Uint8Array(n); for (let p = 0; p < n; p++) newM[p] = C.classes[p] === 1 ? 1 : 0;
+  const so = score(oldM, P.truth), sn = score(newM, P.truth), fl = floorScore(C.blocks.map(b => [b.corners[0][0], b.corners[0][1], b.corners[2][0], b.corners[2][1]]), P.boxes);
+  rows.push({ i, nF:S.nF, so, sn, fl, ms, fill:S.fill }); (window.CASES ||= []).push({ img:P.img, truth:P.truth, C });
+  const d = document.createElement('div'); d.className = 'case';
+  d.innerHTML = `<b>#${i + 1}</b> 층 ${S.nF} · 칠 ${S.fill}<br>칸 IoU 기존 <b>${pct(so.iou)}</b> → 새 <b class="${sn.iou > so.iou ? 'good' : 'bad'}">${pct(sn.iou)}</b> · 층 영역 ${pct(fl.mean)} ${fl.count ? '' : `(개수 ${C.blocks.length}/${S.nF})`} · ${Math.round(ms)}ms`;
+  for (const im of [P.img, C.image]) { const cv = document.createElement('canvas'); cv.width = im.width; cv.height = im.height; cv.getContext('2d').putImageData(im instanceof ImageData ? im : new ImageData(im.data, im.width, im.height), 0, 0);
+    const x = cv.getContext('2d'); x.lineWidth = 6; x.strokeStyle = 'rgba(0,160,80,.9)'; for (const b of P.boxes) x.strokeRect(b[0], b[1], b[2] - b[0], b[3] - b[1]);
+    if (im !== P.img) { x.strokeStyle = 'rgba(230,60,60,.9)'; x.setLineDash([16, 10]); for (const b of C.blocks) { const [[a, bb], , [cc, dd]] = b.corners; x.strokeRect(a, bb, cc - a, dd - bb); } }
+    d.append(cv); }
+  cases.append(d);
+  await new Promise(r => setTimeout(r));
+}
+const avg = f => rows.reduce((a, r) => a + f(r), 0) / rows.length;
+document.getElementById('sum').innerHTML = `<table><tr><th></th><th>칸 IoU</th><th>정밀도</th><th>재현율</th><th>층 영역 IoU</th><th>층 개수 일치</th></tr>
+  <tr><th>기존 (원본 + fill 판정)</th><td>${pct(avg(r => r.so.iou))}</td><td>${pct(avg(r => r.so.prec))}</td><td>${pct(avg(r => r.so.rec))}</td><td>–</td><td>–</td></tr>
+  <tr><th>새 방식 (전처리)</th><td>${pct(avg(r => r.sn.iou))}</td><td>${pct(avg(r => r.sn.prec))}</td><td>${pct(avg(r => r.sn.rec))}</td><td>${pct(avg(r => r.fl.mean))}</td><td>${rows.filter(r => r.fl.count).length}/${rows.length}</td></tr></table>
+  <p class="desc">사례 ${rows.length}개 · seed ${SEED} · 난이도 ${HARD} · 평균 전처리 ${Math.round(avg(r => r.ms))}ms · 녹색 = 정답 층 영역, 빨간 점선 = 찾은 층 영역</p>`;
+window.BENCH = rows.map(r => ({ i:r.i, nF:r.nF, old:+r.so.iou.toFixed(3), neu:+r.sn.iou.toFixed(3), prec:+r.sn.prec.toFixed(3), rec:+r.sn.rec.toFixed(3), floor:+r.fl.mean.toFixed(2), count:r.fl.count, fill:r.fill }));
+</script></body></html>

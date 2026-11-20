@@ -202,5 +202,23 @@ aws secretsmanager delete-secret --secret-id maestro/dev/kma-api-key \
   Lambda는 `Active`, Python 3.12 / arm64, `LOCATION=98,77`입니다.
 - `Enabled: !If`를 사용한 최초 배포에서 규칙이 활성화되어 즉시 비활성화했습니다.
   `State: !If [RunSchedule, ENABLED, DISABLED]`로 수정해 다시 배포했습니다.
-- 시험용 빈 시크릿 `maestro/dev/kma-api-key`를 생성했습니다. 키 소유자의 값 입력 전이므로
-  실제 API 호출·DynamoDB 쓰기·30분 스케줄 검증은 아직 진행하지 않았습니다.
+- 키 담당자가 시험용 `maestro/dev/kma-api-key`와 정식 `maestro/kma-api-key`에
+  값을 입력했습니다. 확인 과정에서 키 값은 출력하지 않았습니다.
+- 시험·정식 Lambda 모두 실제 기상청 호출 후 `status=stored`를 반환하고
+  `maestro-Weather`에 저장했습니다. 같은 `location`/`ts`로 재호출한 뒤에도
+  항목 수는 1개였습니다.
+- 시험 스케줄은 19:55(KST) EventBridge `Invocations` 합계 1과 Lambda 저장 성공
+  로그로 자동 실행을 확인했습니다. 이후 시험 스케줄을 비활성화했습니다.
+- 정식 스택 `maestro-weather`는 PR #32가 머지된 `main` 커밋 `268cb4e`에서
+  배포했습니다. Lambda는 `Active`, `LOCATION=98,77`, 스케줄은
+  `ENABLED` / `rate(30 minutes)`입니다.
+- 정식 스케줄은 20:30(KST) EventBridge `Invocations` 합계 1과
+  20:30:47의 Lambda `stored` 로그로 자동 실행을 확인했습니다.
+  최신 항목은 `2026-11-20T20:00:00+09:00`, 기온 3.2°C, 습도 42%,
+  풍속 1.1m/s, 강수량 0mm였으며, TTL은 관측 시각의 30일 뒤입니다.
+- 정식 자동 수집 확인 후 `maestro-weather-dev` 스택을 삭제했고
+  `DELETE_COMPLETE`를 확인했습니다. 공용 Weather 테이블은 유지됩니다.
+  시험용 시크릿은 `Retain` 정책대로 보존했으며, 더 이상 사용하지 않으면
+  키 소유자가 위 절차에 따라 복구 기간을 두고 삭제할 수 있습니다.
+- CloudTrail trail 조회 결과는 비어 있었습니다. 지속 보관되는 감사 로그 설정은
+  확인하지 못했으며, 템플릿 검증과 실행 검증은 이를 대신하지 않습니다.

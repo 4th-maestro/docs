@@ -1,6 +1,8 @@
 import { applyOverrides, demoStatus, kstNow, live, mockAsk, summarize } from './mock'
 import { mockAnomalies, mockBuildings, mockCancelSchedule, mockHistory, mockRecommendations, mockSaveSchedule, mockSchedules } from './panels/mock'
 import type { Anomalies, History, Recommendations, Schedules } from './panels/types'
+import { mockOps, mockOpsAct, mockOpsSettings } from './ops/mock'
+import type { Decision, OpsAction, OpsOverview, OpsSettings } from './ops/types'
 import { AUTH_ON, getAccessToken, signOut } from './auth/cognito'
 import type { Step } from './ai/types'
 import type { Chart, Draft, Portfolio, QueryResult, Source, Status } from './types'
@@ -8,6 +10,8 @@ import type { Chart, Draft, Portfolio, QueryResult, Source, Status } from './typ
 export type ChatRecord = { sk: string; role: 'user' | 'assistant'; text: string; steps?: Step[]; highlight?: string[]; draft?: Draft | null; charts?: Chart[]; sources?: Source[] }
 
 const BASE = import.meta.env.VITE_API_BASE_URL as string | undefined
+// API 주소 설정 여부: 없으면 화면 전체가 목업 모드
+export const HAS_API = !!BASE
 
 // 로그인 만료: 로그아웃 처리 후 로그인 화면으로 전환(목업 대체 화면이 잠깐 보일 수 있으나 곧 해제됨)
 export class AuthRequired extends Error {}
@@ -83,6 +87,14 @@ export async function saveSchedule(draft: Draft, sourceText: string, building: s
     return mockSaveSchedule(draft, sourceText, building)
   }
 }
+
+// 자동 운영(maestro-ops 스택): API가 없으면 목업, API 오류는 그대로 전달(409 이미 처리됨, 403 권한 없음 안내)
+const ops = (building: string) => `/buildings/${encodeURIComponent(building)}/operations`
+export const getOps = (building: string): Promise<OpsOverview> => (BASE ? call<OpsOverview>(ops(building)) : Promise.resolve(mockOps(building)))
+export const setAutoApply = (building: string, autoApply: boolean): Promise<OpsSettings> =>
+  BASE ? call<OpsSettings>(`${ops(building)}/settings`, { method: 'PUT', body: JSON.stringify({ autoApply }) }) : Promise.resolve(mockOpsSettings(building, autoApply))
+export const actOps = (building: string, id: string, action: OpsAction): Promise<Decision> =>
+  BASE ? call<Decision>(`${ops(building)}/decisions/${encodeURIComponent(id)}/${action}`, { method: 'POST' }) : Promise.resolve().then(() => mockOpsAct(building, id, action))
 
 // 운영 패널 조회: 실패하면 목업으로 대체하고 mock 표시
 export const getRecommendations = (floor: string, building: string) => call<Recommendations>(`/recommendations${q(building, floor)}`).catch(() => mockRecommendations(floor, building))

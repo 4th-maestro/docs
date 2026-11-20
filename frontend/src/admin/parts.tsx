@@ -42,7 +42,7 @@ export function Expiry({ iso }: { iso: string }) {
 
 // 구성원(판매사 기업 상세): 역할 변경(고객사 관리자, 운영자 전환), 제외. 둘 다 재확인 후 실행
 // - base: 판매사 co(기업 id)
-// - 마지막 고객사 관리자의 변경·제외는 서버 409 문구 표시
+// - 고객사 관리자 최소 인원 제한 없음(2026-11-20 해제). 서버 오류 문구는 그대로 표시
 export function Members({ base, members, onChange }: { base: string; members: Member[]; onChange: () => void }) {
   const [ask, setAsk] = useState<{ sub: string; remove: boolean } | null>(null)
   const [busy, setBusy] = useState(false)

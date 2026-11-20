@@ -189,6 +189,13 @@
       "path": "docs/human/explanation/research/ui-references.md",
       "purpose": "대시보드 화면 구성 레퍼런스(UIbowl)와 반영 항목",
       "kind": "explanation"
+    },
+    {
+      "id": "plan-ingest",
+      "repository": "maestro",
+      "path": "docs/human/reference/plan-ingest.md",
+      "purpose": "도면 변환 규약: IFC, CAD, PDF, 이미지 업로드 → twin.building/v1 초안 → 2D 실내기 매핑 → 3D, 작업 API, 상태 머신, 인식 Endpoint",
+      "kind": "reference"
     }
   ]
 }

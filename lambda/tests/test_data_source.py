@@ -97,5 +97,42 @@ class PlanTest(unittest.TestCase):
         self.assertEqual(self.call('nope')['statusCode'], 400)
 
 
+
+class CacheMissTest(unittest.TestCase):
+    """다른 실행 환경에서 등록한 건물: 캐시에 없으면 한 번 다시 읽고, 다시 읽기는 5초에 1회"""
+
+    def setUp(self):
+        self.real = buildings._load
+        base = self.real()
+        self.calls = 0
+
+        def load():
+            self.calls += 1
+            d = dict(base)
+            if self.calls >= 2:  # 두 번째 읽기부터 새 건물 포함
+                d['by_id'] = {**base['by_id'], 'b-new00001': {'id': 'b-new00001', 'name': '새 건물'}}
+            return d
+        buildings._load = load
+        buildings.forget()
+        buildings._miss['at'] = -buildings.MISS_RELOAD_S
+
+    def tearDown(self):
+        buildings._load = self.real
+        buildings.forget()
+        buildings._miss['at'] = -buildings.MISS_RELOAD_S
+
+    def test_reload_once_on_miss(self):
+        buildings.get('main')
+        self.assertEqual(self.calls, 1)
+        self.assertEqual(buildings.get('b-new00001')['name'], '새 건물')
+        self.assertEqual(self.calls, 2)
+
+    def test_unknown_reload_rate_limited(self):
+        buildings.get('main')
+        for _ in range(3):
+            with self.assertRaises(ValueError):
+                buildings.get('b-none0000')
+        self.assertEqual(self.calls, 2)
+
 if __name__ == '__main__':
     unittest.main()
