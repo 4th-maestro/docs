@@ -117,7 +117,7 @@ UI를 바꾸는 작업은 `DESIGN.md` "운영자 화면 기준"(40~50대 운영�
 - `frontend/`와 `lambda/`는 각각 GitHub 저장소(`4th-maestro/Frontend`, `4th-maestro/Lambda`)입니다. 작업 흐름은 다음과 같습니다(2026-11-20 사용자 지시).
   1. `dev`에서 `<type>/<작업 내용>` 브랜치를 만들어 커밋하고 푸시하십시오.
   2. `dev` 대상 PR을 만들고 Squash로 머지하십시오. PR 본문에는 변경 내용, 확인 결과, 미확인 항목을 적으십시오.
-  3. `main` 반영은 사용자가 요청할 때만 `dev` → `main` PR로 진행하십시오.
+  3. `main` 반영은 사용자가 요청할 때만 `dev` → `main` PR로 진행하십시오. 이 PR은 머지 커밋으로 합치고, 머지 후 `dev`를 `main`으로 빨리 감기(fast-forward)하십시오. Squash로 합치면 두 브랜치 이력이 갈라져 다음 반영 때 같은 변경이 다시 충돌합니다.
   4. 웹·Lambda 배포는 `main` 기준입니다. `dev` 코드는 로컬에서만 확인하십시오.
 - 상위 `_maestro` 저장소도 같은 파일을 추적합니다. 하위 저장소 머지 후 상위 저장소에도 같은 변경을 커밋하십시오.
 - API 키, 토큰, `.env` 파일, AWS 자격 증명은 커밋하지 마십시오. AWS 키는 `aws configure --profile maestro`로 각자 입력하고 대화에 붙여 넣지 마십시오.
