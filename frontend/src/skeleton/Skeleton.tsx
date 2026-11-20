@@ -2,7 +2,7 @@ import type { CSSProperties, ReactNode } from 'react'
 import './skeleton.css'
 
 // 스켈레톤: 데이터 도착 전 실제 배치와 같은 자리에 회색 블록 표시
-// - 움직임 없음: 반짝임·깜빡임은 장시간 화면의 눈 피로로 제외(DESIGN.md 운영자 화면 기준)
+// - 움직임: 불투명도 맥동(skeleton.css), 데이터 도착 전에만 표시
 // - 화면 낭독기: 블록은 숨기고 "불러오는 중입니다" 1회 안내
 type Len = number | string
 

@@ -1,5 +1,9 @@
-/* 스켈레톤: 정지 블록(애니메이션 없음), 색은 --skeleton(index.css, 두 테마) */
-.sk { display: block; flex: none; background: var(--skeleton); }
+/* 스켈레톤: 색은 --skeleton(index.css, 두 테마)
+   - 움직임: 불투명도 1 ↔ 0.35 맥동, 한 방향 700ms(넉터 components/common/Skeleton.tsx PULSE 값)
+   - 불투명도만 변경: 레이아웃 재계산 없이 합성 단계에서 처리, 조회가 길어져도 스크롤 끊김 없음
+   - 로딩 중에만 표시되는 반복이라 DESIGN.md 반복 금지의 예외, 동작 줄이기 설정이면 정지(motion.css) */
+@keyframes sk-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+.sk { display: block; flex: none; background: var(--skeleton); animation: sk-pulse 1400ms ease-in-out infinite; }
 .sk-wrap { position: relative; }
 .sk-body { display: contents; }
 .sk-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
