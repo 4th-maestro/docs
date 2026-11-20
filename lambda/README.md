@@ -11,13 +11,15 @@
 | `src/query.py` | `POST /query` 자연어 질의(Bedrock Claude Sonnet 5.5, 본문 `buildingId`), 응답에 단계 기록 `steps` 포함 |
 | `src/ws.py` | WebSocket `ask` 라우트(`buildingId`), 질의 단계 이벤트 실시간 전송([이벤트 형식](../docs/human/explanation/architecture.md#7-자연어-질의-llm-도구-호출과-서버-검증)) |
 | `src/schedules.py` | `GET /schedules?building=` 건물별 조회, `POST /schedules` 저장(`buildingId`의 호실만 허용), `DELETE /schedules/{id}` 취소 |
-| `src/recommend.py` | `GET /recommendations?building=&floor=` 낭비 규칙 3종 추천, 예상 절감량, 스케줄 초안 |
+| `src/recommend.py` | `GET /recommendations?building=&floor=` 낭비 규칙 3종 추천, 예상 절감량, 스케줄 초안, 사용 빈도 근거(`frequency`) |
+| `src/usage.py` | 호실 사용 빈도: 최근 4주 같은 요일·같은 시각 사용률·빈 채 운전률(추천 근거, 챗봇 `usage_frequency`) |
+| `infra/sim/` | 운전 시뮬레이션 계산 서버(EnergyPlus 컨테이너 Lambda, 스택 `maestro-sim`, 웹 `/api/sim/*`) |
 | `src/anomalies.py` | `GET /anomalies?building=&floor=` 설정온도 미도달 HVAC 상세, 기대 온도, 원인 후보(규칙 기반 추정) |
 | `src/history.py` | `GET /rooms/history?building=&floor=` 층 전력 시간별 평균(kW)과 사용량(kWh), 오늘 0시~현재와 어제 0~23시 |
 | `src/energy.py` | `GET /energy/compare·trend·heatmap·breakdown` 건물별 전력 사용량 비교, 기간 추이, 요일×시간 평균 kW, 층·용도 구성([설계](../docs/human/explanation/architecture.md) 11절) |
-| `src/tools.py` | LLM 도구 6종(호실 순위, 묶음 합계, 기간 추이, 스케줄 초안, 기준 문서 검색, 쾌적 지표) 정의와 서버 검증(층·용도는 질의 건물 기준), 결과 그래프 정의(`chart`: 막대·선), 문서 근거(`sources`) 생성 |
+| `src/tools.py` | LLM 도구 9종(호실 순위, 묶음 합계, 기간 추이, 스케줄 초안, 자동 운영 조회·실행 초안, 사용 빈도, 기준 문서 검색, 쾌적 지표) 정의와 서버 검증(층·용도는 질의 건물 기준), 결과 그래프 정의(`chart`: 막대·선), 문서 근거(`sources`) 생성 |
 | `src/comfort.py` | 불쾌지수(기상청 식)와 단계, PMV·PPD(ISO 7730 반복 계산, 외부 패키지 없음) |
-| `src/plan_ingest.py`, `src/plan_confirm.py` | 도면 변환 작업 API(`/plans/*`, `admin` 그룹 전용): 업로드·시작·인식·상태 조회, 보정본 확정과 건물 등록 연결. 규칙은 아래 "도면 변환" 절 |
+| `src/plan_ingest.py`, `src/plan_confirm.py` | 도면 변환 작업 API(`/plans/*`, `admin` 그룹 전용): 업로드·시작·인식·상태 조회, 기호 찾기, 보정본 확정과 건물 등록 연결. 규칙은 아래 "도면 변환" 절 |
 | `src/detect.py`, `layers/pillow/` | 실내기·문 기호 인식 Lambda(타일 분할, Serverless Endpoint 호출, NMS는 실내기끼리와 문끼리 따로 적용)와 Pillow 계층 |
 | `statemachine/plan.asl.json` | 도면 변환 상태 머신(JSONata): Parse, Detect, Merge, SaveDraft, 실패 기록 |
 | `ingest/` | 도면 파서 컨테이너 Lambda(`Dockerfile`, `app.handler`), 브랜치 `feat/plan-parsers` |
@@ -27,7 +29,7 @@
 | `src/sim.py`, `src/rooms.json` | 가상 HVAC 상태 생성, 본관 호실 137개(공개 IFC 의원 건물). 재실은 회의실, 사무실, 진료실, 대기·휴게 용도별 규칙. 그 밖의 용도(판매사 등록 건물의 미분류 호실 `기타` 포함)는 운영 시작·끝 35%, 가운데 70% 확률로 사용, 10㎡당 1명 기준 |
 | `tools/demo_status.py` | Frontend 데모 상태 생성(`frontend/public/demo/<건물>.json`, `index.json`) |
 | `tools/build_floorplans.py` | 건물별 3D 도면 생성(`frontend/public/floorplans/<건물>.json`) |
-| `ingest/` | 도면 변환 컨테이너 Lambda(IFC, DXF·DWG, PDF를 `twin.building/v1` 초안으로 변환, YOLO 인식 결과 병합). handler 계약, 빌드, 테스트는 `ingest/README.md` |
+| `ingest/` | 도면 변환 컨테이너 Lambda(IFC, DXF·DWG, PDF를 `twin.building/v1` 초안으로 변환, YOLO 인식 결과 병합, 도면 기호 찾기). handler 계약, 빌드, 테스트는 `ingest/README.md` |
 | `src/plan.py`, `tools/upload_plans.py` | 도면·트윈 파일 API `GET /buildings/{id}/plan`(도면 버킷 `plans/<건물>/current.json`), `GET /buildings/{id}/twin`(`plans/<건물>/building.json`), 초기 적재(`--bucket <PlansBucketName>`) |
 | `src/chat.py` | `GET·DELETE /chat?building=` 사용자별 대화 기록(90일), 대화 메모리(24시간, 1KB 요약) 저장 |
 | `src/auth.py` | WebSocket 연결 인증(쿼리 token, Cognito 액세스 토큰 검증), context에 sub·groups 전달 |
@@ -51,6 +53,41 @@ AWS_PROFILE=maestro python tools/eval_operations.py --out eval/operations-result
 ```
 
 2026-11-21 로컬 구현 검증: 단위 테스트 177개 중 175개 통과·2개 건너뜀, 실제 모델 도구 선택 평가 8/8 통과. cfn-lint는 오류·경고 0개입니다. cfn-guard 3.3.0과 AWS 공식 규칙 6개로 QueryFunction·WsFunction의 생성 IAM 역할을 검사해 위반 0개를 확인했습니다(스택 전체 보안 감사나 계정의 배포 검증은 아님). 프런트는 빌드와 일괄 실행 테스트 2개를 통과했습니다. 이 검증은 로컬 코드 기준이며 운영 배포·실제 제안 실행 확인은 별도입니다.
+
+## 외기 관측 표시
+
+`GET /rooms/status`의 `outdoorTemp`는 `WEATHER_TABLE`이 있으면 부산대 격자 `98,77`의
+최신 기상청 관측값(`tempC`)을 숫자로 반환합니다. `outdoorSource`는 `kma`,
+`outdoorObservedAt`은 관측 시각의 KST ISO 문자열입니다.
+
+Lambda 실행 환경마다 조회 결과를 5분 보관합니다. 빈 결과와 읽기 실패도 캐시하며,
+관측 시각이 요청 시점보다 2시간 넘게 오래됐으면 캐시 중에도 사용하지 않습니다.
+환경 변수 미설정, 빈 테이블, 읽기 실패, 잘못된 관측값에는 기존 시뮬레이션 외기를 반환하고
+`outdoorSource: "sim"`, `outdoorObservedAt: null`로 출처를 표시합니다.
+읽기 실패는 경고 로그로 남깁니다. 미래 시각의 관측도 사용하지 않습니다.
+
+`ApiFunction`만 `${TwinPrefix}-Weather`(기본 `maestro-Weather`) 환경 변수와
+`DynamoDBReadPolicy`를 갖습니다. 기존 `maestro-twin` 소유 테이블을 읽으며 생성·수정하지 않습니다.
+SDK 연결·읽기 제한은 각각 1초, 요청 시도는 1회입니다. 프런트는 기존 `outdoorTemp`를 그대로 사용하고,
+실내 온도·전력 계산에 쓰는 `sim.outdoor_temp()`는 기존 가상 곡선을 유지합니다.
+
+응답 예시입니다(실제 관측값이 아닌 형식 설명).
+
+```json
+{"outdoorTemp": 3.8, "outdoorSource": "kma", "outdoorObservedAt": "2026-11-20T19:00:00+09:00"}
+```
+
+이 변경만 별도로 배포하지 않습니다. `dev` 통합 후 승인된 `main` 배포에서 함께 반영하고,
+그 뒤 실제 `GET /rooms/status`와 Weather 최신 항목의 값·관측 시각을 대조하십시오.
+
+참고: [Boto3 Query](https://docs.aws.amazon.com/boto3/latest/reference/services/dynamodb/table/query.html),
+[SAM DynamoDBReadPolicy](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-policy-template-list.html#dynamodbreadpolicy).
+
+2026-11-21 로컬 검증(Python 3.12): 전체 테스트 201개 중 199개 통과,
+Pillow 미설치로 기존 테스트 2개 건너뜀입니다. 외기 테스트 10개와 실제 boto3의
+Stubber 기반 Query·Decimal 변환 검증을 통과했습니다. SAM lint와 추가 Weather 읽기 정책에서
+생성된 IAM 역할에 대한 AWS 공식 cfn-guard 규칙 6개를 통과했습니다.
+스택 전체 보안 감사, 계정의 배포 사전 검증, 배포 API 실측 대조는 수행하지 않았습니다.
 
 ## 테스트
 
@@ -79,9 +116,13 @@ sam build && sam deploy --guided --profile maestro
 git switch main && git pull --ff-only \
   && test -z "$(git status --porcelain --untracked-files=no)" \
   && sam build \
+  && SIM=$(aws cloudformation describe-stacks --stack-name maestro-sim --region ap-northeast-2 --profile maestro \
+       --query "Stacks[0].Outputs[?OutputKey=='SimOriginDomain'].OutputValue" --output text 2>/dev/null || true) \
   && sam deploy --stack-name maestro --region ap-northeast-2 --profile maestro --capabilities CAPABILITY_IAM --resolve-s3 --resolve-image-repos \
-     --no-confirm-changeset --no-fail-on-empty-changeset --parameter-overrides ModelId=global.anthropic.claude-sonnet-5-5
+     --no-confirm-changeset --no-fail-on-empty-changeset --parameter-overrides ModelId=global.anthropic.claude-sonnet-5-5 "SimOriginDomain=${SIM:-}"
 ```
+
+`SimOriginDomain`은 운전 시뮬레이션 계산 서버(`maestro-sim`, [infra/sim/README.md](infra/sim/README.md))의 Function URL 주소입니다. 빼고 배포하면 웹의 `/api/sim/*` 경로가 사라져 **EnergyPlus로 계산** 버튼이 동작하지 않습니다. `maestro-sim` 스택이 없으면 빈 값으로 경로 없이 배포됩니다.
 
 주: 2026-11-20 작업 사본의 미커밋 변경 때문에 브랜치 전환이 실패한 상태에서 `sam build`가 이어 실행되어, 머지 전 코드가 약 3분간 배포되었습니다. 명령을 `&&`로 연결하고 브랜치·변경 확인을 앞에 둔 이유입니다.
 
@@ -207,7 +248,7 @@ python3 tools/migrate_tenancy.py --user-pool-id "$POOL" --profile maestro
 
 | 항목 | 방식 |
 |---|---|
-| 함수 구성 | 조회·관리 API 45개 경로를 `api.py` 함수 1개로 처리. 이전 9개 함수는 화면마다 콜드 스타트가 9번 발생(첫 호출 2.6~2.9초, 2026-11-20 실측) |
+| 함수 구성 | 조회·관리 API 48개 경로를 `api.py` 함수 1개로 처리. 이전 9개 함수는 화면마다 콜드 스타트가 9번 발생(첫 호출 2.6~2.9초, 2026-11-20 실측) |
 | 메모리 | 전체 기본 1024MB, API 함수 1769MB(vCPU 1개). 512MB에서 `/buildings` p50 4.0초 |
 | 캐시 | 지난 시간·지난 날짜 계산은 대상 스케줄을 키로 실행 환경 메모리에 보관(스케줄 변경 시 자동 재계산), `/buildings` 응답은 30초 |
 
@@ -223,6 +264,7 @@ python3 tools/migrate_tenancy.py --user-pool-id "$POOL" --profile maestro
 | `POST /plans/jobs/{jobId}/start` | `{options?: {scale?, pxPerM?}}` | 202 `{status: 'running'}`. 상태가 `created`·`failed`가 아니면 409 |
 | `POST /plans/detect` | `{building, key, pxPerM?}` | 202 `{jobId}`. 인식 전용 작업(`kind: 'detect'`) |
 | `GET /plans/jobs/{jobId}` | 없음 | `{jobId, building, kind, status, step, error?, draftUrl?, pages?: [{floor, url, px}]}`. URL은 S3 GET 15분 |
+| `POST /plans/match` | `{key, box: [u0, v0, u1, v1], min?, rotate?}` | 200 `{matches: [{box, score}], size: [w, h], ms}`. 점수 내림차순 최대 500개, 본 기호 포함 |
 
 | 항목 | 규칙 |
 |---|---|
@@ -235,6 +277,7 @@ python3 tools/migrate_tenancy.py --user-pool-id "$POOL" --profile maestro
 | 단계 | `parse`(시작 시 API 기록) → `detect` → `merge`(상태 머신 기록). 인식 전용 작업은 `detect`만 사용 |
 | 인식 전용 작업 | `key`는 같은 건물 작업으로 올린 이미지만 허용. 결과는 `jobs/<jobId>/draft.json` `{floor: null, detections, model}`, `pages` 없음 |
 | 오류 | 상태 머신이 `error`에 오류 원문 기록. Lambda 오류는 `errorMessage`만 응답 |
+| 기호 찾기 | `key`는 층 배경 이미지(`jobs/<jobId>/pages/<번호>.png`, `uploads/<jobId>/<파일>.png·jpg`)만 허용. `min` 0.1~1(기본 0.35), `rotate` 불리언(기본 true). 형식 위반 400. 상자 한 변 8~400px·이미지 안 검사(400)와 없는 이미지(404)는 도면 파서 `op: match`가 판정. 파서 오류 500, 26초 초과 504. 알고리즘은 `ingest/README.md` 1-5절 |
 | 확정 저장 | `POST /plans/jobs/{jobId}/confirm`이 기존 판매사 등록·트윈 교체 검증을 재사용해 저장하고 작업을 `done`으로 갱신. 기존 직접 저장 경로도 유지 |
 
 ### 보정본 확정 API
@@ -293,7 +336,7 @@ Step Functions는 초안 생성까지 실행되고, 사람 대기는 DynamoDB의
 
 | 함수 | 환경 변수 | 권한(도면 버킷) |
 |---|---|---|
-| API(`api.py`) | `PLAN_JOBS_TABLE`, `PLAN_STATE_MACHINE`, `PLANS_BUCKET` | `uploads/*` PutObject(사전 서명), `jobs/*` GetObject. 기존 `plans/*` 권한은 변경 없음 |
+| API(`api.py`) | `PLAN_JOBS_TABLE`, `PLAN_STATE_MACHINE`, `PLANS_BUCKET`, `INGEST_FUNCTION` | `uploads/*` PutObject(사전 서명), `jobs/*` GetObject. 기존 `plans/*` 권한은 변경 없음. 도면 파서 호출(기호 찾기) |
 | 도면 파서(`IngestFunction`) | 없음 | `uploads/*` GetObject, `jobs/*` GetObject·PutObject |
 | 실내기 인식(`DetectFunction`) | `PLANS_BUCKET`, `DETECT_ENDPOINT`(기본 `hvac-symbol-detector-sls`) | `uploads/*`·`jobs/*` GetObject, 해당 Endpoint `sagemaker:InvokeEndpoint` |
 | 상태 머신 | 없음 | `jobs/*` PutObject, PlanJobs 쓰기, 두 Lambda 호출 |

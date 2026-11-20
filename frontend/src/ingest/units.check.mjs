@@ -1,7 +1,7 @@
 // 실내기 매핑 계산 자가 점검: node src/ingest/units.check.mjs (Node 23.6 이상, TypeScript 형식 제거 실행)
-// 범위: 기준점 변환, 호실 배정, 인식 결과 변환(실내기, 문), 인식용 보정 해상도와 픽셀 → m 환산, 실외기 연결, 빈 호실 추정, 모델 대응
+// 범위: 기준점 변환, 호실 배정, 인식 결과 변환(실내기, 문), 기호 찾기 결과 변환, 인식용 보정 해상도와 픽셀 → m 환산, 실외기 연결, 빈 호실 추정, 모델 대응
 import assert from 'node:assert/strict'
-import { applyDetections, assignRoom, connectOdus, detectionsToDoors, detectionsToUnits, fromPlan, modelFor, ODU_MARGIN, similarity, snapDoor, toPlan, TYPES } from './units.ts'
+import { applyDetections, assignRoom, connectOdus, detectionsToDoors, detectionsToUnits, fromPlan, matchesToDetections, matchesToUnits, modelFor, ODU_MARGIN, similarity, snapDoor, toPlan, TYPES } from './units.ts'
 import { autoUnits } from './auto-units.ts'
 import { MARGIN, rectify } from '../../twin/pipeline/pipeline-core.js'
 import { detectRes } from '../../twin/pipeline/host-bridge.js'
@@ -89,6 +89,25 @@ assert.deepEqual(loose.idus.map(u => [u.room, Boolean(u.review)]), [['B', false]
   assert.deepEqual(snapDoor(rooms, [.1, 4], .9, .3), { a: [.9, 4], b: [0, 4] })
   assert.deepEqual(snapDoor(rooms, [.1, 4], .9, .3, [1, 0]), { a: [0, 4], b: [.9, 4] })
   assert.equal(snapDoor(rooms, [2.5, 2], .9, .3), null)
+}
+// 9. 기호 찾기 결과: 맞춘 층은 실내기(기존 실내기 자리·앞 결과와 겹침 건너뜀, 점수 0.5 미만·실 밖 review), 미맞춤 층은 detections(기존 상자 자리 건너뜀)
+{
+  const f = { id: '2F', rooms }
+  const ms = [
+    { box: [40, 40, 60, 60], score: 1 }, // A (2.5, 2.5)
+    { box: [140, 40, 160, 60], score: .42 }, // B (7.5, 2.5), 점수 낮음
+    { box: [10, 10, 30, 30], score: .9 }, // A (1, 1): 기존 실내기 (1.2, 1)와 0.2m(기호 1m 미만)
+    { box: [44, 44, 64, 64], score: .8 }, // 첫 결과와 0.28m
+    { box: [215, 20, 235, 40], score: .7 }, // 건물 밖 (11.25, 1.5) → 가장 가까운 실 B, review
+  ]
+  const us = matchesToUnits(f, [{ id: 'old', room: 'A', pos: [1.2, 1] }], ms, 'cassette_1way', scale)
+  assert.deepEqual(us.map(u => [u.room, u.pos, u.conf, u.review, u.ref]), [
+    ['A', [2.5, 2.5], 1, false, 'match-1'], ['B', [7.5, 2.5], .42, true, 'match-2'], ['B', [11.25, 1.5], .7, true, 'match-5']])
+  assert.deepEqual([us[0].source, us[0].cls, us[0].type, us[0].model, us[0].size],
+    ['match', 'cassette_1way', TYPES.find(t => t.class === 'cassette_1way').name, modelFor('cassette_1way').model, [1, 1]])
+  assert.equal(new Set(us.map(u => u.id)).size, 3)
+  const dets = matchesToDetections({ id: '3F', rooms: [], detections: [{ cls: 'cassette_4way', conf: .9, box: [42, 42, 62, 62] }] }, ms, 'wall_mounted')
+  assert.deepEqual(dets.map(d => [d.cls, d.conf, d.box]), [['wall_mounted', .42, [140, 40, 160, 60]], ['wall_mounted', .9, [10, 10, 30, 30]], ['wall_mounted', .7, [215, 20, 235, 40]]])
 }
 console.log('units.check: 통과')
 

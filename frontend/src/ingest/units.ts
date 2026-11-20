@@ -91,6 +91,40 @@ export function detectionsToUnits(floor: PlanFloor, m: Affine, schedule: Schedul
   })
 }
 
+// 기호 찾기 결과(POST /plans/match, 도면 이미지 픽셀 상자와 점수). 규약 3-6절
+export type SymbolMatch = { box: [number, number, number, number]; score: number }
+const centerOf = ([u0, v0, u1, v1]: SymbolMatch['box']): Point => [(u0 + u1) / 2, (v0 + v1) / 2]
+
+// 위치를 맞춘 층: 기호 찾기 결과 → 실내기(source match, conf 점수, 점수 0.5 미만·실 밖·용량 근사 모델이면 review)
+// - 기존 실내기(existing)나 먼저 넣은 결과와 중심 거리가 기호 크기(상자 긴 변, m) 미만이면 같은 자리로 보고 건너뜀
+// - 모델은 유형 대응(typeFields). 용량 표기를 읽지 않으므로 유형 예시 모델
+export function matchesToUnits(floor: PlanFloor, existing: IndoorUnit[], matches: SymbolMatch[], cls: string, m: Affine): IndoorUnit[] {
+  const scale = Math.hypot(m[0], m[3]), taken = existing.map(u => u.pos), out: IndoorUnit[] = []
+  matches.forEach((match, i) => {
+    const [u0, v0, u1, v1] = match.box, size: [number, number] = [r2(Math.abs(u1 - u0) * scale), r2(Math.abs(v1 - v0) * scale)]
+    const pos = toPlan(m, centerOf(match.box)), hit = assignRoom(pos, floor.rooms)
+    if (!hit || taken.some(p => distance(p, pos) < Math.max(...size))) return
+    const fields = typeFields(cls)
+    taken.push(pos)
+    out.push({ id: `IDU-${floor.id}-match-${crypto.randomUUID()}`, room: hit.room.id, pos: [r2(pos[0]), r2(pos[1])], ...fields, source: 'match', conf: r2(match.score),
+      review: match.score < .5 || fields.cls === 'unknown' || !hit.inside || !!fields.review, size, ref: `match-${i + 1}` })
+  })
+  return out
+}
+
+// 위치를 맞추지 않은 층: 기호 찾기 결과 → 인식 결과(detections). 위치 맞춤 때 detectionsToUnits가 실내기로 바꿈
+// 기존 인식 결과와 중심 거리가 상자 긴 변(픽셀) 미만이면 같은 기호로 보고 건너뜀
+export function matchesToDetections(floor: PlanFloor, matches: SymbolMatch[], cls: string): Detection[] {
+  const boxes = (floor.detections ?? []).map(d => d.box), out: Detection[] = []
+  for (const { box, score } of matches) {
+    const c = centerOf(box), side = Math.max(Math.abs(box[2] - box[0]), Math.abs(box[3] - box[1]))
+    if (boxes.some(b => distance(centerOf(b), c) < side)) continue
+    boxes.push(box)
+    out.push({ cls, conf: r2(score), box })
+  }
+  return out
+}
+
 // 문 구간: 점 p에서 가장 가까운 호실 변(거리 max 이하)에 폭 w 구간을 둠. 맞는 변이 없으면 null
 // - 변이 폭보다 길면 구간이 변 안에 들어가게 밀고, a→b가 dir과 반대면 a, b를 바꿔 기존 경첩, 열림 방향을 유지
 export function snapDoor(rooms: PlanRoom[], p: Point, w: number, max: number, dir?: Point): { a: Point; b: Point } | null {

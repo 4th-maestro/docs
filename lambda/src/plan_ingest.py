@@ -7,6 +7,8 @@
   - key: 같은 건물 작업으로 올린 이미지(png, jpg). 결과는 jobs/<작업>/draft.json {floor, detections, model}
 - GET /plans/jobs/{jobId} → {jobId, building, kind, status, step, error?, draftUrl?, pages?: [{floor, url, px}]}(GET URL 15분)
 - POST /plans/jobs/{jobId}/confirm → 보정본을 판매사 건물 등록·교체 API로 저장, 작업 done 기록
+- POST /plans/match {key, box, min?, rotate?} → 200 {matches, size, ms}. 도면 기호 1개와 비슷한 기호 찾기(규약 3-6절)
+  - 계산은 도면 파서 컨테이너(INGEST_FUNCTION, op match) 동기 호출. 권한 판정은 이 함수(다른 /plans 경로와 같음)
 - 건물: 기존 건물 id 또는 새 건물 id(b- + 소문자·숫자 8자리). 판매사가 건물 등록 전에 도면을 변환하므로 존재를 요구하지 않음
 - 작업 기록: PLAN_JOBS_TABLE, 7일 뒤 ttl 삭제. 상태 머신(PLAN_STATE_MACHINE, statemachine/plan.asl.json)이 step, status(review·failed), draftKey, error 갱신
 - 확정본 저장 검증은 기존 판매사 건물 관리 API를 재사용(plan_confirm.py), 기존 직접 저장 경로도 유지
@@ -32,6 +34,8 @@ RESTARTABLE = ('created', 'failed')
 OPTIONS = ('scale', 'pxPerM')
 BUILDING_ID = re.compile(r'b-[a-z0-9]{8}')
 UPLOAD_KEY = re.compile(r'uploads/([0-9a-f]{32})/[^/]+')
+# 기호 찾기 대상: 층 배경 이미지(파서가 만든 쪽 이미지, IFC와 함께 올린 이미지). 그 밖의 키(확정 도면 등)는 읽지 않음
+BACKGROUND_KEY = re.compile(r'jobs/[0-9a-f]{32}/pages/\d+\.png|uploads/[0-9a-f]{32}/[^/]+\.(?:png|jpe?g)', re.I)
 NO_JOB = '없는 작업입니다.'
 _c = {}
 
@@ -41,7 +45,9 @@ def _client(name):
         import boto3
         from botocore.config import Config
         # 사전 서명 URL을 리전 주소(<버킷>.s3.<리전>.amazonaws.com)로 발급: 전역 주소의 307 이동은 브라우저 CORS 요청 실패
-        _c[name] = boto3.client(name, config=Config(s3={'addressing_style': 'virtual'}))
+        # lambda(기호 찾기 동기 호출): API 제한 시간 29초 안에 응답하고, 시간 초과 재시도로 같은 계산을 반복하지 않음
+        cfg = Config(read_timeout=26, retries={'total_max_attempts': 1}) if name == 'lambda' else Config(s3={'addressing_style': 'virtual'})
+        _c[name] = boto3.client(name, config=cfg)
     return _c[name]
 
 
@@ -170,6 +176,35 @@ def detect(event):
     return common.resp(202, {'jobId': job['jobId']})
 
 
+def match(event):
+    req = common.body(event)
+    if not isinstance(req, dict):
+        return common.resp(400, {'error': '요청 본문이 JSON 객체가 아닙니다.'})
+    key, box, low, rotate = req.get('key'), req.get('box'), req.get('min', .35), req.get('rotate', True)
+    if not (isinstance(key, str) and BACKGROUND_KEY.fullmatch(key)):
+        return common.resp(400, {'error': 'key는 도면 변환 작업의 층 도면 이미지(floors[].background.key)입니다.'})
+    if not (isinstance(box, list) and len(box) == 4 and all(_num(c) or (c == 0 and not isinstance(c, bool)) for c in box) and box[0] < box[2] and box[1] < box[3]):
+        return common.resp(400, {'error': 'box는 도면 이미지 화소 [u0, v0, u1, v1]입니다(0 이상, u0 < u1, v0 < v1).'})
+    if not (_num(low) and .1 <= low <= 1):
+        return common.resp(400, {'error': 'min은 0.1~1 사이 숫자입니다.'})
+    if not isinstance(rotate, bool):
+        return common.resp(400, {'error': 'rotate는 true 또는 false입니다.'})
+    try:
+        r = _client('lambda').invoke(FunctionName=os.environ['INGEST_FUNCTION'], Payload=json.dumps(
+            {'op': 'match', 'bucket': os.environ['PLANS_BUCKET'], 'key': key, 'box': box, 'min': low, 'rotate': rotate}).encode())
+    except Exception as e:
+        if type(e).__name__ != 'ReadTimeoutError':  # botocore 예외. 테스트 환경에 botocore가 없어 이름으로 확인
+            raise
+        return common.resp(504, {'error': '기호 찾기가 26초 안에 끝나지 않았습니다. 기호를 조금 크게 감싸 다시 지정하십시오.'})
+    out = json.loads(r['Payload'].read())
+    if r.get('FunctionError'):
+        print('match failed:', out.get('errorType'), out.get('errorMessage'))
+        return common.resp(500, {'error': '기호 찾기에 실패했습니다. 잠시 후 다시 시도하십시오.'})
+    if 'error' in out:
+        return common.resp(out['status'], {'error': out['error']})
+    return common.resp(200, out)
+
+
 def _message(cause):
     # 상태 머신이 기록한 오류: Lambda 오류는 {"errorMessage", "errorType", "stackTrace"} JSON 문자열
     try:
@@ -211,6 +246,7 @@ ROUTES = {
     'POST /plans/detect': detect,
     'GET /plans/jobs/{jobId}': status,
     'POST /plans/jobs/{jobId}/confirm': confirm,
+    'POST /plans/match': match,
 }
 
 

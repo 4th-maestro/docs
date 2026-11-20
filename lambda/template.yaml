@@ -27,6 +27,18 @@ Parameters:
     Type: String
     # 트윈 테이블: maestro-twin 스택(infra/twin/template.yaml)의 <Prefix>-Buildings, -Rooms, -Equipment, -State. 이름으로만 참조
     Default: maestro
+  # 운전 시뮬레이션 계산 서버(maestro-sim 스택, infra/sim): 웹 /api/sim/* → Function URL
+  # - 값은 maestro-sim 출력 SimOriginDomain(예 abc.lambda-url.ap-northeast-2.on.aws). 비어 있으면 CloudFront 경로를 만들지 않음
+  SimOriginDomain:
+    Type: String
+    Default: ''
+  # CloudFront → 계산 서버 비밀 헤더 값(Secrets Manager 문자열). maestro-sim과 같은 이름
+  SimSecretName:
+    Type: String
+    Default: maestro/sim-origin-secret
+
+Conditions:
+  HasSim: !Not [!Equals [!Ref SimOriginDomain, '']]
 
 Globals:
   Function:
@@ -266,13 +278,18 @@ Resources:
           PLANS_BUCKET: !Ref PlansBucket
           EQUIPMENT_TABLE: !Sub '${TwinPrefix}-Equipment'
           STATE_TABLE: !Sub '${TwinPrefix}-State'
+          # 표시용 외기만 관측값 참조. Weather는 maestro-twin 소유이며 읽기 전용.
+          WEATHER_TABLE: !Sub '${TwinPrefix}-Weather'
           PLAN_JOBS_TABLE: !Ref PlanJobsTable
           PLAN_STATE_MACHINE: !Ref PlanStateMachine
+          # 도면 기호 찾기(POST /plans/match): 권한 판정 후 도면 파서 컨테이너(op match)를 동기 호출
+          INGEST_FUNCTION: !Ref IngestFunction
       Policies:
         - DynamoDBCrudPolicy: {TableName: !Sub '${TwinPrefix}-Buildings'}
         - DynamoDBCrudPolicy: {TableName: !Sub '${TwinPrefix}-Rooms'}
         - DynamoDBCrudPolicy: {TableName: !Sub '${TwinPrefix}-Equipment'}
         - DynamoDBCrudPolicy: {TableName: !Sub '${TwinPrefix}-State'}
+        - DynamoDBReadPolicy: {TableName: !Sub '${TwinPrefix}-Weather'}
         - DynamoDBCrudPolicy: {TableName: !Ref SchedulesTable}
         - DynamoDBCrudPolicy: {TableName: !Ref ChatTable}
         - DynamoDBCrudPolicy: {TableName: !Ref CompaniesTable}
@@ -282,6 +299,7 @@ Resources:
         # 도면 변환 작업(plan_ingest.py): 작업 기록, 상태 머신 시작, 업로드 PUT(uploads/)·초안과 도면 이미지 GET(jobs/) 사전 서명
         - DynamoDBCrudPolicy: {TableName: !Ref PlanJobsTable}
         - StepFunctionsExecutionPolicy: {StateMachineName: !GetAtt PlanStateMachine.Name}
+        - LambdaInvokePolicy: {FunctionName: !Ref IngestFunction}
         - Statement:
             - Effect: Allow
               Action: s3:PutObject
@@ -354,6 +372,7 @@ Resources:
         DetectPlan: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /plans/detect, Method: POST}}
         GetPlanJob: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: '/plans/jobs/{jobId}', Method: GET}}
         ConfirmPlanJob: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: '/plans/jobs/{jobId}/confirm', Method: POST}}
+        MatchPlan: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /plans/match, Method: POST}}
 
   QueryFunction:
     Type: AWS::Serverless::Function
@@ -600,7 +619,9 @@ Resources:
           - {Id: expire-uploads, Status: Enabled, Prefix: uploads/, ExpirationInDays: 7}
           - {Id: expire-jobs, Status: Enabled, Prefix: jobs/, ExpirationInDays: 7}
 
-  # 도면 파서(ingest/, 컨테이너 이미지, app.handler): op parse(형식별 초안·도면 이미지 생성), op merge(인식 결과 병합)
+  # 도면 파서(ingest/, 컨테이너 이미지, app.handler): op parse(형식별 초안·도면 이미지 생성), op merge(인식 결과 병합), op match(기호 찾기)
+  # - op match는 ApiFunction(POST /plans/match)이 동기 호출. 응답 한도는 ApiFunction 제한 시간 29초.
+  #   1억 화소 도면 측정(2026-11-21, 개발 PC): 본 기호 54px 1.6초·최대 1.4GB, 본 기호 32px 이하(축소 없음) 3.5초·최대 2.3GB
   # - 이미지 빌드는 Docker 필요(sam build), 배포는 --resolve-image-repos
   # - 아키텍처 x86_64: ifcopenshell 0.9.0 aarch64 바이너리는 GLIBC 2.38 필요, Lambda python:3.12 이미지는 2.34(2026-11-20 배포 후 import 실패)
   # - 권한: 업로드 읽기(uploads/), 초안·도면 이미지 읽기·쓰기(jobs/)
@@ -699,6 +720,27 @@ Resources:
             DomainName: !GetAtt WebBucket.RegionalDomainName
             OriginAccessControlId: !Ref WebOac
             S3OriginConfig: {OriginAccessIdentity: ''}
+          - !If
+            - HasSim
+            - Id: sim
+              DomainName: !Ref SimOriginDomain
+              # EnergyPlus 2회 실행 13~19초(2026-11-21 컨테이너 실측) + 첫 호출 이미지 적재
+              CustomOriginConfig: {OriginProtocolPolicy: https-only, OriginSSLProtocols: [TLSv1.2], OriginReadTimeout: 60}
+              OriginCustomHeaders:
+                - HeaderName: x-maestro-sim
+                  HeaderValue: !Sub '{{resolve:secretsmanager:${SimSecretName}}}'
+            - !Ref AWS::NoValue
+        CacheBehaviors: !If
+          - HasSim
+          - - PathPattern: /api/sim/*
+              TargetOriginId: sim
+              ViewerProtocolPolicy: https-only
+              AllowedMethods: [GET, HEAD, OPTIONS, PUT, PATCH, POST, DELETE]
+              CachedMethods: [GET, HEAD]
+              CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad          # Managed-CachingDisabled
+              OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac  # Managed-AllViewerExceptHostHeader(Function URL은 자기 Host만 허용)
+              Compress: true
+          - !Ref AWS::NoValue
         DefaultCacheBehavior:
           TargetOriginId: web
           ViewerProtocolPolicy: redirect-to-https

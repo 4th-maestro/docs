@@ -19,6 +19,6 @@ COPY --from=libredwg /opt/libredwg/bin/dwg2dxf /usr/local/bin/dwg2dxf
 COPY requirements.txt ${LAMBDA_TASK_ROOT}/
 RUN pip install --no-cache-dir -r ${LAMBDA_TASK_ROOT}/requirements.txt
 # Wheel tags alone did not catch the GLIBC_2.38 dependency in IfcOpenShell 0.9.0.post1.
-RUN python -c "import ifcopenshell, ezdxf, shapely, pypdfium2; from PIL import Image"
-COPY app.py cad.py common.py ifc.py pdf.py hvac_types.json ${LAMBDA_TASK_ROOT}/
+RUN python -c "import ifcopenshell, ezdxf, shapely, pypdfium2, cv2; from PIL import Image"
+COPY app.py cad.py common.py ifc.py match.py pdf.py hvac_types.json ${LAMBDA_TASK_ROOT}/
 CMD ["app.handler"]

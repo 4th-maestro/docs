@@ -1,6 +1,7 @@
 import { call } from '../api'
 import type { Detection, Plan } from '../floor-edit'
 import { planPdf } from './pdf'
+import type { SymbolMatch } from './units'
 
 // 도면 변환 API 클라이언트(판매사 관리자 전용): docs/human/reference/plan-ingest.md 4절
 // - 파일은 사전 서명 URL로 S3에 직접 PUT(API Gateway 요청 한도 10MB 회피)
@@ -87,6 +88,11 @@ export async function detect(building: string, image: Blob, pxPerM?: number): Pr
   const floor = job.draftUrl ? (await getJson<PdfDraft>(job.draftUrl)).floors?.[0] : undefined
   return { detections: floor?.detections ?? [], key: floor?.background?.key, px: floor?.background?.px }
 }
+
+// 도면 기호 찾기: 층 배경 이미지(floors[].background.key)에서 본 기호 상자(이미지 픽셀)와 비슷한 기호. 규약 3-6절
+// 서버가 오류 문구(400 상자 크기·위치, 404 이미지 없음, 504 시간 초과)를 돌려주면 그 문구로 예외
+export const matchSymbols = (key: string, box: SymbolMatch['box']) =>
+  call<{ matches: SymbolMatch[]; size: [number, number]; ms: number }>('/plans/match', post({ key, box }))
 
 // 확정 저장 어댑터: convert(호출 쪽이 넘기는 판매사 화면 변환 함수, src/admin/convert.ts의 toServer)가 있으면
 // PUT /buildings/{id}/twin {twin, rooms, plan}. 변환 함수가 twin을 반환하면(호실 id 접두어 적용본) 그 값을 저장

@@ -2,6 +2,7 @@
 
 - op=parse: 업로드 파일을 형식별로 파싱해 jobs/<jobId>/draft.json과 도면 이미지를 저장합니다.
 - op=merge: YOLO 인식 결과를 초안에 병합합니다.
+- op=match: 도면 기호 1개와 비슷한 기호를 찾습니다(match.py, API POST /plans/match가 동기 호출).
 요청·응답 형식은 README.md 1절과 docs/human/reference/plan-ingest.md에 있습니다.
 """
 import io
@@ -15,6 +16,7 @@ from PIL import Image, ImageOps
 import cad
 import common
 import ifc
+import match
 import pdf
 
 s3 = boto3.client('s3')
@@ -23,6 +25,8 @@ IMAGE = {'.png', '.jpg', '.jpeg'}
 
 def handler(event, context):
     op = event.get('op')
+    if op == 'match':
+        return match.run(event, s3)
     if op not in ('parse', 'merge'):
         raise ValueError(f'알 수 없는 op: {op}')
     return parse(event) if op == 'parse' else merge(event)

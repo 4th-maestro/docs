@@ -1,4 +1,4 @@
-"""도면 변환 작업 API 테스트: admin 전용, 작업 생성 검증, 업로드 키·서명, 시작·재시작 상태 전환, 인식 전용 작업, 상태 조회(가짜 저장소, 네트워크 없음)"""
+"""도면 변환 작업 API 테스트: admin 전용, 작업 생성 검증, 업로드 키·서명, 시작·재시작 상태 전환, 인식 전용 작업, 상태 조회, 기호 찾기(가짜 저장소, 네트워크 없음)"""
 import json
 import os
 import pathlib
@@ -19,7 +19,7 @@ import admin  # noqa: E402
 import plan_ingest  # noqa: E402
 import tenant  # noqa: E402
 
-ENV = {'PLANS_BUCKET': 'bk', 'PLAN_JOBS_TABLE': 'J', 'PLAN_STATE_MACHINE': 'arn:sm'}
+ENV = {'PLANS_BUCKET': 'bk', 'PLAN_JOBS_TABLE': 'J', 'PLAN_STATE_MACHINE': 'arn:sm', 'INGEST_FUNCTION': 'ingest-fn'}
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 
 
@@ -220,6 +220,62 @@ class DetectTest(Base):
     def test_non_image_rejected(self):
         src = self.create()
         self.assertEqual(call('POST /plans/detect', {'building': 'main', 'key': src['uploads'][0]['key']})[0], 400)
+
+
+class FakeLambda:
+    """Lambda invoke 대체: result는 컨테이너 응답(dict) 또는 예외"""
+
+    def __init__(self, result, error=None):
+        self.calls, self.result, self.error = [], result, error
+
+    def invoke(self, FunctionName, Payload):
+        self.calls.append((FunctionName, json.loads(Payload)))
+        if isinstance(self.result, Exception):
+            raise self.result
+        out = {'Payload': types.SimpleNamespace(read=lambda: json.dumps(self.result).encode())}
+        return {**out, 'FunctionError': self.error} if self.error else out
+
+
+class ReadTimeoutError(Exception):
+    pass
+
+
+class MatchTest(Base):
+    KEY = 'jobs/' + 'a' * 32 + '/pages/1.png'
+
+    def match(self, body, groups='admin'):
+        return call('POST /plans/match', body, groups=groups)
+
+    def test_admin_only_and_body_checks(self):
+        plan_ingest._c['lambda'] = FakeLambda({'matches': [], 'size': [10, 10], 'ms': 1})
+        self.assertEqual(self.match({'key': self.KEY, 'box': [0, 0, 20, 20]}, groups='')[0], 403)
+        box = [10, 20, 64, 74]
+        bad = [{'key': 'plans/main/building.json', 'box': box}, {'key': 'jobs/' + 'a' * 32 + '/draft.json', 'box': box},
+               {'key': 'uploads/' + 'a' * 32 + '/plan.pdf', 'box': box}, {'key': 'jobs/x/../plans/1.png', 'box': box},
+               {'key': self.KEY, 'box': [10, 20, 64]}, {'key': self.KEY, 'box': [64, 20, 10, 74]}, {'key': self.KEY, 'box': [-1, 20, 64, 74]},
+               {'key': self.KEY, 'box': [False, 20, 64, 74]}, {'key': self.KEY, 'box': '10,20,64,74'},
+               {'key': self.KEY, 'box': box, 'min': 0}, {'key': self.KEY, 'box': box, 'min': 1.5}, {'key': self.KEY, 'box': box, 'rotate': 'yes'}]
+        for body in bad:
+            self.assertEqual(self.match(body)[0], 400, body)
+        self.assertEqual(plan_ingest._c['lambda'].calls, [])
+
+    def test_invoke_and_relay(self):
+        result = {'matches': [{'box': [10, 20, 64, 74], 'score': 1.0}], 'size': [800, 600], 'ms': 120}
+        fake = plan_ingest._c['lambda'] = FakeLambda(result)
+        upload = 'uploads/' + 'b' * 32 + '/설비도.JPG'
+        self.assertEqual(self.match({'key': upload, 'box': [0, 20.5, 64, 74], 'min': .5, 'rotate': False}), (200, result))
+        self.assertEqual(fake.calls[-1], ('ingest-fn', {'op': 'match', 'bucket': 'bk', 'key': upload, 'box': [0, 20.5, 64, 74], 'min': .5, 'rotate': False}))
+        self.match({'key': self.KEY, 'box': [10, 20, 64, 74]})
+        self.assertEqual((fake.calls[-1][1]['min'], fake.calls[-1][1]['rotate']), (.35, True))
+        # 컨테이너가 판정한 오류(이미지 밖 상자, 없는 이미지)는 상태 코드와 문구 그대로
+        plan_ingest._c['lambda'] = FakeLambda({'status': 404, 'error': '도면 이미지가 없습니다.'})
+        self.assertEqual(self.match({'key': self.KEY, 'box': [10, 20, 64, 74]}), (404, {'error': '도면 이미지가 없습니다.'}))
+        plan_ingest._c['lambda'] = FakeLambda({'errorMessage': 'MemoryError', 'errorType': 'MemoryError'}, error='Unhandled')
+        code, out = self.match({'key': self.KEY, 'box': [10, 20, 64, 74]})
+        self.assertEqual(code, 500)
+        self.assertNotIn('MemoryError', out['error'])
+        plan_ingest._c['lambda'] = FakeLambda(ReadTimeoutError())
+        self.assertEqual(self.match({'key': self.KEY, 'box': [10, 20, 64, 74]})[0], 504)
 
 
 class StatusTest(Base):

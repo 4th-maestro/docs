@@ -1,6 +1,7 @@
-import { useEffect, useState, type KeyboardEvent as KeyEvent, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type KeyboardEvent as KeyEvent, type ReactNode } from 'react'
 import { distance, inRoom, type Affine, type IndoorUnit, type Plan, type PlanFloor, type Point } from '../floor-edit'
-import { clsOf, connectOdus, detectionsToDoors, detectionsToUnits, fromPlan, kwFields, modelFor, oduFloor, similarity, snapDoor, toPlan, TYPES, typeFields } from './units'
+import { API_ON, matchSymbols } from './api'
+import { clsOf, connectOdus, detectionsToDoors, detectionsToUnits, fromPlan, kwFields, matchesToDetections, matchesToUnits, modelFor, oduFloor, similarity, snapDoor, toPlan, TYPES, typeFields } from './units'
 import { UnitIcon, UnitSymbol } from './UnitSymbol'
 import './ingest.css'
 
@@ -8,9 +9,10 @@ import './ingest.css'
 // - 실내기: 유형 6종 추가, 선택 후 끌어서 이동, 삭제, 유형 변경, 냉방 용량과 모델 수정, 방향 회전, 확인 필요(review) 목록
 // - 실외기: 층별 기호(평면 좌우 여백), 실내기 연결선, 끌어서 이동, 실내기를 고른 뒤 실외기를 눌러 연결 변경, 추가, 삭제
 // - 빈 호실 추정: 실내기가 없는 실에 면적 추정 실내기(40㎡당 1대)를 넣고 실외기에 연결
+// - 기호로 찾기: 도면 이미지의 기호 1개를 끌어 상자로 지정하면 서버(POST /plans/match)가 비슷한 기호를 찾고, 고른 유형의 실내기로 추가(규약 3-6절)
 // - 위치 맞춤: 도면 이미지 점 2개 → 평면 점 2개로 회전, 축척, 이동(toPlan)을 구하고 위치를 맞추지 않은 인식 결과를 실내기와 문(cls door)으로 변환
 // - 모든 변경은 BuildingEditor의 commit(실행 취소 기록)으로 반영
-const SOURCE: Record<string, string> = { ifc: 'IFC 객체', cad: 'CAD 블록', yolo: '도면 인식', manual: '직접 추가', estimate: '면적 추정', plan: '도면 표기', photo: '사진 대수', model: '위치 예측' }
+const SOURCE: Record<string, string> = { ifc: 'IFC 객체', cad: 'CAD 블록', yolo: '도면 인식', match: '기호 찾기', manual: '직접 추가', estimate: '면적 추정', plan: '도면 표기', photo: '사진 대수', model: '위치 예측' }
 // 모델 대응 방식(modelMatch): docs/human/reference/plan-ingest.md 3-5절
 const MATCH: Record<string, string> = { source: '원본 모델명', schedule: '장비일람표', exact: '용량 일치', nearest: '용량 근사(확인 필요)', type: '유형 예시', manual: '직접 입력' }
 // 입력칸은 Enter나 포커스 이동 때 한 번만 반영(글자마다 실행 취소 기록을 남기지 않음)
@@ -33,6 +35,13 @@ export function useUnitTool({ model, commit, level, current, tool, scale, backgr
   const [oduDrag, setOduDrag] = useState<{ id: string; from: Point; pos: Point } | null>(null)
   const [pts, setPts] = useState<Point[]>([])
   const [opacity, setOpacity] = useState(.5)
+  // 기호로 찾기: find 켜짐, box 끄는 중인 상자(평면 m), busy 서버 응답 대기
+  const [find, setFind] = useState(false)
+  const [box, setBox] = useState<{ from: Point; to: Point } | null>(null)
+  const [busy, setBusy] = useState(false)
+  // 응답을 기다리는 동안 다른 편집이 있어도 최신 상태에 반영(실행 취소 1번)
+  const live = useRef({ model, commit })
+  useEffect(() => { live.current = { model, commit } })
   const bg = current.background
   const url = backgrounds?.[level]
   const view = bg && url ? bg.toPlan ?? fit(bg.px, model.building.size) : null
@@ -46,7 +55,7 @@ export function useUnitTool({ model, commit, level, current, tool, scale, backgr
   const floorOf = (u: IndoorUnit) => model.floors.find(f => f.rooms.some(r => r.id === u.room))
   const patch = (id: string, change: Partial<IndoorUnit>) => commit({ ...model, idus: model.idus.map(u => (u.id === id ? { ...u, ...change } : u)) })
   const remove = (id: string) => { commit({ ...model, idus: model.idus.filter(u => u.id !== id) }); setSel(''); say('실내기를 삭제했습니다.') }
-  const reset = () => { setSel(''); setDrag(null); setPts([]); setSelOdu(''); setOduDrag(null) }
+  const reset = () => { setSel(''); setDrag(null); setPts([]); setSelOdu(''); setOduDrag(null); setFind(false); setBox(null) }
   const schedule = model.meta?.ingest?.schedule
 
   // 유형 변경: 모델 다시 대응. 원본 모델명과 직접 입력한 모델은 유지
@@ -91,6 +100,47 @@ export function useUnitTool({ model, commit, level, current, tool, scale, backgr
     setSel(''); setSelOdu(id)
     say('실외기를 추가했습니다. 실내기를 고른 뒤 이 실외기를 누르면 연결됩니다.')
   }
+  function toggleFind() {
+    if (find) { setFind(false); return }
+    if (!API_ON) { say('기호 찾기는 서버 연결이 필요합니다.'); return }
+    if (!view || !bg?.key) { say('이 층에는 도면 이미지가 없습니다.'); return }
+    if (!addCls) { say('추가할 유형을 먼저 고르십시오.'); return }
+    setFind(true); setSel(''); setSelOdu('')
+    say('도면에서 기호 1개를 감싸도록 끌어 상자를 그리십시오.')
+  }
+  // 평면 상자 → 도면 이미지 픽셀 상자(네 모서리 외접, 회전한 위치 맞춤 포함) → 서버 찾기 → 위치를 맞춘 층은 실내기, 아니면 인식 결과로 추가
+  async function search(a: Point, b: Point) {
+    if (!view || !bg?.key) { say('이 층에는 도면 이미지가 없습니다.'); return }
+    const corners = [[a[0], a[1]], [b[0], a[1]], [a[0], b[1]], [b[0], b[1]]].map(p => fromPlan(view, p as Point))
+    const us = corners.map(p => p[0]), vs = corners.map(p => p[1])
+    const px = [Math.min(...us), Math.min(...vs), Math.max(...us), Math.max(...vs)].map(Math.round) as [number, number, number, number]
+    const fid = level, cls = addCls
+    setBusy(true)
+    say('비슷한 기호를 찾는 중입니다.')
+    try {
+      const { matches } = await matchSymbols(bg.key, px)
+      const { model: now, commit: save } = live.current
+      const floor = now.floors.find(f => f.id === fid)
+      if (!floor) return
+      const m = floor.background?.toPlan
+      if (m) {
+        const ids = new Set(floor.rooms.map(r => r.id))
+        const added = matchesToUnits(floor, now.idus.filter(u => ids.has(u.room) || u.floor === fid), matches, cls, m)
+        save(connectOdus({ ...now, idus: [...now.idus, ...added] }))
+        say(`기호 ${matches.length}개를 찾아 실내기 ${added.length}대를 추가했습니다(확인 필요 ${added.filter(u => u.review).length}대).`)
+      } else {
+        const dets = matchesToDetections(floor, matches, cls)
+        save({ ...now, floors: now.floors.map(f => (f.id === fid ? { ...f, detections: [...(f.detections ?? []), ...dets] } : f)) })
+        say(`기호 ${matches.length}개를 찾아 인식 결과 ${dets.length}개로 넣었습니다. 도면 위치를 맞추면 실내기로 바뀝니다.`)
+      }
+      setFind(false)
+    } catch (e) {
+      say(e instanceof Error ? e.message : '기호를 찾지 못했습니다.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function estimate() {
     const { autoUnits } = await import('./auto-units')
     const r = autoUnits(model, [level])
@@ -117,6 +167,7 @@ export function useUnitTool({ model, commit, level, current, tool, scale, backgr
     const typing = document.activeElement
     if (typing instanceof HTMLInputElement && typing.closest('.unit-card') && typing.value !== typing.defaultValue) { typing.blur(); return }
     if (tool === 'align') { alignAt(p); return }
+    if (find) { if (!busy) setBox({ from: p, to: p }); return }
     // 실외기: 실내기를 고른 상태면 연결 변경, 아니면 선택 후 끌기
     const hitOdu = odus.find(o => distance(p, o.mark!) < size * 1.6)
     if (hitOdu) {
@@ -135,8 +186,14 @@ export function useUnitTool({ model, commit, level, current, tool, scale, backgr
     setSel(id)
     say('실내기를 추가했습니다.')
   }
-  const move = (p: Point) => { if (drag) setDrag({ ...drag, pos: p }); if (oduDrag) setOduDrag({ ...oduDrag, pos: p }) }
+  const move = (p: Point) => { if (drag) setDrag({ ...drag, pos: p }); if (oduDrag) setOduDrag({ ...oduDrag, pos: p }); if (box) setBox({ ...box, to: p }) }
   function up() {
+    if (box) {
+      setBox(null)
+      if (Math.abs(box.to[0] - box.from[0]) < size * .3 || Math.abs(box.to[1] - box.from[1]) < size * .3) { say('기호 1개를 감싸도록 끌어 상자를 그리십시오.'); return }
+      search(box.from, box.to)
+      return
+    }
     if (oduDrag) {
       setOduDrag(null)
       if (distance(oduDrag.from, oduDrag.pos) < size * .3) return
@@ -219,6 +276,8 @@ export function useUnitTool({ model, commit, level, current, tool, scale, backgr
         <UnitSymbol cls={clsOf(u)} />
       </g>
     })}
+    {box && <rect className="match-box" x={Math.min(box.from[0], box.to[0])} y={Math.min(box.from[1], box.to[1])}
+      width={Math.abs(box.to[0] - box.from[0])} height={Math.abs(box.to[1] - box.from[1])} />}
     {tool === 'align' && view && pts.map((p, i) => {
       const [x, y] = i < 2 ? toPlan(view, p) : p
       return <g key={i} className={i < 2 ? 'align-pt image' : 'align-pt plan'} transform={`translate(${x} ${y}) scale(${size})`}>
@@ -239,6 +298,7 @@ export function useUnitTool({ model, commit, level, current, tool, scale, backgr
       <div className="unit-actions">
         <button type="button" className="pill" onClick={estimate}>빈 호실 실내기 추정</button>
         <button type="button" className="pill" onClick={addOdu}>실외기 추가</button>
+        <button type="button" className={find ? 'pill on' : 'pill'} aria-pressed={find} disabled={busy} onClick={toggleFind}>{busy ? '기호 찾는 중' : '기호로 찾기'}</button>
       </div>
       {odu && <section className="unit-card" aria-label="선택한 실외기">
         <h3>실외기 {odu.id}</h3>

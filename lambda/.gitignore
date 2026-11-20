@@ -5,3 +5,7 @@ samconfig.toml
 .env
 .DS_Store
 .aws/
+
+# infra/sim 이미지 빌드용 트윈 복사본(prepare.sh)
+infra/sim/twin/
+.venv/

@@ -14,7 +14,7 @@ class RouteTest(unittest.TestCase):
         tpl = (pathlib.Path(__file__).resolve().parent.parent / 'template.yaml').read_text()
         block = tpl[tpl.index('  ApiFunction:'):tpl.index('  QueryFunction:')]
         paths = [line.split('Path: ')[1].split(',')[0].strip("'") for line in block.splitlines() if 'Path: ' in line]
-        self.assertEqual(len(paths), 47)  # 도면 변환 보정본 확정 경로, 판매사 관리자 지정 경로, 호실 이름·용도 변경 경로 포함
+        self.assertEqual(len(paths), 48)  # 도면 변환 보정본 확정 경로, 도면 기호 찾기 경로, 판매사 관리자 지정 경로, 호실 이름·용도 변경 경로 포함
         for p in paths:
             self.assertIsNotNone(api.route(p), p)
 
