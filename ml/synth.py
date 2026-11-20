@@ -231,12 +231,13 @@ def draw_kr(d, k, box, side, ink, w):
     W, H = x1 - x0, y1 - y0
     cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
     m = min(W, H)
-    # 실제 도면의 2방향·스탠드형은 테두리가 기호 폭의 약 13%로 굵음
-    d.rectangle(box, outline=ink, width=max(2, round(m * (0.13 if k in (4, 5) else 0.07))))
+    # 실제 도면의 2방향·스탠드형은 테두리가 기호 폭의 약 13%, 4방향은 약 10%로 굵음
+    d.rectangle(box, outline=ink, width=max(2, round(m * (0.13 if k in (4, 5) else 0.1 if k == 0 else 0.07))))
     if k == 0:
-        # 이중 테두리와 중앙 채움 사각형
-        i, f = m * 0.13, m * 0.3
-        d.rectangle((x0 + i, y0 + i, x1 - i, y1 - i), outline=ink, width=w)
+        # 실제 도면 4방향(v7): 굵은 바깥 테두리, 흰 틈, 둥근 안쪽 사각 테두리, 기호 폭의 약 50%를 채운 가운데 사각형
+        # v3~v6은 테두리가 가늘고 가운데 사각형이 약 40%여서 v6에서 실제 4방향 27대 중 12대를 검은 본체 2방향으로 판정
+        i, f = m * 0.17, m * 0.28
+        d.rounded_rectangle((x0 + i, y0 + i, x1 - i, y1 - i), radius=m * 0.06, outline=ink, width=max(2, round(m * 0.06)))
         d.rectangle((x0 + f, y0 + f, x1 - f, y1 - f), fill=ink)
     elif k == 5:
         # 실제 도면 2방향(v6): 검게 채운 본체에 흰 대괄호 2개([ ]). 긴 변과 평행한 흰 선과 양 끝 안쪽 가로선

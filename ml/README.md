@@ -5,6 +5,7 @@
 | 경로 | 내용 |
 |---|---|
 | `synth.py` | CubiCasa5K 평면도의 방 다각형 안에 실내기 기호 6종을 합성하고 YOLO 라벨 생성. 기호 크기는 도면별 벽 두께 중앙값 기준. 도면 절반은 국내 CAD 기호와 주변 표시로 그림 |
+| `eval_pdf.py` | 운영 경로와 같은 방식으로 실제 도면 PDF를 인식해 라벨과 대수 기준 정밀도, 재현율 계산(Endpoint 교체 기준). pypdfium2, ultralytics, `lambda/src/detect.py` 사용 |
 | `train.py` | SageMaker 학습 진입점. ultralytics YOLO11s 미세조정(이미지 1024px). 실제 도면 타일(`real` 채널)을 반복해 섞고, 합성·실제 테스트 결과를 `test_metrics.json`에 저장 |
 | `requirements.txt` | 학습 컨테이너 추가 패키지(ultralytics 8.4.200) |
 | `sagemaker.sh` | AWS CLI 실행: 역할·버킷 생성, 데이터 생성 처리 작업, 학습 작업, Registry 등록, 상태·로그 조회 |
@@ -53,6 +54,7 @@ ml/sagemaker.sh logs <작업 이름> --follow
 - 합성 데이터 버전은 `DATASET` 환경 변수로 구분하십시오. 기본값은 `hvac-yolo`(v1, 단순 선 기호 5종)이고, 국내 CAD 기호 6종은 `DATASET=hvac-yolo-v2`입니다. `data`와 `train`에 같은 값을 주십시오.
 - 실제 도면 타일을 섞으려면 `REAL=s3://<버킷>/data/hvac-real/`을 지정하십시오. 학습 타일은 `REAL_REPEAT`(기본 20)회 반복해 넣고, `images/test` 타일은 별도로 채점해 `test_metrics.json`의 `real`에 저장합니다.
 - 결과는 `s3://<버킷>/models/<작업 이름>/output/model.tar.gz`입니다. 압축 안의 `hvac/weights/best.pt`가 가중치이고, `test_metrics.json`이 테스트 지표입니다.
+- Endpoint 교체 여부는 `python ml/eval_pdf.py --model best.pt --pdf <춘천초 설비도면 PDF>`로 판단하십시오. 운영 경로와 같은 렌더링(pypdfium2, 1m당 80px), 타일, 병합으로 라벨과 대수 기준 정밀도와 재현율을 계산합니다. `test_metrics.json`의 `real.mAP50`은 클래스 평균이라 대수가 많은 4방향의 하락을 놓칩니다(기술 선택 기록 14절). 2026-11-21 기준 v4는 정밀도 0.538, 재현율 0.757, v7은 0.660, 0.946으로 운영 측정값과 같습니다.
 - 합성 결과를 로컬에서 확인하려면 `python3 ml/synth.py <cubicasa5k 폴더> <출력 폴더> --limit 5`를 실행하십시오.
 - Registry 등록 모델은 학습 산출물(`best.pt`)이며, 배포는 `deploy`로 ONNX를 `serve/inference.py`와 묶어 Serverless Endpoint에 올립니다. `train.py`는 학습 끝에 `hvac/weights/best.onnx`를 저장합니다. 이전 산출물은 `yolo export model=best.pt format=onnx imgsz=1024`로 만드십시오.
 - Serverless Endpoint는 호출이 없으면 요금이 없습니다. 실시간 Endpoint로 바꾸면 루트 `AGENTS.md`의 "SageMaker Endpoint 비용 관리"를 따르십시오.
