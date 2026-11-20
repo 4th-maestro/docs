@@ -4,7 +4,8 @@
 
 | 경로 | 내용 |
 |---|---|
-| `template.yaml` | API Gateway HTTP API, WebSocket API, Lambda 11개, DynamoDB, S3, CloudFront |
+| `template.yaml` | API Gateway HTTP API, WebSocket API, Lambda 5개(조회·관리 API 통합, AI 질의, WebSocket, 연결 인증, 가입 전 검사), DynamoDB, Cognito, S3, CloudFront |
+| `src/api.py` | 조회·관리 API 단일 진입점: 경로로 각 모듈 handler 호출(콜드 스타트 1회), 메모리 1769MB |
 | `src/status.py` | `GET /rooms/status?building=main&floor=1F` 건물 호실별 가상 상태, 건물 정보와 층 목록 |
 | `src/portfolio.py` | `GET /buildings` 건물별 현재 상태, 오늘 사용량, 절감 가능량, 점검 순서(전체 현황) |
 | `src/query.py` | `POST /query` 자연어 질의(Bedrock Claude Sonnet 5.5, 본문 `buildingId`), 응답에 단계 기록 `steps` 포함 |
@@ -68,3 +69,13 @@ aws cognito-idp admin-add-user-to-group --user-pool-id "$POOL" --username 관리
 
 - `ModelId`는 Sonnet 5.5와 Haiku 5.5만 허용합니다. Opus 계열을 추가하지 마십시오.
 - 제어는 스케줄 저장과 시뮬레이션 반영까지입니다. 실제 설비를 제어하는 코드를 추가하지 마십시오.
+
+## 응답 속도
+
+| 항목 | 방식 |
+|---|---|
+| 함수 구성 | 조회·관리 API 18개 경로를 `api.py` 함수 1개로 처리. 이전 9개 함수는 화면마다 콜드 스타트가 9번 발생(첫 호출 2.6~2.9초, 2026-11-20 실측) |
+| 메모리 | 전체 기본 1024MB, API 함수 1769MB(vCPU 1개). 512MB에서 `/buildings` p50 4.0초 |
+| 캐시 | 지난 시간·지난 날짜 계산은 대상 스케줄을 키로 실행 환경 메모리에 보관(스케줄 변경 시 자동 재계산), `/buildings` 응답은 30초 |
+
+주: 로컬 측정(Apple Silicon) `/buildings` 계산 456ms → 재계산 52ms, 응답 캐시 적중 0.02ms. `/rooms/history` 68ms → 1ms.

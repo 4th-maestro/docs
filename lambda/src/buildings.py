@@ -37,6 +37,7 @@ def _make(b):
 
 
 _ROOMS = {b['id']: _make(b) for b in LIST}
+BY_ROOM = {r['id']: r for rs in _ROOMS.values() for r in rs}
 
 
 def rooms(bid=None):

@@ -4,6 +4,8 @@
 - 스케줄은 생성 시각 이후 구간에만 적용(저장 전후 비교가 그래프에 표시되도록)
 """
 import datetime as dt
+import json
+import functools
 
 import buildings
 import common
@@ -29,14 +31,28 @@ def handler(event, context):
 
 
 def hourly(rooms, day, hours, schedules, until):
+    # 끝난 시간은 호실 목록·시각·대상 스케줄이 같으면 결과가 같아 캐시, 진행 중인 시간만 매번 계산
+    ids = tuple(r['id'] for r in rooms)
+    key = common.sched_key(schedules, ids)
     out = []
     for h in range(hours):
         start = day.replace(hour=h)
-        stamps = [start.replace(minute=m) for m in SAMPLE_MINUTES if start.replace(minute=m) <= until]
-        kw = sum(sim.state(r, ts, _active(schedules, ts))['powerKw'] for ts in stamps for r in rooms) / len(stamps)
+        done = until >= start + dt.timedelta(hours=1)
+        kw = _hour_kw(ids, start.isoformat(), key) if done else _kw(rooms, start, schedules, until)
         elapsed = min(3600.0, (until - start).total_seconds()) / 3600
         out.append({'hour': h, 'kw': round(kw, 1), 'kwh': round(kw * elapsed, 1)})
     return out
+
+
+def _kw(rooms, start, schedules, until):
+    stamps = [start.replace(minute=m) for m in SAMPLE_MINUTES if start.replace(minute=m) <= until]
+    return sum(sim.state(r, ts, _active(schedules, ts))['powerKw'] for ts in stamps for r in rooms) / len(stamps)
+
+
+@functools.lru_cache(maxsize=4096)
+def _hour_kw(ids, start, key):
+    s = dt.datetime.fromisoformat(start)
+    return _kw([buildings.BY_ROOM[i] for i in ids], s, json.loads(key), s + dt.timedelta(hours=1))
 
 
 def _active(schedules, ts):

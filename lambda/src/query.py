@@ -69,6 +69,8 @@ def converse(text, emit, bid, sub):
     """로그인 사용자 질의: 대화 메모리 주입, 완료 후 대화 기록과 메모리 저장(저장 실패는 응답에 영향 없음)"""
     mem = chat.get_memory(sub, bid)
     result = run(text, emit, bid, mem)
+    if not sub:
+        return result  # 로그인 정보 없음(로컬 테스트): 기록·메모리 저장 생략
     try:
         chat.append(sub, bid, [{'role': 'user', 'text': text},
                                {'role': 'assistant', 'text': result['answer'], 'steps': result['steps'], 'highlight': result['highlight'], 'draft': result['draft']}])

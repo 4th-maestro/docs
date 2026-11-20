@@ -10,6 +10,8 @@
 - 규칙 판정에 저장된 스케줄을 적용: 추천을 저장하면 다음 조회부터 해당 추천이 빠짐
 """
 import datetime as dt
+import json
+import functools
 
 import buildings
 import common
@@ -69,6 +71,13 @@ def _rule(room, t, schedules):
 
 
 def after_hours_days(room, t, schedules):
+    # 지난 7일 판정: 오늘 날짜와 대상 스케줄이 같으면 결과가 같아 캐시(하루 1회 계산)
+    return _after_hours(room['id'], t.replace(hour=0, minute=0, second=0, microsecond=0).isoformat(), common.sched_key(schedules, [room['id']]))
+
+
+@functools.lru_cache(maxsize=8192)
+def _after_hours(rid, today, key):
+    room, schedules, t = buildings.BY_ROOM[rid], json.loads(key), dt.datetime.fromisoformat(today)
     h0, h1 = room.get('hours', (9, 18))
     days = 0
     for d in range(1, 8):

@@ -7,6 +7,12 @@ import buildings
 TABLE_NAME = os.environ.get('SCHEDULES_TABLE')
 
 
+def sched_key(schedules, room_ids):
+    """캐시 키: 대상 호실이 포함된 스케줄만 직렬화. 스케줄 저장·취소 시 키가 바뀌어 자동 재계산"""
+    ids = set(room_ids)
+    return json.dumps([s for s in schedules if ids & set(s.get('roomIds', []))], sort_keys=True, default=str)
+
+
 def resp(status, body):
     return {'statusCode': status, 'headers': {'content-type': 'application/json'}, 'body': json.dumps(body, ensure_ascii=False, default=str)}
 

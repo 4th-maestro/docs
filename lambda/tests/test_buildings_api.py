@@ -131,6 +131,9 @@ class ToolsBuildingTest(unittest.TestCase):
 
 
 class PortfolioTest(unittest.TestCase):
+    def setUp(self):
+        portfolio._cache['key'] = None
+
     def test_order_fields_and_level(self):
         code, body = get(portfolio)
         items = body['buildings']

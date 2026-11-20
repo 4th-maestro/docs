@@ -6,6 +6,9 @@
 - level: alert(이상 1건 이상), warn(절감 가능량이 오늘 사용량의 10% 이상), ok
 - 정렬: alert, warn, ok 순, 같은 level은 이상 건수 내림차순
 """
+import json
+import time
+
 import buildings
 import common
 import history
@@ -17,10 +20,22 @@ LEVELS = ('alert', 'warn', 'ok')
 WARN_RATIO = 0.1
 
 
+# 응답 캐시: 같은 스케줄이면 30초 동안 재사용(화면 조회 주기 60초, 현재 전력은 최대 30초 전 값)
+# - 스케줄 저장·취소 시 키가 바뀌어 즉시 재계산
+TTL_S = 30
+_cache = {'key': None, 'at': 0.0, 'body': None}
+
+
 def handler(event, context):
-    t, schedules = sim.now(), common.list_schedules()
+    schedules = common.list_schedules()
+    key = json.dumps(schedules, sort_keys=True, default=str)
+    if _cache['key'] == key and time.monotonic() - _cache['at'] < TTL_S:
+        return common.resp(200, _cache['body'])
+    t = sim.now()
     items = sorted((card(b, t, schedules) for b in buildings.LIST), key=lambda c: (LEVELS.index(c['level']), -c['now']['anomaly']))
-    return common.resp(200, {'generatedAt': t.isoformat(), 'virtual': True, 'buildings': items})
+    body = {'generatedAt': t.isoformat(), 'virtual': True, 'buildings': items}
+    _cache.update(key=key, at=time.monotonic(), body=body)
+    return common.resp(200, body)
 
 
 def card(b, t, schedules):

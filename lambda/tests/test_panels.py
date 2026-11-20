@@ -27,6 +27,9 @@ def fake_state(fn):
 
 
 class RuleTest(unittest.TestCase):
+    def setUp(self):
+        recommend._after_hours.cache_clear()
+
     def test_idle_fires_after_30_minutes_empty(self):
         with fake_state(lambda t: (True, 0, 20, 'heating')):
             self.assertEqual(recommend._rule(ROOM, T, [])[0], 'idle')
