@@ -309,6 +309,12 @@
       "type": "reference"
     },
     {
+      "path": "docs/human/reference/plan-ingest.md",
+      "title": "도면 변환 규약",
+      "audience": "human",
+      "type": "reference"
+    },
+    {
       "path": "docs/human/reference/plan-storage.md",
       "title": "도면 저장 규약",
       "audience": "human",
