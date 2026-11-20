@@ -226,6 +226,54 @@ docs/              문서(현재 구조 유지)
 
 실행과 배포 명령은 각 폴더 README에 있습니다.
 
+## 11. 에너지 분석: 건물 비교, 기간 추이, 요일×시간 히트맵, 사용 구성
+
+**11-1. `GET /energy/*` 4종은 가상 상태를 시간마다 1회 표본으로 적산하고, 지난 날짜 결과는 Lambda 실행 환경 메모리에 보관합니다.**
+
+| 경로 | 인자 | 응답 핵심 필드 |
+|---|---|---|
+| `/energy/compare` | `period=day\|month` | 건물 4개의 `kwh`, `prevKwh`(어제 같은 시각, 지난달 같은 날짜·시각), `kwhPerM2`, `costKrw`, `unitPriceKrw`, `priceBasis` |
+| `/energy/trend` | `building`, `period=day\|week\|month` | `current`, `previous`의 `[{label, kwh}]`(24시간, 월~일 7일, 달의 일수), `totalKwh`, `prevTotalKwh`, `prevSameKwh` |
+| `/energy/heatmap` | `building`, `weeks=1~8`(기본 4) | `cells[7][24]`(월~일 × 0~23시 평균 kW, 오늘 제외), `max`, `hours`, `weekend` |
+| `/energy/breakdown` | `building`, `period=day\|week\|month` | `name`, `totalKwh`, `floors[{floor, kwh, uses[{use, kwh}]}]` |
+
+주: `building` 기본값은 `main`입니다. 잘못된 `building`, `period`, `weeks`는 400과 한국어 `error`를 반환합니다. 모든 응답에 `generatedAt`, `virtual: true`가 있습니다. `prevSameKwh`는 지난 기간의 같은 경과 시점까지 합계이며 증감률의 비교 기준입니다.
+
+**11-2. 표본 오차는 일 합계 1% 이하이고, 정지 상태 호실의 상태 계산 생략으로 첫 호출 시간을 단축했습니다.**
+
+| 항목 | 방식 | 측정·근거 |
+|---|---|---|
+| 표본 | 시간마다 HH:30 상태 1회 × 1시간, 현재 시간은 경과 구간 중간 시각 × 경과 시간 | 5분 간격 12회 평균 대비 건물 일 합계 최대 0.82%, 건물 시간 값 최대 5.3%(3일 × 건물 4개) |
+| 캐시 | (건물, 날짜, 그날 적용 스케줄)별 층·용도 시간별 kWh를 `lru_cache`(1,024개)에 보관, 오늘은 요청마다 계산 | 두 번째 요청 응답 동일(`test_energy.py`) |
+| 상태 계산 생략 | 재실 0명, 빈 공간 운전 시간 밖, 스케줄 대상 아님을 모두 만족하면 정지(0kW)로 처리 | 전체 계산 결과와 동일(건물 4개 × 2일), 1주 기준 `sim.state` 호출 67% 감소 |
+| 스케줄 | `buildingId`(없으면 `main`)가 같은 스케줄만 `createdAt` 이후 시각에 적용 | 시간 중간에 시작하는 스케줄은 HH:30 판정이라 호실당 하루 최대 1시간 차이 |
+| 메모리·제한 시간 | `EnergyFunction` 1,769MB(vCPU 1개), 29초 | 512MB는 vCPU 약 0.3개라 월말 첫 `compare/month`가 8초 초과 예상 |
+| 전기요금 | 134.2원/kWh, 기본요금·부가가치세·기금 제외 | [일반용 전기요금 단가 조사](research/electricity-tariff.md) |
+
+**표 11.1 로컬 처리 시간(Python 3.12, Apple Silicon, 스케줄 조회 제외)**
+
+| 경로 | 첫 호출 | 첫 호출(월말) | 두 번째 이후 중앙값 |
+|---|---:|---:|---:|
+| `compare?period=day` | 67ms | 77ms | 27ms |
+| `compare?period=month` | 1,336ms | 1,978ms | 28ms |
+| `trend?period=day` | 26ms | 30ms | 11ms |
+| `trend?period=week` | 153ms | 143ms | 11ms |
+| `trend?period=month` | 595ms | 717ms | 13ms |
+| `heatmap?weeks=4` | 337ms | 326ms | 1ms 미만 |
+| `breakdown?period=day` | 11ms | 15ms | 11ms |
+| `breakdown?period=month` | 241ms | 370ms | 11ms |
+
+주: 기준 시각은 2026-11-20 15:10, 월말은 2026-12-31 22:50입니다. `compare`는 건물 4개(호실 533개), 나머지는 업무동(호실 198개) 기준입니다. 측정 횟수는 첫 호출 1회, 이후 5회입니다. 목표는 Lambda 첫 호출 8초 미만, 이후 중앙값 1.5초 미만이며 Lambda arm64 실측은 배포 후 확인할 항목입니다.
+
+**11-3. 화면은 `frontend/src/energy/`의 컴포넌트 2개이며, 차트는 라이브러리 없이 SVG로 그립니다.**
+
+| 컴포넌트 | 표시 |
+|---|---|
+| `BuildingCompare` `{ onOpen(buildingId) }` | 오늘, 이번 달 전환. 건물별 가로 막대(kWh 내림차순)와 지난 기간 같은 시점 눈금, 1㎡당 kWh, 전기요금, 증감. 행을 누르면 `onOpen` 호출 |
+| `EnergyPage` `{ building }` | 일, 주, 월 전환(추이와 사용 구성에 적용). 기간 추이 선 그래프, 사용 구성 흐름도(건물, 층, 용도)와 용도별 표, 최근 4주 요일×시간 히트맵(운영 시간 테두리, 운영 시간 밖 사용 비율) |
+
+주: 모든 패널에 데이터 기준 시각, 범례·단위, 표로 보기, 마우스·키보드 툴팁이 있습니다. API 호출이 실패하면 `src/energy/mock.ts` 목업으로 대체하고 `목업`을 표시합니다. 히트맵 색은 0kW 무채색과 순차 파랑 5단계이며 `primary`는 사용하지 않습니다.
+
 ## 다음 작업
 
 | 작업 | 기한 | 담당 |

@@ -87,6 +87,12 @@
       "type": "explanation"
     },
     {
+      "path": "docs/human/explanation/research/electricity-tariff.md",
+      "title": "일반용 전기요금 단가 조사: 에너지 분석 환산 단가 134.2원/kWh",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
       "path": "docs/human/explanation/research/floorplan-hvac-twin-tech.md",
       "title": "도면 인식·공조 고장 진단 기술 조사",
       "audience": "human",

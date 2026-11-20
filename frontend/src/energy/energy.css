@@ -1,0 +1,67 @@
+/* 에너지 분석 화면 전용 스타일: 패널 틀·선 그래프·툴팁·표는 panels.css(.pn-*) 재사용
+   - 차트 색: 이번 기간 파랑, 지난 기간 회색(PowerTrend와 같은 값), primary 미사용
+   - 히트맵: 0kW 무채색 + 순차 파랑 5단계. dataviz 검증(--ordinal) 통과, 1단계 대비 밝은 화면 2.11:1, 어두운 화면 2.01:1
+   - 어두운 화면 히트맵은 낮은 값이 바탕에 가까운 어두운 파랑, 높은 값이 밝은 파랑(같은 램프에서 단계 재선택)
+   - 글자: 본문 16px, 범례·축·보조 14px 이상, 숫자 열은 고정 폭 숫자 */
+:root {
+  --en-cur: #2a78d6; --en-prev: #929292;
+  --en-z: #efefed; --en-1: #86b6ef; --en-2: #5598e7; --en-3: #2a78d6; --en-4: #1c5cab; --en-5: #0d366b;
+}
+/* 어두운 화면 대비(카드 #1f2023 기준): 이번 기간 4.48:1, 지난 기간 3.94:1 */
+:root[data-theme='dark'] {
+  --en-cur: #3987e5; --en-prev: #7d7d79;
+  --en-z: #2e3034; --en-1: #184f95; --en-2: #256abf; --en-3: #3987e5; --en-4: #86b6ef; --en-5: #cde2fb;
+}
+
+.en-page { display: grid; gap: 24px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 520px), 1fr)); align-items: start; }
+.en-page > .en-wide { grid-column: 1 / -1; min-width: 0; }
+
+/* 같은 줄 선택 버튼: 높이 44px, 너비 1:1, 선택은 ink 채움(패널 안 primary 미사용 규칙) */
+.en-seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; max-width: 360px; }
+.en-seg button { height: 44px; padding: 0 12px; border-radius: var(--r-sm); border: 1px solid var(--hairline); background: var(--canvas); color: var(--ink); font-size: 16px; font-weight: 600; white-space: nowrap; }
+.en-seg button:hover { background: var(--surface-soft); }
+.en-seg button[aria-pressed='true'] { border-color: var(--ink); background: var(--ink); color: var(--on-ink); }
+.en-seg button:focus-visible, .en-row:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+.en-sub { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.en-delta { display: inline-flex; align-items: center; gap: 2px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+.en-note { margin: 0; font-size: 14px; line-height: 1.5; color: var(--muted); text-align: left; }
+.en-scroll { overflow-x: auto; }
+
+/* 범례 견본 */
+.en-legend { display: flex; flex-wrap: wrap; gap: 8px 12px; font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.en-legend > span { display: inline-flex; align-items: center; gap: 6px; }
+.en-sw { display: inline-block; flex: none; width: 16px; height: 12px; border-radius: 2px; }
+.en-sw.en-band { background: none; border: 2px solid var(--ink); }
+.en-tick { display: inline-block; width: 2px; height: 16px; background: var(--en-prev); }
+
+/* SVG 글자: 축은 muted(panels.css), 노드 라벨은 ink + 바탕색 테두리로 띠 위에서도 읽힘 */
+.pn-plot .en-ink { fill: var(--ink); paint-order: stroke; stroke: var(--canvas); stroke-width: 4px; stroke-linejoin: round; }
+.pn-plot .en-muted { fill: var(--muted); font-weight: 400; }
+
+/* 사용 구성 흐름도 */
+.en-node { fill: var(--en-cur); }
+.en-link { fill: var(--en-cur); fill-opacity: 0.22; cursor: pointer; }
+.en-link.on { fill-opacity: 0.5; }
+.en-share { width: 100%; border-collapse: collapse; font-size: 16px; font-variant-numeric: tabular-nums; }
+.en-share caption { caption-side: bottom; padding-top: 8px; }
+.en-share th { font-size: 14px; font-weight: 500; color: var(--muted); text-align: right; padding: 4px 8px; border-bottom: 1px solid var(--hairline); }
+.en-share td { padding: 8px; text-align: right; border-bottom: 1px solid var(--hairline-soft); white-space: nowrap; }
+.en-share th:first-child, .en-share td:first-child { text-align: left; padding-left: 0; }
+.en-meter { display: inline-block; width: 48px; height: 8px; margin-right: 8px; border-radius: var(--r-full); background: var(--surface-strong); overflow: hidden; vertical-align: 1px; }
+.en-meter i { display: block; height: 100%; border-radius: var(--r-full); background: var(--en-cur); }
+.pn-table .en-sum td { font-weight: 600; }
+
+/* 건물별 비교 행: 행 전체가 버튼 */
+.en-rows { list-style: none; margin: 0; padding: 0; }
+.en-rows li + li { border-top: 1px solid var(--hairline-soft); }
+.en-row { position: relative; width: 100%; min-height: 44px; display: flex; flex-direction: column; gap: 4px; padding: 12px 32px 12px 8px; border: 0; border-radius: var(--r-sm); background: none; text-align: left; }
+.en-row:hover { background: var(--surface-soft); }
+.en-row-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.en-row-head b { font-size: 17px; font-weight: 600; }
+.en-row-head strong { font-size: 21px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.en-row-head small { margin-left: 2px; font-size: 14px; font-weight: 500; }
+.en-bar { display: block; overflow: visible; }
+.en-row-sub { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.en-row-sub > span { display: inline-flex; align-items: center; gap: 4px; }
+.en-chev { position: absolute; right: 4px; top: 50%; margin-top: -10px; color: var(--muted); }

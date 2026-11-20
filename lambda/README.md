@@ -4,7 +4,7 @@ Maestro API(Lambda, Python 3.12)와 AWS 리소스(SAM) 폴더입니다. 구조 �
 
 | 경로 | 내용 |
 |---|---|
-| `template.yaml` | API Gateway HTTP API, WebSocket API, Lambda 8개, DynamoDB, S3, CloudFront |
+| `template.yaml` | API Gateway HTTP API, WebSocket API, Lambda 11개, DynamoDB, S3, CloudFront |
 | `src/status.py` | `GET /rooms/status?building=main&floor=1F` 건물 호실별 가상 상태, 건물 정보와 층 목록 |
 | `src/portfolio.py` | `GET /buildings` 건물별 현재 상태, 오늘 사용량, 절감 가능량, 점검 순서(전체 현황) |
 | `src/query.py` | `POST /query` 자연어 질의(Bedrock Claude Sonnet 5.5, 본문 `buildingId`), 응답에 단계 기록 `steps` 포함 |
@@ -13,11 +13,14 @@ Maestro API(Lambda, Python 3.12)와 AWS 리소스(SAM) 폴더입니다. 구조 �
 | `src/recommend.py` | `GET /recommendations?building=&floor=` 낭비 규칙 3종 추천, 예상 절감량, 스케줄 초안 |
 | `src/anomalies.py` | `GET /anomalies?building=&floor=` 설정온도 미도달 HVAC 상세, 기대 온도, 원인 후보(규칙 기반 추정) |
 | `src/history.py` | `GET /rooms/history?building=&floor=` 층 전력 시간별 평균(kW)과 사용량(kWh), 오늘 0시~현재와 어제 0~23시 |
+| `src/energy.py` | `GET /energy/compare·trend·heatmap·breakdown` 건물별 전력 사용량 비교, 기간 추이, 요일×시간 평균 kW, 층·용도 구성([설계](../docs/human/explanation/architecture.md) 11절) |
 | `src/tools.py` | LLM 도구 정의와 서버 검증(층·용도는 질의 건물 기준) |
 | `src/buildings.py`, `src/buildings.json` | 건물 4곳(본관 공개 IFC, 가상 3곳), 건물별 호실과 운영 프로필 |
 | `src/sim.py`, `src/rooms.json` | 가상 HVAC 상태 생성, 본관 호실 137개(공개 IFC 의원 건물) |
 | `tools/demo_status.py` | Frontend 데모 상태 생성(`frontend/public/demo/<건물>.json`, `index.json`) |
 | `tools/build_floorplans.py` | 건물별 3D 도면 생성(`frontend/public/floorplans/<건물>.json`) |
+| `src/chat.py` | `GET·DELETE /chat?building=` 사용자별 대화 기록(90일), 대화 메모리(24시간, 1KB 요약) 저장 |
+| `src/auth.py` | WebSocket 연결 인증(쿼리 token, Cognito 액세스 토큰 검증) |
 
 `building` 쿼리와 `buildingId` 본문 값이 없으면 `main`이고, 목록에 없는 건물은 400(`알 수 없는 건물: <id>`)입니다. 판정 기준과 응답 필드는 [시스템 설계](../docs/human/explanation/architecture.md) 2절, 8절, 9절에 있습니다.
 
