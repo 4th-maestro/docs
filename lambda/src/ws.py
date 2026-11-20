@@ -1,6 +1,7 @@
 """WebSocket API: $connect, $disconnect, ask 라우트(AI 질의 단계 이벤트 실시간 전송)
 
-- 요청: {action: 'ask', requestId, text}, 응답 이벤트는 모두 같은 requestId를 붙여 해당 연결에만 전송
+- 요청: {action: 'ask', requestId, text, buildingId}, 응답 이벤트는 모두 같은 requestId를 붙여 해당 연결에만 전송
+- buildingId: 없으면 main, 알 수 없으면 모델 호출 없이 error 이벤트
 - 연결 종료(GoneException): 남은 모델 호출 없이 조용히 종료해 비용 차단
 - shortcut: $connect 인증 없음(POST /query와 같은 공개 수준), 외부 공개 전 API 키·Cognito 인가 추가
 """
@@ -25,11 +26,13 @@ def handler(event, context):
         api.post_to_connection(ConnectionId=ctx['connectionId'], Data=json.dumps({**e, 'requestId': rid}, ensure_ascii=False, default=str).encode())
 
     try:
-        text = query.clean(req.get('text'))
-        if text:
-            query.run(text, emit)
-        else:
+        text, b = query.clean(req.get('text')), query.building(req.get('buildingId'))
+        if not text:
             emit({'type': 'error', 'message': '질의는 1~500자로 입력하십시오.'})
+        elif not b:
+            emit({'type': 'error', 'message': '알 수 없는 건물입니다. 건물을 다시 선택하십시오.'})
+        else:
+            query.run(text, emit, b['id'])
     except api.exceptions.GoneException:
         pass
     except Exception:

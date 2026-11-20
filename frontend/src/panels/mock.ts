@@ -1,9 +1,9 @@
-import { demoStatus, kstNow } from '../mock'
-import type { Draft, Room } from '../types'
+import { demoBuildingIds, demoStatus, kstNow } from '../mock'
+import type { BuildingCard, Draft, Level, Portfolio, Room } from '../types'
 import type { Anomalies, Anomaly, History, Recommendation, Recommendations, Schedule, Schedules } from './types'
 
-// 운영 패널 목업(public/demo-status.json 기반, 난수 없음). API를 쓸 수 없을 때만 사용, 결과에는 mock 표시
-// shortcut: 상태 스냅숏 1개로 판정(15·30분 전 재실, 최근 7일 운전 이력, 주말 구분 없음), Lambda 연결 시에는 사용되지 않음
+// 운영 패널·전체 현황 목업(건물별 public/demo/<id>.json 기반, 난수 없음). API를 쓸 수 없을 때만 사용, 결과에는 mock 표시
+// shortcut: 상태 스냅숏 1개로 판정(15·30분 전 재실, 최근 7일 운전 이력, 주말 구분, 건물별 운영 시간 없음), Lambda 연결 시에는 사용되지 않음
 
 const r1 = (v: number) => Math.round(v * 10) / 10
 const nowParts = () => { const t = kstNow(); return { iso: t, h: Number(t.slice(11, 13)), m: Number(t.slice(14, 16)) } }
@@ -13,11 +13,11 @@ function draft(r: Room, action: Draft['action'], condition: Draft['condition'], 
 }
 
 // 절감량 가정: OFF는 재실 없는 운전 5시간/일, 설정온도 조정은 부하 10% 감소 9시간/일
-export async function mockRecommendations(floor: string): Promise<Recommendations> {
+export async function mockRecommendations(floor: string, building: string): Promise<Recommendations> {
   const { iso, h } = nowParts()
   const business = h >= 9 && h < 18
   const items: Recommendation[] = []
-  for (const r of (await demoStatus()).rooms.filter((x) => x.floor === floor && x.onOff)) {
+  for (const r of (await demoStatus(building)).rooms.filter((x) => x.floor === floor && x.onOff)) {
     const base = { roomId: r.id, roomName: r.name, idu: r.idu, floor: r.floor, use: r.use }
     if (r.occupants === 0) {
       const saving = r1(r.powerKw * 5)
@@ -45,9 +45,9 @@ export async function mockRecommendations(floor: string): Promise<Recommendation
 }
 
 // 감지 시각은 오늘 09:00(업무 시작) 가정, 원인 후보 규칙은 lambda/src/anomalies.py와 같음
-export async function mockAnomalies(floor: string): Promise<Anomalies> {
+export async function mockAnomalies(floor: string, building: string): Promise<Anomalies> {
   const { iso, h, m } = nowParts()
-  const rooms = (await demoStatus()).rooms
+  const rooms = (await demoStatus(building)).rooms
   const minutes = Math.max(0, (h - 9) * 60 + m)
   const items = rooms.filter((r) => r.floor === floor && r.anomaly).map((r): Anomaly => {
     const healthy = rooms.filter((p) => p.onOff && !p.anomaly && p.mode === r.mode)
@@ -71,9 +71,9 @@ export async function mockAnomalies(floor: string): Promise<Anomalies> {
 
 // 시간대 계수: 운영 시간 1, 아침 8시·저녁 18~20시 0.1(낭비 운전), 그 외 0. 어제는 ±5% 다른 곡선
 const shape = (h: number) => (h >= 9 && h < 18 ? 1 : h === 8 || (h >= 18 && h < 21) ? 0.1 : 0)
-export async function mockHistory(floor: string): Promise<History> {
+export async function mockHistory(floor: string, building: string): Promise<History> {
   const { iso, h, m } = nowParts()
-  const kw = (await demoStatus()).rooms.filter((r) => r.floor === floor).reduce((s, r) => s + r.powerKw, 0)
+  const kw = (await demoStatus(building)).rooms.filter((r) => r.floor === floor).reduce((s, r) => s + r.powerKw, 0)
   const point = (hour: number, wave: number, part = 1) => {
     const v = r1(kw * shape(hour) * (1 + 0.05 * wave))
     return { hour, kw: v, kwh: r1(v * part) }
@@ -86,38 +86,63 @@ export async function mockHistory(floor: string): Promise<History> {
   }
 }
 
-// 목업 스케줄 저장소: 예시 2건으로 시작, saveSchedule 목업 저장분 포함
+// 목업 스케줄 저장소: 건물마다 예시 최대 2건으로 시작(해당 용도 호실이 없는 건물은 제외), saveSchedule 목업 저장분 포함
 // shortcut: 브라우저 메모리에만 보관해 새로고침하면 초기화, Lambda 연결 시에는 DynamoDB 사용
-let store: Schedule[] | null = null
-async function schedules() {
-  if (store) return store
-  const rooms = (await demoStatus()).rooms
+const stores = new Map<string, Schedule[]>()
+async function schedules(building: string) {
+  const saved = stores.get(building)
+  if (saved) return saved
+  const rooms = (await demoStatus(building)).rooms
   const at = `${kstNow().slice(0, 11)}08:00:00+09:00`
   const ids = (floor: string, use: string) => rooms.filter((r) => r.floor === floor && r.use === use).map((r) => r.id)
-  store = [
-    { id: 'mock-seed-1', roomIds: ids('2F', '회의실'), action: 'off' as const, time: '13:00', condition: 'unused' as const, createdAt: at, sourceText: '2층 13시 이후 미사용 회의실 냉방 OFF' },
-    { id: 'mock-seed-2', roomIds: ids('1F', '진료실'), action: 'setpoint' as const, time: '18:00', condition: 'always' as const, setpoint: 20, createdAt: at, sourceText: '1층 진료실 18시 설정온도 20도' },
+  const store = [
+    { id: `mock-${building}-seed-1`, buildingId: building, roomIds: ids('2F', '회의실'), action: 'off' as const, time: '13:00', condition: 'unused' as const, createdAt: at, sourceText: '2층 13시 이후 미사용 회의실 냉방 OFF' },
+    { id: `mock-${building}-seed-2`, buildingId: building, roomIds: ids('1F', '진료실'), action: 'setpoint' as const, time: '18:00', condition: 'always' as const, setpoint: 20, createdAt: at, sourceText: '1층 진료실 18시 설정온도 20도' },
   ].filter((s) => s.roomIds.length)
+  stores.set(building, store)
   return store
 }
 
-export async function mockSchedules(): Promise<Schedules> {
-  return { schedules: [...(await schedules())], mock: true }
+export async function mockSchedules(building: string): Promise<Schedules> {
+  return { schedules: [...(await schedules(building))], mock: true }
 }
 
-export async function mockSaveSchedule(d: Draft, sourceText: string) {
+export async function mockSaveSchedule(d: Draft, sourceText: string, building: string) {
   const id = `mock-${Date.now()}`
-  ;(await schedules()).push({
-    id, roomIds: d.roomIds, action: d.action, time: d.time, condition: d.condition, createdAt: kstNow(), sourceText,
+  ;(await schedules(building)).push({
+    id, buildingId: building, roomIds: d.roomIds, action: d.action, time: d.time, condition: d.condition, createdAt: kstNow(), sourceText,
     ...(d.action === 'setpoint' && d.setpoint !== null ? { setpoint: d.setpoint } : {}),
   })
   return { id, mock: true }
 }
 
 export async function mockCancelSchedule(id: string) {
-  const list = await schedules()
-  const i = list.findIndex((s) => s.id === id)
-  if (i < 0) throw new Error('없는 스케줄')
-  list.splice(i, 1)
-  return { id, mock: true }
+  for (const list of stores.values()) {
+    const i = list.findIndex((s) => s.id === id)
+    if (i >= 0) {
+      list.splice(i, 1)
+      return { id, mock: true }
+    }
+  }
+  throw new Error('없는 스케줄')
+}
+
+// 전체 현황 목업: 건물별 데모 상태에서 위 추천·전력 곡선 목업을 층마다 합산. level 규칙과 정렬은 lambda/src/portfolio.py와 같음
+const LEVELS: Level[] = ['alert', 'warn', 'ok']
+const level = (anomaly: number, saving: number, today: number): Level =>
+  anomaly > 0 ? 'alert' : saving > 0 && saving >= today * 0.1 ? 'warn' : 'ok'
+
+export async function mockBuildings(): Promise<Portfolio> {
+  const cards = await Promise.all((await demoBuildingIds()).map(async (id): Promise<BuildingCard> => {
+    const s = await demoStatus(id)
+    const [recs, hist] = await Promise.all([
+      Promise.all(s.floors.map((f) => mockRecommendations(f, id))),
+      Promise.all(s.floors.map((f) => mockHistory(f, id))),
+    ])
+    const todayKwh = r1(hist.reduce((sum, x) => sum + x.today.reduce((a, p) => a + p.kwh, 0), 0))
+    const savingKwh = r1(recs.reduce((sum, x) => sum + x.totalSavingKwh, 0))
+    return { ...s.building, now: s.summary, todayKwh, savingKwh, level: level(s.summary.anomaly, savingKwh, todayKwh) }
+  }))
+  cards.sort((a, b) => LEVELS.indexOf(a.level) - LEVELS.indexOf(b.level) || b.now.anomaly - a.now.anomaly)
+  return { generatedAt: kstNow(), virtual: true, buildings: cards, mock: true }
 }

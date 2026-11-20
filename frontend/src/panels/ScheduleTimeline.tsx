@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { LocateFixed, X } from 'lucide-react'
 import { cancelSchedule, listSchedules } from '../api'
 import { kstNow } from '../mock'
@@ -12,8 +12,10 @@ const minutes = (hm: string) => Number(hm.slice(0, 2)) * 60 + Number(hm.slice(3,
 const pct = (m: number) => `${(m / 1440) * 100}%`
 const act = (s: Schedule) => `${ACTION[s.action]}${s.action === 'setpoint' ? ` ${s.setpoint}℃` : ''}`
 
-export default function ScheduleTimeline({ refreshKey, onLocate }: { refreshKey: number; onLocate?(roomId: string): void }) {
-  const { data, error, reload } = usePoll(listSchedules, refreshKey)
+export default function ScheduleTimeline({ building, refreshKey, onLocate }: { building: string; refreshKey: number; onLocate?(roomId: string): void }) {
+  // refreshKey: 스케줄 저장 후 App이 올리는 값, 바뀌면 다시 조회
+  const load = useCallback((_key: number) => listSchedules(building), [building])
+  const { data, error, reload } = usePoll(load, refreshKey)
   const [confirm, setConfirm] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState({ ok: '', err: '' })

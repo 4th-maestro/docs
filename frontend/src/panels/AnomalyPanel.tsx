@@ -1,3 +1,4 @@
+import { useCallback } from 'react'
 import { AlertTriangle, LocateFixed } from 'lucide-react'
 import { getAnomalies } from '../api'
 import Panel from './Panel'
@@ -8,8 +9,9 @@ const LIKELY: Record<Likelihood, string> = { high: '높음', medium: '보통', l
 const signed = (v: number) => `${v > 0 ? '+' : ''}${v}`
 const duration = (m: number) => (m < 60 ? `${m}분` : `${Math.floor(m / 60)}시간 ${m % 60}분`)
 
-export default function AnomalyPanel({ floor, onLocate }: { floor: string; onLocate(roomId: string): void }) {
-  const { data, error, stale } = usePoll(getAnomalies, floor)
+export default function AnomalyPanel({ building, floor, onLocate }: { building: string; floor: string; onLocate(roomId: string): void }) {
+  const load = useCallback((f: string) => getAnomalies(f, building), [building])
+  const { data, error, stale } = usePoll(load, floor)
   return (
     <Panel
       title="이상 감지" at={data?.generatedAt} mock={data?.mock} error={error} loading={!data && !error} stale={stale}

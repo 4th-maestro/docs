@@ -50,6 +50,7 @@ export type History = { generatedAt: string; floor: string; today: HourPoint[]; 
 
 export type Schedule = {
   id: string
+  buildingId?: string // 값이 없는 이전 항목은 main
   roomIds: string[]
   action: Draft['action']
   time: string

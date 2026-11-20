@@ -1,10 +1,11 @@
-"""GET /rooms/history?floor=1F: 층 전력 시간별 평균(kW)과 사용량(kWh), 오늘 0시~현재와 어제 0~23시
+"""GET /rooms/history?building=main&floor=1F: 층 전력 시간별 평균(kW)과 사용량(kWh), 오늘 0시~현재와 어제 0~23시
 
 - 시간마다 0, 15, 30, 45분 4회 상태 평균, 현재 시간은 지난 분만 반영
 - 스케줄은 생성 시각 이후 구간에만 적용(저장 전후 비교가 그래프에 표시되도록)
 """
 import datetime as dt
 
+import buildings
 import common
 import sim
 
@@ -12,9 +13,13 @@ SAMPLE_MINUTES = (0, 15, 30, 45)
 
 
 def handler(event, context):
+    try:
+        b = common.building(event)
+    except ValueError as e:
+        return common.bad_building(e)
     floor = (event.get('queryStringParameters') or {}).get('floor')
     t, schedules = sim.now(), common.list_schedules()
-    rooms = [r for r in sim.ROOMS if not floor or r['floor'] == floor]
+    rooms = [r for r in buildings.rooms(b['id']) if not floor or r['floor'] == floor]
     today = t.replace(hour=0, minute=0, second=0)
     return common.resp(200, {
         'generatedAt': t.isoformat(), 'floor': floor or 'all', 'virtual': True,

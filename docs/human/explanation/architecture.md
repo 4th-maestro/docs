@@ -9,6 +9,7 @@
 >
 > - 2026-11-20 배포: 웹 https://d2y0m857hv27mz.cloudfront.net, WebSocket 질의 첫 단계 4.7초·완료 11.8초(콜드 스타트 1건), REST 질의 3.8~8.5초(2건), 운영 패널 API 4종 응답 확인
 > - 2026-11-20 운영 패널 API 4종 추가(미배포): 추천, 이상 감지 상세, 전력 추이, 스케줄 취소
+> - 2026-11-20 여러 건물 지원(미배포): 건물 4곳(본관 공개 IFC, 가상 3곳, 호실 533개), 조회 API 전체에 `building` 쿼리, 전체 현황 `GET /buildings`(로컬 0.42초, 5회)
 >
 > **다음 작업**: 질의 테스트 문장 30개 작성(미정)
 
@@ -37,13 +38,43 @@ LLM 호출과 도구 실행은 query Lambda가 담당합니다. 실시간 연동
 | 웹 | React, TypeScript, Vite → S3(비공개) + CloudFront(OAC) | 정적 배포, HTTPS |
 | API | API Gateway HTTP API(CORS) | Lambda 연동, 요청 단가가 REST API보다 낮음 |
 | 실시간 전송 | API Gateway WebSocket API(`ask` 라우트), ws Lambda | AI 질의 단계와 답변 텍스트를 진행 시점에 전송. 연결 실패 시 HTTP API로 대체 |
-| 처리 | Lambda Python 3.12(arm64): status, query, ws, schedules, recommend, anomalies, history | IFC 파싱·분석 코드와 같은 언어 |
-| 데이터 | DynamoDB(스케줄), 호실 목록은 Lambda 패키지의 `rooms.json` | 서버리스, 소량 데이터 |
+| 처리 | Lambda Python 3.12(arm64): status, query, ws, schedules, recommend, anomalies, history, portfolio | IFC 파싱·분석 코드와 같은 언어 |
+| 데이터 | DynamoDB(스케줄), 건물·호실 목록은 Lambda 패키지의 `buildings.json`, `rooms.json` | 서버리스, 소량 데이터 |
 | 자연어 질의 | Bedrock Claude Sonnet 5.5(`global.anthropic.claude-sonnet-5-5`, bedrock-runtime global 추론 프로필) | 사용자 지정 상한, 템플릿에서 Haiku 5.5로만 하향 가능. Mantle은 Sonnet 5.5 미제공([장애 기록](troubleshooting/2026-11-20%28Bedrock%20Sonnet%205.5%20%EB%AA%A8%EB%8D%B8%20ID%20404%29.md)) |
 | 정의·배포 | AWS SAM(`lambda/template.yaml`) | 리소스 1개 파일 관리 |
 | RAG(다음 단계) | Bedrock Knowledge Bases | 벡터 저장소 비용 점검 후 결정 |
 
 주: 결정 경위는 [AWS 아키텍처와 기술 스택](decisions/2026-11-20%28AWS%20%EC%95%84%ED%82%A4%ED%85%8D%EC%B2%98%EC%99%80%20%EA%B8%B0%EC%88%A0%20%EC%8A%A4%ED%83%9D%29.md).
+
+**2-2. 운영자는 건물 여러 곳을 관리하므로 모든 조회 API는 건물을 지정하고, `GET /buildings`가 문제 건물을 먼저 반환합니다.**
+
+건물은 본관(`main`, 공개 IFC 의원 원본)과 가상 건물 3곳(`office`, `edu`, `lab`)입니다. 가상 건물은 의원 도면의 층을 복제·반전하고 용도와 운영 시간을 바꿔 만들었으며, 응답의 `virtual`과 `basis`로 표시합니다. 원본은 `lambda/src/buildings.json`입니다.
+
+**표 2.2 건물 지정 규칙(2026-11-20)**
+
+| API | 건물 지정 | 비고 |
+|---|---|---|
+| `GET /rooms/status`, `/recommendations`, `/anomalies`, `/rooms/history` | 쿼리 `building`(없으면 `main`) | 상태 응답에 `building`(건물 정보), `floors`(그 건물의 층) 추가 |
+| `GET /schedules` | 쿼리 `building` | `buildingId`가 없는 이전 항목은 `main` |
+| `POST /schedules` | 본문 `buildingId` | `roomIds`가 그 건물의 호실이 아니면 400. 저장 항목에 `buildingId` 기록 |
+| `POST /query`, WebSocket `ask` | 본문 `buildingId` | 시스템 프롬프트에 건물 이름·층·용도, 도구 인자는 그 건물 기준으로 검증 |
+| 모든 API | 목록에 없는 건물 | 400 `알 수 없는 건물: <id>`. WebSocket은 모델 호출 없이 `error` 이벤트 |
+
+주: 도구 정의의 층 enum은 전체 건물 합집합(`1F`, `2F`, `3F`, `all`)입니다. 질의 건물에 없는 층·용도는 `tools.run`이 허용 값 목록을 포함한 도구 오류로 반환하고, 모델은 다음 라운드에서 값을 다시 선택합니다.
+
+**표 2.3 `GET /buildings` 응답(전체 현황)**
+
+| 필드 | 내용 |
+|---|---|
+| `generatedAt`, `virtual` | 기준 시각, 가상 데이터 여부(항상 `true`) |
+| `buildings[]` 정적 정보 | `id`, `name`, `use`, `virtual`, `basis`, `floors`, `roomCount`, `areaM2` |
+| `buildings[].now` | 지금 운전 대수 `on`, 정지 `off`, 이상 `anomaly`, 전력 `powerKw`(호실마다 상태 1회 계산) |
+| `buildings[].todayKwh` | 오늘 0시~현재 사용량. `GET /rooms/history` 오늘 합계와 같은 15분 표본 방식 |
+| `buildings[].savingKwh` | 절감 가능량(kWh/일, 가상). `GET /recommendations` 건물 전체 합계와 같은 값 |
+| `buildings[].level` | `alert` 이상 1건 이상, `warn` 절감 가능량이 오늘 사용량의 10% 이상, `ok` 그 외 |
+| 정렬 | `alert`, `warn`, `ok` 순, 같은 등급은 이상 건수 내림차순 |
+
+주: 계산 시간은 로컬(Apple Silicon, Python 3) 5회 0.42~0.43초입니다. Lambda(arm64, 512MB) 실측은 배포 후 확인합니다. 화면은 60초마다 다시 조회합니다.
 
 ## 3. 데이터 모델: 건물에서 상태값까지 5단계
 
@@ -117,7 +148,7 @@ Frontend는 `VITE_WS_URL`이 있으면 WebSocket API의 `ask` 라우트로 질�
 
 | 방향 | 형식 | 내용 |
 |---|---|---|
-| 화면 → 서버 | `{action: 'ask', requestId, text}` | 질의 1건, text 1~500자 |
+| 화면 → 서버 | `{action: 'ask', requestId, text, buildingId}` | 질의 1건, text 1~500자, buildingId 없으면 `main` |
 | 서버 → 화면 | `{type: 'step', id, status, label, detail?, chips?, ms?}` | id는 understand, query, review, answer. status는 active, done, error |
 | 서버 → 화면 | `{type: 'delta', text}` | 답변 텍스트 조각 |
 | 서버 → 화면 | `{type: 'done', result: {answer, highlight, draft, steps}, ms}` | 최종 결과. 화면의 답변은 이 값으로 교체 |
@@ -147,7 +178,7 @@ Frontend는 `VITE_WS_URL`이 있으면 WebSocket API의 `ask` 라우트로 질�
 | 항목 | 기준 |
 |---|---|
 | 빈 공간 운전 | 지금, 15분 전, 30분 전 모두 재실 0명으로 운전 |
-| 업무 외 운전 | 최근 7일 중 운영 시간(평일 09~18시) 밖에 재실 없이 운전한 날 2일 이상(주 2회 기준) |
+| 업무 외 운전 | 최근 7일 중 건물 운영 시간 밖에 재실 없이 운전한 날 2일 이상(주 2회 기준). 본관 평일 09~18시, 주말 운영 건물은 주말도 같은 시간 |
 | 과냉·과열 설정 | 냉방 설정 26℃ 미만, 난방 설정 20℃ 초과. 초안은 26℃ 또는 20℃로 변경 |
 | 초안 | OFF 규칙은 `00:00 이후 재실 없을 때 OFF`, 설정 규칙은 `00:00 이후 항상 설정온도 변경`. 스케줄이 매일 지정 시각부터 적용되므로 하루 전체에 적용 |
 | 호실당 추천 수 | 1건. OFF 규칙이 설정 규칙보다 우선이라 절감 합계에 중복 없음 |
@@ -186,8 +217,8 @@ Frontend는 `VITE_WS_URL`이 있으면 WebSocket API의 `ask` 라우트로 질�
 **10-1. 코드는 `frontend/`(웹 화면)와 `lambda/`(API·인프라) 두 폴더이며, 3D 트윈은 팀원 저장소에서 임베드 URL로 제공합니다.**
 
 ```text
-frontend/          React 대시보드(heat.ts 색 척도, twin.ts 임베드 연동, api.ts API 호출, panels/ 운영 패널)
-lambda/src/        Lambda 코드(status, query, schedules, recommend, anomalies, history, tools, sim, rooms.json)
+frontend/          React 대시보드(heat.ts 색 척도, twin.ts 임베드 연동, api.ts API 호출, panels/ 운영 패널, portfolio/ 전체 현황)
+lambda/src/        Lambda 코드(status, query, schedules, recommend, anomalies, history, portfolio, tools, sim, buildings.json, rooms.json)
 lambda/tests/      가상 데이터·도구 검증 테스트
 lambda/template.yaml  AWS SAM 템플릿(API, Lambda, DynamoDB, S3, CloudFront)
 docs/              문서(현재 구조 유지)
@@ -203,6 +234,8 @@ docs/              문서(현재 구조 유지)
 | 가상 데이터 생성 규칙의 계수(정격 용량, 부하율) 확정 | 미정 | 미정 |
 | 추천 LLM 도구(`recommend`)를 `GET /recommendations` 규칙과 연결 | 미정 | 미정 |
 | 운영 패널 4종 화면 배치(`App.tsx`)와 1440px, 390px 화면 확인 | 미정 | 주 작업자 |
+| 전체 현황, 건물 선택, 건물별 3D 도면 화면 확인(밝은·어두운 화면, 1440px, 390px) | 미정 | 주 작업자 |
+| `GET /buildings` 배포 후 Lambda 응답 시간 측정(로컬 0.42초, 제한 10초) | 미정 | 주 작업자 |
 
 ## 관련 자료
 

@@ -2,6 +2,8 @@
 import json
 import os
 
+import buildings
+
 TABLE_NAME = os.environ.get('SCHEDULES_TABLE')
 
 
@@ -14,6 +16,15 @@ def body(event):
         return json.loads(event.get('body') or '{}')
     except json.JSONDecodeError:
         return None
+
+
+def building(event):
+    """GET 쿼리 building의 건물. 없으면 main, 알 수 없으면 ValueError(호출 측에서 400)"""
+    return buildings.get((event.get('queryStringParameters') or {}).get('building'))
+
+
+def bad_building(e):
+    return resp(400, {'error': str(e)})
 
 
 def _table():

@@ -16,16 +16,36 @@ export type Room = {
   anomaly: string | null
 }
 
+// 건물 정적 정보(lambda/src/buildings.py summary)
+export type Building = {
+  id: string
+  name: string
+  use: string
+  virtual: boolean
+  basis: string
+  floors: string[]
+  roomCount: number
+  areaM2: number
+}
+
+export type Summary = { on: number; off: number; anomaly: number; powerKw: number }
+
 export type Status = {
   generatedAt: string
   refreshSeconds: number
   virtual: boolean
+  building: Building
   outdoorTemp: number
   floors: string[]
-  summary: { on: number; off: number; anomaly: number; powerKw: number }
+  summary: Summary
   rooms: Room[]
   mock?: boolean
 }
+
+// 전체 현황(lambda/src/portfolio.py): alert 이상 1건 이상, warn 절감 가능량이 오늘 사용량의 10% 이상, ok 그 외
+export type Level = 'alert' | 'warn' | 'ok'
+export type BuildingCard = Building & { now: Summary; todayKwh: number; savingKwh: number; level: Level }
+export type Portfolio = { generatedAt: string; virtual: boolean; buildings: BuildingCard[]; mock?: boolean }
 
 export type Draft = {
   roomIds: string[]

@@ -1,14 +1,16 @@
 """자연어 질의용 도구 정의와 실행(LLM이 만든 인자를 서버에서 검증)
 
 - LLM은 도구 이름과 인자만 생성, 층·용도·동작은 아래 목록 값만 허용
+- 층·용도 enum: 전체 건물의 합집합(도구 정의 1개 유지), 질의 건물에 없는 값은 run에서 거부
 - create_schedule은 초안만 반환하고 저장은 운영자 확인 후 POST /schedules
 """
 import re
 
+import buildings
 import sim
 
-FLOORS = sorted({r['floor'] for r in sim.ROOMS})
-USES = sorted({r['use'] for r in sim.ROOMS})
+FLOORS = sorted({f for b in buildings.LIST for f in b['floors']})
+USES = sorted({r['use'] for b in buildings.LIST for r in buildings.rooms(b['id'])})
 METRICS = {'powerKw': '전력(kW)', 'temp': '실내온도(℃)', 'humidity': '습도(%)', 'setpoint': '설정온도(℃)'}
 
 TOOLS = [
@@ -60,19 +62,23 @@ def chips(name, args):
     return [c for c in out if c]
 
 
-def _pick(floor, use):
-    return [r for r in sim.ROOMS if floor in ('all', r['floor']) and use in ('all', r['use'])]
+def _pick(rooms, floor, use):
+    return [r for r in rooms if floor in ('all', r['floor']) and use in ('all', r['use'])]
 
 
-def run(name, args, t, schedules):
-    """(모델에 돌려줄 결과, 화면 반영 정보) 반환. 잘못된 인자는 ValueError"""
-    if args.get('floor') not in FLOORS + ['all'] or args.get('use') not in USES + ['all']:
-        raise ValueError('floor 또는 use 값이 목록에 없음')
+def run(name, args, t, schedules, bid=None):
+    """(모델에 돌려줄 결과, 화면 반영 정보) 반환. 잘못된 인자는 ValueError(모델이 고칠 수 있게 허용 값 포함)"""
+    rooms = buildings.rooms(bid)
+    floors, uses = buildings.floors(bid), sorted({r['use'] for r in rooms})
+    if args.get('floor') not in floors + ['all']:
+        raise ValueError(f"floor는 {', '.join(floors)}, all 중 하나")
+    if args.get('use') not in uses + ['all']:
+        raise ValueError(f"use는 {', '.join(uses)}, all 중 하나")
     if name == 'query_spaces':
         if args['metric'] not in METRICS or args['order'] not in ('desc', 'asc'):
             raise ValueError('metric 또는 order 값 오류')
         limit = min(20, max(1, int(args['limit'])))
-        rows = [sim.state(r, t, schedules) for r in _pick(args['floor'], args['use'])]
+        rows = [sim.state(r, t, schedules) for r in _pick(rooms, args['floor'], args['use'])]
         rows.sort(key=lambda s: s[args['metric']], reverse=args['order'] == 'desc')
         rows = rows[:limit]
         result = [{k: s[k] for k in ('name', 'floor', 'use', 'onOff', 'occupants', args['metric'])} for s in rows]
@@ -84,7 +90,7 @@ def run(name, args, t, schedules):
             raise ValueError('time은 HH:MM 형식')
         if args['action'] == 'setpoint' and not 16 <= args['setpoint'] <= 30:
             raise ValueError('setpoint는 16~30')
-        targets = _pick(args['floor'], args['use'])
+        targets = _pick(rooms, args['floor'], args['use'])
         if not targets:
             raise ValueError('대상 호실 없음')
         draft = {

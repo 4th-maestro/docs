@@ -10,9 +10,9 @@ import type { Mode, Room } from '../types'
 import './twin3d.css'
 
 type Pt = [number, number]
-// public/floorplan.json 형식(IFC 평면 좌표, m)
+// public/floorplans/<건물>.json 형식(lambda/tools/build_floorplans.py 생성, IFC 평면 좌표, m)
 type Plan = { floors: Record<string, { bounds: [number, number, number, number]; rooms: { id: string; polys: Pt[][]; hvac: Pt[] }[] }> }
-type Props = { floor: string; mode: Mode; rooms: Room[]; highlight: string[]; selectedId: string | null; onSelect: (id: string) => void; dark?: boolean }
+type Props = { building: string; floor: string; mode: Mode; rooms: Room[]; highlight: string[]; selectedId: string | null; onSelect: (id: string) => void; dark?: boolean }
 type RoomObj = {
   id: string
   mesh: THREE.Mesh<THREE.ExtrudeGeometry, THREE.MeshLambertMaterial>
@@ -65,27 +65,31 @@ function centroid(polys: Pt[][]): Pt {
   return [cx / (3 * a), cy / (3 * a)]
 }
 
-export default function Twin3D({ floor, mode, rooms, highlight, selectedId, onSelect, dark = false }: Props) {
+export default function Twin3D({ building, floor, mode, rooms, highlight, selectedId, onSelect, dark = false }: Props) {
   const pal = dark ? THEME.dark : THEME.light
   const stageRef = useRef<HTMLDivElement>(null)
   const labelRef = useRef<HTMLDivElement>(null)
   const ctxRef = useRef<Ctx | null>(null)
-  const [plan, setPlan] = useState<Plan | null>(null)
-  const [failed, setFailed] = useState(false)
+  // 도면은 받은 건물과 함께 보관: 건물 변경 직후 이전 건물 도면을 새 건물 상태 색으로 칠하지 않도록 plan은 null
+  const [loaded, setLoaded] = useState<{ building: string; plan: Plan } | null>(null)
+  const [failed, setFailed] = useState('')
+  const plan = loaded?.building === building ? loaded.plan : null
   const [noGL, setNoGL] = useState(false)
   const [hover, setHover] = useState<Hover | null>(null)
   const [top, setTop] = useState(false)
   const select = useEffectEvent((id: string) => onSelect(id))
 
   useEffect(() => {
-    fetch('/floorplan.json')
+    let alive = true
+    fetch(`/floorplans/${encodeURIComponent(building)}.json`)
       .then((r) => {
         if (!r.ok) throw new Error(String(r.status))
         return r.json() as Promise<Plan>
       })
-      .then(setPlan)
-      .catch(() => setFailed(true))
-  }, [])
+      .then((p) => { if (alive) setLoaded({ building, plan: p }) })
+      .catch(() => { if (alive) setFailed(building) })
+    return () => { alive = false }
+  }, [building])
 
   // 렌더러, 카메라, 조작, 입력 이벤트: 마운트 1회
   useEffect(() => {
@@ -222,7 +226,7 @@ export default function Twin3D({ floor, mode, rooms, highlight, selectedId, onSe
     }
   }, [])
 
-  // 층 형상: plan, floor 변경 시에만 재생성
+  // 층 형상: 건물(plan), floor 변경 시에만 재생성, 이전 형상·재질은 cleanup에서 해제
   useEffect(() => {
     const ctx = ctxRef.current
     const data = plan?.floors[floor]
@@ -325,7 +329,7 @@ export default function Twin3D({ floor, mode, rooms, highlight, selectedId, onSe
   }, [floor, count])
 
   const msg = noGL ? '3D 도면을 표시할 수 없습니다. WebGL을 지원하는 브라우저가 필요합니다.'
-    : failed ? '도면 데이터를 불러오지 못했습니다.'
+    : failed === building ? '도면 데이터를 불러오지 못했습니다.'
     : !plan ? '도면을 불러오는 중입니다.'
     : !plan.floors[floor] ? `${floor} 도면 데이터가 없습니다.`
     : ''

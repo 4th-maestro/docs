@@ -176,6 +176,15 @@ Resources:
       Events:
         Get: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /rooms/history, Method: GET}}
 
+  # 전체 현황: 건물 4곳 호실 533개의 현재 상태, 오늘 사용량, 추천 합계 계산
+  PortfolioFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: portfolio.handler
+      Policies: [DynamoDBReadPolicy: {TableName: !Ref SchedulesTable}]
+      Events:
+        Get: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /buildings, Method: GET}}
+
   WebBucket:
     Type: AWS::S3::Bucket
     Properties:
