@@ -44,7 +44,8 @@ export type Status = {
 
 // 전체 현황(lambda/src/portfolio.py): alert 이상 1건 이상, warn 절감 가능량이 오늘 사용량의 10% 이상, ok 그 외
 export type Level = 'alert' | 'warn' | 'ok'
-export type BuildingCard = Building & { now: Summary; todayKwh: number; savingKwh: number; level: Level }
+// hasTwin: 서버에 트윈 도면(building.json)이 있는지. false면 운영 탭이 트윈 화면 대신 내장 3D 도면 사용(값이 없으면 트윈 요청 결과로 판단)
+export type BuildingCard = Building & { now: Summary; todayKwh: number; savingKwh: number; level: Level; hasTwin?: boolean }
 export type Portfolio = { generatedAt: string; virtual: boolean; buildings: BuildingCard[]; mock?: boolean }
 
 export type Draft = {

@@ -93,6 +93,7 @@ npm run dev
   - 상단 요약 카드: 앱 4개(운전 중, 정지, 이상 감지, 현재 전력)에 트윈 역할별 지표(예: 오늘 누적 사용량, 오늘 전기요금, 지금 절감 가능, 재실 인원)를 합침. 앱과 겹치는 칸(건물 전력, 실내기 대수)은 제외
   - 조치 목록 카드(`src/panels/TwinActions.tsx`): 역할별 요약(예: 지금 바로 아낄 수 있는 전력)과 호실 목록, "3D에서 보기". 오른쪽 열에서 AI 운영 도우미 아래에 표시
   - 데이터 흐름 모달(`src/panels/FlowModal.tsx`): 도구 줄의 데이터 흐름을 누르면 앱 화면 위 대화 상자로 수집 데이터, 트윈 정보, 받는 사람 3단 연결도를 표시. 역할을 누르면 3D 역할 전환, 닫기·Esc·바깥 클릭으로 닫음
+  - 로딩 순서: 트윈 주소의 `host=1`로 첫 표시부터 트윈 자체 도구·지표를 숨김. 트윈은 앱 데이터(`state`)를 받은 뒤에만 보고(최대 5초 대기)하고, 보고 전에는 앱이 도구 줄·지표·층 목록 자리를 고정 크기로 표시. 트윈이 `twin:ready`를 보내면 앱이 테마·상태를 다시 보냄. 트윈 도면은 화면을 열 때 미리 조회
   - 메시지: 트윈 → `twinUi`(화면 상태, 지표, 조치 목록, 데이터 흐름), 앱 → `ui`(동작). 규약은 [3D 트윈 임베드 규약](../docs/human/reference/twin-embed.md) 8절
 - 트윈에서 방을 고르면 `{source:'twin', type:'roomSelected', roomId}`를 보냅니다(`src/twin.ts`가 받음). 방 설정온도를 바꾸면 `{source:'twin', type:'control'}`을 보내고 대시보드가 반영합니다.
 - `npm run build`는 트윈을 `dist/twin/`으로 복사합니다(EnergyPlus 결과 `twin/sim/`은 제외).
@@ -129,8 +130,18 @@ git switch main && git pull --ff-only \
   && test -z "$(git status --porcelain --untracked-files=no)" \
   && VITE_API_BASE_URL=<ApiUrl> VITE_WS_URL=<WsUrl> VITE_COGNITO_CLIENT_ID=<UserPoolClientId> \
      VITE_TWIN_URL=/twin/digital-twin.html npm run build \
-  && aws s3 sync dist s3://<WebBucketName> --delete --profile maestro
+  && aws s3 sync dist s3://<WebBucketName> --delete --exclude "assets/*" --cache-control "no-cache" --profile maestro \
+  && aws s3 sync dist/assets s3://<WebBucketName>/assets --delete --cache-control "public, max-age=31536000, immutable" --profile maestro
 ```
+
+캐시 헤더는 파일 종류마다 다릅니다(2026-11-20 적용).
+
+| 대상 | Cache-Control | 이유 |
+|---|---|---|
+| `assets/*`(파일 이름에 해시 포함) | `public, max-age=31536000, immutable` | 내용이 바뀌면 파일 이름도 바뀌어 다시 받을 필요 없음 |
+| 그 밖(`index.html`, `twin/*`) | `no-cache` | 매번 변경 여부 확인(바뀌지 않았으면 304), 배포 직후 새 화면 반영 |
+
+주: CloudFront 압축(`Compress: true`, `lambda/template.yaml`)으로 앱 JS 451KB는 140KB, 3D 도면 JS 620KB는 154KB, 트윈 HTML 256KB는 81KB로 전송됩니다(gzip 기준).
 
 | 환경 변수 | 값 | 빠지면 |
 |---|---|---|
@@ -139,6 +150,6 @@ git switch main && git pull --ff-only \
 | `VITE_COGNITO_CLIENT_ID` | 출력 `UserPoolClientId` | 로그인 없이 동작 |
 | `VITE_TWIN_URL` | `/twin/digital-twin.html` | 판매사 건물 추가·도면 교체 화면에 "3D 트윈 주소(VITE_TWIN_URL)가 없어 도면을 넣을 수 없습니다" 표시 |
 
-주: `VITE_TWIN_URL`이 있으면 운영 탭 3D 영역도 트윈 화면(iframe)을 사용합니다. 트윈 데이터(`twin/data/`)와 서버 트윈 도면이 모두 없는 건물은 "데이터를 넣어 주세요"를 표시합니다(2026-11-20 기준 본관, 업무동, 교육관, 연구동). 판매사가 도면 교체로 트윈 도면을 넣으면 표시됩니다. 배포 후 CloudFront 무효화(`/*`)를 실행하십시오.
+주: `VITE_TWIN_URL`이 있으면 운영 탭 3D 영역도 트윈 화면(iframe)을 사용합니다. 건물 목록의 `hasTwin`이 false인 건물(2026-11-20 기준 본관, 업무동, 교육관, 연구동)은 트윈 화면을 불러오지 않고 내장 3D 도면을 표시합니다. 판매사가 도면 교체로 트윈 도면을 넣으면 트윈 화면으로 바뀝니다. 배포 후 CloudFront 무효화(`/*`)를 실행하십시오.
 
 `WebBucketName`과 `WebUrl`은 `lambda`의 `sam deploy` 출력값입니다.

@@ -18,7 +18,19 @@ export function twinSrc(building: string) {
   const u = new URL(TWIN_URL as string, window.location.href)
   u.searchParams.set('building', building)
   u.searchParams.set('theme', theme())
+  // 트윈이 첫 표시부터 앱 안 화면 모드(자체 도구·지표 숨김)로 시작
+  u.searchParams.set('host', '1')
   return u.href
+}
+
+// 트윈 준비 완료(twin:ready): 메시지 수신 준비 전에 보낸 테마·상태는 유실될 수 있어 이때 다시 보냄
+export function onTwinReady(frame: () => HTMLIFrameElement | null, handler: () => void) {
+  const listener = (e: MessageEvent) => {
+    if (!TWIN_URL || e.origin !== twinOrigin() || e.data?.type !== 'twin:ready' || e.source !== frame()?.contentWindow) return
+    handler()
+  }
+  window.addEventListener('message', listener)
+  return () => window.removeEventListener('message', listener)
 }
 
 // 편집 가능한 트윈 building.json 확인: schema, 건물 크기, 층별 실 목록

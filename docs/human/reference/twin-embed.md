@@ -106,5 +106,6 @@
 
 - 운영 탭과 시뮬레이션 탭은 같은 iframe을 유지합니다. 시뮬레이션 탭에 들어가면 역할을 운전 시뮬레이션으로 바꾸고 데이터 흐름과 설비 연결을 끄며, 운영 탭으로 돌아오면 에너지 총괄로 바꿉니다.
 - 역할을 바꾸면 트윈은 운전 시뮬레이션 상태(`sim`)를 다시 보냅니다. 시뮬레이션 탭의 패널은 탭을 열 때 새로 생기므로 이전 보고를 받지 못하기 때문입니다.
+- 로딩 순서(2026-11-20): 대시보드는 트윈 주소에 `host=1`을 붙여 트윈이 첫 표시부터 임베드 모드(`body.hosted`)로 시작하게 합니다. 트윈은 대시보드 데이터(`state`의 `data.rooms`)를 반영한 뒤에만 `twinUi`, `sim`, `building`을 보고합니다(5초 안에 못 받으면 보고). 트윈이 `{type: "twin:ready"}`를 보내면 대시보드는 테마와 상태를 다시 보냅니다. 경위는 [트윈 로딩 중 이전 화면 노출과 지연](../explanation/troubleshooting/2026-11-20%28%ED%8A%B8%EC%9C%88%20%EB%A1%9C%EB%94%A9%20%EC%A4%91%20%EC%9D%B4%EC%A0%84%20%ED%99%94%EB%A9%B4%20%EB%85%B8%EC%B6%9C%EA%B3%BC%20%EC%A7%80%EC%97%B0%29.md)입니다.
 - 데이터 흐름 모달은 연결선을 앱이 다시 그립니다. 강조 규칙은 트윈 `drawFlow`와 같습니다(역할: 그 역할이 받는 정보와 출처, 정보: 출처와 받는 역할, 출처: 그 출처를 쓰는 정보와 받는 역할). 2026-11-20 사용자 결정으로 3D를 가리던 트윈 안 패널 대신 사용합니다.
 - 코드: 트윈 `twin/digital-twin.html`(`hostUi`, `hostUiReport`, `flowModel`), 대시보드 `src/twin.ts`(`onTwinReport`, `postUi`), `src/panels/TwinTools.tsx`, `src/panels/TwinActions.tsx`, `src/panels/FlowModal.tsx`.

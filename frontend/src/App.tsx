@@ -26,9 +26,9 @@ import { usePoll } from './panels/usePoll'
 import Portfolio from './portfolio/Portfolio'
 import { FloorList, Layout } from './shell/Shell'
 import { href, parseRoute, type FloorSummary, type Tab } from './shell/route'
-import { TWIN_URL, onNeedBuilding, onTwinControl, onTwinReport, onRoomSelected, onTwinChange, postState, postTheme, postUi, twinSrc, type TwinBuilding, type TwinData, type TwinKpi, type TwinReport } from './twin'
+import { TWIN_URL, onNeedBuilding, onTwinReady, onTwinControl, onTwinReport, onRoomSelected, onTwinChange, postState, postTheme, postUi, twinSrc, type TwinBuilding, type TwinData, type TwinKpi, type TwinReport } from './twin'
 import type { BuildingCard, Draft, Mode, Room, Status } from './types'
-import { SkFloors, SkKpis, SkPlan } from './skeleton/Skeleton'
+import { Sk, SkFloors, SkKpis, SkPlan } from './skeleton/Skeleton'
 import CountUp from './motion/CountUp'
 
 // three.js 청크(약 620kB)는 3D 영역 표시 시점에 로드
@@ -194,10 +194,22 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
   }, [building, live, reloadKey])
   const load = () => setReloadKey((k) => k + 1)
   useEffect(() => onRoomSelected(setSelected), [])
-  // 트윈 데이터가 없는 건물(트윈 조회 404 등): 트윈 화면 대신 내장 3D 도면, 트윈 연동 패널 숨김
-  const [twinless, setTwinless] = useState(false)
-  const twinOn = Boolean(TWIN_URL) && !twinless
-  useEffect(() => onNeedBuilding(() => frame.current, (id) => getTwin(id).catch((e: unknown) => { setTwinless(true); throw e })), [])
+  // 트윈 데이터가 없는 건물: 트윈 화면 대신 내장 3D 도면, 트윈 연동 패널 숨김
+  // - 판단: 건물 목록의 hasTwin(트윈 화면을 불러오지 않음), 값이 없으면 트윈의 도면 요청 결과(조회 실패 시 전환)
+  // - 트윈 도면은 화면을 열 때 미리 조회: 트윈이 요청하면 기다리지 않고 바로 전달
+  // - 건물 목록(info)을 받기 전에는 판단을 미루고 자리 표시: 트윈이 없는 건물에서 트윈 화면을 불러왔다 닫지 않게 함
+  const [missing, setMissing] = useState(false)
+  const twinWait = Boolean(TWIN_URL) && !info
+  const twinOn = Boolean(TWIN_URL) && !!info && info.hasTwin !== false && !missing
+  const hasTwin = info?.hasTwin
+  const prefetch = useMemo(() => (TWIN_URL && !twinWait && hasTwin !== false ? getTwin(building).catch(() => null) : null), [building, twinWait, hasTwin])
+  useEffect(() => onNeedBuilding(() => frame.current, (id) => ((id === building && prefetch) || getTwin(id).catch(() => null)).then((d) => {
+    if (!d) setMissing(true)
+    return d
+  })), [building, prefetch])
+  // 트윈 준비 완료 때 테마·상태 다시 전송(iframe 로드 시점에는 트윈이 아직 메시지를 받지 못할 수 있음)
+  const [readyN, setReadyN] = useState(0)
+  useEffect(() => onTwinReady(() => frame.current, () => { postTheme(frame.current); setReadyN((n) => n + 1) }), [])
   useEffect(() => onTwinControl((room, sp) => { setRoomSetpoint(building, room, sp); load() }), [building])
   // 트윈 보고(화면 상태, 지표 칸, 조치 목록): 트윈 안 버튼·패널을 숨기고 앱 카드가 대신 그림
   const [report, setReport] = useState<TwinReport | null>(null)
@@ -256,7 +268,7 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
   const scope = floor || '건물 전체'
   const highlight = focus
   const twinData: TwinData | null = useMemo(() => status && { time: status.generatedAt, outdoorTemp: status.outdoorTemp, mock: !!status.mock, rooms: status.rooms }, [status])
-  useEffect(() => postState(frame.current, building, floor, mode, rooms, highlight, twinData), [building, floor, mode, rooms, highlight, twinData])
+  useEffect(() => postState(frame.current, building, floor, mode, rooms, highlight, twinData), [building, floor, mode, rooms, highlight, twinData, readyN])
   // 기준 시각이 갱신 주기의 2배를 초과하면 지연 표시(디자인 시스템 6절)
   const stale = status ? loadedAt - new Date(status.generatedAt).getTime() > status.refreshSeconds * 2000 : false
   const room = rooms.find((r) => r.id === selected)
@@ -326,7 +338,7 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
 
   return (
     <Layout building={building} tab={tab} buildings={buildings} tools={tools}
-      side={live && (status ? <FloorList floors={floorSummaries} floor={floor} onFloor={(f) => { setFloor(f); setSelected(null) }} /> : <SkFloors n={info?.floors.length ?? 2} />)}>
+      side={live && (status && (!(twinOn || twinWait) || twin) ? <FloorList floors={floorSummaries} floor={floor} onFloor={(f) => { setFloor(f); setSelected(null) }} /> : <SkFloors n={info?.floors.length ?? 2} />)}>
       <div className="page">
         {tab === 'energy' && <EnergyPage building={building} />}
         {live && (
@@ -350,6 +362,8 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
                 <Kpi label="이상 감지" value={summary.anomaly} unit="건" sub="설정온도 미도달" bad={summary.anomaly > 0} />
                 <Kpi label="현재 전력" value={summary.powerKw} unit="kW" sub={`외기 ${status.outdoorTemp}℃, ${hhmm(status.generatedAt)} 기준`} />
                 {twinOn && report?.kpis.filter((k) => !KPI_DUP[report.ui.persona]?.includes(k.key)).map((k) => <KpiText key={k.key} k={k} />)}
+                {/* 트윈 지표 자리: 보고 전에도 같은 칸을 잡아 두어 줄이 늘어나며 화면이 밀리지 않게 함 */}
+                {twinOn && !report && Array.from({ length: 4 }, (_, i) => <div key={i} className="kpi" aria-hidden><Sk w="45%" h={15} /><Sk w="38%" h={34} /><Sk w="70%" h={14} /></div>)}
               </section>
             )}
 
@@ -364,11 +378,11 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
                       ))}
                     </div>}
                   </div>
-                  {ops && twinOn && report && <TwinTools ui={report.ui} onAction={(a) => postUi(frame.current, a)} />}
+                  {ops && twinOn && (report ? <TwinTools ui={report.ui} onAction={(a) => postUi(frame.current, a)} /> : <div className="tw-tools tw-wait" aria-hidden>{Array.from({ length: 5 }, (_, i) => <i key={i} />)}</div>)}
                   {ops && twinOn && report?.ui.flow && report.flow && (
                     <FlowModal flow={report.flow} persona={report.ui.persona} onPersona={(k) => postUi(frame.current, `persona:${k}`)} onClose={() => postUi(frame.current, 'flow:off')} />
                   )}
-                  {twinOn ? (
+                  {twinWait ? <div className="embed"><SkPlan /></div> : twinOn ? (
                     <iframe ref={frame} className="embed" src={src} title="3D 디지털트윈" onLoad={() => { postTheme(frame.current); postState(frame.current, building, floor, mode, rooms, highlight, twinData) }} />
                   ) : sim ? (
                     <p className="embed sim-none">이 건물은 3D 트윈 도면이 없어 운전 시뮬레이션을 사용할 수 없습니다.</p>

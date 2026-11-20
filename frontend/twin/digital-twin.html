@@ -450,6 +450,8 @@
 </script>
 </head>
 <body class="v-building">
+<!-- 앱 임베드(host=1): 모듈 스크립트(three.js 로드) 실행 전 첫 표시부터 트윈 자체 도구·지표를 숨김 -->
+<script>if (new URLSearchParams(location.search).get('host') === '1') document.body.classList.add('hosted');</script>
 <!-- 아이콘: lucide 1.76.0(앱 lucide-react와 같은 판) 경로를 인라인 SVG로 사용 -->
 <div id="app">
   <main id="stage">
@@ -576,14 +578,15 @@ async function loadTwinData(){
   if (HOST_PLAN) { const b = await hostBuilding(BUILDING_ID); if (b) { DATA.building = b; DATA_FROM.building = '대시보드 (저장된 평면도)'; } }
   // 추가한 건물엔 그 건물 시간표·시뮬레이션이 없음 → 공용(기상·요금)만 읽음
   const kinds = ADDED ? ['weather', 'tariff'] : ['building', 'maintenance', 'schedule', 'weather', 'tariff', 'simulation', 'scenario'];
-  for (const k of kinds) {
-    if (DATA[k] || (EDITED && ['maintenance', 'schedule', 'simulation', 'scenario'].includes(k))) continue;
+  // 파일마다 순서대로 기다리지 않고 동시에 조회
+  await Promise.all(kinds.map(async k => {
+    if (DATA[k] || (EDITED && ['maintenance', 'schedule', 'simulation', 'scenario'].includes(k))) return;
     let v = null;
     try { const ss = params.has('data') || params.has('building') ? null : sessionStorage.getItem('twin:' + k); if (ss) { v = JSON.parse(ss); DATA_FROM[k] = '직접 넣은 파일'; } } catch {}
     if (!v && pre[k]) { v = pre[k]; DATA_FROM[k] = '페이지 설정'; }
     if (!v) try { const r = await fetch(DATA_BASE + k + '.json', { cache:'no-store' }); if (r.ok) { v = await r.json(); DATA_FROM[k] = DATA_BASE + k + '.json'; } } catch {}
     if (v) DATA[k] = v;
-  }
+  }));
   if (!DATA.building) await dataGate();
 }
 function readJsonFiles(files){ return Promise.all([...files].map(f => f.text().then(t => { try { return JSON.parse(t); } catch { return null; } }))); }
@@ -2422,7 +2425,7 @@ async function simRun(){
 }
 // 대시보드의 '운전 시뮬레이션' 패널로 보내는 상태 (트윈 안 패널은 작아서 대시보드 쪽에 그림)
 function simReport(force){
-  if (!HOST.on) return;
+  if (!HOST.on || !hostReady()) return;
   const key = `${SIM.ver}|${state.floor?.id || ''}|${hasLive()}`; if (!force && key === simReport.key) return; simReport.key = key;
   const R = SIM.result, f = simForm(), b = simBase(), scope = state.view !== 'building' && state.floor ? state.floor.rooms : ROOMS;
   const rooms = R ? scope.filter(r => R.scenario.rooms[r.id]).map(r => { const x = R.scenario.rooms[r.id], y = R.baseline.rooms[r.id];
@@ -2906,7 +2909,9 @@ window.DigitalTwin = API;
    트윈 → 대시보드: {source:'twin', type:'roomSelected'|'floorSelected'|'modeSelected'} — 트윈에서 고르면 대시보드 버튼도 따라감 */
 const HOST_MODE = { temp:'temp', humidity:'hum', powerKw:'power', anomaly:'alert' }, MODE_HOST = { temp:'temp', hum:'humidity', power:'powerKw', alert:'anomaly' };
 const METRIC_KO = { temp:'온도', hum:'습도', power:'전력', alert:'이상 감지' };
-const HOST = { on:false, last:null, applying:false, timer:0 };
+const HOST = { on:false, last:null, applying:false, timer:0, since:0 };
+// 앱 데이터를 받은 뒤에만 보고: 그 전 값은 트윈 자체 계산이라 앱 화면 값이 바뀌어 보임. 5초 안에 못 받으면 그대로 보고
+const hostReady = () => HOST.dataAt != null || performance.now() - HOST.since > 5000;
 function hostSay(text){
   const el = $('#hostLink'); el.querySelector('.t').innerHTML = text; el.classList.add('flash');
   clearTimeout(HOST.timer); HOST.timer = setTimeout(() => { el.classList.remove('flash'); el.querySelector('.t').innerHTML = `대시보드 연동 · <b>${state.floor?.id || '건물'}</b> · ${METRIC_KO[state.metric]}`; }, 1800);
@@ -2924,8 +2929,12 @@ function hostSnapshot(d){
 function syncHost(m){
   // 대시보드가 다른 건물을 고르면 그 건물로 다시 열기
   if (m.building && BUILDING_ID && m.building !== BUILDING_ID) { const p = new URLSearchParams(location.search); p.set('building', m.building); p.delete('data'); location.replace('?' + p); return; }
-  if (!HOST.on) { HOST.on = true; document.body.classList.add('hosted'); if (state.persona === 'sim') setPersona('owner', true); hostReport(true); simReport(true); }
-  if (m.data?.rooms?.length && m.data.time !== HOST.dataAt) { HOST.dataAt = m.data.time; LIVE.external = true; ingest(hostSnapshot(m.data)); hostReport(true); }
+  const first = !HOST.on;
+  if (first) { HOST.on = true; HOST.since = performance.now(); document.body.classList.add('hosted'); if (state.persona === 'sim') setPersona('owner', true); }
+  const fresh = m.data?.rooms?.length && m.data.time !== HOST.dataAt;
+  if (fresh) { HOST.dataAt = m.data.time; LIVE.external = true; ingest(hostSnapshot(m.data)); }
+  // 데이터 반영 후 보고: 첫 시뮬레이션 보고부터 실측 여부(hasLive)가 맞게 전달됨
+  if (first || fresh) { hostReport(true); simReport(true); hostUiReport(true); }
   const prev = HOST.last; HOST.last = m; const said = [];
   HOST.applying = true;
   try {
@@ -2949,7 +2958,7 @@ function syncHost(m){
 function tellHost(type, payload){ if (!HOST.on || HOST.applying) return; emit(type, { source:'twin', ...payload }); hostSay(`트윈 → 대시보드 <b>${Object.values(payload).join(' · ')}</b>`); }
 // 트윈이 인식한 건물·층(도면에서 만든 층 수 그대로)과 층별 요약 → 대시보드 층 목록이 이걸로 바뀜 (변할 때만, 최대 3초에 한 번)
 function hostReport(force){
-  if (!HOST.on) return;
+  if (!HOST.on || !hostReady()) return;
   const floors = FLOORS.map(f => { const acs = f.rooms.flatMap(r => r.acs);
     return { floor:f.id, total:acs.length, on:acs.filter(a => a.status === 'on').length, anomaly:f.rooms.filter(r => r.alert.level).length, powerKw:+f.rooms.reduce((t, r) => t + r.power, 0).toFixed(1) }; });
   const sig = JSON.stringify(floors), now = performance.now();
@@ -2986,7 +2995,7 @@ function hostUi(a){
 // 앱으로 보고: 화면 상태(버튼 눌림 표시), 지표 칸, 조치 목록. 숨긴 #kpis·#actions가 그린 내용을 읽어 전달, 같으면 보내지 않음
 const LV_OF = c => c.includes('danger') ? 2 : c.includes('caution') ? 1 : 0;
 function hostUiReport(force){
-  if (!HOST.on) return;
+  if (!HOST.on || !hostReady()) return;
   const B = document.body.classList, pressed = s => $(s)?.getAttribute('aria-pressed') === 'true';
   const ui = { view:B.contains('v-room') ? 'room' : B.contains('v-floor') ? 'floor' : 'building', persona:state.persona, flow:pressed('#flowBtn'), pipes:pressed('#pipesBtn'),
     rv:Object.fromEntries([...document.querySelectorAll('#roomTools [data-rv]')].map(b => [b.dataset.rv, b.getAttribute('aria-selected') === 'true'])) };

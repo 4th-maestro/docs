@@ -165,6 +165,15 @@ class PortfolioTest(unittest.TestCase):
             body = json.loads(portfolio.handler({}, None)['body'])
         self.assertEqual([b['id'] for b in body['buildings']], ['d', 'b', 'c', 'a'])
 
+    def test_has_twin(self):
+        # 트윈 도면이 있는 건물만 hasTwin true(목록 조회 1회 결과 사용)
+        fake = lambda b, t, s: {'id': b['id'], 'level': 'ok', 'now': {'anomaly': 0}}  # noqa: E731
+        portfolio._cache['key'] = None
+        with patch.object(portfolio.buildings, 'LIST', [{'id': 'a'}, {'id': 'b'}]), patch.object(portfolio, 'card', fake), \
+                patch.object(portfolio.common, 'list_schedules', return_value=[]), patch.object(portfolio.plan, 'twin_ids', return_value={'b'}):
+            body = json.loads(portfolio.handler({}, None)['body'])
+        self.assertEqual({b['id']: b['hasTwin'] for b in body['buildings']}, {'a': False, 'b': True})
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -279,6 +279,12 @@
       "type": "explanation"
     },
     {
+      "path": "docs/human/explanation/troubleshooting/2026-11-20(트윈 로딩 중 이전 화면 노출과 지연).md",
+      "title": "트윈 로딩 중 이전 화면 노출과 지연",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
       "path": "docs/human/explanation/troubleshooting/README.md",
       "title": "장애 조사 기록",
       "audience": "human",

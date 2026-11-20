@@ -662,6 +662,8 @@ Resources:
           TargetOriginId: web
           ViewerProtocolPolicy: redirect-to-https
           CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6  # Managed-CachingOptimized
+          # gzip·brotli 압축 전송: 앱 JS 451KB, 트윈 HTML 255KB가 압축 없이 전송되던 문제(2026-11-20)
+          Compress: true
         CustomErrorResponses:
           - {ErrorCode: 403, ResponseCode: 200, ResponsePagePath: /index.html}
 
