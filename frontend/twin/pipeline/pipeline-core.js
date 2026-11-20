@@ -326,7 +326,8 @@ export function floorRooms(floor, res, W, D){
     const [cx, cy] = toM((bb.x0 + bb.x1) / 2, (bb.y0 + bb.y1) / 2), area = bb.n / RES / RES, a = attrs.get(k);
     const inside = cx > 0 && cx < W && cy > 0 && cy < D;
     if (!a && (!inside || bb.x0 === 0 || bb.y0 === 0 || bb.x1 === w - 1 || bb.y1 === h - 1)) continue;   // 건물 밖(라벨 없음)은 버림
-    regs.push({ k, bb, area, a:a || { type:'store', name:'미지정' }, unlabeled:!a, rects:rectsOf(lab, w, h, find, k, bb, floor.mode === 'fill') });
+    const inferred = !a && floor.autoSpaces && area <= W * D * .92;
+    regs.push({ k, bb, area, a:a || (inferred ? { type:'room', name:'자동 공간', use:'unknown' } : { type:'store', name:'미지정' }), unlabeled:!a && !inferred, inferred, rects:rectsOf(lab, w, h, find, k, bb, floor.mode === 'fill') });
   }
   // 층 전체에서 x·y 좌표를 묶어 인접한 방의 경계를 일치시킴 (외곽 0·W·D에는 붙임)
   const all = regs.flatMap(r => r.rects);
@@ -352,6 +353,7 @@ export function floorRooms(floor, res, W, D){
       const room = { id: pieces.length > 1 && type === 'room' ? `${id}-${pi + 1}` : id,
         name: type === 'room' ? `${a.number || ''} ${a.name || USE_NAME[a.use] || '실'}`.trim() : (a.name || TYPE_NAME[type] || type), type, polygon:poly };
       if (poly.holes?.length) room.holes = poly.holes;
+      if (R.inferred) room.name = '자동 공간 ' + String(xi).padStart(2, '0');
       if (type === 'room') Object.assign(room, { number:a.number || null, use:a.use || 'office', capacity:+a.capacity || 0 });
       rooms.push(room);
     });
@@ -790,6 +792,10 @@ export function assemble(recipe, floorResults){
     for (const k in metas) if (fr.meta[k]) metas[k].push(fr.meta[k]);
     const out = { id:f.id, level:i + 1, atrium:!!fr.meta.atrium, rooms:fr.rooms };
     if (f.footprint) out.footprint = f.footprint;
+    if (f.note) out.note = f.note;
+    else if (f.autoSpaces) out.note = fr.rooms.some(room => room.type === 'room')
+      ? '사진에서 자동으로 추정한 공간입니다. 호실·설비 정보는 확인이 필요합니다.'
+      : '닫힌 공간을 인식하지 못해 층 윤곽만 표시합니다.';
     return out;
   });
   // 중정·엘리베이터는 건물 전체에 하나: 층마다 찾은 사각형의 좌표별 중앙값 (한 층 사진이 기울어도 흔들리지 않음)
@@ -823,7 +829,7 @@ export function assemble(recipe, floorResults){
   warn.push(...w2);
   const zoned = splitZones(floors, idus, W, D, recipe.zoning);      // 큰 공간 → 공조 구역
   const ext = recipe.exterior || {};
-  const building = { id:B.id, name:B.name, campus:B.campus, size:{ w:W, d:D }, floorHeight:ext.floorHeight || B.floorHeight, ceiling:B.ceiling };
+  const building = { id:B.id, name:B.name, size:{ w:W, d:D }, floorHeight:ext.floorHeight || B.floorHeight, ceiling:B.ceiling };
   if (ext.window) building.window = ext.window;
   if (ext.facade) building.facade = ext.facade;
   if (B.assumed) building.assumed = B.assumed;              // 확인 전 가정값 (예: 건축물대장 미확인 크기)

@@ -2,7 +2,21 @@
  "schema": "twin.buildings/v1",
  "note": "트윈이 도면에서 인식한 건물 목록. 대시보드(웹)의 건물 선택·데모 데이터는 이 목록을 따른다 (tools/export-web-demo.mjs)",
  "buildings": [
-  { "id": "eng6", "data": "data/", "use": "교육·연구" },
-  { "id": "busan-station", "data": "data/busan-station/", "use": "교통 역사" }
+  {
+   "id": "eng6",
+   "data": "data/",
+   "use": "교육·연구"
+  },
+  {
+   "id": "busan-station",
+   "data": "data/busan-station/",
+   "use": "교통 역사"
+  },
+  {
+   "id": "asti-hotel-busan",
+   "data": "data/asti-hotel-busan/",
+   "use": "숙박",
+   "basis": "첨부 사진 기반 근사 모델 · 5~20층 공통 객실 평면 · 일부 층은 부분 도면 또는 외곽만 표시"
+  }
  ]
 }

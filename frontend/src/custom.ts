@@ -1,5 +1,6 @@
 import { webProfile, webStatus } from '../twin/pipeline/web-demo.js'
 import type { BuildingCard, Portfolio, Status } from './types'
+import type { Plan } from './floor-edit'
 
 // '건물 추가'로 넣은 건물(이 브라우저에만 저장)
 // - pending: 추가만 한 상태. 데이터를 만들지 않음(도면 이미지를 넣고 트윈에서 렌더링해야 시작)
@@ -7,6 +8,7 @@ import type { BuildingCard, Portfolio, Status } from './types'
 // shortcut: localStorage 보관(다른 브라우저·사용자에게는 안 보임), Lambda 연결 후에는 서버 저장으로 교체
 export type Custom = { id: string; name: string; state: 'pending' | 'ready'; addedAt: string }
 const LIST = 'maestro:custom-buildings'
+const HIDDEN = 'maestro:hidden-buildings'
 const DOC = (id: string) => `maestro:custom-building:${id}`
 export const isCustom = (id: string) => id.startsWith('new-')
 
@@ -32,20 +34,35 @@ export function setRendered(id: string, building: { building?: { name?: string }
 }
 
 export function removeCustom(id: string) {
-  write(LIST, customList().filter((c) => c.id !== id))
+  if (!write(LIST, customList().filter((c) => c.id !== id))) return false
   try { localStorage.removeItem(DOC(id)) } catch { /* 없음 */ }
+  statuses.delete(id)
+  return true
 }
 
 export const customBuilding = (id: string) => read<unknown>(DOC(id), null)
+export const isBuildingHidden = (id: string) => read<string[]>(HIDDEN, []).includes(id)
+
+export function deleteBuilding(id: string) {
+  if (isCustom(id)) return removeCustom(id)
+  return write(HIDDEN, [...new Set([...read<string[]>(HIDDEN, []), id])])
+}
+
+export function saveEditedPlan(id: string, plan: Plan) {
+  if (!write(DOC(id), plan)) return false
+  statuses.delete(id)
+  return true
+}
 
 const statuses = new Map<string, Status>()
 export function customStatus(id: string): Status | null {
-  const c = customOf(id)
-  const B = c?.state === 'ready' ? customBuilding(id) : null
-  if (!B) return null
-  let s = statuses.get(id)
-  if (!s) { s = webStatus(B, { id, use: '추가한 건물', basis: '건물 추가 (트윈 파이프라인)' }) as Status; statuses.set(id, s) }
-  return s
+  const cached = statuses.get(id)
+  if (cached) return cached
+  const plan = !isCustom(id) || customOf(id)?.state === 'ready' ? customBuilding(id) : null
+  if (!plan) return null
+  const status = webStatus(plan, { id, use: '건물', basis: '이 브라우저에 저장한 평면도' }) as Status
+  statuses.set(id, status)
+  return status
 }
 export function customProfile(id: string) {
   const s = customStatus(id)
@@ -59,7 +76,12 @@ export function withCustom(p: Portfolio): Portfolio {
     const base = s?.building ?? { id: c.id, name: c.name, use: '도면 렌더링 전', virtual: false, basis: '', floors: [], roomCount: 0, areaM2: 0 }
     return { ...base, now: s?.summary ?? { on: 0, off: 0, anomaly: 0, powerKw: 0 }, todayKwh: 0, savingKwh: 0, level: s?.summary.anomaly ? 'alert' : 'ok' }
   })
-  return { ...p, buildings: [...p.buildings, ...cards] }
+  const builtIn = p.buildings.filter(b => !isBuildingHidden(b.id)).map(b => {
+    const status = customStatus(b.id)
+    if (!status) return b
+    return { ...b, floors: status.floors, roomCount: status.building.roomCount, areaM2: status.building.areaM2 }
+  })
+  return { ...p, buildings: [...builtIn, ...cards] }
 }
 
 // 목록이 바뀌면(추가·렌더링·취소) 화면이 목록을 다시 조회

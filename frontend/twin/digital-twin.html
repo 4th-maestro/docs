@@ -182,7 +182,8 @@
   #floorStats b{display:block;font-size:17px;color:var(--ink);font-variant-numeric:tabular-nums;font-weight:800;letter-spacing:-.3px}
   #floorStats b i{font-style:normal;font-size:11px;color:var(--muted);font-weight:600;margin-left:2px}
   #floorTabs{display:flex;gap:4px;padding:12px 12px 10px;min-height:62px;align-items:center}
-  #floorTabs button{border:1px solid var(--line);background:transparent;border-radius:10px;padding:5px 13px;font-weight:800;font-size:13px;color:var(--muted);cursor:pointer}
+  #floorTabs{overflow-x:auto}
+  #floorTabs button{flex:none;border:1px solid var(--line);background:transparent;border-radius:10px;padding:5px 13px;font-weight:800;font-size:13px;color:var(--muted);cursor:pointer}
   #floorTabs button:hover{color:var(--ink);border-color:var(--line-strong)}
   #floorTabs button[aria-selected="true"]{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border-color:transparent}
 
@@ -262,7 +263,7 @@
     #metrics button{flex:1;padding:6px 4px}
     #live{display:none}
     #floorView{padding:120px 10px 10px}
-    #floorPicker{top:auto;bottom:14px;right:12px;transform:none;flex-direction:row-reverse}
+    #floorPicker{top:auto;bottom:14px;right:12px;transform:none;flex-direction:row-reverse;max-width:calc(100% - 24px);overflow-x:auto}
     #floorPicker button{width:40px;height:34px}
     #kpis{top:auto;bottom:70px;flex-direction:row;flex-wrap:wrap;right:14px}
     .kpi{min-width:0;padding:7px 10px}.kpi .ic{display:none}.kpi b{font-size:15px}
@@ -468,6 +469,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { wallSpans } from './pipeline/wall-spans.js';
 
 /* ═════════════════════════ config ═════════════════════════ */
 const params = new URLSearchParams(location.search);
@@ -493,10 +495,12 @@ const DATA_BASE = params.get('data') || BUILDINGS?.buildings?.find(b => b.id ===
 const BUILDING_ID = (!params.get('data') && params.get('building')) || BUILDINGS?.buildings?.find(b => b.data === DATA_BASE)?.id || null;
 // 대시보드에서 '건물 추가'로 넣은 건물: 도면(building.json)은 대시보드가 갖고 있어서 받아 옴 (이 폴더엔 없음)
 const ADDED = !!params.get('building') && !params.get('data') && !BUILDINGS?.buildings?.some(b => b.id === params.get('building'));
+const EDITED = params.get('edited') === '1';
+const HOST_PLAN = ADDED || EDITED;
 function hostBuilding(id){
   if (window.parent === window) return Promise.resolve(null);
   return new Promise(res => {
-    const on = e => { const m = e.data; if (m?.source === 'maestro' && m.type === 'buildingData' && m.id === id) { removeEventListener('message', on); res(m.data || null); } };
+    const on = e => { const m = e.data; if (e.source === window.parent && m?.source === 'maestro' && m.type === 'buildingData' && m.id === id) { removeEventListener('message', on); res(m.data || null); } };
     addEventListener('message', on); window.parent.postMessage({ source:'twin', type:'needBuilding', id }, '*');
     setTimeout(() => { removeEventListener('message', on); res(null); }, 5000);
   });
@@ -504,9 +508,11 @@ function hostBuilding(id){
 const DATA = {}, DATA_FROM = {};
 async function loadTwinData(){
   const pre = window.TWIN_DATA || {};
-  if (ADDED) { const b = await hostBuilding(BUILDING_ID); if (b) { DATA.building = b; DATA_FROM.building = '대시보드 (건물 추가)'; } }
+  if (HOST_PLAN) { const b = await hostBuilding(BUILDING_ID); if (b) { DATA.building = b; DATA_FROM.building = '대시보드 (저장된 평면도)'; } }
   // 추가한 건물엔 그 건물 시간표·시뮬레이션이 없음 → 공용(기상·요금)만 읽음
-  for (const k of ADDED ? ['weather', 'tariff'] : ['building', 'maintenance', 'schedule', 'weather', 'tariff', 'simulation', 'scenario']) {   // ?data= 로 폴더를 지정하면 그 폴더가 우선
+  const kinds = ADDED ? ['weather', 'tariff'] : ['building', 'maintenance', 'schedule', 'weather', 'tariff', 'simulation', 'scenario'];
+  for (const k of kinds) {
+    if (DATA[k] || (EDITED && ['maintenance', 'schedule', 'simulation', 'scenario'].includes(k))) continue;
     let v = null;
     try { const ss = params.has('data') || params.has('building') ? null : sessionStorage.getItem('twin:' + k); if (ss) { v = JSON.parse(ss); DATA_FROM[k] = '직접 넣은 파일'; } } catch {}
     if (!v && pre[k]) { v = pre[k]; DATA_FROM[k] = '페이지 설정'; }
@@ -601,7 +607,8 @@ function inPoly(x, y, poly){
 }
 const IDU_BY_ROOM = {};
 for (const a of BD.idus || []) (IDU_BY_ROOM[a.room] ||= []).push(a);
-const FLOORS = BD.floors.map((f, fi) => ({ id:f.id, index:fi, plan:null, hasVoid:!!f.atrium, footprint:f.footprint || null,
+const FLOORS = BD.floors.map((f, fi) => ({ id:f.id, index:fi, plan:null, hasVoid:!!f.atrium, footprint:f.footprint || null, note:f.note || null,
+  openings:f.openWalls || [], partitions:f.partitions || [],
   rooms:f.rooms.map(r => ({ id:r.id, floorId:f.id, floorIndex:fi, name:r.name, num:r.number || null, type:r.type || 'room', poly:r.holes?.length ? Object.assign([...r.polygon], { holes:r.holes }) : r.polygon,
     kind:r.use || (r.type === 'room' || !r.type ? 'office' : 'none'), cap:r.capacity || 0, finish:r.finish || null, zoneOf:r.zoneOf || null, zoneBasis:r.zoneBasis || null,
     acs:(IDU_BY_ROOM[r.id] || []).map(a => ({ id:a.id, addr:a.ctrlAddr, x:a.pos[0], y:a.pos[1], model:a.model || '실내기', type:a.type || '', cool:a.coolKw || 7.2, rated:a.ratedKw || 2.2, odu:a.odu,
@@ -647,10 +654,12 @@ function drawPlan(f){
     g.moveTo(X(VOID.x0), Y(VOID.y0)); g.lineTo(X(VOID.x1), Y(VOID.y1)); g.moveTo(X(VOID.x1), Y(VOID.y0)); g.lineTo(X(VOID.x0), Y(VOID.y1)); g.stroke();
     g.fillStyle = '#6f8091'; g.font = `600 ${S*.42}px system-ui, "Malgun Gothic", sans-serif`; g.fillText('중정 (VOID)', X((VOID.x0 + VOID.x1)/2 - 4), Y(VOID.y0 + 1.4));
   }
+  const path = ring => { ring.forEach(([x,y],i) => i ? g.lineTo(X(x),Y(y)) : g.moveTo(X(x),Y(y))); g.closePath(); };
   const fills = { room:'#ffffff', corridor:'#eeece6', core:'#f2f0ea', wc:'#edf2f4', store:'#ebe8e1' };
   for (const r of f.rooms) {
     const b = r.b;
-    g.fillStyle = fills[r.type] || '#fff'; g.fillRect(X(b.x), Y(b.y), b.w*S, b.h*S);
+    g.save(); g.beginPath(); path(r.poly); (r.poly.holes || []).forEach(path);
+    g.fillStyle = fills[r.type] || '#fff'; g.fill('evenodd'); g.clip('evenodd');
     if (r.type === 'wc') {
       g.strokeStyle = 'rgba(120,150,170,.2)'; g.lineWidth = 1;
       for (let x = b.x; x < b.x + b.w; x += .3) { g.beginPath(); g.moveTo(X(x), Y(b.y)); g.lineTo(X(x), Y(b.y + b.h)); g.stroke(); }
@@ -675,6 +684,7 @@ function drawPlan(f){
       for (let d = -b.h; d < b.w; d += .45) { g.beginPath(); g.moveTo(X(b.x + d), Y(b.y + b.h)); g.lineTo(X(b.x + d + b.h), Y(b.y)); g.stroke(); }
       g.restore();
     }
+    g.restore();
   }
   if (!USER.floors) {
     g.fillStyle = '#e2e0da'; g.fillRect(X(EV.x0), Y(EV.y0), (EV.x1 - EV.x0)*S, (EV.y1 - EV.y0)*S);
@@ -684,7 +694,15 @@ function drawPlan(f){
   }
   g.strokeStyle = '#2a2a2a'; g.lineWidth = .14 * S;
   const loop = l => { g.beginPath(); l.forEach(([x, y], i) => i ? g.lineTo(X(x), Y(y)) : g.moveTo(X(x), Y(y))); g.closePath(); g.stroke(); };
-  for (const r of f.rooms) if (r.type !== 'corridor') { if (r.poly.length > 4 || r.poly.holes) { loop(r.poly); (r.poly.holes || []).forEach(loop); } else g.strokeRect(X(r.b.x), Y(r.b.y), r.b.w*S, r.b.h*S); }
+  const strokeWall = ([x,y], [u,v]) => { g.moveTo(X(x),Y(y)); g.lineTo(X(u),Y(v)); };
+  g.beginPath();
+  for (const r of f.rooms) if (r.type !== 'corridor') {
+    for (const ring of [r.poly, ...(r.poly.holes || [])]) ring.forEach((p,i) => {
+      wallSpans(p,ring[(i+1)%ring.length],r.id,f.openings).forEach(([a,b]) => strokeWall(a,b));
+    });
+  }
+  for (const {a,b} of f.partitions) strokeWall(a,b);
+  g.stroke();
   if (f.hasVoid) { g.strokeStyle = '#41607a'; g.lineWidth = .1 * S; g.strokeRect(X(VOID.x0), Y(VOID.y0), (VOID.x1 - VOID.x0)*S, (VOID.y1 - VOID.y0)*S); }
   g.strokeStyle = '#2a2a2a'; g.lineWidth = .3 * S; if (f.footprint) loop(f.footprint); else g.strokeRect(X(0), Y(0), W*S, D*S);
   g.fillStyle = '#2a2a2a';
@@ -713,7 +731,8 @@ function drawPlan(f){
       const [x0, y0] = r.poly[i], [x1, y1] = r.poly[(i+1) % r.poly.length], len = Math.hypot(x1 - x0, y1 - y0);
       const ux = (x1 - x0)/len, uy = (y1 - y0)/len, nx = uy, ny = -ux;
       const dw = r.type === 'room' && r.area > 60 ? 1.2 : .9;
-      if (len < dw + .6) continue;
+      const wall = wallSpans(r.poly[i],r.poly[(i+1) % r.poly.length],r.id,f.openings);
+      if (len < dw + .6 || wall.length !== 1 || Math.hypot(wall[0][1][0]-wall[0][0][0],wall[0][1][1]-wall[0][0][1]) < len-.001) continue;
       const tHit = [.12, .5, .88].find(t => corridors.some(c => inPoly(x0 + ux*len*t + nx*.3, y0 + uy*len*t + ny*.3, c.poly)));
       if (tHit == null) continue;
       const s0 = clamp(len * tHit - dw/2, .3, len - dw - .3), hx = x0 + ux*s0, hy = y0 + uy*s0;
@@ -735,7 +754,7 @@ function drawPlan(f){
     const b = r.b;
     if (r.name === '복도') continue;
     g.textAlign = 'center';
-    if (r.num) {
+    if (r.num && (r.name === r.num || r.name.startsWith(r.num + ' '))) {
       const small = b.w < 3.4 || b.h < 2.6, role = r.name.slice(r.num.length + 1);
       g.fillStyle = '#222'; g.font = `700 ${S*(small ? .34 : .5)}px system-ui, sans-serif`;
       g.fillText(r.num, X(b.cx), Y(b.cy) - (small ? 0 : S*.95));
@@ -791,9 +810,17 @@ for (const r of ROOMS) {
 }
 const DI = (t, rh) => .81 * t + .01 * rh * (.99 * t - 14.3) + 46.3;
 const diLabel = v => v < 68 ? '쾌적' : v < 75 ? '보통' : v < 80 ? '다소 불쾌' : '불쾌';
+// 쾌적도 = ISO 7730 PMV/PPD (pipeline/comfort.js, EnergyPlus 시뮬레이션과 같은 모델). 불쾌지수(THI)는 참고값으로만 표시
+//   재지 않는 값은 가정: 복사온도 = 실온, 기류 0.15(운전)·0.1 m/s, 옷 = 계절별 clo, 활동량 = 용도별 met
+let CMF = null; try { CMF = await import('./pipeline/comfort.js'); } catch (e) { console.warn('[twin] 쾌적도 모듈을 불러오지 못했어요', e); }
+const monthNow = () => +(simDate || new Date(Date.now() + 9 * 3600e3).toISOString()).slice(5, 7);
+const comfortOf = r => CMF && r.acs.length ? CMF.roomComfort({ temp:r.temp, hum:r.hum, kind:r.kind, on:r.acs.some(a => a.status === 'on') }, monthNow()) : null;
+const heatingSeason = () => CMF ? CMF.cloOf(monthNow()) >= 1 : false;
+const pmvTxt = v => (v > 0 ? '+' : '') + v.toFixed(1);
 function alertOf(r){
   if (r.extAlert) return r.extAlert;
   if (!r.acs.length) return { level:0, items:[] };
+  r.cmf = comfortOf(r);
   const items = [], on = r.acs.some(a => a.status === 'on');
   if (r.temp >= 29) items.push([2, `고온 ${r.temp.toFixed(1)}°C`]);
   else if (r.temp >= 27 && on) items.push([1, `냉방 부족 ${r.temp.toFixed(1)}°C`]);
@@ -802,8 +829,9 @@ function alertOf(r){
   const err = r.acs.filter(a => a.status === 'fault');
   if (err.length) items.push([2, `실내기 에러 ${err.map(a => a.error).join(', ')}`]);
   if (r.idle && r.emptyOn >= 20) items.push([1, `${r.occSrc === 'wifi' || r.occSrc === 'sensor' ? `빈 방(${r.occSrc === 'wifi' ? '와이파이' : '재실 센서'} 0명)` : r.scheduled ? '수업 없음' : '운영시간 외'} 냉방 ${Math.round(r.emptyOn)}분째`]);
-  const di = DI(r.temp, r.hum);
-  if (r.inUse && di >= 78) items.push([1, `불쾌지수 ${di.toFixed(0)} (${diLabel(di)})`]);
+  // 사용 중인데 ISO 7730 C등급(|PMV| 0.7) 밖이면 알림, 1.5 넘으면 심각
+  const c = r.cmf;
+  if (r.inUse && c && Math.abs(c.pmv) >= .7) items.push([Math.abs(c.pmv) >= 1.5 ? 2 : 1, `${c.pmv > 0 ? '더움' : '추움'} PMV ${pmvTxt(c.pmv)} · 불만족 ${Math.round(c.ppd)}%`]);
   return { level: items.reduce((m, i) => Math.max(m, i[0]), 0), items };
 }
 let booted = false, OCCM = null, WM = null;
@@ -1142,14 +1170,15 @@ for (const f of FLOORS) {
   }
   // 외피(유리·멀리언·테두리·네온): 층 윤곽(footprint)을 따라 — 스카이뷰로 모양 보정된 윤곽도 그대로 보임
   const loop = f.footprint?.length >= 3 ? f.footprint : [[0, 0], [W, 0], [W, D], [0, D]], hH = FH - .3;
-  const shell = new THREE.Mesh(slabGeometry(false, 0, hH, loop), new THREE.MeshPhysicalMaterial({ color:0xaecbff, transparent:true, opacity:.06, roughness:.05, metalness:0, envMapIntensity:1.2, depthWrite:false, side:THREE.BackSide }));
+  const facade = BD.building?.facade;
+  const shell = new THREE.Mesh(slabGeometry(false, 0, hH, loop), new THREE.MeshPhysicalMaterial({ color:facade?.glassColor ?? 0xaecbff, transparent:true, opacity:facade?.glassOpacity ?? .06, roughness:.05, metalness:0, envMapIntensity:1.2, depthWrite:false, side:THREE.BackSide }));
   shell.position.y = hH; grp.add(shell);
   { // curtain-wall mullions around the perimeter
     const seg = [], step = 1.6;
     loop.forEach(([x0, y0], i) => { const [x1, y1] = loop[(i + 1) % loop.length], n = Math.max(1, Math.round(Math.hypot(x1 - x0, y1 - y0) / step));
       for (let k = 0; k < n; k++) { const p = toWorld(lerp(x0, x1, k / n), lerp(y0, y1, k / n)); seg.push(p.x, 0, p.z, p.x, hH, p.z); } });
     const mg = new THREE.BufferGeometry(); mg.setAttribute('position', new THREE.Float32BufferAttribute(seg, 3));
-    const mull = new THREE.LineSegments(mg, new THREE.LineBasicMaterial({ color:0x9fb3cf, transparent:true, opacity:.22 })); grp.add(mull); grp.userData.mullMat = mull.material;
+    const mull = new THREE.LineSegments(mg, new THREE.LineBasicMaterial({ color:facade?.mullionColor ?? 0x9fb3cf, transparent:true, opacity:.22 })); grp.add(mull); grp.userData.mullMat = mull.material;
   }
   const frame = new THREE.LineSegments(new THREE.EdgesGeometry(slabGeometry(false, 0, hH, loop), 20), new THREE.LineBasicMaterial({ color:0x7b8798, transparent:true, opacity:.45 }));
   frame.position.y = hH; grp.add(frame); grp.userData.frame = frame;
@@ -1502,18 +1531,26 @@ function buildRoom(r, held = false){
     dm.position.copy(toWorld(r.door.x, r.door.y, 1.05)); dm.rotation.y = -Math.atan2(r.door.uy, r.door.ux); root.add(dm);
   }
   const outline = [];
-  r.poly.forEach(([x0, y0], i) => {
-    const [x1, y1] = r.poly[(i+1) % r.poly.length], len = Math.hypot(x1-x0, y1-y0), ang = Math.atan2(y1-y0, x1-x0);
+  const addWall = ([x0,y0], [x1,y1], exterior = false) => {
+    const len = Math.hypot(x1-x0, y1-y0), ang = Math.atan2(y1-y0, x1-x0);
     const mid = toWorld((x0+x1)/2, (y0+y1)/2, CEIL/2);
     const wall = new THREE.Mesh(new THREE.BoxGeometry(len, CEIL, .12), wallMat); wall.position.copy(mid); wall.rotation.y = -ang; root.add(wall);
-    if (r.extEdges[i] && len > 1.6) {
+    if (exterior && len > 1.6) {
       const WN = BD.building?.window || { sill:.8, head:2.3 }, wh = Math.min(WN.head, CEIL - .1) - WN.sill;
       const win = new THREE.Mesh(new THREE.PlaneGeometry(len - 1.2, wh), winMat); win.position.copy(mid); win.position.y = WN.sill + wh / 2; win.rotation.y = -ang; root.add(win);
       const blind = new THREE.Mesh(new THREE.PlaneGeometry(len - 1.2, .62), blindMat); blind.position.copy(mid); blind.position.y = WN.sill + wh - .31; blind.rotation.y = -ang; root.add(blind);
     }
     const a = toWorld(x0, y0), c = toWorld(x1, y1);
     outline.push(a.x, .01, a.z, c.x, .01, c.z, a.x, CEIL, a.z, c.x, CEIL, c.z, a.x, 0, a.z, a.x, CEIL, a.z);
+  };
+  for (const ring of [r.poly,...(r.poly.holes || [])]) ring.forEach((p,i) => {
+    const next = ring[(i+1)%ring.length];
+    wallSpans(p,next,r.id,f.openings).forEach(([a,b]) => addWall(a,b,ring === r.poly && r.extEdges[i]));
   });
+  for (const {a,b} of f.partitions) {
+    const x = (a[0]+b[0])/2, y = (a[1]+b[1])/2;
+    if (inPoly(x,y,r.poly) && !(r.poly.holes || []).some(h => inPoly(x,y,h))) addWall(a,b);
+  }
   const og = new THREE.BufferGeometry(); og.setAttribute('position', new THREE.Float32BufferAttribute(outline, 3));
   const outlineMat = new THREE.LineBasicMaterial({ color:0x7b8798, transparent:true, opacity:.8 });
   root.add(new THREE.LineSegments(og, outlineMat));
@@ -2121,7 +2158,9 @@ function renderFloorStats(){
   const f = state.floor; if (!f) return;
   setHTML($('#floorTabs'), FLOORS.map(x => `<button data-f="${x.id}" aria-selected="${x === f}">${x.id}</button>`).join(''));
   const a = floorAgg(f.rooms), on = a.acs.filter(x => x.status === 'on').length;
-  setHTML($('#floorStats'), `<div>평균 온도<b>${a.temp.toFixed(1)}<i>°C</i></b></div><div>평균 습도<b>${Math.round(a.hum)}<i>%</i></b></div>
+  const floorNote = f.note ? "<div>" + esc(f.note) + "</div>" : "";
+  if (f.note && !a.acs.length) { setHTML($("#floorStats"), floorNote); return; }
+  setHTML($('#floorStats'), floorNote + `<div>평균 온도<b>${a.temp.toFixed(1)}<i>°C</i></b></div><div>평균 습도<b>${Math.round(a.hum)}<i>%</i></b></div>
     <div>전력<b>${a.power.toFixed(1)}<i>kW</i></b></div><div>${occName(f.rooms)}<b>${a.occ}<i>명</i></b></div><div>실내기 가동<b>${on}<i>/ ${a.acs.length}</i></b></div>`);
 }
 $('#floorTabs').addEventListener('click', e => { const b = e.target.closest('button'); if (b && FLOOR[b.dataset.f] !== state.floor) goFloor(FLOOR[b.dataset.f]); });
@@ -2147,7 +2186,7 @@ const FLOW = [
   { id:'waste',   label:'수업 없는 방 냉방 · 절감액',      src:['acs', 'sched', 'meter', 'tariff'], to:['owner', 'engineer'] },
   { id:'anom',    label:'전력 이상 패턴 (동일 용도 비교)',  src:['meter', 'drawing'],           to:['owner', 'facility'] },
   { id:'sched',   label:'시간표 기반 사전 냉방 · 자동 OFF', src:['sched', 'kma', 'acs'],        to:['owner', 'engineer'] },
-  { id:'comfort', label:'실별 쾌적도 (온도 · 불쾌지수)',   src:['acs', 'sched', 'kma'],        to:['engineer'] },
+  { id:'comfort', label:'실별 쾌적도 (PMV · PPD)',   src:['acs', 'sched', 'kma'],        to:['engineer'] },
   { id:'setp',    label:'설정온도 · 풍량 조정 권고',      src:['acs', 'sched'],               to:['engineer'] },
   { id:'zone',    label:'방 안 온도 분포 (기류 3D)',      src:['acs', 'drawing'],             to:['engineer'] },
   { id:'fault',   label:'실내기 에러 알림 · 출동',        src:['acs', 'drawing', 'maint'],    to:['facility', 'engineer'] },
@@ -2180,10 +2219,13 @@ function insights(persona, rs){
     for (const r of rs) {
       const on = r.acs.filter(a => a.status === 'on').length, fault = r.acs.filter(a => a.status === 'fault').length;
       const who = r.cls ? `수업 중 ${r.occ}명 (${esc(r.cls.course)})` : '사용 중';
-      if (r.inUse && r.temp >= 26.5) out.push({ lv:r.temp >= 28 ? 2 : 1, r, title:`${r.name} 냉방 부족 ${r.temp.toFixed(1)}°C`, src:['acs', 'sched'],
-        d:fault ? `실내기 ${fault}대 에러로 용량 부족 · ${who} → 남은 ${on}대 풍량 강, 시설 관리자 출동 요청` : `설정 ${r.setpoint}°C 대비 +${(r.temp - r.setpoint).toFixed(1)}°C · ${who} → 풍량 강 · 설정 1°C 하향` });
-      else if (on && r.temp <= 23) out.push({ lv:1, r, title:`${r.name} 과냉방 ${r.temp.toFixed(1)}°C`, src:['acs'], d:`설정 ${r.setpoint}°C → 1~2°C 상향 시 쾌적 유지하며 전력 절감` });
-      if (r.hum >= 65) out.push({ lv:r.hum >= 72 ? 2 : 1, r, title:`${r.name} 습도 ${Math.round(r.hum)}%`, src:['acs', 'kma'], d:`제습 운전 전환 권장 · 불쾌지수 ${DI(r.temp, r.hum).toFixed(0)}` });
+      // 쾌적도(PMV): 덥거나(>+0.5) 추우면(<−0.5) 계절에 맞는 조치 — 난방철 더움 = 과난방(절감), 냉방철 추움 = 과냉방(절감)
+      const c = r.cmf, heat = heatingSeason(), ppd = c ? ` · 불만족 ${Math.round(c.ppd)}%` : '';
+      if (r.inUse && c && c.pmv >= .5) out.push({ lv:c.pmv >= 1.5 ? 2 : 1, r, title:`${r.name} 더움 PMV ${pmvTxt(c.pmv)} (${r.temp.toFixed(1)}°C)`, src:['acs', 'sched'],
+        d:heat ? `과난방 · 설정 ${r.setpoint}°C${ppd} → 설정 1°C 하향 (쾌적해지고 전력 절감)` : fault ? `실내기 ${fault}대 에러로 용량 부족 · ${who}${ppd} → 남은 ${on}대 풍량 강, 시설 관리자 출동 요청` : `설정 ${r.setpoint}°C · ${who}${ppd} → 풍량 강 · 설정 1°C 하향` });
+      else if (r.inUse && c && c.pmv <= -.5) out.push({ lv:c.pmv <= -1.5 ? 2 : 1, r, title:`${r.name} 추움 PMV ${pmvTxt(c.pmv)} (${r.temp.toFixed(1)}°C)`, src:['acs'],
+        d:heat ? (fault ? `실내기 ${fault}대 에러로 난방 부족${ppd} → 시설 관리자 출동 요청` : `설정 ${r.setpoint}°C${ppd} → 설정 1°C 상향 · 풍향 아래로`) : `과냉방 · 설정 ${r.setpoint}°C${ppd} → 1~2°C 상향 (쾌적해지고 전력 절감)` });
+      if (r.hum >= 65) out.push({ lv:r.hum >= 72 ? 2 : 1, r, title:`${r.name} 습도 ${Math.round(r.hum)}%`, src:['acs', 'kma'], d:`제습 운전 전환 권장${r.cmf ? ` · PMV ${pmvTxt(r.cmf.pmv)}` : ''} · 불쾌지수 ${DI(r.temp, r.hum).toFixed(0)}(참고)` });
       if (r.idle && r.emptyOn >= 20) out.push({ lv:1, r, title:`${r.name} 냉방 OFF 권장`, src:['sched', 'acs'], d:`${r.scheduled ? (r.next ? `다음 수업 ${r.next.start}까지 비어 있음` : '오늘 남은 수업 없음') : '운영시간 외'} · ${r.acPower.toFixed(1)}kW` });
     }
   } else {
@@ -2209,8 +2251,8 @@ function renderActions(){
   let hero = '';
   if (state.persona === 'owner') { const w = wasteOf(scope.filter(r => r.acs.length));
     hero = `<div class="hero">지금 바로 아낄 수 있는 전력<b>${w.kw.toFixed(1)} kW · 시간당 ${won(w.kw * TARIFF)}</b>하루 3시간 · 월 22일 반복 시 약 <b style="display:inline;font-size:12px">${won(w.kw * TARIFF * 3 * 22)}</b> / 월</div>`; }
-  else if (state.persona === 'engineer') { const rs = scope.filter(r => r.acs.length && r.inUse), ok = rs.filter(r => r.temp < 26.5 && r.temp > 22.5 && r.hum < 65).length;
-    hero = `<div class="hero">사용 중인 방의 쾌적 비율<b>${rs.length ? Math.round(ok / rs.length * 100) : 100}% · ${ok}/${rs.length}실</b>기준: 22.5~26.5°C · 습도 65% 미만</div>`; }
+  else if (state.persona === 'engineer') { const rs = scope.filter(r => r.acs.length && r.inUse), ok = rs.filter(r => r.cmf && Math.abs(r.cmf.pmv) < .5).length;
+    hero = `<div class="hero">사용 중인 방의 쾌적 비율<b>${rs.length ? Math.round(ok / rs.length * 100) : 100}% · ${ok}/${rs.length}실</b>기준: ISO 7730 B등급 (|PMV| &lt; 0.5, 불만족 10% 이하) · 옷 ${CMF ? CMF.cloOf(monthNow()).toFixed(1) : '–'}clo 가정</div>`; }
   else { const acs = scope.flatMap(r => r.acs), f = acs.filter(a => a.status === 'fault').length, due = acs.filter(a => a.status !== 'fault' && runH(a) >= FILTER_H).length;
     hero = `<div class="hero">실내기 ${acs.length}대 상태<b>고장 ${f} · 점검 도래 ${due} · 정상 ${acs.length - f - due}</b>필터 기준 ${FILTER_H.toLocaleString()}h 누적 운전</div>`; }
   const html = `<div class="hd"><small>${state.view === 'floor' && state.floor ? state.floor.id + ' · ' : '건물 전체 · '}이 사람에게 필요한 정보</small><b>${P.name}</b><div class="why">${P.why}</div></div>${hero}
@@ -2268,6 +2310,7 @@ function buildLive(){
     occupancy:{ source:occKind(), wifiAps:Object.keys(MEAS.wifi || {}).length } };
 }
 async function simCompare(scenario, useLive){
+  if (HOST_PLAN) throw new Error('브라우저에 저장된 평면도의 EnergyPlus 계산은 지원되지 않습니다.');
   const r = await fetch('/api/sim/compare', { method:'POST', headers:{ 'Content-Type':'application/json' },
     body:JSON.stringify({ data:DATA_BASE, scenario, ...(useLive ? { live:buildLive() } : {}) }) });
   const j = await r.json().catch(() => null);
@@ -2276,7 +2319,7 @@ async function simCompare(scenario, useLive){
 }
 async function simRun(){
   const f = simForm(), now = f.period === 'now' && hasLive(), useLive = now || (f.useLive && hasLive());
-  if (ADDED) { SIM.msg = '⚠ 추가한 건물은 아직 EnergyPlus 계산을 지원하지 않아요 (도면 폴더가 계산 서버에 없음)'; SIM.ver++; renderSim(true); return; } SIM.busy = true; SIM.ver++; SIM.msg = `EnergyPlus 계산 중… (${useLive ? '오늘 실측 기준 · ' : ''}기존·선택 두 번, 10초 안팎)`; renderSim(true);
+  if (HOST_PLAN) { SIM.msg = '⚠ 브라우저에 저장된 평면도의 EnergyPlus 계산은 지원되지 않습니다.'; SIM.ver++; renderSim(true); return; } SIM.busy = true; SIM.ver++; SIM.msg = `EnergyPlus 계산 중… (${useLive ? '오늘 실측 기준 · ' : ''}기존·선택 두 번, 10초 안팎)`; renderSim(true);
   try {
     const j = await simCompare(now ? { name:'지금부터', coolSetpoint:+f.coolSetpoint, window:{ hours:+f.durH || 2 } }
       : { name:'내 선택', coolSetpoint:+f.coolSetpoint, hours:[f.start, f.end], offWhenEmpty:f.offWhenEmpty, precoolMin:+f.precoolMin }, useLive);
@@ -2354,7 +2397,7 @@ function flowValue(id){
     case 'kwh': return `${ENERGY.kw.toFixed(0)}kW · 오늘 ${won(ENERGY.kwh * TARIFF)}`;
     case 'waste': { const w = wasteOf(ROOMS.filter(r => r.acs.length)); return `${w.rooms.length}실 · ${w.kw.toFixed(1)}kW`; }
     case 'anom': return `${anomalies(ROOMS).length}실`;
-    case 'comfort': { const rs = ROOMS.filter(r => r.acs.length && r.inUse); return `불쾌 ${rs.filter(r => DI(r.temp, r.hum) >= 78).length}실`; }
+    case 'comfort': { const rs = ROOMS.filter(r => r.acs.length && r.inUse); return `쾌적 범위 밖 ${rs.filter(r => r.cmf && Math.abs(r.cmf.pmv) >= .5).length}실`; }
     case 'fault': return `${acs.filter(a => a.status === 'fault').length}대`;
     case 'filter': return `${acs.filter(a => a.status !== 'fault' && runH(a) >= FILTER_H).length}대`;
     default: return '';
@@ -2481,7 +2524,7 @@ const insp = $('#inspector');
 function setInspector(on){ state.inspector = on; insp.classList.toggle('open', on && state.view === 'room'); $('#infoBtn').setAttribute('aria-pressed', on); if (on) renderInspector(); }
 function renderInspector(){
   const r = state.room; if (!r || !state.inspector) return;
-  const di = DI(r.temp, r.hum), occK = r.cap ? clamp(r.occ / r.cap, 0, 1) : 0;
+  const di = DI(r.temp, r.hum), c = r.cmf || comfortOf(r), occK = r.cap ? clamp(r.occ / r.cap, 0, 1) : 0;
   const bar = (k, col) => `<div class="meter"><i style="width:${(k * 100).toFixed(0)}%;background:${col}"></i></div>`;
   // 위(상태)는 매초 다시 그리고, 아래(설정온도 바꿔 보기)는 바뀔 때만 — 슬라이더를 끄는 중에 지워지지 않게
   if (!insp.querySelector('#inspMain')) insp.innerHTML = '<div id="inspMain"></div><div id="inspWi"></div>';
@@ -2492,7 +2535,7 @@ function renderInspector(){
       <div>습도<b>${Math.round(r.hum)}<span>%</span></b>${bar(clamp(r.hum / 100, 0, 1), cssColor('hum', r.hum))}</div>
       <div>전력<b>${r.power.toFixed(2)}<span>kW</span></b>${bar(clamp(r.power / 8, 0, 1), cssColor('power', r.power))}</div>
       <div>${r.occSrc && r.occSrc !== 'schedule' ? `재실 인원 <span style="opacity:.7">(${OCC_SRC[r.occSrc]})</span>` : '수업 인원'}<b>${r.occSrc ? r.occ : '–'}<span> / ${r.cap}명</span></b>${bar(occK, '#8b5cf6')}</div>
-      <div>불쾌지수<b>${di.toFixed(0)} <span>${diLabel(di)}</span></b>${bar(clamp((di - 60) / 25, 0, 1), di >= 80 ? '#e5484d' : di >= 75 ? '#f2a01f' : '#22b07d')}</div>
+      <div title="ISO 7730 PMV/PPD · 가정: 복사온도 = 실온, 기류 ${c?.vel ?? '–'}m/s, 옷 ${c?.clo ?? '–'}clo(계절), 활동 ${c?.met ?? '–'}met(용도) · 불쾌지수(THI) ${di.toFixed(0)} ${diLabel(di)}는 참고값">쾌적도 PMV<b>${c ? pmvTxt(c.pmv) : '–'} <span>${c ? CMF.pmvLabel(c.pmv) : ''}</span></b>${bar(c ? clamp((c.pmv + 3) / 6, 0, 1) : 0, !c ? '#8a94a6' : Math.abs(c.pmv) >= 1.5 ? '#e5484d' : Math.abs(c.pmv) >= .5 ? '#f2a01f' : '#22b07d')}<div class="sub" style="margin:4px 0 0;font-size:10px">${c ? `불만족 ${Math.round(c.ppd)}% · ${c.grade === '등급 밖' ? 'ISO 등급 밖' : `ISO ${c.grade}등급`} · 옷 ${c.clo.toFixed(1)}clo·활동 ${c.met}met 가정` : ''}</div></div>
       <div>학사 시간표<b style="font-size:14px">${r.cls ? esc(r.cls.course) : r.next ? `다음 ${r.next.start}` : '–'}</b><div class="sub" style="margin:4px 0 0;font-size:10px">${r.cls ? `${r.cls.start}~${r.cls.end} · ${r.cls.code}` : r.next ? esc(r.next.course) : r.scheduled ? '오늘 남은 수업 없음' : '시간표 대상 아님'}</div></div>
     </div>
     ${r.alert.items.map(([lv, m]) => `<div style="color:${lv === 2 ? 'var(--crit)' : 'var(--warn)'};font-weight:700;font-size:12px;margin-bottom:4px">● ${esc(m)}</div>`).join('')}
@@ -2635,7 +2678,7 @@ function showRoomTip(r, e){
     <div class="row"><span>전력</span><span>${r.power.toFixed(2)} kW</span></div>
     ${r.occSrc === 'wifi' || r.occSrc === 'sensor' ? `<div class="row"><span>재실 (${OCC_SRC[r.occSrc]})</span><span>${r.occ}명${r.cap ? ` / ${r.cap}` : ''}</span></div>` : ''}
     ${r.scheduled ? `<div class="row"><span>학사 시간표</span><span>${r.cls ? `${esc(r.cls.course)} · ${r.occ}명` : r.next ? `다음 ${r.next.start} ${esc(r.next.course)}` : '오늘 수업 끝'}</span></div>` : ''}
-    ${r.cap ? `<div class="row"><span>불쾌지수</span><span>${DI(r.temp, r.hum).toFixed(0)}</span></div>` : ''}
+    ${r.cmf ? `<div class="row"><span>쾌적도 PMV</span><span>${pmvTxt(r.cmf.pmv)} · 불만족 ${Math.round(r.cmf.ppd)}%</span></div>` : ''}
     ${r.acs.length ? `<div class="row"><span>실내기</span><span>${on}/${r.acs.length} 가동${fault ? ` · 고장 ${fault}` : ''} · ${r.setpoint}°</span></div>` : ''}
     ${r.alert.items.map(([lv, m]) => `<div class="al" style="color:${lv === 2 ? 'var(--crit)' : 'var(--warn)'}">⚠ ${esc(m)}</div>`).join('')}`;
   tip.style.display = 'block'; placeTip(e);

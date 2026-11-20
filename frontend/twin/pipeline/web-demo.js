@@ -1,7 +1,7 @@
 // 트윈 building.json → 대시보드(웹) 데모 상태 (웹 Status 형식). 명령줄(tools/export-web-demo.mjs)과 웹 브라우저(건물 추가) 공용
 //   호실 id = 트윈 실 id, idu = 트윈 실내기 id → 웹이 보낸 값을 트윈이 그대로 받아 같은 값을 그림
 //   값은 난수 없이 실 id 해시로 정함 (같은 도면이면 항상 같은 기준값). 웹 목업이 여기에 5초마다 ±변동을 줌
-export const USE_KO = { office:'연구실', admin:'사무실', lecture:'강의실', lab:'실험실', meeting:'회의실', lounge:'대기·휴게', waiting:'대기·휴게', restaurant:'식당', retail:'상점' };
+export const USE_KO = { office:'연구실', admin:'사무실', lecture:'강의실', lab:'실험실', meeting:'회의실', lounge:'대기·휴게', waiting:'대기·휴게', restaurant:'식당', retail:'상점', guestroom:'객실' };
 
 const area = p => { let s = 0; for (let i = 0; i < p.length; i++) { const [x0, y0] = p[i], [x1, y1] = p[(i + 1) % p.length]; s += x0 * y1 - x1 * y0; } return Math.abs(s) / 2; };
 const r1 = v => Math.round(v * 10) / 10, r2 = v => Math.round(v * 100) / 100;

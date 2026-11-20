@@ -1,0 +1,38 @@
+.building-edit { margin: 14px 0; padding: 16px; }
+.building-edit > header { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.building-edit h2 { margin: 0; }
+.edit-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.edit-actions .primary { padding: 0 14px; height: 38px; font-size: 14px; }
+.edit-actions button:disabled { opacity: .55; cursor: default; }
+.edit-actions .building-delete { color: var(--bad, #c63344); }
+.edit-layout { display: grid; grid-template-columns: 68px minmax(0, 1fr); gap: 14px; }
+.edit-layout nav { display: flex; flex-direction: column; gap: 6px; max-height: 65vh; overflow-y: auto; padding: 2px; }
+.edit-work > p { margin: 6px 0 8px; }
+.edit-plan { display: block; width: 100%; height: clamp(270px, 56vh, 700px); background: var(--canvas); border: 1px solid var(--hairline); border-radius: var(--r-sm); touch-action: none; }
+.edit-plan:not(.select) { cursor: crosshair; }
+.edit-outline, .edit-wall { stroke: var(--muted); stroke-width: 1.2; vector-effect: non-scaling-stroke; }
+.edit-outline { fill: none; stroke-dasharray: 4 3; }
+.edit-room { fill: var(--surface-strong); }
+.edit-wall { fill: none; pointer-events: none; }
+.edit-wall.selected { stroke: var(--ink); stroke-width: 2.5; }
+.edit-plan.select .edit-room { cursor: pointer; }
+.edit-plan text { fill: var(--ink); pointer-events: none; }
+.edit-preview { stroke: #4f9eff; stroke-width: 4; vector-effect: non-scaling-stroke; pointer-events: none; }
+.edit-alignment-guide { stroke: #f3ae48; stroke-width: 1.5; stroke-dasharray: 5 4; vector-effect: non-scaling-stroke; pointer-events: none; }
+.edit-anchor { fill: #4f9eff; pointer-events: none; }
+.edit-preview.erase { stroke: #f25566; }
+.edit-partition, .edit-unit { vector-effect: non-scaling-stroke; }
+.edit-partition { stroke: var(--ink); stroke-width: 2.5; pointer-events: none; }
+.edit-unit { fill: #3f8cf5; stroke: var(--canvas); stroke-width: 1.5; }
+.edit-plan.ac-remove .edit-unit { cursor: pointer; }
+.edit-ac-capacity { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.edit-ac-capacity input { width: 84px; padding: 5px; color: var(--ink); background: var(--canvas); border: 1px solid var(--hairline); border-radius: var(--r-sm); }
+.edit-foot { display: flex; flex-wrap: wrap; flex-direction: column; gap: 4px; padding-top: 10px; }
+.edit-foot form { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.edit-foot input { max-width: 34vw; padding: 6px; color: var(--ink); background: var(--canvas); border: 1px solid var(--hairline); border-radius: var(--r-sm); }
+.edit-foot p { min-height: 1.2em; margin: 4px 0 0; }
+@media (max-width: 640px) {
+  .building-edit { padding: 10px; }
+  .edit-layout { grid-template-columns: 46px minmax(0, 1fr); gap: 6px; }
+  .edit-layout nav .pill { padding-inline: 4px; }
+}

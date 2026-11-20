@@ -1,0 +1,124 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Maestro weather collector - independent stack writing KMA observations to the existing twin Weather table.
+
+Metadata:
+  AWSToolsMetrics:
+    AWSAgentToolkit: aws-cloudformation@3
+  com.aws.cloudformation.Context:
+    ref:
+      - at: infra/weather/README.md
+        has: data contract, deployment, secret setup and cleanup
+
+Parameters:
+  Location:
+    Type: String
+    AllowedPattern: '[1-9][0-9]{0,2},[1-9][0-9]{0,2}'
+    Description: Confirmed KMA grid nx,ny. No example location is used by default.
+  SecretName:
+    Type: String
+    Default: maestro/kma-api-key
+    AllowedPattern: '[a-zA-Z0-9/_+=.@-]+'
+    Description: Use a separate name such as maestro/dev/kma-api-key for a development stack.
+  ScheduleEnabled:
+    Type: String
+    Default: 'false'
+    AllowedValues: ['true', 'false']
+    Description: Enable only after entering the API key and verifying one manual invocation.
+
+Conditions:
+  RunSchedule: !Equals [!Ref ScheduleEnabled, 'true']
+
+Rules:
+  SeoulRegionOnly:
+    Assertions:
+      - Assert: !Equals [!Ref AWS::Region, ap-northeast-2]
+        AssertDescription: Deploy this stack only in ap-northeast-2.
+
+Resources:
+  # Create the container only. The key owner supplies the value outside CloudFormation.
+  # Retain prevents deleting a shared API credential when the collector is removed.
+  KmaApiKey:
+    Type: AWS::SecretsManager::Secret
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      Name: !Ref SecretName
+      Description: KMA service key; enter the value directly using Secrets Manager.
+
+  # Pre-create the log group so the function needs only stream/write permissions.
+  WeatherLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${AWS::StackName}-collector
+      RetentionInDays: 14
+
+  # An explicit role avoids SAM's default managed policy with account-wide log access.
+  WeatherRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: {Service: lambda.amazonaws.com}
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: WeatherCollection
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: WriteWeatherOnly
+                Effect: Allow
+                Action: dynamodb:PutItem
+                Resource:
+                  Fn::Sub:
+                    - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${TableName}
+                    - TableName: !ImportValue maestro-twin-WeatherTable
+              - Sid: ReadKmaKeyOnly
+                Effect: Allow
+                Action: secretsmanager:GetSecretValue
+                Resource: !Ref KmaApiKey
+              - Sid: WriteOwnLogsOnly
+                Effect: Allow
+                Action: [logs:CreateLogStream, logs:PutLogEvents]
+                Resource: !GetAtt WeatherLogGroup.Arn
+
+  WeatherFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-collector
+      CodeUri: functions/
+      Handler: weather.handler
+      Runtime: python3.12
+      Architectures: [arm64]
+      MemorySize: 128
+      Timeout: 45
+      Role: !GetAtt WeatherRole.Arn
+      Environment:
+        Variables:
+          WEATHER_TABLE: !ImportValue maestro-twin-WeatherTable
+          SECRET_ID: !Ref KmaApiKey
+          LOCATION: !Ref Location
+      # Do not repeatedly invoke KMA when an asynchronous invocation fails.
+      EventInvokeConfig:
+        MaximumRetryAttempts: 0
+        MaximumEventAgeInSeconds: 60
+      Events:
+        # Schedule (rather than ScheduleV2) matches the team's handover contract.
+        EveryThirtyMinutes:
+          Type: Schedule
+          Properties:
+            Schedule: rate(30 minutes)
+            Enabled: !If [RunSchedule, true, false]
+            RetryPolicy:
+              MaximumRetryAttempts: 0
+              MaximumEventAgeInSeconds: 60
+
+Outputs:
+  WeatherFunctionName:
+    Description: Function to invoke for a manual collection check.
+    Value: !Ref WeatherFunction
+  SecretId:
+    Description: Secret identifier for the key owner; never contains the value.
+    Value: !Ref KmaApiKey

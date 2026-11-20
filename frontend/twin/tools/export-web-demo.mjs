@@ -21,7 +21,7 @@ const J = f => JSON.parse(fs.readFileSync(path.join(root, f), 'utf8'));
 const index = J('data/buildings.json').buildings, profiles = [];
 for (const b of index) {
   const B = J(path.join(b.data, 'building.json'));
-  const s = webStatus(B, { id:b.id, use:b.use, basis:`트윈 도면 인식 (${b.data}building.json)` });
+  const s = webStatus(B, { id:b.id, use:b.use, basis:b.basis || `트윈 도면 인식 (${b.data}building.json)` });
   fs.writeFileSync(path.join(web, 'public/demo', b.id + '.json'), JSON.stringify(s));
   profiles.push(webProfile(B, s));
   console.log(`${b.id} ${s.building.name}: ${s.floors.join(' ')} · 호실 ${s.rooms.length} · 실내기 ${s.rooms.reduce((t, r) => t + r.idus.length, 0)} · 운전 ${s.summary.on} · ${s.summary.powerKw}kW`);

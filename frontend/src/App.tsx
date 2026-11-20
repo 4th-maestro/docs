@@ -23,9 +23,11 @@ import { usePoll } from './panels/usePoll'
 import Portfolio from './portfolio/Portfolio'
 import { FloorList, Layout } from './shell/Shell'
 import { href, parseRoute, type FloorSummary, type Tab } from './shell/route'
-import { TWIN_URL, onNeedBuilding, onTwinControl, onRoomSelected, onTwinChange, postState, twinSrc, type TwinBuilding, type TwinData } from './twin'
+import { TWIN_URL, loadEditablePlan, onNeedBuilding, onTwinControl, onRoomSelected, onTwinChange, postState, twinSrc, type TwinBuilding, type TwinData } from './twin'
 import AddBuilding from './AddBuilding'
-import { BUILDINGS_CHANGED, customBuilding, customOf, isCustom } from './custom'
+import BuildingEditor from './BuildingEditor'
+import type { Plan } from './floor-edit'
+import { BUILDINGS_CHANGED, buildingsChanged, customBuilding, customOf, deleteBuilding, isBuildingHidden, isCustom, saveEditedPlan } from './custom'
 import type { BuildingCard, Draft, Mode, Room, Status } from './types'
 import { SkFloors, SkKpis, SkPlan } from './skeleton/Skeleton'
 import CountUp from './motion/CountUp'
@@ -129,7 +131,7 @@ function Shell({ themeButton, dark }: { themeButton: React.ReactNode; dark: bool
   }
 
   // 목록 도착 전에는 주소의 건물을 그대로 표시, 목록에 없는 건물만 안내
-  if (route.building && (!list.data || known)) {
+  if (route.building && !isBuildingHidden(route.building) && (!list.data || known)) {
     // 건물 변경 시 key로 다시 마운트: 층, 상태, 대화, 초안, 선택 호실, 패널 값 초기화
     return <Dashboard key={route.building} building={route.building} info={known} tab={route.tab} buildings={buildings} themeButton={themeButton} dark={dark} />
   }
@@ -178,6 +180,10 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
   const [reloadKey, setReloadKey] = useState(0)
   const [selected, setSelected] = useState<string | null>(null)
   const [loadedAt, setLoadedAt] = useState(0)
+  const [editPlan, setEditPlan] = useState<Plan | null>(null)
+  const [edited, setEdited] = useState(() => Boolean(customBuilding(building)))
+  const [loadingPlan, setLoadingPlan] = useState(false)
+  const [editError, setEditError] = useState('')
   const frame = useRef<HTMLIFrameElement>(null)
 
   // 운영 탭에서만 5초 주기 조회. 건물 전체 호실을 받아 사이드바 층별 요약과 선택 층 화면에 함께 사용
@@ -297,6 +303,45 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
     clearChat(building)
   }
 
+  async function beginEdit() {
+    setEditError('')
+    setLoadingPlan(true)
+    try {
+      setEditPlan(await loadEditablePlan(building, customBuilding(building)))
+    } catch (e) {
+      setEditError(e instanceof Error ? e.message : '건물 평면도를 불러오지 못했습니다.')
+    } finally {
+      setLoadingPlan(false)
+    }
+  }
+
+  function savePlan(plan: Plan, level: string) {
+    if (!saveEditedPlan(building, plan)) {
+      setEditError('도면을 저장하지 못했습니다. 브라우저 저장 공간을 확인하세요.')
+      return
+    }
+    setEdited(true)
+    setFloor(level)
+    setSelected(null)
+    setFocus(NO_IDS)
+    setEditPlan(null)
+    setEditError('')
+    load()
+    buildingsChanged()
+  }
+
+  function removeBuilding() {
+    const name = info?.name ?? status?.building.name ?? building
+    const action = isCustom(building) ? '저장된 도면도 함께 삭제됩니다.' : '이 브라우저의 건물 목록에서 숨깁니다.'
+    if (!window.confirm(`‘${name}’ 건물을 삭제할까요?\n${action}`)) return
+    if (!deleteBuilding(building)) {
+      setEditError('건물을 목록에서 삭제하지 못했습니다.')
+      return
+    }
+    location.hash = '#/'
+    buildingsChanged()
+  }
+
   const tools = (
     <>
       {ops && status && (
@@ -311,17 +356,20 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
 
   return (
     <Layout building={building} tab={tab} buildings={buildings} tools={tools}
-      side={ops && (status ? <FloorList floors={floorSummaries} floor={floor} onFloor={(f) => { setFloor(f); setSelected(null) }} /> : <SkFloors n={info?.floors.length ?? 2} />)}>
+      side={ops && !editPlan && (status ? <FloorList floors={floorSummaries} floor={floor} onFloor={(f) => { setFloor(f); setSelected(null) }} /> : <SkFloors n={info?.floors.length ?? 2} />)}>
       <div className="page">
+        {ops && editError && <p className="error" role="alert">{editError}</p>}
         {!ops && <EnergyPage building={building} />}
-        {ops && (
+        {ops && (editPlan ? (
+          <BuildingEditor initial={editPlan} floor={floor} onSave={savePlan} onCancel={() => { setEditPlan(null); setEditError('') }} />
+        ) : (
           <>
             {status?.virtual && (
               <div className="banner" role="note">
                 <Info size={16} aria-hidden />
                 <span>
                   가상 데이터로 채운 화면입니다. 실제 설비 수치가 아닙니다.
-                  {status.building.virtual ? ` ${status.building.name}은 가상 건물이며 도면 출처는 ${status.building.basis}입니다.` : ''}
+                  {building === 'asti-hotel-busan' ? ` ${status.building.basis}` : status.building.virtual ? ` ${status.building.name}은 가상 건물이며 도면 출처는 ${status.building.basis}입니다.` : ''}
                   {status.mock ? ' API에 연결하지 못해 목업 데이터를 표시합니다.' : ''}
                 </span>
               </div>
@@ -342,6 +390,10 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
                 <section className="card twin" aria-label={`${scope} 3D 도면`}>
                   <div className="twin-head">
                     <h2>{scope} 3D 도면</h2>
+                    <div className="edit-actions" aria-label="건물 관리">
+                      {TWIN_URL && <button className="pill" onClick={beginEdit} disabled={loadingPlan}>{loadingPlan ? '평면도 여는 중…' : '수정'}</button>}
+                      <button className="pill building-delete" onClick={removeBuilding}>건물 삭제</button>
+                    </div>
                     <div className="modes" role="tablist" aria-label="표시 지표">
                       {MODES.map((m) => (
                         <button key={m.id} role="tab" aria-selected={mode === m.id} className={mode === m.id ? 'pill on' : 'pill'} onClick={() => setMode(m.id)}>{m.label}</button>
@@ -349,7 +401,7 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
                     </div>
                   </div>
                   {TWIN_URL ? (
-                    <iframe ref={frame} className="embed" src={twinSrc(building)} title="3D 디지털트윈" onLoad={() => postState(frame.current, building, floor, mode, rooms, highlight, twinData)} />
+                    <iframe ref={frame} className="embed" src={twinSrc(building, edited)} title="3D 디지털트윈" onLoad={() => postState(frame.current, building, floor, mode, rooms, highlight, twinData)} />
                   ) : floor ? (
                     <Suspense fallback={<div className="embed"><SkPlan /></div>}>
                       <Twin3D building={building} floor={floor} mode={mode} rooms={rooms} highlight={highlight} selectedId={selected} onSelect={setSelected} dark={dark} />
@@ -378,7 +430,7 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
               </aside>
             </main>
           </>
-        )}
+        ))}
       </div>
     </Layout>
   )

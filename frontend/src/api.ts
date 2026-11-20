@@ -4,7 +4,7 @@ import type { Anomalies, History, Recommendations, Schedules } from './panels/ty
 import { AUTH_ON, getAccessToken, signOut } from './auth/cognito'
 import type { Step } from './ai/types'
 import type { Chart, Draft, Portfolio, QueryResult, Source, Status } from './types'
-import { withCustom } from './custom'
+import { customStatus, isCustom, withCustom } from './custom'
 
 export type ChatRecord = { sk: string; role: 'user' | 'assistant'; text: string; steps?: Step[]; highlight?: string[]; draft?: Draft | null; charts?: Chart[]; sources?: Source[] }
 
@@ -18,7 +18,8 @@ export const SUSPENDED = 'maestro:suspended'
 export async function call<T>(path: string, init?: RequestInit): Promise<T> {
   if (!BASE) throw new Error('VITE_API_BASE_URL 없음')
   // '건물 추가'로 넣은 건물은 이 브라우저에만 있음 → 서버에 묻지 않고 목업 사용
-  if (/[?&]building=new-/.test(path)) throw new Error('추가한 건물')
+  const building = new URLSearchParams(path.split('?')[1]).get('building')
+  if (building && (isCustom(building) || customStatus(building))) throw new Error('이 브라우저에 저장된 건물')
   const token = await getAccessToken()
   if (AUTH_ON && !token) { signOut(); throw new AuthRequired('로그인이 필요합니다.') }
   const res = await fetch(`${BASE}${path}`, { ...init, headers: { 'content-type': 'application/json', ...(token ? { authorization: `Bearer ${token}` } : {}) } })

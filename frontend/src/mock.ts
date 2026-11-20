@@ -8,7 +8,9 @@ import type { Draft, QueryResult, Room, Status } from './types'
 const cache = new Map<string, Promise<Status>>()
 export function demoStatus(building: string): Promise<Status> {
   // 추가한 건물: 트윈에서 렌더링한 뒤에만 데이터가 있음
-  if (isCustom(building)) { const s = customStatus(building); return s ? Promise.resolve(s) : Promise.reject(new Error('도면을 넣고 트윈에서 렌더링하면 데이터가 생성됩니다.')) }
+  const local = customStatus(building)
+  if (local) return Promise.resolve(local)
+  if (isCustom(building)) return Promise.reject(new Error('도면을 넣고 트윈에서 렌더링하면 데이터가 생성됩니다.'))
   let p = cache.get(building)
   if (!p) {
     p = fetch(`/demo/${encodeURIComponent(building)}.json`).then((r) => r.json() as Promise<Status>).catch(() => {
