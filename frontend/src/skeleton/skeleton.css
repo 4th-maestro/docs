@@ -30,3 +30,6 @@
 .sk-plan { height: 100%; display: grid; place-items: center; }
 .sk-plate { position: relative; width: 78%; aspect-ratio: 1.5; border-radius: var(--r-sm); background: var(--canvas); border: 1px solid var(--hairline-soft); transform: perspective(900px) rotateX(48deg) rotateZ(-32deg); }
 .sk-kpis .kpi { gap: 10px; }
+.sk-tt { position: relative; border: 1px solid var(--hairline); border-radius: var(--r-sm); }
+.sk-tt-row { height: 36px; padding: 6px 10px; border-top: 1px solid var(--hairline-soft); }
+.sk-tt-row:first-child { border-top: 0; }

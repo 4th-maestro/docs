@@ -155,3 +155,17 @@ export function SkPlan() {
     </SkWrap>
   )
 }
+
+// 세로 시간표: 시각 열과 1시간 칸, 스케줄 칸 2개
+export function SkTimetable() {
+  return (
+    <div className="sk-col">
+      <div className="sk-line" style={{ justifyContent: 'flex-start' }}><Sk w={48} h={22} /><Sk w={72} h={14} /><Sk w={72} h={14} /></div>
+      <div className="sk-tt">
+        {Array.from({ length: 8 }, (_, i) => <div key={i} className="sk-tt-row"><Sk w={36} h={14} /></div>)}
+        <Sk w="38%" h="62%" r={8} style={{ position: 'absolute', left: 72, top: '30%' }} />
+        <Sk w="38%" h="40%" r={8} style={{ position: 'absolute', left: 'calc(72px + 40%)', top: '55%' }} />
+      </div>
+    </div>
+  )
+}

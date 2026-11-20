@@ -285,7 +285,7 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
                   {room ? <RoomDetail r={room} /> : <p className="muted pick-hint">호실을 누르면 HVAC 상태가 여기에 표시됩니다.</p>}
                 </section>
                 <PowerTrend building={building} floor={floor} />
-                <ScheduleTimeline building={building} refreshKey={scheduleKey} onLocate={locate} />
+                <ScheduleTimeline building={building} refreshKey={scheduleKey} rooms={all} onLocate={locate} />
               </div>
 
               <aside className="rail">
