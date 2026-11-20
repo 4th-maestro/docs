@@ -629,6 +629,10 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+// 굵은 선(WebGL 기본 선은 굵기와 무관하게 1px): 호버 테두리
+import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
+import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
+import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { wallSpans } from './pipeline/wall-spans.js';
 import { foldedRoofGeometry } from './pipeline/folded-roof.js';
 
@@ -1187,6 +1191,7 @@ function onThemeChange(){
   for (const grp of floorGroups) { const pm = grp.userData.planMat; pm.map = planTexture(grp.userData.floor); pm.color.set(isDarkNow ? 0xffffff : 0xc4ccd8); pm.needsUpdate = true;
     grp.userData.slabMat.color.set(isDarkNow ? 0x5b5e63 : 0xc1c1c1); }
   applyAppearanceMaterials();
+  for (const grp of floorGroups) if (grp.userData.labels) { grp.userData.labels.removeFromParent(); dispose(grp.userData.labels); grp.userData.labels = null; }
   if (state.view === 'floor' && state.floor) { buildPlanSvg(state.floor); updatePlanSvg(); }
 }
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (!document.documentElement.dataset.theme) onThemeChange(); });
@@ -1252,7 +1257,49 @@ function loftGeometry(bot, top, h, N = 128){
   const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setIndex(idx); geo.computeVertexNormals();
   return { geo, b:B.pts, t:T, perim:B.perim };
 }
-function dispose(obj){ obj.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) [].concat(o.material).forEach(m => m.dispose()); }); }
+function dispose(obj){ obj.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) [].concat(o.material).forEach(m => { FAT.delete(m); if (m.map) m.map.dispose(); m.dispose(); }); }); }
+// 굵은 선: 픽셀 단위 굵기, 화면 크기가 바뀌면 resize()가 해상도 갱신
+const FAT = new Set();
+function fatLines(seg, color, px){
+  const g = new LineSegmentsGeometry(); g.setPositions(seg);
+  const m = new LineMaterial({ color, linewidth:px, transparent:true, depthTest:false, depthWrite:false, toneMapped:false });
+  m.resolution.set(stage.clientWidth || 1, stage.clientHeight || 1); FAT.add(m);
+  const l = new LineSegments2(g, m); l.renderOrder = 8; return l;
+}
+// 방 이름 홀로그램(층 3D, 건물 3D에서 마우스를 올린 층): 방 공간 안 높이 55%에 떠 있는 빛나는 글자, 항상 카메라를 향함
+function roomLabelTexture(name){
+  const c = document.createElement('canvas'), g = c.getContext('2d'), font = '700 64px "SUIT Variable", SUIT, system-ui, "Malgun Gothic", sans-serif';
+  g.font = font; const tw = Math.ceil(g.measureText(name).width);
+  c.width = tw + 88; c.height = 128;
+  // 반투명 판(밝은 방 상자 위에서도 읽히게) + 위아래 빛나는 선(홀로그램 띠) + 빛나는 글자
+  const plate = isDarkNow ? 'rgba(6,18,32,.62)' : 'rgba(255,255,255,.8)', line = isDarkNow ? '#38bdf8' : '#0ea5e9';
+  const ink = isDarkNow ? '#d4f8ff' : '#0b4a72', glow = isDarkNow ? '#38bdf8' : 'rgba(14,165,233,.45)';
+  g.fillStyle = plate; g.beginPath(); g.roundRect(6, 10, c.width - 12, c.height - 20, 18); g.fill();
+  g.strokeStyle = line; g.lineWidth = 3; g.shadowColor = glow; g.shadowBlur = 12;
+  g.beginPath(); g.moveTo(24, 11); g.lineTo(c.width - 24, 11); g.moveTo(24, c.height - 11); g.lineTo(c.width - 24, c.height - 11); g.stroke();
+  g.font = font; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = ink; g.shadowBlur = isDarkNow ? 18 : 6;
+  g.fillText(name, c.width / 2, c.height / 2 + 2); g.shadowBlur = 0; g.fillText(name, c.width / 2, c.height / 2 + 2);
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
+  return { tex, aspect:c.width / c.height };
+}
+function labelPoint(r){
+  const b = r.b; if (inPoly(b.cx, b.cy, r.poly)) return [b.cx, b.cy];
+  const n = r.poly.length; return [r.poly.reduce((s, p) => s + p[0], 0) / n, r.poly.reduce((s, p) => s + p[1], 0) / n];
+}
+function buildRoomLabels(grp){
+  const g = new THREE.Group();
+  for (const r of grp.userData.floor.rooms) {
+    if (r.type !== 'room' || !r.name || !r.poly?.length) continue;
+    const { tex, aspect } = roomLabelTexture(r.name);
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map:tex, transparent:true, depthTest:false, depthWrite:false, toneMapped:false }));
+    // 크기(m): 방 짧은 변의 32%(0.8~1.8m), 방 너비의 95%를 넘지 않게 축소
+    let h = clamp(Math.min(r.b.w, r.b.h) * .32, .8, 1.8), w = h * aspect;
+    if (w > r.b.w * .95) { h *= r.b.w * .95 / w; w = r.b.w * .95; }
+    const [x, y] = labelPoint(r), p = toWorld(x, y, CEIL * .55);
+    s.position.copy(p); s.scale.set(w, h, 1); s.renderOrder = 9; g.add(s);
+  }
+  grp.add(g); grp.userData.labels = g; return g;
+}
 function glowTexture(color){
   const c = document.createElement('canvas'); c.width = c.height = 64;
   const g = c.getContext('2d'), gr = g.createRadialGradient(32,32,0,32,32,32);
@@ -1484,6 +1531,8 @@ for (const f of FLOORS) {
   const fg = new THREE.BufferGeometry(); fg.setAttribute('position', new THREE.Float32BufferAttribute(frameSeg, 3));
   const frame = new THREE.LineSegments(fg, new THREE.LineBasicMaterial({ color:0x7b8798, transparent:true, opacity:.45 }));
   grp.add(frame); grp.userData.frame = frame;
+  // 마우스를 올린 층의 굵은 테두리(3px): 기본 테두리 1px은 구분이 어려움
+  const hotFrame = fatLines(frameSeg, 0xe6e6e3, 3); hotFrame.visible = false; grp.add(hotFrame); grp.userData.hotFrame = hotFrame;
   { // neon edge ring per floor (coloured by the floor's average of the current metric)
     const t = .09, parts = loops.flatMap(loop => loop.map(([x0, y0], i) => { const [x1, y1] = loop[(i + 1) % loop.length], L = Math.hypot(x1 - x0, y1 - y0); if (L < .01) return null;
       const g = new THREE.BoxGeometry(L + t, t, t); g.rotateY(-Math.atan2(y1 - y0, x1 - x0)); const c = toWorld((x0 + x1) / 2, (y0 + y1) / 2); return g.translate(c.x, .03, c.z); })).filter(Boolean);
@@ -1770,7 +1819,7 @@ function recolorBuilding(){
     x.led.material.emissive.copy(x.led.material.color);
   }
 }
-let scanY = null, explodeF = null, roofLift = 0;
+let scanY = null, explodeF = null, roofLift = 0, labelFloor = null;
 function updateBuilding(t, dt){
   if (introStart == null) introStart = t;
   const it = reduceMotion ? 99 : t - introStart, hlOn = performance.now() < HL.until, pulse = 1;   // 깜빡임 금지: 강조는 고정 밝기
@@ -1797,6 +1846,13 @@ function updateBuilding(t, dt){
       grp.userData.shellMat.opacity = fade * (showArchitecture ? appearance.facadeOpacity : Math.min(appearance.facadeOpacity, .17));
     }
     grp.userData.frame.material.color.set(hot ? (isDarkNow ? 0xe6e6e3 : 0x222222) : 0x8b99ad);
+    grp.userData.hotFrame.visible = hot && !showArchitecture && !explodeF;
+    if (grp.userData.hotFrame.visible) { grp.userData.hotFrame.material.color.set(isDarkNow ? 0xe6e6e3 : 0x222222); grp.userData.hotFrame.material.opacity = e; }
+    { // 방 이름 홀로그램: labelFloor(층 3D의 층, 건물 3D의 마우스 올린 층)만
+      const showL = labelFloor === f && !showArchitecture && !state.pipes;
+      if (showL && !grp.userData.labels) buildRoomLabels(grp);
+      const L = grp.userData.labels;
+      if (L) { L.visible = showL; if (showL) for (const s of L.children) s.material.opacity = .95 * fade; } }
     grp.userData.frame.material.opacity = (hot ? 1 : showArchitecture ? .16 : .4) * e;
     if (grp.userData.mullMat) grp.userData.mullMat.opacity = (hot ? .45 : showArchitecture ? .13 : .2) * fade;   // 지하층은 멀리언 없음
     { // 네온 색·밝기는 목표값으로 천천히 (1초마다 값이 바뀔 때 블룸 때문에 번쩍이지 않게)
@@ -3392,19 +3448,16 @@ function markHoveredRoom(room){
   const base = new THREE.ShapeGeometry(shapeOf(room.poly));
   base.rotateX(-Math.PI/2);
   base.translate(-W/2,.036,-D/2);
-  const fill = new THREE.Mesh(base, new THREE.MeshBasicMaterial({ color:tint, transparent:true, opacity:.19, depthWrite:false, side:THREE.DoubleSide }));
+  const fill = new THREE.Mesh(base, new THREE.MeshBasicMaterial({ color:tint, transparent:true, opacity:.32, depthWrite:false, side:THREE.DoubleSide }));
   const segments = [], top = room.type === 'room' && room.acs.length ? CEIL + .06 : .06;
   for (const loop of [room.poly, ...(room.poly.holes || [])]) {
     for (let i=0; i<loop.length; i++) {
       const a = toWorld(...loop[i]), b = toWorld(...loop[(i+1)%loop.length]);
       segments.push(a.x,top,a.z,b.x,top,b.z);
-      if (top > 1) segments.push(a.x,.04,a.z,b.x,.04,b.z);
+      if (top > 1) segments.push(a.x,.04,a.z,b.x,.04,b.z, a.x,.04,a.z,a.x,top,a.z);   // 바닥 테두리, 세로 모서리
     }
   }
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.Float32BufferAttribute(segments,3));
-  const edges = new THREE.LineSegments(geometry, new THREE.LineBasicMaterial({ color:tint, transparent:true, depthTest:false, depthWrite:false }));
-  edges.renderOrder = 8;
+  const edges = fatLines(segments, tint, 4);   // 호버 테두리 4px(기본 선 1px은 호버 구분이 어려움)
   roomHoverMark = new THREE.Group();
   roomHoverMark.add(fill,edges);
   floorGroups[room.floorIndex].add(roomHoverMark);
@@ -3573,7 +3626,7 @@ canvas.addEventListener('pointerup', e => {
 });
 
 /* ═════════════════════════ loop / resize / visibility ═════════════════════════ */
-function resize(){ const w = stage.clientWidth, h = stage.clientHeight; if (!w || !h) return; renderer.setSize(w, h, false); composer.setPixelRatio(renderer.getPixelRatio()); composer.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix(); if (state.view === 'floor' && state.floor && !plan3d && !planAnim && typeof renderBackdrop === 'function') renderBackdrop(state.floor); }
+function resize(){ const w = stage.clientWidth, h = stage.clientHeight; if (!w || !h) return; renderer.setSize(w, h, false); for (const m of FAT) m.resolution.set(w, h); composer.setPixelRatio(renderer.getPixelRatio()); composer.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix(); if (state.view === 'floor' && state.floor && !plan3d && !planAnim && typeof renderBackdrop === 'function') renderBackdrop(state.floor); }
 new ResizeObserver(resize).observe(stage); resize();
 let visible = true;
 document.addEventListener('visibilitychange', () => { visible = !document.hidden; });
@@ -3601,11 +3654,13 @@ function frame(now){
     // 단독 화면은 왼쪽 패널만큼 모델을 오른쪽으로 비킴. 앱에 넣으면(hosted) 버튼·정보가 앱 쪽에 있으므로 가운데
     const sw = stage.clientWidth, want = !explodeF && sw > 760 && !document.body.classList.contains('hosted') ? Math.min(340, sw * .3) / 2 : 0;
     shiftView(want, elapsed);
+    labelFloor = explodeF ? null : hoverFloor;
     updateBuilding(t, dt); renderPass.scene = bScene; bloom.strength = polishedExterior && !explodeF && !state.pipes ? .035 : isDarkNow ? .48 : .22; composer.render(); }
   else if (state.view === 'floor' && (plan3d || planAnim)) {   // 층 3D: 건물 화면과 같은 장면을 그 층만 띄워서
     // 단독 화면은 오른쪽 정보 패널(372px)만큼 모델을 왼쪽으로 비킴(기울기 시작과 함께 천천히), 앱에 넣으면 가운데
     const want = plan3d && stage.clientWidth > 760 && !document.body.classList.contains('hosted') ? 186 : 0;
     shiftView(want, elapsed);
+    labelFloor = plan3d ? state.floor : null;
     state.view = 'building'; updateBuilding(t, dt); state.view = 'floor';
     renderPass.scene = bScene; bloom.strength = isDarkNow ? .48 : .22; composer.render(); }   // 평면도 뒤 배경과 같은 밝기 → 전환 때 번쩍임 없음
   else if (room3d) { shiftView(0, elapsed); room3d.update(dt, t); renderPass.scene = room3d.scene; bloom.strength = isDarkNow ? .14 : .06; composer.render(); }
