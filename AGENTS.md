@@ -1,18 +1,27 @@
 # Maestro 작업 공간 안내
 
-해커톤 주제 "AI 디지털트윈 기반 공간 가시화 및 운영 최적화" 프로젝트의 작업 규칙입니다. 규칙의 기준은 넉터 작업 공간(`_nuktu/AGENTS.md`, `_nuktu/doc/AGENTS.md`)이며, 내용이 다르면 이 파일이 Maestro의 기준입니다.
+해커톤 주제 "AI 디지털트윈 기반 공간 가시화 및 운영 최적화" 프로젝트의 작업 규칙입니다. 팀 과제는 과제 4(ES 클라우드)이며, 서비스는 건물 운영자용 도면 기반 운영 디지털트윈입니다(2026-11-19 반영). 고장 탐지는 확장 모듈입니다. 규칙의 기준은 넉터 작업 공간(`_nuktu/AGENTS.md`, `_nuktu/doc/AGENTS.md`)이며, 내용이 다르면 이 파일이 Maestro의 기준입니다.
 
 | 필요한 내용 | 파일 |
 |---|---|
 | 처음 합류한 팀원 안내 | `docs/human/tutorials/first-day.md` |
+| 서비스 기획 | `docs/human/explanation/service-plan.md` |
+| 시스템 설계 | `docs/human/explanation/architecture.md` |
+| 기능 요구사항과 완료 기준 | `docs/human/reference/requirements.md` |
+| 공개 IFC 샘플·추출 실험 | `docs/human/explanation/research/ifc-sample-feasibility.md` |
 | 사람이 읽는 설명 | `docs/human/README.md` |
 | AI 작업 안내 | `docs/ai/README.md` |
 | 관련 파일 찾기 | `docs/ai/sources.json` |
 | 문서 작성 기준 | `docs/human/how-to/write-docs.md` |
-| UI 규칙 | `docs/human/reference/design-system.md` |
+| 시각 디자인 가이드 | `DESIGN.md` |
+| 데이터 시각화·상태 규칙 | `docs/human/reference/design-system.md` |
 | 해커톤 주제 조사 | `docs/human/explanation/research/korea-space-topics.md` |
 | 해외 기술 동향·경쟁 조사 | `docs/human/explanation/research/digital-twin-survey.md` |
+| 정비 문제 배경·시장 조사 | `docs/human/explanation/research/maintenance-background-market.md` |
 | PDF 보고서 원본 | `docs/reports/<날짜-주제>/report.md` |
+| 웹 대시보드 코드 | `frontend/`(실행·배포는 `frontend/README.md`) |
+| Lambda·AWS 리소스 코드 | `lambda/`(테스트·배포는 `lambda/README.md`) |
+| 3D 트윈 임베드 규약 | `docs/human/reference/twin-embed.md` |
 
 문서는 작업에 필요한 것부터 읽는 것이 원칙입니다. 기존 사용자 변경과 병합 충돌은 보존할 대상입니다.
 
@@ -22,9 +31,9 @@
 
 ## UI 비율 점검
 
-UI를 바꾸는 작업의 완료 조건에는 버튼 높이·너비 비율과 라벨 잘림 확인이 포함입니다. 기준은 `docs/human/reference/design-system.md` 5절입니다. 같은 줄 버튼은 높이 쌍(52 또는 40)과 너비 1:1을 맞추십시오. 1440px와 390px 너비 화면으로 확인하고, 확인하지 못한 화면은 완료 보고에 미확인으로 적으십시오.
+UI를 바꾸는 작업의 완료 조건에는 버튼 높이·너비 비율과 라벨 잘림 확인이 포함입니다. 시각 기준은 루트 `DESIGN.md`입니다. 주 버튼 높이는 48px이고, 같은 줄 버튼은 높이와 너비 1:1을 맞추십시오. 1440px와 390px 너비 화면으로 확인하고, 확인하지 못한 화면은 완료 보고에 미확인으로 적으십시오.
 
-공간 시각화 화면은 같은 문서 6절의 범례, 단위, 데이터 기준 시각 표시를 완료 조건에 포함하십시오. 이모지, 제목 위 영문 라벨(eyebrow), 제목 아래 회색 설명 문장은 사용하지 마십시오.
+공간 시각화 화면은 `docs/human/reference/design-system.md` 6절의 범례, 단위, 데이터 기준 시각 표시를 완료 조건에 포함하십시오. 이모지, 제목 위 영문 라벨(eyebrow), 제목 아래 회색 설명 문장은 사용하지 마십시오.
 
 <!-- devdog-docs:begin docs-layout -->
 ## 문서 위치
@@ -104,7 +113,8 @@ UI를 바꾸는 작업의 완료 조건에는 버튼 높이·너비 비율과 �
 - 커밋 제목, 커밋 본문, PR 제목, PR 본문에서 항목을 나열할 때는 가운뎃점(`·`) 대신 쉼표와 공백(`, `)을 사용하십시오.
 - `Co-Authored-By` 등 AI 도구 흔적을 커밋 메시지에 넣지 마십시오.
 - PR 생성은 사람의 역할입니다. 요청이 없으면 커밋과 푸시까지만 수행하십시오.
-- API 키, 토큰, `.env` 파일은 커밋하지 마십시오. 해커톤 제공 데이터는 공고의 사용 조건을 확인한 뒤 저장소에 포함하십시오.
+- API 키, 토큰, `.env` 파일, AWS 자격 증명은 커밋하지 마십시오. AWS 키는 `aws configure --profile maestro`로 각자 입력하고 대화에 붙여 넣지 마십시오.
+- Bedrock Claude 모델은 최대 Sonnet 5.5입니다. Opus 계열을 쓰지 마십시오. 해커톤 제공 데이터는 공고의 사용 조건을 확인한 뒤 저장소에 포함하십시오.
 
 <!-- devdog-docs:begin branch-name -->
 ## 브랜치 이름

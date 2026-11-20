@@ -18,6 +18,8 @@ AI도 사람용 문서를 원본으로 참고합니다. 제품 규칙이나 API 
 | 작업 | 먼저 읽을 파일 |
 |---|---|
 | 프로젝트 처음 파악 | [합류 안내](../human/tutorials/first-day.md) |
+| 기능 구현 | [요구사항](../human/reference/requirements.md), [시스템 설계](../human/explanation/architecture.md) |
+| 서비스 범위 판단 | [서비스 기획](../human/explanation/service-plan.md) |
 | 문서 작성·이동 | [작성 안내](../human/how-to/write-docs.md) · [원본 위치](../human/reference/document-locations.md) |
 | 장애 조사 | [장애 조사 기록](../human/explanation/troubleshooting/README.md) |
 | UI 작업 | [디자인 시스템](../human/reference/design-system.md) |

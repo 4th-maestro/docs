@@ -1,0 +1,137 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Maestro 건물 운영 디지털트윈 API와 웹 호스팅
+
+Parameters:
+  ModelId:
+    Type: String
+    Default: global.anthropic.claude-sonnet-5-5
+    # 비용 상한: Sonnet 5.5 이하만 허용(2026-11-20 결정)
+    AllowedValues: [global.anthropic.claude-sonnet-5-5, global.anthropic.claude-haiku-5-5]
+  BedrockRegion:
+    Type: String
+    Default: ap-northeast-2
+  AllowedOrigin:
+    Type: String
+    Default: '*'
+
+Globals:
+  Function:
+    Runtime: python3.12
+    Architectures: [arm64]
+    CodeUri: src/
+    MemorySize: 512
+    Timeout: 10
+    Environment:
+      Variables:
+        SCHEDULES_TABLE: !Ref SchedulesTable
+
+Resources:
+  Api:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      CorsConfiguration:
+        AllowOrigins: [!Ref AllowedOrigin]
+        AllowMethods: [GET, POST]
+        AllowHeaders: [content-type]
+
+  SchedulesTable:
+    Type: AWS::Serverless::SimpleTable
+    Properties:
+      PrimaryKey: {Name: id, Type: String}
+
+  StatusFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: status.handler
+      Policies: [DynamoDBReadPolicy: {TableName: !Ref SchedulesTable}]
+      Events:
+        Get: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /rooms/status, Method: GET}}
+
+  QueryFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: query.handler
+      Timeout: 30
+      Environment:
+        Variables: {MODEL_ID: !Ref ModelId, BEDROCK_REGION: !Ref BedrockRegion}
+      Policies:
+        - DynamoDBReadPolicy: {TableName: !Ref SchedulesTable}
+        - Statement:
+            - Effect: Allow
+              Action: bedrock:InvokeModel
+              # global 추론 프로필은 프로필 ARN과 리전 없는 기반 모델 ARN 권한이 모두 필요
+              Resource:
+                - !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/${ModelId}
+                - !Sub
+                  - arn:aws:bedrock:*::foundation-model/${Base}
+                  - Base: !Select [1, !Split ['global.', !Ref ModelId]]
+      Events:
+        Post: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /query, Method: POST}}
+
+  SchedulesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: schedules.handler
+      Policies: [DynamoDBCrudPolicy: {TableName: !Ref SchedulesTable}]
+      Events:
+        List: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /schedules, Method: GET}}
+        Create: {Type: HttpApi, Properties: {ApiId: !Ref Api, Path: /schedules, Method: POST}}
+
+  WebBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  WebOac:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub ${AWS::StackName}-web
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  WebDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        DefaultRootObject: index.html
+        Origins:
+          - Id: web
+            DomainName: !GetAtt WebBucket.RegionalDomainName
+            OriginAccessControlId: !Ref WebOac
+            S3OriginConfig: {OriginAccessIdentity: ''}
+        DefaultCacheBehavior:
+          TargetOriginId: web
+          ViewerProtocolPolicy: redirect-to-https
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6  # Managed-CachingOptimized
+        CustomErrorResponses:
+          - {ErrorCode: 403, ResponseCode: 200, ResponsePagePath: /index.html}
+
+  WebBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref WebBucket
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal: {Service: cloudfront.amazonaws.com}
+            Action: s3:GetObject
+            Resource: !Sub ${WebBucket.Arn}/*
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub arn:aws:cloudfront::${AWS::AccountId}:distribution/${WebDistribution}
+
+Outputs:
+  ApiUrl:
+    Value: !Sub https://${Api}.execute-api.${AWS::Region}.amazonaws.com
+  WebUrl:
+    Value: !Sub https://${WebDistribution.DomainName}
+  WebBucketName:
+    Value: !Ref WebBucket

@@ -8,6 +8,7 @@
 
 | 날짜 | 문제 | 요약 |
 |---|---|---|
+| 2026-11-20 | [Bedrock Sonnet 5.5 모델 ID 404](2026-11-20%28Bedrock%20Sonnet%205.5%20%EB%AA%A8%EB%8D%B8%20ID%20404%29.md) | Mantle의 Sonnet 5.5 미제공, bedrock-runtime global 추론 프로필로 전환 |
 
 ## 작성 방법
 

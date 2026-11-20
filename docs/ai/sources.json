@@ -2,11 +2,95 @@
   "schema_version": 1,
   "sources": [
     {
+      "id": "design-guide",
+      "repository": "maestro",
+      "path": "DESIGN.md",
+      "purpose": "웹 화면 시각 디자인 가이드(색, 글꼴, 간격, 라운드, 그림자, 컴포넌트)와 Maestro 적용 규칙",
+      "kind": "reference"
+    },
+    {
+      "id": "frontend",
+      "repository": "maestro",
+      "path": "frontend/README.md",
+      "purpose": "웹 대시보드 구조, 실행, 빌드, 배포",
+      "kind": "how-to"
+    },
+    {
+      "id": "lambda",
+      "repository": "maestro",
+      "path": "lambda/README.md",
+      "purpose": "Lambda API, SAM 템플릿, 테스트, 배포, 모델 상한",
+      "kind": "how-to"
+    },
+    {
+      "id": "twin-embed",
+      "repository": "maestro",
+      "path": "docs/human/reference/twin-embed.md",
+      "purpose": "3D 트윈 iframe postMessage 규약",
+      "kind": "reference"
+    },
+    {
       "id": "onboarding",
       "repository": "maestro",
       "path": "docs/human/tutorials/first-day.md",
       "purpose": "처음 합류한 팀원 안내, 규칙 요약, 폴더 구조, 도구",
       "kind": "tutorial"
+    },
+    {
+      "id": "service-plan",
+      "repository": "maestro",
+      "path": "docs/human/explanation/service-plan.md",
+      "purpose": "과제 4 서비스의 고객, 문제, 6단계 기능, 화면, 추천, 범위",
+      "kind": "explanation"
+    },
+    {
+      "id": "architecture",
+      "repository": "maestro",
+      "path": "docs/human/explanation/architecture.md",
+      "purpose": "처리 흐름, 구조, 데이터 모델, 파싱, 매핑, 가상 데이터, 자연어 도구, 추천 규칙",
+      "kind": "explanation"
+    },
+    {
+      "id": "requirements",
+      "repository": "maestro",
+      "path": "docs/human/reference/requirements.md",
+      "purpose": "기능 16개·비기능 8개와 완료 기준",
+      "kind": "reference"
+    },
+    {
+      "id": "research-ifc-sample",
+      "repository": "maestro",
+      "path": "docs/human/explanation/research/ifc-sample-feasibility.md",
+      "purpose": "공개 IFC 샘플 비교, 의원 건물 추출·매핑 실험 결과와 스크립트",
+      "kind": "explanation"
+    },
+    {
+      "id": "research-occupancy-thermal",
+      "repository": "maestro",
+      "path": "docs/human/explanation/research/occupancy-thermal-evidence.md",
+      "purpose": "재실 인원·사물과 실내온도 관계 근거, 데이터셋 비교, UCI·ROBOD 분석 결과, 가상 데이터 반영 기준",
+      "kind": "explanation"
+    },
+    {
+      "id": "research-market",
+      "repository": "maestro",
+      "path": "docs/human/explanation/research/maintenance-background-market.md",
+      "purpose": "정비 문제 배경 자료 43건, 경쟁 제품의 부족한 점, 차별점과 검증 지표",
+      "kind": "explanation"
+    },
+    {
+      "id": "research-tech",
+      "repository": "maestro",
+      "path": "docs/human/explanation/research/floorplan-hvac-twin-tech.md",
+      "purpose": "도면 인식, 공조 고장 데이터·진단, 시뮬레이터, AR, 기계설비법",
+      "kind": "explanation"
+    },
+    {
+      "id": "research-drawing-datasets",
+      "repository": "maestro",
+      "path": "docs/human/explanation/research/mechanical-room-drawing-datasets.md",
+      "purpose": "기계실 도면 샘플과 공개 도면 데이터셋 비교, 학습 영향, 데이터 확보·학습 대응 방안",
+      "kind": "explanation"
     },
     {
       "id": "research-korea-topics",
@@ -49,6 +133,13 @@
       "path": "docs/human/explanation/decisions/README.md",
       "purpose": "기술 선택 기록 목록과 작성 방법",
       "kind": "policy"
+    },
+    {
+      "id": "research-ui-references",
+      "repository": "maestro",
+      "path": "docs/human/explanation/research/ui-references.md",
+      "purpose": "대시보드 화면 구성 레퍼런스(UIbowl)와 반영 항목",
+      "kind": "explanation"
     }
   ]
 }

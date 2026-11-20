@@ -132,6 +132,9 @@
 | 이미지 | 생성 방법 | 위치 |
 |---|---|---|
 | 원문 캡처 | `docs/reports/tools/capture.mjs`(강조 문장, 본문 이미지, 첫 화면 3가지) | `docs/human/explanation/research/img/` |
+| 논문 PDF 캡처 | `docs/reports/tools/pdfcap.py`(PDF 문장 좌표로 강조 후 주변 영역 저장) | `docs/human/explanation/research/img/` |
+| IFC 추출 그림 | `docs/reports/tools/ifc_extract.py`, `ifc_render.py`(호실·설비 추출, 평면·등각 그림) | `docs/human/explanation/research/img/` |
+| 데이터 분석 그래프 | 보고서 폴더 `diagrams/build.py`로 HTML 생성 후 `render.mjs`(분석 원본은 `tools/occupancy_analysis.py`) | `docs/human/explanation/research/img/` |
 | 도식 | 보고서 폴더 `diagrams/diagrams.html` 작성 후 `render.mjs` 실행 | 같은 폴더 |
 | 수치 그래프 | `report.md`의 `::: figure` 차트 JSON | PDF 안에 생성 |
 
@@ -139,12 +142,13 @@
 
 ```bash
 node docs/reports/tools/capture.mjs '[{"id":"p1-example","url":"https://...","marks":["강조할 문장"]}]' docs/human/explanation/research/img
+python3 docs/reports/tools/pdfcap.py targets.json docs/human/explanation/research/img /tmp/pdfcap
 node docs/reports/2026-11-18-digital-twin-survey/diagrams/render.mjs
 python3 ~/Desktop/Coding/devdog/scripts/report.py docs/reports/2026-11-18-digital-twin-survey/report.md -o docs/reports/2026-11-18-digital-twin-survey/report.pdf
 pdffonts docs/reports/2026-11-18-digital-twin-survey/report.pdf
 ```
 
-두 Node 스크립트는 Playwright를 사용합니다. 기본 경로는 넉터 문서 저장소의 설치본이며, 다른 경로는 `PLAYWRIGHT` 환경변수로 지정하십시오.
+두 Node 스크립트는 Playwright를 사용합니다. 기본 경로는 넉터 문서 저장소의 설치본이며, 다른 경로는 `PLAYWRIGHT` 환경변수로 지정하십시오. `pdfcap.py`는 poppler(`pdftotext`, `pdftoppm`)와 Pillow가 필요합니다. 입력 JSON 항목은 `id`, `url`, `marks`이고, 2단 편집 한글 논문은 띄어쓰기를 뺀 문장이 더 잘 검색됩니다. 텍스트 좌표를 추출하지 못하는 PDF는 초록 웹 페이지를 `capture.mjs`로 캡처하십시오.
 
 ## 2. 문서 종류: 독자의 목적에 따라 폴더 선택
 
