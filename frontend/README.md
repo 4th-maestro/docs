@@ -9,6 +9,8 @@ Maestro 운영 대시보드(React, Vite, TypeScript)입니다. 디자인 기준�
 | `src/twin.ts` | 3D 트윈 iframe 연동([규약](../docs/human/reference/twin-embed.md)) |
 | `src/twin3d/Twin3D.tsx` | Three.js 층 3D 트윈: `public/floorplan.json` 호실 다각형, 지표 색, HVAC 운전·이상 표시, 호실 선택, 시점 초기화·위에서 보기 |
 | `src/api.ts` | Lambda API 호출, 실패하면 목업으로 대체하고 화면에 목업 표시 |
+| `src/ai/useAsk.ts` | AI 질의 훅. WebSocket으로 단계 이벤트 수신, 연결 실패 시 `api.ts` 질의로 대체, 45초 제한 |
+| `src/ai/ThinkingPanel.tsx` | AI 사고 과정 패널(단계, 조건 칩, 스트리밍 답변)과 진행 표시 `ThinkingBadge` |
 | `src/mock.ts` | 목업: 데모 상태, 정규식 기반 질의 해석, 스케줄 임시 저장 |
 | `public/demo-status.json` | 데모 모드 상태(`python3 ../lambda/tools/demo_status.py`로 생성) |
 
@@ -16,11 +18,11 @@ Maestro 운영 대시보드(React, Vite, TypeScript)입니다. 디자인 기준�
 
 ```bash
 npm install
-cp .env.example .env   # VITE_API_BASE_URL, VITE_TWIN_URL 입력
+cp .env.example .env   # VITE_API_BASE_URL, VITE_WS_URL, VITE_TWIN_URL 입력
 npm run dev
 ```
 
-`VITE_API_BASE_URL`이 비어 있거나 Lambda 호출이 실패하면 목업으로 대체합니다. 상태는 `public/demo-status.json`, 질의는 예시 문장 형태만 해석하는 정규식, 스케줄은 서버에 기록하지 않는 임시 저장입니다. 상태는 WebSocket 대신 5초마다 다시 조회하며, 온도·습도·전력은 Lambda와 목업 모두 범위 안에서 변동합니다(실시간 목업: 온도 ±0.3℃, 습도 ±1.5%, 전력 ±8%).
+`VITE_API_BASE_URL`이 비어 있거나 Lambda 호출이 실패하면 목업으로 대체합니다. `VITE_WS_URL`이 비어 있거나 WebSocket 연결이 첫 이벤트 전에 실패하면 AI 질의는 `POST /query`로 처리하고, 응답을 받을 때까지 "분석 중" 단계 1개만 표시합니다. 상태는 `public/demo-status.json`, 질의는 예시 문장 형태만 해석하는 정규식, 스케줄은 서버에 기록하지 않는 임시 저장입니다. 상태는 WebSocket 대신 5초마다 다시 조회하며, 온도·습도·전력은 Lambda와 목업 모두 범위 안에서 변동합니다(실시간 목업: 온도 ±0.3℃, 습도 ±1.5%, 전력 ±8%).
 
 ## 확인
 

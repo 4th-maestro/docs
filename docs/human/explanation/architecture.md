@@ -35,6 +35,7 @@ LLM 호출과 도구 실행은 query Lambda가 담당합니다. 실시간 연동
 |---|---|---|
 | 웹 | React, TypeScript, Vite → S3(비공개) + CloudFront(OAC) | 정적 배포, HTTPS |
 | API | API Gateway HTTP API(CORS) | Lambda 연동, 요청 단가가 REST API보다 낮음 |
+| 실시간 전송 | API Gateway WebSocket API(`ask` 라우트), ws Lambda | AI 질의 단계와 답변 텍스트를 진행 시점에 전송. 연결 실패 시 HTTP API로 대체 |
 | 처리 | Lambda Python 3.12(arm64): status, query, schedules | IFC 파싱·분석 코드와 같은 언어 |
 | 데이터 | DynamoDB(스케줄), 호실 목록은 Lambda 패키지의 `rooms.json` | 서버리스, 소량 데이터 |
 | 자연어 질의 | Bedrock Claude Sonnet 5.5(`global.anthropic.claude-sonnet-5-5`, bedrock-runtime global 추론 프로필) | 사용자 지정 상한, 템플릿에서 Haiku 5.5로만 하향 가능. Mantle은 Sonnet 5.5 미제공([장애 기록](troubleshooting/2026-11-20%28Bedrock%20Sonnet%205.5%20%EB%AA%A8%EB%8D%B8%20ID%20404%29.md)) |
@@ -106,6 +107,22 @@ LLM 호출과 도구 실행은 query Lambda가 담당합니다. 실시간 연동
 - 대상이 0곳이거나 불명확하면 되묻습니다.
 - 같은 시각 같은 호실의 스케줄 충돌을 검사합니다.
 - 제어 동작은 미리보기 확인 없이 저장하지 않습니다.
+
+**7-2. 질의 처리는 단계가 실제로 바뀌는 시점마다 WebSocket으로 이벤트를 보내고, 같은 기록을 `POST /query` 응답의 `steps`로도 반환합니다.**
+
+Frontend는 `VITE_WS_URL`이 있으면 WebSocket API의 `ask` 라우트로 질의합니다. 연결이 첫 이벤트 전에 실패하면 `POST /query`로 처리하고, 응답 전까지 "분석 중" 단계 1개만 표시합니다. 서버 단계를 알 수 없는 상태에서 단계를 만들어 표시하지 않기 위한 규칙입니다.
+
+**표 7.2 질의 단계 이벤트(모든 이벤트에 요청의 `requestId` 포함)**
+
+| 방향 | 형식 | 내용 |
+|---|---|---|
+| 화면 → 서버 | `{action: 'ask', requestId, text}` | 질의 1건, text 1~500자 |
+| 서버 → 화면 | `{type: 'step', id, status, label, detail?, chips?, ms?}` | id는 understand, query, review, answer. status는 active, done, error |
+| 서버 → 화면 | `{type: 'delta', text}` | 답변 텍스트 조각 |
+| 서버 → 화면 | `{type: 'done', result: {answer, highlight, draft, steps}, ms}` | 최종 결과. 화면의 답변은 이 값으로 교체 |
+| 서버 → 화면 | `{type: 'error', message}` | 처리 실패 |
+
+주: 단계 순서는 요청 해석(understand), 데이터 조회(query), 결과 검토(review), 답변 작성(answer). 도구 없이 되묻는 경우 understand 다음 answer. query의 chips는 도구 인자를 한국어로 바꾼 조건(예: `2F`, `회의실`, `13:00 이후`), 완료 detail은 결과 호실 수. 도구 호출 앞 텍스트는 답변에서 제외. 원본은 `lambda/src/query.py`, `lambda/src/ws.py`.
 
 ## 8. 최적 제어 추천: 규칙 3종과 전후 비교
 
