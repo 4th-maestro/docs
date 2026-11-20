@@ -94,7 +94,7 @@
 | 2 | 장비 번호와 장비일람표 | `schedule` | 실내기 주변 장비 번호(`tag`)를 일람표 행과 맞춤. 일람표는 PDF 텍스트 레이어와 CAD 문자에서 머리글(기호·장비번호·TAG, 모델·형식·MODEL, 냉방능력)이 있는 표를 읽어 `meta.ingest.schedule`(`{tag, name, model, kw, maker, page}`)에 저장 |
 | 3 | 용량 표기 | `exact`, `nearest` | `ml/hvac_types.json`의 `types[].models`(`{kw, model, market, source}`, kW 오름차순, 국내 모델 우선)에서 같은 유형 선택. 차이 0.05kW 이하는 `exact`, 아니면 용량 이상인 가장 작은 모델(없으면 가장 큰 모델)로 `nearest`와 `review: true` |
 | 4 | 유형 예시 | `type` | 용량을 모르면 유형 예시 모델 |
-| 5 | 직접 입력 | `manual` | 2D 화면에서 모델이나 용량을 고친 값 |
+| 5 | 직접 입력 | `manual` | 2D 화면에서 모델을 고친 값. 용량만 고치면 `kwSource: manual`로 저장하고 3번 규칙으로 모델을 다시 정함(원본, 일람표, 직접 입력 모델은 유지) |
 
 | 항목 | 규칙 |
 |---|---|
