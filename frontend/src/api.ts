@@ -2,7 +2,10 @@ import { demoStatus, kstNow, live, mockAsk, summarize } from './mock'
 import { mockAnomalies, mockBuildings, mockCancelSchedule, mockHistory, mockRecommendations, mockSaveSchedule, mockSchedules } from './panels/mock'
 import type { Anomalies, History, Recommendations, Schedules } from './panels/types'
 import { AUTH_ON, getAccessToken, signOut } from './auth/cognito'
+import type { Step } from './ai/types'
 import type { Draft, Portfolio, QueryResult, Status } from './types'
+
+export type ChatRecord = { sk: string; role: 'user' | 'assistant'; text: string; steps?: Step[]; highlight?: string[]; draft?: Draft | null }
 
 const BASE = import.meta.env.VITE_API_BASE_URL as string | undefined
 
@@ -29,10 +32,15 @@ export async function getStatus(floor: string, building: string): Promise<Status
     return await call<Status>(`/rooms/status${q(building, floor)}`)
   } catch {
     const data = await demoStatus(building)
-    const rooms = live(data.rooms.filter((r) => r.floor === floor))
+    const rooms = live(data.rooms.filter((r) => !floor || r.floor === floor))
     return { ...data, generatedAt: kstNow(), rooms, summary: summarize(rooms), mock: true }
   }
 }
+
+// 대화 기록: 로그인 사용자·건물별 최근 30개(lambda/src/chat.py). API가 없으면 화면에만 기록
+export const getChat = (building: string) =>
+  call<{ messages: ChatRecord[] }>(`/chat${q(building)}`).then((r) => ({ ...r, server: true }), () => ({ messages: [] as ChatRecord[], server: false }))
+export const clearChat = (building: string) => call<{ deleted: number }>(`/chat${q(building)}`, { method: 'DELETE' }).catch(() => ({ deleted: 0 }))
 
 export const getBuildings = () => call<Portfolio>('/buildings').catch(() => mockBuildings())
 

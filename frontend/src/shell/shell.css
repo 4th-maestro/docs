@@ -41,7 +41,7 @@
 .side-link:hover { background: var(--surface-soft); }
 .side-link.on { background: var(--ink); color: var(--on-ink); }
 .content { min-width: 0; padding: 0 32px 64px; }
-.content > .page { max-width: 1320px; padding: 0; }
+.content > .page { max-width: 1320px; padding: 24px 0 0; }
 .scrim { display: none; }
 
 /* 층 목록 */
