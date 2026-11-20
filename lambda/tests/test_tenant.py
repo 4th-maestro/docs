@@ -352,7 +352,6 @@ class AdminTest(Tenancy):
         self.assertEqual(call(http('GET /me', sub='nobody'))[1], {'email': 'boss@vendor.com', 'role': None, 'company': None})
 
 INVALID = (400, {'error': '기업 코드가 올바르지 않거나 만료되었습니다.'})
-LAST_MANAGER = (409, {'error': '관리자는 최소 1명이어야 합니다.'})
 VENDOR_ONLY = (403, {'error': '판매사 관리자만 변경할 수 있습니다.'})
 ADMIN_ONLY = (403, {'error': '관리자만 사용할 수 있습니다.'})
 
@@ -798,8 +797,8 @@ class AdminMemberTest(Tenancy):
     def test_role_remove_and_audit(self):
         role, delete = 'PATCH /admin/companies/{id}/members/{sub}', 'DELETE /admin/companies/{id}/members/{sub}'
         a = lambda sub: {'id': 'co-a', 'sub': sub}  # noqa: E731
-        self.assertEqual(adm(role, path=a('u-a'), body={'role': 'operator'}), LAST_MANAGER)
-        self.assertEqual(adm(delete, path=a('u-a')), LAST_MANAGER)
+        # 관리자 최소 인원 제한 없음: 마지막 manager도 운영자로 변경 가능(2026-11-20 해제)
+        self.assertEqual(adm(role, path=a('u-a'), body={'role': 'operator'})[1]['member']['role'], 'operator')
         self.assertEqual(adm(role, path={'id': 'co-x', 'sub': 'u-a'}, body={'role': 'operator'}), (404, {'error': '없는 기업입니다.'}))
         self.assertEqual(adm(delete, path=a('u-b')), (404, {'error': '없는 구성원입니다.'}))
         self.assertEqual(adm(role, path={'id': 'co-b', 'sub': 'u-b'}, body={'role': 'manager'})[1]['member']['role'], 'manager')
@@ -808,7 +807,7 @@ class AdminMemberTest(Tenancy):
         self.assertEqual(adm(delete, path=a('u-a')), (200, {'deleted': True}))
         self.assertNotIn('u-a', self.t['M'].items)
         code, body = adm('GET /admin/companies/{id}/audit', path={'id': 'co-a'})
-        self.assertEqual(sorted(i['action'] for i in body['items']), ['member.remove', 'member.role'])
+        self.assertEqual(sorted(i['action'] for i in body['items']), ['member.remove', 'member.role', 'member.role'])
         self.assertEqual(body['items'][0]['actor'], {'email': 'boss@vendor.com', 'role': 'admin'})
         self.assertEqual(len(adm('GET /admin/companies/{id}/audit', path={'id': 'co-a'}, query={'limit': '1'})[1]['items']), 1)
         self.assertEqual(adm('GET /admin/companies/{id}/audit', path={'id': 'co-x'})[0], 404)

@@ -61,17 +61,22 @@ const METRICS: [RegExp, keyof Room, string, string][] = [
   [/습도/, 'humidity', '습도', '%'], [/온도/, 'temp', '실내온도', '℃'], [/./, 'powerKw', '전력', 'kW'],
 ]
 
+// 질문에서 층·용도 범위를 읽어 해당 호실을 고름 ("3층 강의실" → 3F·강의실)
+export function scopeOf(text: string, all: Room[]) {
+  const fl = text.match(/(\d+)\s*(층|F)/i)
+  const floor = fl ? `${fl[1]}F` : 'all'
+  const use = USES.find(([re]) => re.test(text))?.[1] ?? 'all'
+  const rooms = all.filter((r) => (floor === 'all' || r.floor === floor) && (use === 'all' || r.use === use))
+  return { floor, use, rooms, where: `${floor === 'all' ? '전체 층' : floor} ${use === 'all' ? '호실' : use}` }
+}
+
 export async function mockAsk(text: string, building: string): Promise<QueryResult & { mock: true }> {
   if (/기준|규정/.test(text)) return {
     answer: '이 답변은 근거 문서 표시를 보여 주는 가상 예시입니다.', highlight: [], draft: null, mock: true,
     sources: [{ title: '공공기관 에너지이용 합리화 추진에 관한 규정', url: 'https://www.law.go.kr', date: '2025-01-01', checked: '2026-11-20' }],
   }
   const all = (await demoStatus(building)).rooms
-  const fl = text.match(/(\d+)\s*(층|F)/i)
-  const floor = fl ? `${fl[1]}F` : 'all'
-  const use = USES.find(([re]) => re.test(text))?.[1] ?? 'all'
-  const rooms = all.filter((r) => (floor === 'all' || r.floor === floor) && (use === 'all' || r.use === use))
-  const where = `${floor === 'all' ? '전체 층' : floor} ${use === 'all' ? '호실' : use}`
+  const { floor, use, rooms, where } = scopeOf(text, all)
   if (!rooms.length) return { answer: `${where}에 해당하는 호실이 없습니다. 층과 용도를 다시 입력하십시오.`, highlight: [], draft: null, mock: true }
 
   const control = /off|on|끄|꺼|켜|정지/i.test(text)

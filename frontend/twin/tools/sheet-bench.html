@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><title>도면 덩어리 벤치</title>
+<style>body{font:13px system-ui;background:#eee;margin:12px}figure{display:inline-block;margin:6px;background:#fff;padding:6px;vertical-align:top}canvas{display:block;max-width:420px}figcaption{margin-top:4px}</style></head>
+<body>
+<p>사용: <code>?set=_scratch/capitol/&files=B1.png,1F.png,2F.png,3F.png,4F.png</code> — 파랑 = 찾은 건물 덩어리, 마지막 칸 = 기준층에 맞춘 모든 층 겹침</p>
+<div id="out"></div>
+<script type="module">
+import { sheetSilhouette, alignSheets } from '../pipeline/plan-sheet.js';
+const q = new URLSearchParams(location.search), base = '../' + (q.get('set') || '_scratch/capitol/'), files = (q.get('files') || 'B1.png,1F.png,2F.png,3F.png,4F.png').split(',');
+const load = async n => { const bm = await createImageBitmap(await (await fetch(base + n)).blob()); const c = new OffscreenCanvas(bm.width, bm.height), g = c.getContext('2d'); g.drawImage(bm, 0, 0); return { bm, img:g.getImageData(0, 0, bm.width, bm.height) }; };
+const items = [];
+for (const n of files) { const { bm, img } = await load(n); const t = performance.now(), sil = sheetSilhouette(img); items.push({ n, bm, sil, ms:performance.now() - t }); }
+const COL = ['#2563eb', '#16a34a', '#dc2626', '#9333ea', '#ea580c', '#0891b2'];
+for (const it of items) {
+  const c = document.createElement('canvas'); c.width = it.bm.width; c.height = it.bm.height; const g = c.getContext('2d'); g.drawImage(it.bm, 0, 0);
+  if (it.sil) { g.lineWidth = 3; g.strokeStyle = '#2563eb'; g.fillStyle = 'rgba(37,99,235,.18)';
+    for (const l of it.sil.loops) { g.beginPath(); l.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.closePath(); g.fill(); g.stroke(); } }
+  const f = document.createElement('figure'); f.append(c); const cap = document.createElement('figcaption');
+  cap.textContent = `${it.n} · ${it.sil ? `${it.sil.loops.length}덩어리 · ${it.sil.loops.map(l => l.length).join('/')}점 · 문턱 ${it.sil.threshold}` : '못 찾음'} · ${it.ms.toFixed(0)}ms`; f.append(cap); out.append(f);
+}
+const ok = items.filter(it => it.sil);
+if (ok.length > 1) {
+  const sils = ok.map(it => it.sil), ref = sils.reduce((b, s, i) => s.area > sils[b].area ? i : b, 0), T = alignSheets(sils, ref);
+  window.ALIGN = ok.map((it, i) => ({ n:it.n, ...T[i] }));
+  const rb = sils[ref].box, pad = 40, W = rb.x1 - rb.x0, H = rb.y1 - rb.y0, k = 400 / Math.max(W, H);
+  const c = document.createElement('canvas'); c.width = W * k + 2 * pad; c.height = H * k + 2 * pad; const g = c.getContext('2d'); g.lineWidth = 2;
+  ok.forEach((it, i) => { g.strokeStyle = COL[i % COL.length];
+    for (const l of it.sil.loops) { g.beginPath(); l.forEach(([x, y], j) => { const X = (T[i].s * x + T[i].dx - rb.x0) * k + pad, Y = (T[i].s * y + T[i].dy - rb.y0) * k + pad; j ? g.lineTo(X, Y) : g.moveTo(X, Y); }); g.closePath(); g.stroke(); } });
+  const f = document.createElement('figure'); f.append(c); const cap = document.createElement('figcaption');
+  cap.innerHTML = ok.map((it, i) => `<span style="color:${COL[i % COL.length]}">■ ${it.n} s=${T[i].s.toFixed(2)} IoU ${T[i].iou.toFixed(2)}</span>`).join(' '); f.append(cap); out.append(f);
+}
+window.DONE = true;
+</script></body></html>

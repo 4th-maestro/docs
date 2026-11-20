@@ -1,17 +1,16 @@
 import { useCallback, useId, useState } from 'react'
 import type { KeyboardEvent, PointerEvent } from 'react'
-import { getHistory } from '../api'
 import Panel from './Panel'
-import type { HourPoint } from './types'
-import { hhmm, usePoll } from './usePoll'
-import { SkChart, SkFigure } from '../skeleton/Skeleton'
-import CountUp from '../motion/CountUp'
+import type { History, HourPoint } from './types'
+import { hhmm } from './usePoll'
+import { SkChart } from '../skeleton/Skeleton'
 
 // 시간별 전력 선 그래프(차트 라이브러리 없이 SVG)
 // - 오늘: 실선(파랑), 어제: 점선(회색, 비교 기준), 현재 시간 점과 값 직접 표시
 // - 단일 y축(kW), 눈금 4칸, 격자는 실선 헤어라인
 // - 마우스·터치·좌우 화살표 키로 시간 선택, 같은 값은 표로 보기에서도 제공
-const H = 220
+// 그래프 높이: 상단 지표 카드 아래 전체 너비 배치라 3D 도면이 많이 내려가지 않게 낮춤(2026-11-20, 이전 220)
+const H = 170
 const PAD = { l: 40, r: 96, t: 12, b: 28 }
 const STEPS = [1, 1.5, 2, 2.5, 3, 4, 5, 10]
 const r1 = (v: number) => Math.round(v * 10) / 10
@@ -32,9 +31,9 @@ function Key({ dashed }: { dashed?: boolean }) {
   )
 }
 
-export default function PowerTrend({ building, floor }: { building: string; floor: string }) {
-  const load = useCallback((f: string) => getHistory(f, building), [building])
-  const { data, error, stale } = usePoll(load, floor)
+// 조회는 화면(App)이 맡고 결과만 받음: 상단 "오늘 누적 사용량"과 같은 응답을 사용(요청 1회)
+// - scope: 표시 이름(층 또는 "건물 전체"), id: 그래프 다시 그리기 기준(건물·층)
+export default function PowerTrend({ poll: { data, error, stale }, scope, id: drawKey }: { poll: { data: History | null; error: string; stale: boolean }; scope: string; id: string }) {
   const [w, setW] = useState(0)
   const [hover, setHover] = useState<number | null>(null)
   const id = useId()
@@ -79,16 +78,13 @@ export default function PowerTrend({ building, floor }: { building: string; floo
 
   return (
     <Panel
-      title="전력 추이" at={data?.generatedAt} mock={data?.mock} error={error} loading={!data && !error} skeleton={<><SkFigure /><SkChart h={200} /></>} stale={stale}
-      empty={data !== null && ![...today, ...prev].some((p) => p.kw > 0) && `${floor}의 전력 기록이 없습니다.`}
+      title="전력 추이" at={data?.generatedAt} mock={data?.mock} error={error} loading={!data && !error} skeleton={<SkChart h={H} />} stale={stale}
+      empty={data !== null && ![...today, ...prev].some((p) => p.kw > 0) && `${scope}의 전력 기록이 없습니다.`}
     >
       {data && last && (
         <>
-          <div className="pn-stat">
-            <span className="label">오늘 누적 사용량</span>
-            <strong><CountUp value={todayKwh} /><small>kWh</small></strong>
-            <span className="sub">어제 같은 시각 {prevSame}kWh 대비 {diff > 0 ? '+' : ''}{diff}%</span>
-          </div>
+          {/* 오늘 누적 사용량 값은 상단 전력·요금 카드에 표시, 여기는 어제 같은 시각 대비만 */}
+          <p className="pn-cmp">오늘 {todayKwh.toLocaleString('ko-KR')}kWh, 어제 같은 시각 {prevSame.toLocaleString('ko-KR')}kWh 대비 {diff > 0 ? '+' : ''}{diff}%</p>
           <div className="pn-keys">
             <span><span className="pn-key"><Key />오늘</span><span className="pn-key"><Key dashed />어제</span></span>
             <span>단위 kW(시간별 평균), 가상 데이터</span>
@@ -100,7 +96,7 @@ export default function PowerTrend({ building, floor }: { building: string; floo
                 onPointerMove={pick} onPointerDown={pick} onPointerLeave={() => setHover(null)}
                 onFocus={() => setHover(nowH)} onBlur={() => setHover(null)} onKeyDown={key}
               >
-                <title id={`${id}t`}>{floor} 시간별 전력, 오늘과 어제</title>
+                <title id={`${id}t`}>{scope} 시간별 전력, 오늘과 어제</title>
                 <desc id={`${id}d`}>{summary}</desc>
                 {[0, 1, 2, 3, 4].map((i) => (
                   <g key={i}>
@@ -110,7 +106,7 @@ export default function PowerTrend({ building, floor }: { building: string; floo
                 ))}
                 {[0, 6, 12, 18, 23].map((h) => <text key={h} x={x(h)} y={H - 8} textAnchor="middle">{h}시</text>)}
                 <path d={path(prev)} fill="none" stroke="var(--prev)" strokeWidth={2} strokeDasharray="4 4" strokeLinejoin="round" />
-                <path key={`${building}-${floor}`} className="draw" pathLength={1} d={path(today)} fill="none" stroke="var(--today)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                <path key={drawKey} className="draw" pathLength={1} d={path(today)} fill="none" stroke="var(--today)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
                 <circle cx={x(nowH)} cy={y(last.kw)} r={4} fill="var(--today)" stroke="var(--canvas)" strokeWidth={2} />
                 <text className="now-label" x={x(nowH) + 10} y={y(last.kw)} dy="0.32em">지금 {last.kw}kW</text>
                 {hover !== null && (

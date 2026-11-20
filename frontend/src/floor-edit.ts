@@ -12,7 +12,7 @@ export type Opening = Segment & { rooms: string[] }
 export type Affine = [number, number, number, number, number, number]
 export type Detection = { cls: string; conf: number; box: [number, number, number, number] }
 export type PlanBackground = { key?: string; px: [number, number]; toPlan: Affine | null }
-export type PlanFloor = { id: string; rooms: PlanRoom[]; footprint?: Point[]; atrium?: boolean; openWalls?: Opening[]; partitions?: Segment[]; elevation?: number; background?: PlanBackground; detections?: Detection[] }
+export type PlanFloor = { id: string; rooms: PlanRoom[]; footprint?: Point[] | Point[][]; atrium?: boolean; openWalls?: Opening[]; partitions?: Segment[]; elevation?: number; background?: PlanBackground; detections?: Detection[] }
 export type IndoorUnit = { id: string; room: string; pos: Point; model?: string; type?: string; coolKw?: number; ratedKw?: number; source?: string; basis?: string
   cls?: string; manual?: string; conf?: number; review?: boolean; rot?: number; size?: [number, number]; ref?: string; floor?: string }
 export type Plan = {
@@ -72,7 +72,10 @@ export const inRoom = (p: Point, r: PlanRoom) => contains(p,r.polygon) && !r.hol
 
 export function floorBoundary(plan: Plan, floor: PlanFloor) {
   const {w,d} = plan.building.size
-  const outer = floor.footprint ?? [[0,0],[w,0],[w,d],[0,d]] as Point[]
+  const footprint = floor.footprint
+  const outer: Point[][] = footprint?.length
+    ? (Array.isArray(footprint[0][0]) ? footprint as Point[][] : [footprint as Point[]])
+    : [[[0,0],[w,0],[w,d],[0,d]]]
   const voids: Point[][] = []
   if (floor.atrium && plan.atrium) {
     const {x0,y0,x1,y1} = plan.atrium
@@ -81,14 +84,14 @@ export function floorBoundary(plan: Plan, floor: PlanFloor) {
   return { outer, voids }
 }
 
-export function isExteriorWall(a: Point, b: Point, outer: Point[], voids: Point[][]) {
+export function isExteriorWall(a: Point, b: Point, outer: Point[][], voids: Point[][]) {
   const mid = interpolate(a,b,.5)
-  if (!contains(mid,outer) && !edges(outer).some(([c,d]) => onEdge(mid,c,d,.12))) return true
-  return [outer,...voids].some(loop => edges(loop).some(([c,d]) =>
+  if (!outer.some(loop => contains(mid,loop) || edges(loop).some(([c,d]) => onEdge(mid,c,d,.12)))) return true
+  return [...outer,...voids].some(loop => edges(loop).some(([c,d]) =>
     onEdge(mid,c,d,.12) && Math.abs(lineSide(c,d,a) - lineSide(c,d,b)) <= distance(c,d)*distance(a,b)*.08))
 }
 
-export function interiorWallAt(floor: PlanFloor, p: Point, tolerance: number, outer: Point[], voids: Point[][], preferred?: string, solidOnly = false): Wall | null {
+export function interiorWallAt(floor: PlanFloor, p: Point, tolerance: number, outer: Point[][], voids: Point[][], preferred?: string, solidOnly = false): Wall | null {
   let best = tolerance, wall: Wall | null = null
   for (const r of floor.rooms) for (const ring of [r.polygon,...(r.holes ?? [])]) for (const [a,b] of edges(ring)) {
     if (distance(a,b) <= EPS || !onEdge(p,a,b,tolerance) || isExteriorWall(a,b,outer,voids)) continue
@@ -176,7 +179,7 @@ function polygonChange(subject: Point[], strip: Point[], operation: 'add' | 'sub
 const meet = (a: Point[], b: Point[]) => a.some(p => contains(p,b)) || b.some(p => contains(p,a)) ||
   edges(a).some(([u,v]) => edges(b).some(([c,d]) => intersection(u,v,c,d).length > 0))
 
-export function moveInteriorWall(floor: PlanFloor, wall: Wall, target: Point, outer: Point[], voids: Point[][]) {
+export function moveInteriorWall(floor: PlanFloor, wall: Wall, target: Point, outer: Point[][], voids: Point[][]) {
   const owner = floor.rooms.find(r => r.id === wall.room)
   const {a,b} = wall, length = distance(a,b)
   if (!owner || wall.hole || length < EPS || isExteriorWall(a,b,outer,voids)) return null
@@ -186,10 +189,11 @@ export function moveInteriorWall(floor: PlanFloor, wall: Wall, target: Point, ou
   if (Math.abs(wanted) < .06) return null
   const offset = (p: Point): Point => [p[0]+normal[0]*wanted,p[1]+normal[1]*wanted]
   const newA = offset(a), newB = offset(b), strip = [a,b,newB,newA]
-  const insideOuter = (p: Point) => contains(p,outer) || edges(outer).some(([c,d]) => onEdge(p,c,d))
+  const boundaryEdges = outer.flatMap(edges)
+  const insideOuter = (p: Point) => outer.some(loop => contains(p,loop)) || boundaryEdges.some(([c,d]) => onEdge(p,c,d))
   if (strip.some(p => !insideOuter(p)) ||
       edges(strip).some(([u,v]) => {
-        const points = [u,v,...edges(outer).flatMap(([c,d]) => intersection(u,v,c,d))].sort((p,q) => distance(u,p)-distance(u,q))
+        const points = [u,v,...boundaryEdges.flatMap(([c,d]) => intersection(u,v,c,d))].sort((p,q) => distance(u,p)-distance(u,q))
         return points.slice(1).some((p,i) => !insideOuter(interpolate(p,points[i],.5)))
       }) ||
       [...voids,...(owner.holes ?? [])].some(loop => meet(loop,strip))) return null

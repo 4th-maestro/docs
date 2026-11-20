@@ -70,4 +70,4 @@ export type Source = { title: string; url: string; date: string; checked?: strin
 
 export type QueryResult = { answer: string; highlight: string[]; draft: Draft | null; charts?: Chart[]; sources?: Source[]; mock?: boolean }
 
-export type Mode = 'temp' | 'powerKw' | 'humidity' | 'anomaly'
+export type Mode = 'temp' | 'powerKw' | 'humidity' | 'comfort' | 'anomaly'

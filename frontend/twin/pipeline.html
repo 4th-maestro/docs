@@ -124,6 +124,7 @@
   #quick legend{padding:0 4px;font-size:16px;font-weight:600}
   #quick details{margin:16px 0}
   #quick summary{min-height:44px;display:flex;align-items:center;font-size:16px;font-weight:600;cursor:pointer}
+  #quick .batch-pdf-status{flex-basis:100%;margin:0}
   #quick .batch-numbers{display:flex;gap:16px;flex-wrap:wrap}
   #quick .batch-numbers label{display:grid;gap:4px;color:var(--muted);font-size:15px}
   #quick input[type=file]{max-width:100%}
@@ -152,9 +153,10 @@
     <div class="row"><label for="batchName">건물 이름</label><input id="batchName" required maxlength="80"></div>
     <fieldset>
       <legend>층별 평면도</legend>
-      <p class="desc">같은 평면을 쓰는 층은 시작 층과 마지막 층을 지정하세요.</p>
+      <p class="desc">PNG, JPG 또는 PDF를 넣으세요. PDF는 층별로 페이지를 고를 수 있습니다. 같은 도면을 쓰는 층은 범위를 지정하세요. 지하 1층은 -1로 입력합니다.</p>
       <div id="batchFloors"></div>
       <button class="b" type="button" id="batchAdd">도면 추가</button>
+      <div class="row"><label for="batchRoofPlan">지붕 평면도 (선택)</label><input id="batchRoofPlan" type="file" accept="image/*"></div>
     </fieldset>
     <fieldset>
       <legend>참고 사진 · 선택</legend>
@@ -162,6 +164,11 @@
       <div class="batch-photo" id="batchExteriorGroup">
         <div class="row"><label for="batchExterior">외관 사진</label><input type="file" id="batchExterior" multiple accept="image/*"></div>
         <p class="desc" role="status"></p><ul aria-label="첨부한 외관 사진"></ul>
+      </div>
+      <div class="batch-photo" id="batchOverheadGroup">
+        <div class="row"><label for="batchOverhead">스카이뷰 사진 (선택)</label><input type="file" id="batchOverhead" multiple accept="image/*"></div>
+        <p class="desc">층별 평면도에서 외곽을 찾고, 맞는 스카이뷰가 있으면 지붕 형태를 보정합니다.</p>
+        <p class="desc" role="status"></p><ul></ul>
       </div>
       <div class="batch-photo" id="batchInteriorGroup">
         <div class="row"><label for="batchInterior">내부 사진</label><input type="file" id="batchInterior" multiple accept="image/*"></div>
@@ -186,11 +193,16 @@
   <aside id="side"></aside>
 </main>
 <input type="file" id="imgFile" accept="image/*" multiple hidden>
+<input type="file" id="planFile" accept="image/*,application/pdf,.pdf" hidden>
 <script type="module">
 import * as P from './pipeline/pipeline-core.js';
 import * as EP from './pipeline/energyplus.js';
-import { detectPlanCorners, validCorners, floorNumber, occupiedFloorIds, expandFloorGroups, floorResultFor } from './pipeline/plan-upload.js';
+import { analyzePlanPhoto, detectPlanCorners, validCorners, floorNumber, floorIdOf, occupiedFloorIds, expandFloorGroups, floorResultFor } from './pipeline/plan-upload.js';
 import { askDetect, detectRes, onPlans } from './pipeline/host-bridge.js';
+import { isPdf, planImage, planPageCount } from './pipeline/pdf-plan.js';
+import { CLEAN_FILL, cleanPlanPhoto } from './pipeline/plan-clean.js';
+import { sheetSilhouette, alignSheets } from './pipeline/plan-sheet.js';
+import { applyAutomaticExterior, applyFacadeTaper, fitAnalysisImage, floorForRoomDetection, hasDrawingFrame, inferFacadeDome, inferFacadeTaper, inferFoldedRoof, inferOverheadRoof, inferPlanFootprint, registerPlanOutline } from './pipeline/auto-exterior.js';
 
 /* ───────── 상태: 레시피(사람이 한 모든 결정) + 이미지 ───────── */
 const newFloor = id => ({ id, image:null, corners:null, mode:'auto', params:{ dark:40, sat:70, close:1, minArea:3.5 }, ops:[] });
@@ -203,6 +215,19 @@ const IMG = new Map();            // 파일명 → { el, data(ImageData), url }
 const RECT = new Map();           // 층 → 보정된 도면 (캐시)
 const RES = new Map();            // 층 → 분할 결과
 let iduKind = '4WAY', iduFrom = '도면 표기';
+// 건물 윤곽 도구: 어느 윤곽(base 바닥 / top 곡면 외피 윗면)을, 어떤 방식(poly 꼭짓점 / ellipse 타원 3점)으로 그릴지
+let footTarget = 'base', footMode = 'poly';
+const FOOT_KEY = { base:'footprint', top:'topFootprint' };
+// 윤곽 저장 형식: 하나면 다각형 그대로(예전 데이터와 같음), 여러 개(떨어진 동)면 다각형 목록
+const loopsOf = (f, k) => !f[k]?.length ? [] : Array.isArray(f[k][0]?.[0]) ? f[k] : [f[k]];
+const setLoops = (f, k, ls) => { if (!ls.length) delete f[k]; else f[k] = ls.length === 1 ? ls[0] : ls; };
+// 타원: 중심 c, 긴 축 끝 a, 짧은 축 쪽 점 b(긴 축 직선까지 거리 = 짧은 반지름) → 72점
+function ellipseLoop(c, a, b, n = 72) {
+  const ra = Math.hypot(a[0] - c[0], a[1] - c[1]), th = Math.atan2(a[1] - c[1], a[0] - c[0]);
+  const rb = b ? Math.abs((b[0] - c[0]) * Math.sin(th) - (b[1] - c[1]) * Math.cos(th)) : ra;
+  return Array.from({ length:n }, (_, i) => { const t = 2 * Math.PI * i / n, x = ra * Math.cos(t), y = rb * Math.sin(t);
+    return [Math.round((c[0] + x * Math.cos(th) - y * Math.sin(th)) * 100) / 100, Math.round((c[1] + x * Math.sin(th) + y * Math.cos(th)) * 100) / 100]; });
+}
 let editMode = false, editF = 0, editTool = 'room', editSel = null, iduDrag = null, EV = { s:1, ox:0, oy:0 };
 let showMask = false, step = 'plan', fi = 0, tool = 'corner', sel = null, pending = [], drag = null, photoSel = null, OUT = null;
 const $ = s => document.querySelector(s), cv = $('#cv'), g = cv.getContext('2d');
@@ -233,19 +258,35 @@ function pickFiles(cb){ const f = $('#imgFile'); f.value = ''; f.onchange = asyn
 function compute(f){
   const W = R.building.size.w, D = R.building.size.d;
   let rect = null;
-  if (f.mode !== 'manual' && f.image && f.corners?.length === 4 && IMG.has(f.image)) {
-    const key = f.image + JSON.stringify(f.corners) + W + 'x' + D;
-    if (RECT.get(f.id)?.key !== key) RECT.set(f.id, { key, rect:P.rectify(IMG.get(f.image).data, f.corners, W, D) });
+  if (f.image && f.corners?.length === 4 && IMG.has(f.image)) {   // 수동 모드도 바탕 그림용으로는 펴 둠
+    const key = f.image + JSON.stringify(f.corners) + W + 'x' + D + (f.darkPlan ? '-dark' : '');
+    if (RECT.get(f.id)?.key !== key) RECT.set(f.id, { key, rect:P.rectify(IMG.get(f.image).data, f.corners, W, D, f.darkPlan) });
     rect = RECT.get(f.id).rect;
   }
-  const res = P.resolveFloor(f, rect, W, D), out = P.floorRooms(f, res, W, D);
+  const analysis = f.mode === 'fill' && f.cleanPhoto && rect ? cleanRect(f) : rect;
+  const res = P.resolveFloor(f, f.mode === 'manual' ? null : analysis, W, D), out = P.floorRooms(f, res, W, D);
   RES.set(f.id, { rect, res, out });
   return RES.get(f.id);
 }
+function cleanRect(f) {
+  const cache = RECT.get(f.id);
+  cache.cleaned ??= cleanPlanPhoto(fitAnalysisImage(IMG.get(f.image).data, 1200)).image;
+  const raw = IMG.get(f.image).data, clean = cache.cleaned;
+  cache.cleanedRect ??= P.rectify(clean, f.corners.map(([x,y]) => [x * clean.width / raw.width, y * clean.height / raw.height]), R.building.size.w, R.building.size.d);
+  return cache.cleanedRect;
+}
 function computeAll(){
   const { recipe, sources } = expandFloorGroups(R), results = {};
+  if (R.autoExterior) applyAutomaticExterior(recipe.floors, R.autoRoof);
+  applyFacadeTaper(recipe.floors, R.facadeTaper);
   const geometry = new Map(R.floors.map(f => [f.id, compute(f)]));
-  for (const f of recipe.floors) {
+  for (const [i, f] of recipe.floors.entries()) {
+    const bounded = floorForRoomDetection(f);
+    if (bounded !== f) {
+      recipe.floors[i] = bounded;
+      results[f.id] = compute(bounded).out;
+      continue;
+    }
     const source = sources.get(f.id).id, entry = geometry.get(source);
     results[f.id] = floorResultFor(entry.out, source, f.id);
     if (source !== f.id) RES.set(f.id, { ...entry, out:results[f.id] });
@@ -281,14 +322,29 @@ const roomOptions = (val) => { const rooms = R.floors.flatMap(f => (RES.get(f.id
   return `<option value="">— 방 선택 —</option>` + rooms.map(r => `<option value="${r.id}" ${r.id === val ? 'selected' : ''}>${r.id} ${esc(r.name.split(' ').slice(1).join(' '))}</option>`).join(''); };
 function thumbs(list, selName){ return `<div class="thumbs">${list.map(p => `<div data-photo="${esc(p.file)}" class="${p.file === selName ? 'sel' : ''}"><img src="${esc(IMG.get(p.file)?.url || '')}"><span>${esc(p.tag || p.file)}</span></div>`).join('')}</div>`; }
 
-const floorLabel = f => f.repeatUntil > floorNumber(f.id) ? f.id + '–' + f.repeatUntil + 'F' : f.id;
+// 건물 윤곽 도구 패널: 바닥/윗 윤곽 · 꼭짓점/타원 · 윤곽 목록(동마다) · 열린 층·잔디
+function footPanel(f) {
+  const k = FOOT_KEY[footTarget], ls = loopsOf(f, k), next = R.floors[R.floors.indexOf(f) + 1];
+  const btn = (attr, v, cur, t) => `<button class="b ${cur === v ? 'on' : ''}" ${attr}="${v}">${t}</button>`;
+  return `<h3>건물 윤곽</h3>
+    <div class="row">${btn('data-foottarget', 'base', footTarget, '바닥 윤곽')}${btn('data-foottarget', 'top', footTarget, '윗 윤곽 (곡면 외피)')}</div>
+    <div class="row">${btn('data-footmode', 'poly', footMode, '꼭짓점')}${btn('data-footmode', 'ellipse', footMode, '타원')}</div>
+    <div class="desc">${footMode === 'ellipse' ? '타원: ① 중심 → ② 긴 축 끝 → ③ 짧은 축 쪽 한 점을 클릭' : '꼭짓점을 차례로 클릭, 첫 점을 다시 클릭하면 닫힘'}.
+      ${footTarget === 'base' ? '윤곽 밖은 건물 밖으로 봅니다. 떨어진 동이 여러 채면 윤곽을 여러 개 그리세요.' : '이 층 외피 윗면의 윤곽 — 바닥 윤곽에서 여기까지 기울어진 곡면으로 이어집니다 (디아크처럼 위로 벌어지는 건물). 보통 위층 바닥 윤곽과 같게 둡니다.'}</div>
+    <div class="list">${ls.map((l, i) => `<div class="item">${footTarget === 'base' ? '동' : '윗 윤곽'} ${i + 1} · ${l.length}점<span class="x" data-delfoot="${i}">×</span></div>`).join('') || '<span class="desc">아직 없음</span>'}</div>
+    ${footTarget === 'top' && next ? `<div class="row"><button class="b" id="copyNextFoot" ${loopsOf(next, 'footprint').length ? '' : 'disabled'}>위층(${esc(next.id)}) 바닥 윤곽 가져오기</button></div>` : ''}
+    <div class="row"><label><input type="checkbox" data-floorflag="open" ${f.open ? 'checked' : ''}> 열린 층 (옥상정원·데크 — 외피 없음, 아래층 지붕은 바깥에 닿음)</label></div>
+    <div class="row"><label><input type="checkbox" data-floorflag="green" ${f.green ? 'checked' : ''}> 잔디·정원 바닥</label></div>`;
+}
+const floorLabel = f => f.repeatUntil > floorNumber(f.id) ? f.id + '–' + floorIdOf(f.repeatUntil) : f.id;
 const floorAdd = () => {
   const next = 1 + Math.max(0, ...R.floors.flatMap(occupiedFloorIds).map(id => floorNumber(id) || 0));
-  return `<div class="row"><label for="newFloorNo">층 번호</label><input type="number" id="newFloorNo" min="1" max="999" value="${next}"><button class="b" id="addFloor">층 추가</button></div>`;
+  return `<div class="row"><label for="newFloorNo">층 번호</label><input type="number" id="newFloorNo" min="-20" max="999" value="${next}" title="지하는 −1(B1), −2(B2)…"><button class="b" id="addFloor">층 추가</button></div>
+    <p class="desc">지하층은 음수로 입력 (−1 = B1, −2 = B2). 지하층은 땅속에 있어 외벽이 흙에 닿고 창이 없는 것으로 계산합니다.</p>`;
 };
 function setFloorGroup(f, end) {
   const first = floorNumber(f.id);
-  if (!first || !Number.isInteger(end) || end < first) throw new Error('마지막 층은 시작 층 이상의 정수여야 합니다.');
+  if (!first || !Number.isInteger(end) || end < first || (first < 0 && end === 0)) throw new Error('마지막 층은 시작 층 이상의 정수여야 합니다 (0층은 없음).');
   const taken = new Set(R.floors.filter(x => x !== f).flatMap(occupiedFloorIds));
   const overlap = occupiedFloorIds({ ...f, repeatUntil:end }).find(id => taken.has(id));
   if (overlap) throw new Error(overlap + '에 이미 다른 도면이 있습니다.');
@@ -302,21 +358,39 @@ function useCorners(f, corners) {
 async function uploadPlan(file, floor) {
   if (!file) return;
   const version = ++uploadVersion, recipe = R;
-  let name = file.name, i = 2;
-  while (IMG.has(name)) name = i++ + '-' + file.name;
-  const url = URL.createObjectURL(file);
+  let name, url, i = 2;
   try {
+    let page = 1;
+    if (isPdf(file)) {
+      const pages = await planPageCount(file);
+      if (version !== uploadVersion || recipe !== R || floor !== F() || step !== 'plan') return;
+      if (pages > 1) {
+        const choice = window.prompt(`이 층에 사용할 PDF 페이지를 입력하세요 (1~${pages}).`, '1');
+        if (choice === null) return;
+        page = Number(choice);
+      }
+    }
+    const image = await planImage(file,page);
+    if (version !== uploadVersion || recipe !== R || floor !== F() || step !== 'plan') return;
+    name = image.name;
+    while (IMG.has(name)) name = i++ + '-' + image.name;
+    url = URL.createObjectURL(image);
     await addImage(name,url);
     if (version !== uploadVersion || recipe !== R || floor !== F() || step !== 'plan') { URL.revokeObjectURL(url); IMG.delete(name); return; }
-    const detected = detectPlanCorners(IMG.get(name).data);
+    const photo = IMG.get(name).data;
+    floor.darkPlan = P.isDarkPlan(photo);
+    const detected = floor.darkPlan ? [[0,0],[photo.width-1,0],[photo.width-1,photo.height-1],[0,photo.height-1]] : detectPlanCorners(photo);
     floor.image = name;
     useCorners(floor, detected);
     tool = 'corner';
     planMessage = detected ? '모서리 4점을 찾았습니다. 표시를 확인하거나 다시 지정하세요.' : '뚜렷한 외곽을 찾지 못했습니다. 모서리 4점을 찍거나 이미지 전체를 사용하세요.';
     recompute();
-  } catch {
-    if (!IMG.has(name)) URL.revokeObjectURL(url);
-    if (version === uploadVersion && recipe === R && floor === F()) { planMessage = '이미지를 열 수 없습니다. PNG나 JPG 파일을 확인해 주세요.'; renderSide(); }
+  } catch (error) {
+    if (url && !IMG.has(name)) URL.revokeObjectURL(url);
+    if (version === uploadVersion && recipe === R && floor === F()) {
+      planMessage = isPdf(file) ? error.message : '이미지를 열 수 없습니다. PNG나 JPG 파일을 확인해 주세요.';
+      renderSide();
+    }
   }
 }
 
@@ -357,7 +431,7 @@ function renderSide(){
         <div class="row"><label>판정 강도</label><input type="range" min="20" max="90" value="${Math.round((f.params.strength ?? .5) * 100)}" data-p="strength" data-scale=".01"><span>${(f.params.strength ?? .5).toFixed(2)}</span></div>` : ''}
       ${tool === 'idu' ? `<h3>실내기 표기 (도면·설비대장)</h3><div class="row">${['4WAY', '1WAY', 'WALL'].map(k => `<button class="b ${iduKind === k ? 'on' : ''}" data-idukind="${k}">${k}</button>`).join('')}</div>
         <div class="row"><label>근거</label><input id="iduFrom" value="${esc(iduFrom)}"></div><div class="desc">이 층 표기 ${f.ops.filter(o => o.op === 'idu').length}대 · 표기가 있는 방은 모델·사진보다 우선</div>` : ''}
-      ${tool === 'footprint' ? `<div class="desc">윤곽 꼭짓점을 차례로 클릭, 첫 점을 다시 클릭하면 닫힘. 윤곽 밖은 건물 밖으로 봅니다 (곡선 입면·ㄱ자 건물). ${f.footprint ? `현재 ${f.footprint.length}점 <button class="b" id="clearFoot">윤곽 지우기</button>` : ''}</div>` : ''}
+      ${tool === 'footprint' ? footPanel(f) : ''}
       ${labelForm}
       <h3>이 층의 조작 (${f.ops.length})</h3><div class="list">${f.ops.map((o, i) => `<div class="item ${sel === o ? 'sel' : ''}" data-op="${i}">${opText(o)}<span class="x" data-delop="${i}" role="button" aria-label="조작 삭제">${IC.x}</span></div>`).join('') || '<span class="desc">아직 없음</span>'}</div>
       ${warn.length ? `<h3>확인 필요</h3>${warn.map(w => `<div class="warn">· ${esc(w)}</div>`).join('')}` : res ? '<h3>확인</h3><div class="ok">경고 없음</div>' : ''}
@@ -460,7 +534,7 @@ function hint(){
     merge:'한 공간이 둘로 나뉘었으면 두 곳을 차례로 클릭.',
     rect:'드래그로 사각형을 그려 공간을 직접 지정 (도면 선이 흐린 와이파이맵 등).',
     erase:'지울 라벨·벽·사각형·실내기를 클릭.',
-    footprint:'건물 윤곽 꼭짓점을 차례로 클릭 (첫 점을 다시 누르면 닫힘)',
+    footprint:(footTarget === 'top' ? '윗 윤곽' : '건물 윤곽') + (footMode === 'ellipse' ? ' 타원: 중심 → 긴 축 끝 → 짧은 축 쪽 한 점' : ' 꼭짓점을 차례로 클릭 (첫 점을 다시 누르면 닫힘)'),
     idu:'평면도에 실내기가 그려져 있으면 그 자리를 클릭 (다시 클릭하면 삭제)',
     pick:'상점처럼 색이 칠해진 칸을 클릭해 그 색을 기준으로 삼습니다',
   };
@@ -497,7 +571,7 @@ function drawInfo(){
 function drawPlan(){
   const f = F(), res = RES.get(f.id), img = IMG.get(f.image);
   const rectified = res?.rect;
-  if (tool === 'corner' || !rectified) {
+  if (tool === 'corner' || (!rectified && f.mode !== 'manual')) {
     if (!img) { if (f.mode === 'manual' || res) return drawRectSpace(res); return; }
     fit(img.data.width, img.data.height); g.drawImage(img.el, view.ox, view.oy, img.data.width * view.s, img.data.height * view.s);
     const pts = tool === 'corner' && pending.length ? pending : f.corners || [];
@@ -542,9 +616,16 @@ function drawRectSpace(res){
     if (o.op === 'merge') { const [a, b] = M(...o.a), [c, d] = M(...o.b); g.strokeStyle = '#e879f9'; g.lineWidth = 2; g.beginPath(); g.moveTo(a, b); g.lineTo(c, d); g.stroke(); }
   }
   // 건물 윤곽 · 실내기 표기 · 모델 예측
-  const fp = tool === 'footprint' && pending.length ? pending : f.footprint;
-  if (fp?.length) { g.strokeStyle = tok('--chart-cur'); g.lineWidth = 2; g.beginPath(); fp.forEach((q, i) => { const [X, Y] = M(...q); i ? g.lineTo(X, Y) : g.moveTo(X, Y); }); if (fp === f.footprint) g.closePath(); g.stroke();
-    fp.forEach(q => { const [X, Y] = M(...q); g.fillStyle = tok('--chart-cur'); g.fillRect(X - 3, Y - 3, 6, 6); }); }
+  // 바닥 윤곽(파랑, 동마다) · 윗 윤곽(주황 점선) · 그리는 중인 윤곽/타원 미리보기
+  const ring = (l, closed, col, dash, dots) => { g.strokeStyle = col; g.lineWidth = 2; g.setLineDash(dash); g.beginPath(); l.forEach((q, i) => { const [X, Y] = M(...q); i ? g.lineTo(X, Y) : g.moveTo(X, Y); }); if (closed) g.closePath(); g.stroke(); g.setLineDash([]);
+    if (dots) l.forEach(q => { const [X, Y] = M(...q); g.fillStyle = col; g.fillRect(X - 3, Y - 3, 6, 6); }); };
+  for (const l of loopsOf(f, 'footprint')) ring(l, true, tok('--chart-cur'), [], l.length <= 24);
+  for (const l of loopsOf(f, 'topFootprint')) ring(l, true, '#f59e0b', [6, 4], false);
+  if (tool === 'footprint' && pending.length) {
+    const col = footTarget === 'top' ? '#f59e0b' : tok('--chart-cur');
+    if (footMode === 'ellipse') { pending.forEach(q => ring([q, q], false, col, [], true)); if (pending.length >= 2) ring(ellipseLoop(pending[0], pending[1], pending[2]), true, col, [4, 3], false); }
+    else ring(pending, false, col, [], true);
+  }
   const pred = predFor(f.id), minC = R.acModel?.minConfidence ?? .5;
   for (const u of pred) { const [X, Y] = M(u.x, u.y); g.strokeStyle = u.confidence >= minC ? SRC_COLOR.model : '#6b7280'; g.lineWidth = 2; g.beginPath(); g.arc(X, Y, 5, 0, 7); g.stroke(); }
   for (const o of f.ops) if (o.op === 'idu') { const [X, Y] = M(o.x, o.y); g.fillStyle = SRC_COLOR.plan; g.fillRect(X - 5, Y - 5, 10, 10); g.strokeStyle = '#000'; g.lineWidth = 1; g.strokeRect(X - 5, Y - 5, 10, 10); }
@@ -571,7 +652,7 @@ function drawEdit(){
   const s = Math.min((cw - 40) / (W + 4), (ch - 70) / (D + 4)), ox = (cw - W * s) / 2, oy = 40 + (ch - 70 - D * s) / 2; EV = { s, ox, oy };
   const P = (x, y) => [ox + x * s, oy + y * s];
   g.fillStyle = tok('--ink'); g.font = '700 16px ' + FONT; g.textAlign = 'left'; g.fillText(`${f.id} 결과 직접 수정`, 14, 26);
-  if (f.footprint) { g.strokeStyle = tok('--chart-cur'); g.lineWidth = 2; g.beginPath(); f.footprint.forEach(([x, y], i) => { const [X, Y] = P(x, y); i ? g.lineTo(X, Y) : g.moveTo(X, Y); }); g.closePath(); g.stroke(); }
+  for (const l of loopsOf(f, 'footprint')) { g.strokeStyle = tok('--chart-cur'); g.lineWidth = 2; g.beginPath(); l.forEach(([x, y], i) => { const [X, Y] = P(x, y); i ? g.lineTo(X, Y) : g.moveTo(X, Y); }); g.closePath(); g.stroke(); }
   for (const r of f.rooms) { g.beginPath(); for (const l of [r.polygon, ...(r.holes || [])]) l.forEach(([x, y], k) => { const [X, Y] = P(x, y); k ? g.lineTo(X, Y) : g.moveTo(X, Y); }), g.closePath();
     const col = COLORS[r.type] || '#999', ovd = R.overrides?.rooms?.[r.id];
     g.fillStyle = r.id === editSel ? 'rgba(242,193,78,.35)' : col + '30'; g.fill('evenodd'); g.strokeStyle = r.id === editSel ? tok('--primary') : ovd ? '#fb923c' : col; g.lineWidth = r.id === editSel || ovd ? 2.2 : 1; g.stroke();
@@ -623,7 +704,10 @@ cv.addEventListener('pointerdown', e => {
     if (tool === 'corner') { if (!f.image) return; pending.push([Math.round(p[0]), Math.round(p[1])]); if (pending.length === 4) { if (validCorners(pending)) { useCorners(f, pending); tool = 'label'; planMessage = '모서리를 수정했습니다.'; recompute(); } else { pending = []; planMessage = '왼쪽 위부터 시계 방향으로 네 모서리를 다시 지정하세요.'; renderSide(); } } draw(); return; }
     const m = pxToM(p[0], p[1]).map(snap);
     if (tool === 'pick') { const rr = RES.get(f.id)?.rect; if (!rr) return; const i = Math.round(p[0]), j = Math.round(p[1]); f.params.fill = P.medianColor(rr, [i - 4, j - 4, i + 5, j + 5]); recompute(); return; }
-    if (tool === 'footprint') { if (pending.length >= 3 && Math.hypot(pending[0][0] - m[0], pending[0][1] - m[1]) < .8) { f.footprint = pending; pending = []; recompute(); } else { pending.push(m); draw(); } return; }
+    if (tool === 'footprint') {
+      const k = FOOT_KEY[footTarget], add = l => { setLoops(f, k, [...loopsOf(f, k), l]); pending = []; recompute(); };
+      if (footMode === 'ellipse') { pending.push(m); if (pending.length === 3) add(ellipseLoop(...pending)); else draw(); return; }
+      if (pending.length >= 3 && Math.hypot(pending[0][0] - m[0], pending[0][1] - m[1]) < .8) add(pending); else { pending.push(m); draw(); } return; }
     if (tool === 'idu') { const i = f.ops.findIndex(o => o.op === 'idu' && Math.hypot(o.x - m[0], o.y - m[1]) < .6);
       if (i >= 0) f.ops.splice(i, 1); else f.ops.push({ op:'idu', x:m[0], y:m[1], kind:iduKind, from:iduFrom }); OUT = null; renderSteps(); renderSide(); draw(); return; }
     if (tool === 'label') { const near = f.ops.find(o => o.op === 'label' && Math.hypot(o.x - m[0], o.y - m[1]) < .8);
@@ -700,7 +784,11 @@ $('#side').addEventListener('click', e => {
   if (t.dataset.edittool) { editTool = t.dataset.edittool; renderSide(); draw(); }
   if (t.id === 'ovUndo') { delete R.overrides.rooms[editSel]; computeAll(); renderSide(); draw(); }
   if (t.id === 'editReset' && confirm('결과 화면에서 고친 실 속성과 실내기 고정을 모두 지울까요?')) { delete R.overrides; delete R.floorIduOverrides; for (const f of R.floors) f.ops = f.ops.filter(o => !(o.op === 'idu' && o.from === '사람 수정')); editSel = null; computeAll(); renderSteps(); renderSide(); draw(); }
-  if (t.id === 'clearFoot') { delete f.footprint; recompute(); }
+  if (t.dataset.foottarget) { footTarget = t.dataset.foottarget; pending = []; renderSide(); hint(); draw(); }
+  if (t.dataset.footmode) { footMode = t.dataset.footmode; pending = []; renderSide(); hint(); draw(); }
+  if (t.dataset.delfoot != null) { const k = FOOT_KEY[footTarget], ls = loopsOf(f, k); ls.splice(+t.dataset.delfoot, 1); setLoops(f, k, [...ls]); recompute(); }
+  if (t.id === 'copyNextFoot') { const nx = R.floors[R.floors.indexOf(f) + 1]; if (nx) { setLoops(f, 'topFootprint', structuredClone(loopsOf(nx, 'footprint'))); recompute(); } }
+  if (t.dataset.floorflag) { const k = t.dataset.floorflag; if (t.checked) f[k] = true; else delete f[k]; OUT = null; renderSteps(); draw(); }
   if (t.id === 'mdlExport') exportModelInput();
   if (t.id === 'mdlLoad') loadPrediction();
   if (t.id === 'mdlRun') runModel();
@@ -711,16 +799,16 @@ $('#side').addEventListener('click', e => {
   if (t.dataset.delfloor && R.floors.length > 1) { const [removed] = R.floors.splice(+t.dataset.delfloor, 1); for (const id of occupiedFloorIds(removed)) delete R.floorIduOverrides?.[id]; fi = 0; OUT = null; renderSteps(); renderSide(); draw(); }
   if (t.dataset.delmark) { R.exterior.photos.find(x => x.file === photoSel).marks.splice(+t.dataset.delmark, 1); calcWindow(); renderSide(); draw(); }
   const th = t.closest('[data-photo]'); if (th) { photoSel = th.dataset.photo; tool = step === 'ext' ? 'slab' : step === 'int' ? 'floorBox' : '4WAY'; renderSide(); draw(); }
-  if (t.id === 'addFloor') { const n = Number($('#newFloorNo').value), id = n + 'F';
-    if (!Number.isInteger(n) || n < 1 || n > 999 || R.floors.some(x => occupiedFloorIds(x).includes(id))) { planMessage = '비어 있는 층 번호를 입력하세요.'; renderSide(); return; }
-    R.floors.push(newFloor(id)); fi = R.floors.length - 1; OUT = null; tool = 'corner'; pending = []; sel = null; uploadVersion++;
+  if (t.id === 'addFloor') { const n = Number($('#newFloorNo').value), id = floorIdOf(n);
+    if (!Number.isInteger(n) || n === 0 || n < -20 || n > 999 || R.floors.some(x => occupiedFloorIds(x).includes(id))) { planMessage = '비어 있는 층 번호를 입력하세요 (지하는 −1, −2…).'; renderSide(); return; }
+    R.floors.push(newFloor(id)); R.floors.sort((a, b) => (floorNumber(a.id) ?? 0) - (floorNumber(b.id) ?? 0)); fi = R.floors.findIndex(x => x.id === id); OUT = null; tool = 'corner'; pending = []; sel = null; uploadVersion++;
     planMessage = id + ' 도면을 추가했습니다.'; renderSteps(); renderSide(); draw();
   }
   if (t.id === 'applyFloorGroup') {
     try { setFloorGroup(f, Number($('#repeatFloorEnd').value)); renderSteps(); } catch (err) { planMessage = err.message; }
     renderSide(); draw();
   }
-  if (t.id === 'pickPlan') { const input = $('#imgFile'); input.value = ''; input.onchange = () => uploadPlan(input.files[0], f); input.click(); }
+  if (t.id === 'pickPlan') { const input = $('#planFile'); input.value = ''; input.onchange = () => uploadPlan(input.files[0], f); input.click(); }
   if (t.id === 'usePlan') { tool = 'label'; pending = []; renderSide(); draw(); }
   if (t.id === 'wholePlan') { const img = IMG.get(f.image); if (!img) return;
     const {width,height} = img.data; const corners = [[0,0],[width-1,0],[width-1,height-1],[0,height-1]];
@@ -850,15 +938,50 @@ const showQuick = yes => {
 function addBatchFloor() {
   const list = $('#batchFloors');
   const previous = list.lastElementChild;
-  const next = previous ? Math.max(+previous.querySelector('.batch-first').value, +previous.querySelector('.batch-last').value) + 1 : 1;
+  const last = previous?.querySelector('.batch-last').value || previous?.querySelector('.batch-first').value;
+  const next = last ? (+last === -1 ? 1 : +last + 1) : 1;
   const row = document.createElement('div');
   row.className = 'batch-floor';
-  row.innerHTML = '<label>시작 층 <input class="batch-first" type="number" min="1" max="999" required></label>'
-    + '<label>마지막 층 <input class="batch-last" type="number" min="1" max="999"></label>'
-    + '<input class="batch-plan" aria-label="평면도 사진" type="file" accept="image/*" required>'
-    + '<button type="button" class="b" aria-label="도면 행 삭제">삭제</button>';
+  row.innerHTML = '<label>시작 층 <input class="batch-first" type="number" min="-20" max="999" required title="지하 1층은 -1"></label>'
+    + '<label>마지막 층 <input class="batch-last" type="number" min="-20" max="999" title="지하 1층은 -1"></label>'
+    + '<input class="batch-plan" aria-label="평면도 파일" type="file" accept="image/*,application/pdf,.pdf" required>'
+    + '<label class="batch-page-label" hidden>PDF 페이지 <input class="batch-page" type="number" min="1" step="1" value="1" disabled></label>'
+    + '<label><input class="batch-open" type="checkbox">옥상 정원</label>'
+    + '<button type="button" class="b" aria-label="도면 행 삭제">삭제</button>'
+    + '<p class="desc batch-pdf-status" role="status" hidden></p>';
   row.querySelector('.batch-first').value = next;
   row.querySelector('button').onclick = () => { if (list.children.length > 1) row.remove(); };
+  const input = row.querySelector('.batch-plan');
+  const label = row.querySelector('.batch-page-label');
+  const page = row.querySelector('.batch-page');
+  const status = row.querySelector('.batch-pdf-status');
+  let selection = 0;
+  input.onchange = async () => {
+    const version = ++selection;
+    const file = input.files[0];
+    label.hidden = page.disabled = status.hidden = true;
+    page.required = false;
+    page.value = '1';
+    input.setCustomValidity('');
+    if (!file || !isPdf(file)) return;
+    status.hidden = false;
+    status.textContent = 'PDF 페이지 확인 중…';
+    input.setCustomValidity(status.textContent);
+    try {
+      const count = await planPageCount(file);
+      if (version !== selection) return;
+      input.setCustomValidity('');
+      page.max = String(count);
+      const multiPage = count > 1;
+      label.hidden = page.disabled = !multiPage;
+      page.required = multiPage;
+      status.textContent = multiPage ? `총 ${count}페이지 · 이 층에 사용할 페이지를 고르세요.` : '1페이지 PDF';
+    } catch (error) {
+      if (version !== selection) return;
+      status.textContent = error.message;
+      input.setCustomValidity(error.message);
+    }
+  };
   list.append(row);
   return row;
 }
@@ -951,7 +1074,8 @@ function batchPhotos(id) {
   function add(picked) {
     let skipped = 0;
     for (const file of picked) {
-      if (!file.type.startsWith('image/') && (file.type || !/\.(avif|bmp|gif|heic|heif|jpe?g|png|svg|tiff?|webp)$/i.test(file.name))) {
+      // 형식 정보가 비었거나 application/octet-stream이어도 확장자가 이미지면 받음 (webp·heic는 OS에 따라 형식이 안 붙음)
+      if (!file.type.startsWith('image/') && !/\.(avif|bmp|gif|heic|heif|jpe?g|png|svg|tiff?|webp)$/i.test(file.name)) {
         skipped++;
         continue;
       }
@@ -977,7 +1101,81 @@ function batchPhotos(id) {
 }
 
 const batchExterior = batchPhotos('#batchExterior');
+const batchOverhead = batchPhotos('#batchOverhead');
 const batchInterior = batchPhotos('#batchInterior');
+
+const isOverheadName = name => /sky[ _-]*view|satellite|aerial|overhead|top[ _-]*view|스카이뷰|항공|위성|상공/i.test(name);
+async function readExteriorPhoto(file) {
+  const src = URL.createObjectURL(file);
+  try {
+    const image = new Image();
+    image.src = src;
+    await image.decode();
+    const scale = Math.min(1, 720 / Math.max(image.naturalWidth, image.naturalHeight));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+    const context = canvas.getContext('2d', { willReadFrequently:true });
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+    return context.getImageData(0, 0, canvas.width, canvas.height);
+  } catch (error) {
+    console.warn('외관 사진 분석을 건너뜁니다.', file.name, error);
+    return null;
+  } finally {
+    URL.revokeObjectURL(src);
+  }
+}
+async function estimateRoof(files, footprint, minimumScore) {
+  let best = null;
+  for (const file of files) {
+    const image = await readExteriorPhoto(file);
+    const match = image && inferOverheadRoof(image, footprint);
+    if (match && match.score >= minimumScore && (!best || match.score > best.score)) best = match;
+  }
+  return best;
+}
+
+// 층별 도면 시트 → 같은 전체 상자(모든 층 덩어리를 겹친 범위)로 모서리를 잡아 층 위치·축척을 맞춤
+// 반환: { gw, gh (기준층 px), fits: Map(floor → { corners (그 층 이미지 px), loops (0~1 정규 좌표) }) }, 반 넘는 층에서 못 찾으면 null
+function sheetLayout(floors) {
+  const items = floors.map(floor => { const img = IMG.get(floor.image)?.data; return img && !floor.darkPlan ? { floor, sil:sheetSilhouette(img) } : null; })
+    .filter(it => it?.sil);
+  if (!items.length || items.length < floors.length / 2) return null;
+  const sils = items.map(it => it.sil), ref = sils.reduce((b, s, i) => s.area > sils[b].area ? i : b, 0);
+  const T = items.length > 1 ? alignSheets(sils, ref) : [{ s:1, dx:0, dy:0, iou:1 }];
+  const ok = items.map((it, i) => ({ ...it, t:T[i] })).filter(it => it.t.iou >= .35);   // 너무 안 맞는 층은 기존 방식으로
+  if (!ok.length) return null;
+  const to = (t, [x, y]) => [t.s * x + t.dx, t.s * y + t.dy];
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const it of ok) for (const l of it.sil.loops) for (const p of l) { const [X, Y] = to(it.t, p); x0 = Math.min(x0, X); y0 = Math.min(y0, Y); x1 = Math.max(x1, X); y1 = Math.max(y1, Y); }
+  const gw = x1 - x0, gh = y1 - y0; if (gw < 20 || gh < 20) return null;
+  const fits = new Map(ok.map(({ floor, sil, t }) => {
+    const back = ([X, Y]) => [(X - t.dx) / t.s, (Y - t.dy) / t.s];
+    return [floor, { corners:[[x0, y0], [x1, y0], [x1, y1], [x0, y1]].map(back),
+      loops:sil.loops.map(l => l.map(p => { const [X, Y] = to(t, p); return [(X - x0) / gw, (Y - y0) / gh]; })) }];
+  }));
+  snapSharedEdges([...fits.values()].map(f => f.loops), .012);
+  return { gw, gh, fits };
+}
+// 층끼리(그리고 한 층 안에서) 거의 같은 위치의 수평·수직 벽선을 한 좌표로 모음 → 위아래 층 외벽이 같은 선에 서고 잔 어긋남이 사라짐
+// loopsPerFloor: 층마다 [고리[[u,v]...]] (0~1 정규 좌표), tol: 이 거리 안의 선은 같은 벽 (길이 가중 평균)
+function snapSharedEdges(loopsPerFloor, tol) {
+  const lines = { x:[], y:[] };
+  for (const loops of loopsPerFloor) for (const l of loops) l.forEach((a, i) => { const b = l[(i + 1) % l.length], dx = Math.abs(b[0] - a[0]), dy = Math.abs(b[1] - a[1]);
+    if (dx < 1e-9 && dy > 0) lines.x.push({ v:a[0], w:dy }); else if (dy < 1e-9 && dx > 0) lines.y.push({ v:a[1], w:dx }); });
+  const groups = list => { list.sort((a, b) => a.v - b.v); const out = [];
+    for (const it of list) { const g = out.at(-1); if (g && it.v - g.last <= tol) { g.items.push(it); g.last = it.v; } else out.push({ items:[it], last:it.v }); }
+    return out.map(g => ({ lo:g.items[0].v, hi:g.last, v:g.items.reduce((s, it) => s + it.v * it.w, 0) / g.items.reduce((s, it) => s + it.w, 0) })); };
+  const gx = groups(lines.x), gy = groups(lines.y), to = (gs, v) => gs.find(g => v >= g.lo - 1e-9 && v <= g.hi + 1e-9)?.v ?? v;
+  for (const loops of loopsPerFloor) for (const l of loops) {
+    const n = l.length, old = l.map(p => [...p]);
+    for (let i = 0; i < n; i++) for (const j of [(i - 1 + n) % n, (i + 1) % n]) {   // 이 점에 붙은 수직 변 → x, 수평 변 → y
+      if (Math.abs(old[j][0] - old[i][0]) < 1e-9 && Math.abs(old[j][1] - old[i][1]) > 0) l[i][0] = to(gx, old[i][0]);
+      if (Math.abs(old[j][1] - old[i][1]) < 1e-9 && Math.abs(old[j][0] - old[i][0]) > 0) l[i][1] = to(gy, old[i][1]);
+    }
+    for (let i = l.length - 1; i >= 0 && l.length > 3; i--) { const q = l[(i + 1) % l.length]; if (Math.hypot(q[0] - l[i][0], q[1] - l[i][1]) < 1e-6) l.splice(i, 1); }
+  }
+}
 
 async function runBatch(event) {
   event.preventDefault();
@@ -985,66 +1183,186 @@ async function runBatch(event) {
   const name = $('#batchName').value.trim();
   if (!name) { status.textContent = '건물 이름을 입력하세요.'; return; }
   const exterior = [...batchExterior.files.values()], interior = [...batchInterior.files.values()];
+  const overhead = [...batchOverhead.files.values(), ...exterior.filter(file => isOverheadName(file.name))];
+  const facadePhotos = exterior.filter(file => !isOverheadName(file.name));
+  const roofPlan = $('#batchRoofPlan').files[0];
   const rows = [...$('#batchFloors').children].map(row => {
     const first = +row.querySelector('.batch-first').value;
-    const last = +row.querySelector('.batch-last').value || first;
-    return { first,last,file:row.querySelector('.batch-plan').files[0] };
+    const end = row.querySelector('.batch-last').value;
+    const last = end === '' ? first : Number(end);
+    return { first,last,file:row.querySelector('.batch-plan').files[0],page:Number(row.querySelector('.batch-page').value),open:row.querySelector('.batch-open').checked };
   });
   const next = blank();
   next.building = { ...next.building, name, size:{ w:+$('#batchWidth').value, d:+$('#batchDepth').value },
     floorHeight:+$('#batchHeight').value, ceiling:Math.min(2.8,+$('#batchHeight').value-.25),
     assumed:['업로드 사진에서 자동 추정한 모델. 치수 미입력 시 기본값 48×35 m·층고 3.6 m.',
-      '공간 이름·용도와 공조 위치·용량은 실측 자료로 확인해야 합니다. 참고 사진은 대표 색상에만 사용합니다.'] };
-  next.floors = rows.map(({first,last}) => ({ ...newFloor(first+'F'), ...(last !== first ? {repeatUntil:last} : {}), autoSpaces:true }));
+      '공간 이름·용도와 공조 위치·용량은 실측 자료로 확인해야 합니다. 지붕과 외피의 형태는 도면과 참고 사진을 맞춰 추정합니다.'] };
+  next.autoExterior = true;
+  next.zoning = { enabled:false };
+  next.floors = rows.map(({first,last,open}) => ({ ...newFloor(floorIdOf(first)), ...(last !== first ? {repeatUntil:last} : {}), autoSpaces:!open, ...(open ? {mode:'manual',open:true,green:true} : {}), ...(first < 0 ? {below:true} : {}) }));
   try {
     if (rows.some(row => !row.file)) throw new Error('각 층 또는 층 범위에 평면도를 한 장씩 넣어 주세요.');
+    if (rows.some(({first,last}) => !first || !last || (first < 0 && last > 0))) throw new Error('0층은 없으며 지하층과 지상층은 별도 도면 행으로 지정해 주세요.');
     if (expandFloorGroups(next).recipe.floors.length > 100) throw new Error('한 건물에 최대 100개 층을 구성할 수 있습니다.');
   } catch (e) { status.textContent = e.message; return; }
-  const buttons = [...batch.querySelectorAll('button')];
-  for (const button of buttons) button.disabled = true;
-  batchExterior.input.disabled = batchInterior.input.disabled = true;
+  const controls = [...batch.querySelectorAll('button:not(:disabled), input:not(:disabled)')];
+  for (const control of controls) control.disabled = true;
   const frame = () => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
   const urls = [];
   const missing = [];
   try {
     for (const [i,row] of rows.entries()) {
       const floor = next.floors[i];
+      if (isPdf(row.file)) {
+        status.textContent = floorLabel(floor) + ` PDF ${row.page}페이지를 이미지로 변환 중…`;
+        await frame();
+      }
+      const image = await planImage(row.file,row.page);
       status.textContent = floorLabel(floor) + ' 평면도 분석 중…';
       await frame();
-      const filename = floor.id + '-' + row.file.name, url = URL.createObjectURL(row.file);
+      const filename = floor.id + '-' + image.name, url = URL.createObjectURL(image);
       urls.push({ filename,url });
       await addImage(filename,url);
       floor.image = filename;
       const data = IMG.get(filename).data;
-      const detected = detectPlanCorners(data);
+      floor.darkPlan = P.isDarkPlan(data);
+      const detected = floor.darkPlan ? null : detectPlanCorners(data);
       floor.corners = detected || [[0,0],[data.width-1,0],[data.width-1,data.height-1],[0,data.height-1]];
-      if (!detected) missing.push(floor.id);
+      if (!detected && !floor.darkPlan) missing.push(floor.id);
       if (!validCorners(floor.corners)) throw new Error(floor.id + ' 이미지가 너무 작습니다.');
+    }
+    // 도면 시트(제목·범례·화면 캡처 여백 포함)에서 건물 덩어리를 찾아 층끼리 겹쳐 맞춤 → 모서리·외곽선·가로세로 비율
+    status.textContent = '도면에서 건물 덩어리를 찾아 층을 맞추는 중…';
+    await frame();
+    const sheet = sheetLayout(next.floors);
+    if (sheet) {
+      const typedW = +$('#batchWidth').value, typedD = +$('#batchDepth').value;
+      if (typedW === 48 && typedD === 35) {   // 치수를 안 넣었으면 도면 비율을 따름 (긴 변 48 m)
+        const r = sheet.gh / sheet.gw;
+        next.building.size = r <= 1 ? { w:48, d:Math.max(3, Math.round(48 * r * 10) / 10) } : { w:Math.max(3, Math.round(48 / r * 10) / 10), d:48 };
+        next.building.assumed.push('치수 미입력: 도면 건물 덩어리의 가로세로 비율로 ' + next.building.size.w + '×' + next.building.size.d + ' m 가정.');
+      }
+      for (const [floor, fit] of sheet.fits) {
+        floor.corners = fit.corners; floor.sheetLoops = fit.loops; floor.sheetFit = true;
+        const k = missing.indexOf(floor.id); if (k >= 0) missing.splice(k, 1);
+      }
     }
     status.textContent = '참고 사진에서 색상 추정 중…';
     await frame();
-    const outside = await estimatePhotoTone(exterior,true);
+    const outside = await estimatePhotoTone(facadePhotos,true);
     const inside = await estimatePhotoTone(interior,false);
     if (outside.color) next.exterior.facade = { glassColor:outside.color, glassOpacity:.18 };
     if (inside.color) next.interior = [{ use:'unknown', wall:inside.color }];
     R = next; fi = 0; RECT.clear(); RES.clear();
     status.textContent = '공간을 인식하고 3D 모델 만드는 중…';
     await frame();
+    const { w, d } = R.building.size;
     for (const floor of R.floors) {
+      status.textContent = floorLabel(floor) + ' 건물 윤곽 인식 중…';
+      await frame();
+      const photo = IMG.get(floor.image).data;
+      if (floor.darkPlan) floor.params = { ...floor.params, dark:16, close:2 };
+      const rect = P.rectify(photo, floor.corners, w, d, floor.darkPlan);
+      RECT.set(floor.id, { key:floor.image + JSON.stringify(floor.corners) + w + 'x' + d + (floor.darkPlan ? '-dark' : ''), rect });
+      if (floor.sheetLoops) {   // 도면 시트에서 찾은 덩어리(전체 상자 기준 0~1)를 m로
+        const loops = floor.sheetLoops.map(l => l.map(([u, v]) => [Math.round(u * w * 100) / 100, Math.round(v * d * 100) / 100]));
+        floor.footprint = loops.length === 1 ? loops[0] : loops;
+        delete floor.sheetLoops;
+      } else floor.footprint = inferPlanFootprint(rect, w, d, floor.params, floor.darkPlan) ?? undefined;
+    }
+    const orderedFloors = [...R.floors].sort((a,b)=>floorNumber(a.id)-floorNumber(b.id));
+    for (const floor of orderedFloors) {
+      if (floor.darkPlan && (!floor.footprint || hasDrawingFrame(floor.footprint,w,d))) {
+        const reference = orderedFloors.filter(other => other !== floor && other.below === floor.below && other.footprint && !hasDrawingFrame(other.footprint,w,d))
+          .sort((a,b)=>Math.abs(floorNumber(a.id)-floorNumber(floor.id))-Math.abs(floorNumber(b.id)-floorNumber(floor.id)))[0];
+        const align = reference && registerPlanOutline(RECT.get(floor.id).rect,reference.footprint,w,d,floor.params);
+        if (align) {
+          const frame = [[0,0],[w,0],[w,d],[0,d]], toPhoto = P.homography(frame,floor.corners);
+          floor.corners = frame.map(([x,y])=>toPhoto(...align(x,y)));
+          floor.footprint = structuredClone(reference.footprint);
+        }
+      }
+      status.textContent = floorLabel(floor) + ' 실내 공간 인식 중…';
+      await frame();
+      const photo = IMG.get(floor.image).data;
+      if (floor.darkPlan) floor.params = { ...floor.params, dark:46 };
       let entry = compute(floor);
       if (!entry.out.rooms.some(room => room.type === 'room')) {
-        floor.params = { ...floor.params, dark:30, close:3 };
+        floor.params = { ...floor.params, dark:floor.darkPlan ? 22 : 30, close:3 };
         entry = compute(floor);
+      }
+      // 실제보다 작게 가정한 치수(기본 48 m)면 방이 최소 면적 아래로 떨어짐 → 방이 적으면 작은 방까지 받아 봄
+      const roomCount = e => e.out.rooms.filter(room => room.type === 'room').length;
+      if (floor.sheetFit && roomCount(entry) < 12) for (const extra of [{ minArea:1.2 }, { minArea:1.2, close:2 }, { minArea:.8, close:2, dark:55 }]) {
+        const previous = floor.params;
+        floor.params = { ...previous, ...extra };
+        const e = compute(floor);
+        if (roomCount(e) > roomCount(entry) * 1.3 + 2) entry = e; else floor.params = previous;
+      }
+      delete floor.sheetFit;
+      if (!entry.out.rooms.some(room => room.type === 'room') || !floor.footprint) {
+        const paint = analyzePlanPhoto(photo);
+        const areas = paint?.blocks.map(block => block.area) ?? [];
+        if (paint?.coverage >= .035 && Math.max(...areas) >= .75 * areas.reduce((total, area) => total + area, 0)) {
+          const previous = { mode:floor.mode, params:floor.params };
+          Object.assign(floor, { mode:'fill', cleanPhoto:true, params:{ ...floor.params, fill:CLEAN_FILL } });
+          const painted = compute(floor);
+          if (painted.out.rooms.filter(room => room.type === 'room').length > entry.out.rooms.filter(room => room.type === 'room').length) {
+            entry = painted;
+          } else {
+            Object.assign(floor, previous);
+            delete floor.cleanPhoto;
+          }
+        }
       }
       const found = entry.out.rooms.some(room => room.type === 'room');
       if (!found) floor.note = '닫힌 공간을 인식하지 못해 층 윤곽만 표시합니다.';
       else if (missing.includes(floor.id)) floor.note = '모서리 검출이 불확실해 이미지 전체를 사용했습니다. 공간과 설비는 추정값입니다.';
     }
     await detectFloors(status);
+    const { recipe:expanded, sources } = expandFloorGroups(R);
+    const last = expanded.floors.at(-1), top = last && sources.get(last.id);
+    if (top && !top.below && !top.open && (roofPlan || overhead.length || facadePhotos.length)) {
+      status.textContent = '외관 사진에서 지붕 윤곽을 찾아 도면에 맞추는 중…';
+      await frame();
+      const loops = loopsOf(top, 'footprint');
+      const reference = top.footprint ?? [[0,0],[w,0],[w,d],[0,d]];
+      const { floorHeight } = next.building;
+      if (roofPlan) {
+        const drawing = await readExteriorPhoto(roofPlan);
+        const corners = drawing && [[0,0],[drawing.width-1,0],[drawing.width-1,drawing.height-1],[0,drawing.height-1]];
+        const dark = drawing && P.isDarkPlan(drawing);
+        const outline = drawing && validCorners(corners) && inferPlanFootprint(P.rectify(drawing,corners,w,d,dark),w,d,
+          dark ? { ...top.params,dark:16 } : top.params,dark);
+        if (outline && Array.isArray(outline[0][0]) === Array.isArray(reference[0][0]) &&
+            (!Array.isArray(outline[0][0]) || outline.length === reference.length)) R.autoRoof = { floor:last.id, footprint:outline };
+        else next.building.assumed.push('지붕 평면도에서 최상층에 대응하는 윤곽을 확인하지 못했습니다.');
+      }
+      // A generic rectangular silhouette cannot distinguish a front photo from a roof.
+      const match = overhead.length ? await estimateRoof(overhead, reference, top.footprint ? .65 : .74)
+        : loops.length > 1 || loops[0]?.length >= 7 ? await estimateRoof(facadePhotos, reference, .83) : null;
+      if (match) {
+        R.autoRoof ??= { floor:last.id, footprint:match.footprint };
+        R.exterior.facade = { ...R.exterior.facade, roofColor:match.color };
+      } else if (overhead.length) next.building.assumed.push('스카이뷰 윤곽과 최상층 도면이 충분히 일치하지 않아 지붕의 평면 윤곽은 도면을 사용했습니다.');
+      for (const file of facadePhotos) {
+        const image = await readExteriorPhoto(file);
+        if (!image) continue;
+        const dome = inferFacadeDome(image, R.autoRoof?.footprint ?? reference, floorHeight);
+        if (dome && !R.exterior.facade?.dome) R.exterior.facade = { ...R.exterior.facade, dome };
+        const roofProfile = !dome && inferFoldedRoof(image);
+        if (roofProfile && !R.exterior.facade?.roofProfile) R.exterior.facade = { ...R.exterior.facade, roofProfile };
+        const taper = !dome && !roofProfile && !R.facadeTaper && inferFacadeTaper(image);
+        if (taper) {
+          R.facadeTaper = taper.scale;
+          if (taper.color) R.exterior.facade = { ...R.exterior.facade, glassColor:taper.color };
+        }
+      }
+    }
     if (missing.length) next.building.assumed.push('모서리가 뚜렷하지 않아 이미지 전체를 사용한 평면도: ' + missing.join(', '));
     if (outside.unreadable + inside.unreadable) next.building.assumed.push('참고 사진 중 열 수 없는 파일 ' + (outside.unreadable + inside.unreadable) + '장 제외.');
     computeAll();
-    if (!OUT.json.floors.some(floor => floor.rooms.some(room => room.type === 'room'))) {
+    if (!OUT.json.floors.some(floor => floor.footprint?.length || floor.topFootprint?.length || floor.rooms.some(room => room.type === 'room'))) {
       tool = 'corner';
       planMessage = '닫힌 공간을 자동 인식하지 못했습니다. 모서리나 벽을 보정한 뒤 결과에서 렌더링하세요.';
       showQuick(false);
@@ -1055,8 +1373,7 @@ async function runBatch(event) {
     if (R !== next) for (const {filename,url} of urls) { IMG.delete(filename); URL.revokeObjectURL(url); }
     status.textContent = '모델을 만들지 못했습니다. ' + e.message;
   } finally {
-    for (const button of buttons) button.disabled = false;
-    batchExterior.input.disabled = batchInterior.input.disabled = false;
+    for (const control of controls) control.disabled = false;
   }
 }
 

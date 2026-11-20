@@ -5,6 +5,8 @@
    같은 이미지 + 같은 레시피 → 항상 같은 결과 (난수 없음, 순서 고정)
    ═══════════════════════════════════════════════════════════════════════════ */
 
+import { traceFloorRegions } from './site-roof.js';
+
 export const RES = 20;            // 보정된 도면 해상도 (px / m)
 export const MARGIN = 6;          // 건물 바깥 여유 (m) — 외부 계단 등
 const r2 = v => Math.round(v * 20) / 20;           // 0.05 m 단위
@@ -12,6 +14,8 @@ const r1 = v => Math.round(v * 10) / 10;
 
 /* ── 1. 원근 보정: 사진 속 건물 외곽 4점 → 실제 좌표(m) ─────────────────── */
 // 8개 미지수 연립방정식으로 dst(m) → src(px) 호모그래피를 구한다
+// 층 윤곽 면적(m²): 고리 하나 또는 여러 개
+const footArea = fp => (Array.isArray(fp[0][0]) ? fp : [fp]).reduce((t, l) => t + Math.abs(l.reduce((s, [x, y], i) => { const [u, v] = l[(i + 1) % l.length]; return s + x * v - y * u; }, 0)) / 2, 0);
 export function homography(dst, src){
   const A = [], b = [];
   for (let i = 0; i < 4; i++) {
@@ -30,18 +34,40 @@ export function homography(dst, src){
 }
 
 // corners: 사진 픽셀 좌표 [북서, 북동, 남동, 남서] (건물 좌표 (0,0) (W,0) (W,D) (0,D))
+export function isDarkPlan({ width, height, data }) {
+  let background = 0, marks = 0;
+  for (let row = 0; row < 32; row++) for (let col = 0; col < 32; col++) {
+    const p = 4 * (Math.floor((row + .5) * height / 32) * width + Math.floor((col + .5) * width / 32));
+    const mean = (data[p] + data[p+1] + data[p+2]) / 3;
+    if (data[p+3] < 240) continue;
+    if (mean < 82 && Math.max(data[p],data[p+1],data[p+2]) - Math.min(data[p],data[p+1],data[p+2]) < 28) background++;
+    if (mean > 130) marks++;
+  }
+  return background > 690 && marks >= 3;
+}
+
 // res: 출력 해상도(px/m). 화면·벽 검출은 RES, 실내기 기호 인식은 host-bridge.js detectRes 값
-export function rectify(img, corners, W, D, res = RES){
+// invert: 검은 바탕 도면(흰 선)을 흰 바탕으로 뒤집음. 예전 호출처럼 다섯째 인자로 true/false만 넘겨도 됨
+export function rectify(img, corners, W, D, res = RES, invert = false){
+  if (typeof res !== 'number') { invert = !!res; res = RES; }
   const map = homography([[0, 0], [W, 0], [W, D], [0, D]], corners);
   const w = Math.round((W + 2 * MARGIN) * res), h = Math.round((D + 2 * MARGIN) * res);
   const out = new Uint8ClampedArray(w * h * 4), { width:iw, height:ih, data } = img;
+  const black = invert ? [0,1,2].map(c => {
+    const samples = [];
+    for (let row = 0; row < 24; row++) for (let col = 0; col < 24; col++) {
+      samples.push(data[4 * (Math.floor((row+.5)*ih/24)*iw + Math.floor((col+.5)*iw/24)) + c]);
+    }
+    return Math.min(100, samples.sort((a,b)=>a-b)[samples.length >> 1] + 4);
+  }) : null;
   for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
     const [u, v] = map((i + .5) / res - MARGIN, (j + .5) / res - MARGIN), o = (j * w + i) * 4;
     if (u < 0 || v < 0 || u > iw - 1 || v > ih - 1) { out[o] = out[o + 1] = out[o + 2] = 255; out[o + 3] = 255; continue; }
     const x0 = Math.floor(u), y0 = Math.floor(v), fx = u - x0, fy = v - y0, x1 = Math.min(x0 + 1, iw - 1), y1 = Math.min(y0 + 1, ih - 1);
     for (let c = 0; c < 3; c++) {
       const a = data[(y0 * iw + x0) * 4 + c], bb = data[(y0 * iw + x1) * 4 + c], cc = data[(y1 * iw + x0) * 4 + c], d = data[(y1 * iw + x1) * 4 + c];
-      out[o + c] = (a * (1 - fx) + bb * fx) * (1 - fy) + (cc * (1 - fx) + d * fx) * fy;
+      const value = (a * (1 - fx) + bb * fx) * (1 - fy) + (cc * (1 - fx) + d * fx) * fy;
+      out[o + c] = black ? 255 - Math.max(0,value-black[c]) * 255 / (255-black[c]) : value;
     }
     out[o + 3] = 255;
   }
@@ -52,7 +78,7 @@ const toPx = (x, y) => [Math.round((x + MARGIN) * RES), Math.round((y + MARGIN) 
 export const toM = (i, j) => [(i + .5) / RES - MARGIN, (j + .5) / RES - MARGIN];
 
 /* ── 2. 벽 검출: 주변보다 어둡고 채도가 낮은 선 (빨간 화살표·초록 비상구·소화기 아이콘은 제외) ── */
-export function wallMask(rect, W, D, { dark = 40, sat = 70, close = 1 } = {}, wallOps = []){
+export function wallMask(rect, W, D, { dark = 40, sat = 70, close = 1 } = {}, wallOps = [], footprint = null){
   const { width:w, height:h, data } = rect, n = w * h;
   const L = new Float32Array(n), S = new Uint8Array(n);
   for (let p = 0; p < n; p++) {
@@ -71,7 +97,10 @@ export function wallMask(rect, W, D, { dark = 40, sat = 70, close = 1 } = {}, wa
   const line = (x0, y0, x1, y1, t = 1) => { const [a, b] = toPx(x0, y0), [c, d] = toPx(x1, y1), steps = Math.max(Math.abs(c - a), Math.abs(d - b), 1);
     for (let s = 0; s <= steps; s++) { const x = Math.round(a + (c - a) * s / steps), y = Math.round(b + (d - b) * s / steps);
       for (let dy = -t; dy <= t; dy++) for (let dx = -t; dx <= t; dx++) { const xx = x + dx, yy = y + dy; if (xx >= 0 && yy >= 0 && xx < w && yy < h) m[yy * w + xx] = 1; } } };
-  line(0, 0, W, 0); line(W, 0, W, D); line(W, D, 0, D); line(0, D, 0, 0);
+  if (footprint !== false) {
+    const loops = footprint ? (Array.isArray(footprint[0][0]) ? footprint : [footprint]) : [[[0, 0], [W, 0], [W, D], [0, D]]];
+    for (const loop of loops) loop.forEach(([x, y], i) => line(x, y, ...loop[(i + 1) % loop.length]));
+  }
   for (const o of wallOps) line(o.x0, o.y0, o.x1, o.y1);     // 사람이 그은 보정 벽
   return m;
 }
@@ -105,9 +134,10 @@ export function fillClasses(rect, W, D, { fill = '#8389b0', strength = .5 } = {}
 // 건물 윤곽(다각형, m) 밖 = 1 인 배열. 윤곽이 없으면 W×D 사각형
 export function outsideMask(W, D, footprint){
   const w = Math.round((W + 2 * MARGIN) * RES), h = Math.round((D + 2 * MARGIN) * RES), m = new Uint8Array(w * h);
-  const poly = footprint?.length >= 3 ? footprint : [[0, 0], [W, 0], [W, D], [0, D]];
+  // 윤곽 여러 개(떨어진 동)면 모두의 경계 교차를 모아 짝홀 규칙으로 — 겹치지 않는 고리들의 합집합
+  const polys = !footprint?.length ? [[[0, 0], [W, 0], [W, D], [0, D]]] : Array.isArray(footprint[0]?.[0]) ? footprint.filter(l => l?.length >= 3) : [footprint];
   for (let j = 0; j < h; j++) { const y = (j + .5) / RES - MARGIN, xs = [];
-    for (let i = 0, k = poly.length - 1; i < poly.length; k = i++) { const [x0, y0] = poly[k], [x1, y1] = poly[i]; if ((y0 > y) !== (y1 > y)) xs.push(x0 + (y - y0) * (x1 - x0) / (y1 - y0)); }
+    for (const poly of polys) for (let i = 0, k = poly.length - 1; i < poly.length; k = i++) { const [x0, y0] = poly[k], [x1, y1] = poly[i]; if ((y0 > y) !== (y1 > y)) xs.push(x0 + (y - y0) * (x1 - x0) / (y1 - y0)); }
     xs.sort((a, b) => a - b);
     for (let i = 0; i < w; i++) { const x = (i + .5) / RES - MARGIN; let inside = false; for (const v of xs) if (v < x) inside = !inside; m[j * w + i] = inside ? 0 : 1; } }
   return m;
@@ -153,9 +183,14 @@ export function resolveFloor(floor, rect, W, D){
   let lab, count, mask = null, warn = [], cls = null;
   const ops = floor.ops || [];
   if (floor.mode === 'auto' && rect) {
-    const m = wallMask(rect, W, D, floor.params, ops.filter(o => o.op === 'wall'));
+    const footprint = floor.autoSpaces && floor.footprint?.length ? floor.footprint : null;
+    const m = wallMask(rect, W, D, floor.params, ops.filter(o => o.op === 'wall'), footprint);
     eraseWalls(m, w, h, ops.filter(o => o.op === 'gap'));
     ({ lab, count } = segment(m, w, h, floor.params)); mask = m;
+    if (footprint) {
+      const outside = outsideMask(W, D, footprint);
+      for (let p = 0; p < lab.length; p++) if (outside[p]) lab[p] = -1;
+    }
   } else if (floor.mode === 'fill' && rect) {
     cls = fillClasses(rect, W, D, floor.params, outsideMask(W, D, floor.footprint));
     for (const o of ops.filter(o => o.op === 'wall')) {               // 보정 벽: 클래스 0
@@ -313,6 +348,24 @@ function mergeRects(list){
       else if (p.y0 === q.y0 && p.y1 === q.y1 && Math.abs(p.x1 - q.x0) < .45) { p.x1 = q.x1; a.splice(j, 1); changed = true; } } }
   return a;
 }
+function traceRoomRegion(lab,w,h,find,id,bb){
+  const step=3, x0=Math.floor(bb.x0/step)*step, y0=Math.floor(bb.y0/step)*step;
+  const width=Math.ceil((bb.x1+1-x0)/step),height=Math.ceil((bb.y1+1-y0)/step);
+  const cells=new Uint8Array(width*height);
+  for(let y=0;y<height;y++)for(let x=0;x<width;x++){
+    const xx=Math.min(w-1,x0+x*step+1), yy=Math.min(h-1,y0+y*step+1), value=lab[yy*w+xx];
+    if(value>=0&&find(value)===id)cells[y*width+x]=1;
+  }
+  const rings=traceFloorRegions(cells,width,height)
+    .map(loop=>loop.map(([x,y])=>[(x0+x*step)/RES-MARGIN,(y0+y*step)/RES-MARGIN]))
+    .filter(loop=>areaOf(loop)>=1.5);
+  const holes=rings.filter(loop=>areaSign(loop)<0);
+  return rings.filter(loop=>areaSign(loop)>0).map(loop=>{
+    const inner=holes.filter(hole=>inPoly(...hole[0],loop));
+    if(inner.length)loop.holes=inner;
+    return loop;
+  });
+}
 const TYPE_NAME = { corridor:'복도', wc:'화장실', core:'계단실', store:'설비실' };
 export const USE_NAME = { lecture:'강의실', lab:'실습실', office:'연구실', meeting:'세미나실', admin:'행정실', lounge:'라운지',
   retail:'상점', restaurant:'식당', waiting:'대합실' };
@@ -327,8 +380,11 @@ export function floorRooms(floor, res, W, D){
     const [cx, cy] = toM((bb.x0 + bb.x1) / 2, (bb.y0 + bb.y1) / 2), area = bb.n / RES / RES, a = attrs.get(k);
     const inside = cx > 0 && cx < W && cy > 0 && cy < D;
     if (!a && (!inside || bb.x0 === 0 || bb.y0 === 0 || bb.x1 === w - 1 || bb.y1 === h - 1)) continue;   // 건물 밖(라벨 없음)은 버림
-    const inferred = !a && floor.autoSpaces && area <= W * D * .92;
-    regs.push({ k, bb, area, a:a || (inferred ? { type:'room', name:'자동 공간', use:'unknown' } : { type:'store', name:'미지정' }), unlabeled:!a && !inferred, inferred, rects:rectsOf(lab, w, h, find, k, bb, floor.mode === 'fill') });
+    const inferred = !a && floor.autoSpaces && (floor.footprint?.length || area <= W * D * .92);
+    const polygons = (floor.darkPlan || floor.shellFootprint) && inferred ? traceRoomRegion(lab,w,h,find,k,bb) : null;
+    // 자동 공간이 층 윤곽의 35% 넘게 차지하면 벽을 못 나눈 복도·홀로 봄 (흰 덩어리 방 블록 대신 바닥만)
+    const fpArea = floor.footprint?.length ? footArea(floor.footprint) : W * D, hall = inferred && area > fpArea * .35;
+    regs.push({ k, bb, area, a:a || (hall ? { type:'corridor', name:'복도·홀' } : inferred ? { type:'room', name:'자동 공간', use:'unknown' } : { type:'store', name:'미지정' }), unlabeled:!a && !inferred, inferred, polygons, rects:polygons ? [] : rectsOf(lab, w, h, find, k, bb, floor.mode === 'fill') });
   }
   // 층 전체에서 x·y 좌표를 묶어 인접한 방의 경계를 일치시킴 (외곽 0·W·D에는 붙임)
   const all = regs.flatMap(r => r.rects);
@@ -339,7 +395,7 @@ export function floorRooms(floor, res, W, D){
   let xi = 0;
   for (const R of regs) {
     const rects = mergeRects(R.rects.filter(r => r.x1 - r.x0 > (fill ? .1 : .2) && r.y1 - r.y0 > (fill ? .1 : .2)));
-    if (!rects.length) continue;
+    if (!rects.length && !R.polygons?.length) continue;
     const a = R.a;
     if (a.type === 'atrium' || a.type === 'elevator') {
       const b = { x0:Math.min(...rects.map(r => r.x0)), y0:Math.min(...rects.map(r => r.y0)), x1:Math.max(...rects.map(r => r.x1)), y1:Math.max(...rects.map(r => r.y1)) };
@@ -347,9 +403,9 @@ export function floorRooms(floor, res, W, D){
     }
     if (R.unlabeled) warn.push(`라벨 없는 공간 ${r1(R.area)}㎡ @ (${r1(toM(R.bb.x0, R.bb.y0)[0])}, ${r1(toM(R.bb.x0, R.bb.y0)[1])}) → 설비실로 둠`);
     const type = a.type || 'room';
-    const pieces = type === 'room' ? [outline(rects)] : rects.map(r => [[r.x0, r.y0], [r.x1, r.y0], [r.x1, r.y1], [r.x0, r.y1]]);
+    const pieces = R.polygons ?? (type === 'room' ? [outline(rects)] : rects.map(r => [[r.x0, r.y0], [r.x1, r.y0], [r.x1, r.y1], [r.x0, r.y1]]));
     pieces.forEach((poly, pi) => {
-      if (poly.length < 4) return;
+      if (poly.length < (R.polygons ? 3 : 4)) return;
       const id = type === 'room' && a.number ? `${floor.id}-${a.number}` : `${floor.id}-x${String(++xi).padStart(2, '0')}`;
       const room = { id: pieces.length > 1 && type === 'room' ? `${id}-${pi + 1}` : id,
         name: type === 'room' ? `${a.number || ''} ${a.name || USE_NAME[a.use] || '실'}`.trim() : (a.name || TYPE_NAME[type] || type), type, polygon:poly };
@@ -504,16 +560,16 @@ export function splitZones(floors, idus, W, D, opt = {}){
   const Z = { ...ZONING, ...opt }, info = [];
   if (Z.enabled === false) return info;
   for (const f of floors) {
-    const foot = f.footprint?.length >= 3 ? f.footprint : [[0, 0], [W, 0], [W, D], [0, D]];
-    const edges = foot.map((p, i) => [p, foot[(i + 1) % foot.length]]);
-    const near = ([x, y]) => { let best = { d:1e9 }; for (const [a, b] of edges) { const dx = b[0] - a[0], dy = b[1] - a[1], L = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / L));
-      const d = Math.hypot(x - a[0] - t * dx, y - a[1] - t * dy); if (d < best.d) best = { d, nx:dy, ny:-dx }; } return best; };
+    const feet = !f.footprint?.length ? [[[0, 0], [W, 0], [W, D], [0, D]]] : Array.isArray(f.footprint[0]?.[0]) ? f.footprint : [f.footprint];
+    const edges = feet.flatMap(foot => { const sg = areaSign(foot); return foot.map((p, i) => [p, foot[(i + 1) % foot.length], sg]); });
+    const near = ([x, y]) => { let best = { d:1e9 }; for (const [a, b, sg] of edges) { const dx = b[0] - a[0], dy = b[1] - a[1], L = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / L));
+      const d = Math.hypot(x - a[0] - t * dx, y - a[1] - t * dy); if (d < best.d) best = { d, nx:dy * sg, ny:-dx * sg }; } return best; };
     const out = [];
     for (const r of f.rooms) {
       const mine = idus.filter(a => a.room === r.id);
       if (r.type !== 'room' || mine.length <= Z.maxIdus) { out.push(r); continue; }
       // 2·3) 계통 · 외주부(방향) · 내주부 묶음
-      const side = (nx, ny) => { const sg = areaSign(foot); const ox = nx * sg, oy = ny * sg;     // 바깥 방향
+      const side = (ox, oy) => {     // 바깥 방향 (윤곽마다 돌림 방향을 반영한 법선)
         return Math.abs(ox) > Math.abs(oy) ? (ox > 0 ? '우측' : '좌측') : (oy > 0 ? '아래쪽' : '위쪽'); };
       const clsOf = pt => { const n = near(pt); return n.d < Z.perimeter ? `외주부 ${side(n.nx, n.ny)}` : '내주부'; };
       const buckets = new Map();
@@ -754,7 +810,10 @@ function warpPoly(Wp, poly, step = 2, tol = .03){
 }
 export function applyWarp(Wp, floors, idus, extra){
   for (const f of floors) {
-    if (f.footprint?.length) f.footprint = warpPoly(Wp, f.footprint);
+    for (const key of ['footprint', 'shellFootprint', 'topFootprint']) {
+      const footprint = f[key];
+      if (footprint?.length) f[key] = Array.isArray(footprint[0][0]) ? footprint.map(loop => warpPoly(Wp, loop)) : warpPoly(Wp, footprint);
+    }
     for (const r of f.rooms) { r.polygon = warpPoly(Wp, r.polygon); if (r.holes) r.holes = r.holes.map(h => warpPoly(Wp, h)); }
   }
   for (const a of idus) { const q = warpPoint(Wp, a.pos); a.pos = [r2(q[0]), r2(q[1])]; }
@@ -793,6 +852,7 @@ export function assemble(recipe, floorResults){
     for (const k in metas) if (fr.meta[k]) metas[k].push(fr.meta[k]);
     const out = { id:f.id, level:i + 1, atrium:!!fr.meta.atrium, rooms:fr.rooms };
     if (f.footprint) out.footprint = f.footprint;
+    for (const k of ['shellFootprint', 'topFootprint', 'open', 'green', 'below']) if (f[k] != null) out[k] = f[k];
     if (f.note) out.note = f.note;
     else if (f.autoSpaces) out.note = fr.rooms.some(room => room.type === 'room')
       ? '사진에서 자동으로 추정한 공간입니다. 호실·설비 정보는 확인이 필요합니다.'
@@ -838,7 +898,7 @@ export function assemble(recipe, floorResults){
   const planFloors = JSON.parse(JSON.stringify(floors));      // 보정 전(레시피 좌표) — 모델 입력·사람 수정은 이 좌표를 쓴다
   if (recipe.site?.image) {                                 // 스카이뷰: 방위·모양 검증 + 모양 보정 (화면에 사진은 깔지 않음)
     // 위에서 본 건물 윤곽 = 층 윤곽의 합집합 (층 윤곽이 없으면 건물 외곽 사각형)
-    const fps = floors.map(f => f.footprint?.length ? f.footprint : [[0, 0], [W, 0], [W, D], [0, D]]);
+    const fps = floors.flatMap(f => !f.footprint?.length ? [[[0, 0], [W, 0], [W, D], [0, D]]] : Array.isArray(f.footprint[0]?.[0]) ? f.footprint : [f.footprint]);   // 떨어진 동은 고리마다
     const at = atrium && floors.some(f => f.atrium) ? [[[atrium.x0, atrium.y0], [atrium.x1, atrium.y0], [atrium.x1, atrium.y1], [atrium.x0, atrium.y1]]] : [];
     site = siteFit(recipe.site, W, D, fps, at);
     if (!site) warn.push('스카이뷰 기준점이 2개 미만 — 방위를 정할 수 없음');

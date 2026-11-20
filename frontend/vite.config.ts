@@ -9,10 +9,16 @@ import { defineConfig, type Plugin } from 'vite'
 //   鍮뚮뱶: dist/twin/ ?쇰줈 蹂듭궗 (EnergyPlus 寃곌낵 sim/ ? ?쒖쇅)
 //   ?댁쟾 ?쒕??덉씠??怨꾩궛(/api/sim)? npm run twin:sim ?쇰줈 ?꾩슫 怨꾩궛 ?쒕쾭(8766)濡??섍?
 const TWIN_DIR = path.resolve(import.meta.dirname, 'twin')
+const PDFJS_DIR = path.resolve(import.meta.dirname, 'node_modules', 'pdfjs-dist')
+const PDFJS_ASSETS = [
+  'build/pdf.min.mjs', 'build/pdf.worker.min.mjs', 'build/pdf.renderer.min.mjs',
+  'cmaps', 'iccs', 'standard_fonts', 'wasm', 'LICENSE',
+]
 const TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8',
   '.json': 'application/json; charset=utf-8', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.svg': 'image/svg+xml',
   '.css': 'text/css; charset=utf-8', '.md': 'text/plain; charset=utf-8',
+  '.wasm': 'application/wasm',
 }
 function experiment(): Plugin {
   let running = false
@@ -64,15 +70,24 @@ function twin(): Plugin {
         let p = decodeURIComponent((req.url || '/').split('?')[0])
         if (p.endsWith('/')) p += 'digital-twin.html'
         const f = path.resolve(TWIN_DIR, '.' + p)
-        if (!f.startsWith(TWIN_DIR) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) return next()
-        res.setHeader('Content-Type', TYPES[path.extname(f).toLowerCase()] || 'application/octet-stream')
+        const pdfAsset = p.startsWith('/pdfjs/') ? path.relative(PDFJS_DIR, path.resolve(PDFJS_DIR, '.' + p.slice('/pdfjs'.length))).split(path.sep).join('/') : null
+        const asset = pdfAsset === null ? f
+          : PDFJS_ASSETS.some(name => pdfAsset === name || pdfAsset.startsWith(name + '/')) ? path.resolve(PDFJS_DIR, pdfAsset) : null
+        if (!asset || (pdfAsset === null && !asset.startsWith(TWIN_DIR + path.sep)) || !fs.existsSync(asset) || fs.statSync(asset).isDirectory()) return next()
+        res.setHeader('Content-Type', TYPES[path.extname(asset).toLowerCase()] || 'application/octet-stream')
         res.setHeader('Cache-Control', 'no-store')
-        fs.createReadStream(f).pipe(res)
+        fs.createReadStream(asset).pipe(res)
       })
     },
     closeBundle() {
       const out = path.resolve(import.meta.dirname, 'dist', 'twin')
-      if (fs.existsSync(path.resolve(import.meta.dirname, 'dist'))) fs.cpSync(TWIN_DIR, out, { recursive: true, filter: (s) => !s.includes(`${path.sep}sim${path.sep}`) && !s.endsWith(`${path.sep}sim`) })
+      if (!fs.existsSync(path.resolve(import.meta.dirname, 'dist'))) return
+      fs.cpSync(TWIN_DIR, out, { recursive: true, filter: (s) => !s.includes(`${path.sep}sim${path.sep}`) && !s.endsWith(`${path.sep}sim`) })
+      for (const name of PDFJS_ASSETS) {
+        const target = path.join(out, 'pdfjs', name)
+        fs.mkdirSync(path.dirname(target), { recursive: true })
+        fs.cpSync(path.join(PDFJS_DIR, name), target, { recursive: true })
+      }
     },
   }
 }

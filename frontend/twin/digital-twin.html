@@ -123,6 +123,14 @@
   #live small{font-size:14px}
   #live.stale .dot{background:var(--muted)}
   #live.stale b{color:var(--muted)}
+  /* 화면 도구: 돋보기(확대·축소) · 전체화면 */
+  #viewTools button{padding:0;width:44px}
+  #viewTools svg{width:18px;height:18px}
+  #plan{transform-origin:50% 50%;transition:transform .22s ease-out}
+  #planWrap.zoomed{cursor:grab}
+  #planWrap.panning{cursor:grabbing}
+  #planWrap.panning #plan{transition:none}
+  @media (prefers-reduced-motion: reduce){ #plan{transition:none} }
 
   /* 핵심 수치 카드(건물): 앱 .kpi 구성(라벨, 값, 단위), 3D 위 겹침이라 값은 21px */
   #kpis{position:absolute;left:16px;top:76px;display:flex;flex-direction:column;gap:8px;z-index:4}
@@ -146,6 +154,17 @@
   .ftag .al{margin-left:6px}
   .ftag .al svg.i{width:16px;height:16px}
   .ftag:hover .bd,.ftag.hot .bd{border-color:var(--ink)}
+  /* 전력 지표: 가장 많이 쓰는 층 라벨 아래에 그 층 상위 호실 막대 차트 (사용량이 많은 구간을 3D 위에서 바로 보이게) */
+  .ftag .col{display:flex;flex-direction:column;align-items:flex-start;gap:6px}
+  .ftag .ch{display:none;padding:8px 12px;border-radius:var(--r-sm);min-width:200px}
+  .ftag.peak .ch{display:block}
+  .ftag .ch h6{margin:0 0 4px;font-size:14px;font-weight:600;color:var(--muted)}
+  .ftag .ch button{all:unset;display:grid;grid-template-columns:72px 1fr 52px;align-items:center;gap:8px;width:100%;font-size:14px;line-height:1.7;cursor:pointer;border-radius:var(--r-sm)}
+  .ftag .ch button:hover{background:var(--surface-soft)}
+  .ftag .ch .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+  .ftag .ch .br{height:8px;border-radius:var(--r-full);background:var(--ink)}
+  .ftag .ch .kw{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+  .ftag .ch .em{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--caution);margin-left:4px;vertical-align:2px}
   body:not(.v-building) #floorTags{display:none}
   #introTitle{position:absolute;left:50%;bottom:11%;transform:translateX(-50%);z-index:5;text-align:center;pointer-events:none;opacity:0;transition:opacity 1.2s, transform 1.2s}
   #introTitle.on{opacity:1;transform:translateX(-50%) translateY(-6px)}
@@ -179,6 +198,17 @@
   #floorView.pre.in{opacity:1}
   #floorView.pre:not(.in):not(.leaving) #plan .tint, #floorView.pre:not(.in):not(.leaving) #plan .chip, #floorView.pre:not(.in):not(.leaving) #plan .idu{animation:none;opacity:0}
   #floorView.leaving #plan *{animation:none !important}
+  /* 층 보기 2D(평면도) ↔ 3D(같은 층을 기울여 본 모델) 전환: 오른쪽 위 */
+  #planMode{position:absolute;top:12px;right:12px;z-index:6;display:flex;padding:3px;gap:2px;border-radius:999px}
+  #planMode button{min-width:44px;height:32px;padding:0 12px;border-radius:999px;font-weight:600}
+  #planMode button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+  body.plan3d #floorView{pointer-events:none}
+  body.plan3d #floorView #planMode, body.plan3d #floorView #floorTabs, body.plan3d #floorView #floorStats{pointer-events:auto}
+  /* 전환은 겹쳐 녹듯이: 평면도가 같은 각도의 3D 위에서 서서히 사라지고(또는 떠오르고) 카메라가 기울어짐 */
+  #planWrap{transition:opacity .55s ease}
+  #planBox{transition:background-color .55s ease, box-shadow .55s ease, backdrop-filter .55s ease, -webkit-backdrop-filter .55s ease}
+  body.plan3d #planWrap{opacity:0}
+  body.plan3d #planBox{background:transparent;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none}
   #planBox{flex:1;min-width:0;position:relative;border-radius:var(--r-md);overflow:hidden;display:flex;flex-direction:column}
   #planWrap{flex:1;min-height:0;margin:0 12px;border-radius:var(--r-sm);background:var(--paper);box-shadow:inset 0 0 0 1px var(--hairline);overflow:hidden;position:relative}
   #plan{width:100%;height:100%;display:block}
@@ -344,10 +374,18 @@
   body.hosted #persona button[data-p="sim"]{display:none}
   /* 앱 임베드(2026-11-20): 트윈은 3D 렌더링과 호실 선택만 담당. 버튼, 칩, 패널은 앱 카드가 대신하고 ui 메시지로 제어.
      범례는 앱 카드에 있으므로 숨김(시뮬레이션 역할도 같은 온도 척도) */
-  body.hosted #bar, body.hosted #hostLink, body.hosted #kpis, body.hosted #actions, body.hosted #floorPicker, body.hosted #floorTags,
+  body.hosted #bar, body.hosted #hostLink, body.hosted #kpis, body.hosted #floorPicker, body.hosted #floorTags,
   body.hosted #floorTabs, body.hosted #roomBack, body.hosted #infoBtn, body.hosted #roomTools, body.hosted #roomTitle,
-  body.hosted #inspector, body.hosted #legend, body.hosted #flow{display:none !important}  /* 데이터 흐름은 앱 모달(보고의 flow)로 표시 */
+  body.hosted #inspector, body.hosted #legend, body.hosted #flow, body.hosted #actions .list, body.hosted #actions .ft{display:none !important}  /* 데이터 흐름은 앱 모달(보고의 flow)로 표시 */
   body.hosted #floorView{padding:8px !important}
+  /* 앱 임베드 역할 요약(2026-11-20): 건물 보기 오른쪽 위 플로팅 카드(요약만). 층·호실 보기와 좁은 화면(480px 이하)은 숨김(앱 상단 지표에 같은 값) */
+  body.hosted #actions{display:flex !important;top:12px;right:12px;bottom:auto;width:min(300px,calc(100% - 24px));max-height:none;overflow:visible}
+  body.hosted.v-floor #actions, body.hosted.v-room #actions, body.hosted.diving #actions{display:none !important}
+  body.hosted #actions .hd{cursor:default;padding-right:16px}
+  body.hosted #actions .hd::after{display:none}
+  body.hosted #actions .hero{margin:12px}
+  @media (max-width:480px){ body.hosted #actions{display:none !important} }
+  #tip .act-d{margin:2px 0 4px 22px;color:var(--body);font-size:14px}
   /* 앱 안 층 평면도(2026-11-20): 층 지표 카드를 평면도 위에 띄우고 평면도는 카드 전체 높이 사용
      - 지표 5칸은 아래 한 줄, 안내 문구(사진 추정 공간 등)는 왼쪽 위. 평면도는 그 높이만큼만 비켜 겹치지 않음 */
   body.hosted #planWrap{margin:0;padding:8px 8px 72px}
@@ -361,7 +399,12 @@
   @media (max-width:640px){ body.hosted #floorStats{flex-wrap:wrap;align-content:flex-end} body.hosted #floorStats div{min-width:0} body.hosted #planWrap{padding-bottom:132px} }
   @media (min-width:761px){ #floorView{padding-right:372px} }
   @media (max-width:760px){ #actions{display:none} #persona button span{display:none} }
-  #actions .hd{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 16px;border-bottom:1px solid var(--hairline)}
+  #actions .hd{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 40px 12px 16px;border-bottom:1px solid var(--hairline);position:relative;cursor:pointer}
+  /* 머리를 누르면 접기·펴기 (화면이 좁으면 처음엔 접힘 → 3D 층 라벨·전력 차트가 가려지지 않게) */
+  #actions .hd::after{content:"";position:absolute;right:16px;top:50%;margin-top:-6px;width:7px;height:7px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg);transition:transform .2s}
+  body.act-min #actions .hd::after{transform:rotate(-135deg);margin-top:-2px}
+  body.act-min #actions .hd{border-bottom:0}
+  body.act-min #actions > :not(.hd){display:none}
   #actions .hd b{font-size:17px;font-weight:700;line-height:1.3}
   .tag{display:inline-block;flex:none;padding:2px 8px;border-radius:var(--r-full);background:var(--surface-strong);font-size:14px;font-weight:600;color:var(--muted);white-space:nowrap}
   #actions .simf{padding:12px 16px 4px;display:grid;gap:8px;font-size:14px;color:var(--muted)}
@@ -485,10 +528,16 @@
         <button data-m="temp" role="tab">온도</button>
         <button data-m="hum" role="tab">습도</button>
         <button data-m="power" role="tab">전력</button>
+        <button data-m="comfort" role="tab">쾌적도</button>
         <button data-m="alert" role="tab">상태</button>
       </div>
       <button id="dataBtn" class="tgl" aria-pressed="false" title="이 화면을 그리는 데이터">
         <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></svg>데이터</button>
+      <div id="viewTools" class="seg glass" role="group" aria-label="화면 도구">
+        <button id="zoomIn" type="button" title="확대 (돋보기)" aria-label="확대"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21M10.5 7.5v6M7.5 10.5h6"/></svg></button>
+        <button id="zoomOut" type="button" title="축소" aria-label="축소"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21M7.5 10.5h6"/></svg></button>
+        <button id="fsBtn" type="button" title="전체화면" aria-label="전체화면" aria-pressed="false"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+      </div>
       <div id="live" class="glass"><span class="dot"></span><b id="clock" class="num">--:--</b><small id="speedLbl"></small><small id="wx"></small></div>
     </header>
     <div id="floorTags"></div>
@@ -500,6 +549,7 @@
     <section id="dataPanel" class="glass" aria-hidden="true"></section>
     <section id="floorView">
       <div id="planBox" class="glass">
+        <div id="planMode" class="seg glass" role="group" aria-label="층 보기 방식"><button type="button" data-pm="2d" aria-pressed="true" title="평면도">2D</button><button type="button" data-pm="3d" aria-pressed="false" title="기울인 3D">3D</button></div>
         <div id="floorTabs"></div>
         <div id="planWrap"><svg id="plan" preserveAspectRatio="xMidYMid meet"></svg></div>
         <div id="floorStats"></div>
@@ -542,6 +592,7 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { wallSpans } from './pipeline/wall-spans.js';
+import { foldedRoofGeometry } from './pipeline/folded-roof.js';
 
 /* ═════════════════════════ config ═════════════════════════ */
 const params = new URLSearchParams(location.search);
@@ -588,10 +639,11 @@ async function loadTwinData(){
   const pre = window.TWIN_DATA || {};
   if (HOST_PLAN) { const b = await hostBuilding(BUILDING_ID); if (b) { DATA.building = b; DATA_FROM.building = '대시보드 (저장된 평면도)'; } }
   // 추가한 건물엔 그 건물 시간표·시뮬레이션이 없음 → 공용(기상·요금)만 읽음
-  const kinds = ADDED ? ['weather', 'tariff'] : ['building', 'maintenance', 'schedule', 'weather', 'tariff', 'simulation', 'scenario'];
+  // rc5-calibration = 5R1C ↔ EnergyPlus 보정 계수 (tools/calibrate-5r1c.mjs) — 도면을 고친 건물엔 맞지 않으니 읽지 않음
+  const kinds = ADDED ? ['weather', 'tariff'] : ['building', 'maintenance', 'schedule', 'weather', 'tariff', 'simulation', 'scenario', 'rc5-calibration'];
   // 파일마다 순서대로 기다리지 않고 동시에 조회
   await Promise.all(kinds.map(async k => {
-    if (DATA[k] || (EDITED && ['maintenance', 'schedule', 'simulation', 'scenario'].includes(k))) return;
+    if (DATA[k] || (EDITED && ['maintenance', 'schedule', 'simulation', 'scenario', 'rc5-calibration'].includes(k))) return;
     let v = null;
     try { const ss = params.has('data') || params.has('building') ? null : sessionStorage.getItem('twin:' + k); if (ss) { v = JSON.parse(ss); DATA_FROM[k] = '직접 넣은 파일'; } } catch {}
     if (!v && pre[k]) { v = pre[k]; DATA_FROM[k] = '페이지 설정'; }
@@ -616,12 +668,16 @@ function dataGate(){
 }
 await loadTwinData();
 const BD = DATA.building;
+const foldedExterior = BD.building?.facade?.roofProfile?.length > 2;
+const taperedExterior = BD.floors.some(f => f.shellFootprint?.length);
+const exteriorFirst = foldedExterior || taperedExterior || !!BD.building?.facade?.dome;
+const mappedExterior = exteriorFirst || BD.floors.some(f => f.footprint?.length);
 const CFG = {
   buildingName: BD.building?.name || '건물',
   allowedOrigin: params.get('origin') || null,
 };
 let W = BD.building?.size?.w || 48, D = BD.building?.size?.d || 35;
-const FH = BD.building?.floorHeight || 3.6, GAP = 0.9, CEIL = BD.building?.ceiling || 2.8;
+const FH = BD.building?.floorHeight || 3.6, GAP = taperedExterior ? .18 : .9, CEIL = BD.building?.ceiling || 2.8;
 const USER = { floors: !(BD.atrium && BD.elevator) };   // 중정·승강기 정보가 없으면 일반형 렌더링
 const S = Math.max(W, D) > 70 ? 16 : 28, M = 4.5;          // 2D 도면 px/m (큰 건물은 낮춤)
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -663,10 +719,15 @@ const SCALES = {
   hum:   { label:'습도', unit:'%', min:30, max:70, colors:['#E6F7F5', '#B4E8E2', '#6ECFC4', '#2BA89B', '#0F766E'] },
   power: { label:'전력', unit:'kW', min:0, max:6, colors:['#E8F0FE', '#BFD4FB', '#7FA8F2', '#3F7AE0', '#1E4FB0'] },
   alert: { label:'상태', unit:'', min:0, max:2, colors:['#C1C1C1', '#B45309', '#B91C1C'] },
+  // 쾌적도 = ISO 7730 PMV (−3 춥다 … 0 중립 … +3 덥다), 실내기 없는 방은 회색 (FR-21)
+  //   색은 대시보드 범례(src/heat.ts COMFORT)와 같은 발산 색: 추움 파랑 · 쾌적 흰색 · 더움 주황
+  comfort:{ label:'쾌적도', unit:'PMV', min:-2, max:2, colors:['#1E4FB0', '#9CC0F5', '#F4F4F4', '#F9A65A', '#B45309'] },
 };
+const NO_VALUE = '#C1C1C1';
 const frac = (m, v) => { const sc = SCALES[m]; return Number.isFinite(v) ? clamp((v - sc.min) / (sc.max - sc.min), 0, 1) : 0; };
 const _a = new THREE.Color(), _b = new THREE.Color();
 function colorInto(metric, v, out, smooth = false){
+  if (v == null || Number.isNaN(v)) return out.set(NO_VALUE);
   const cs = SCALES[metric].colors, k = frac(metric, v) * (cs.length - 1);
   if (!smooth) return out.set(cs[Math.round(k)]);
   const i = Math.min(Math.floor(k), cs.length - 2);
@@ -702,7 +763,17 @@ function inPoly(x, y, poly){
 }
 const IDU_BY_ROOM = {};
 for (const a of BD.idus || []) (IDU_BY_ROOM[a.room] ||= []).push(a);
-const FLOORS = BD.floors.map((f, fi) => ({ id:f.id, index:fi, plan:null, hasVoid:!!f.atrium, footprint:f.footprint || null, note:f.note || null,
+// 층 순서: 아래층부터. 지하층(id 'B1'·'B2'… 또는 below:true)은 지면 아래 — 층 번호가 모두 읽히면 번호순(B2, B1, 1F, 2F…)으로 맞춤
+const FLOOR_NO = f => /^\d+F$/i.test(f.id) ? parseInt(f.id) : /^B\d+F?$/i.test(f.id) ? -parseInt(f.id.slice(1)) : null;
+const BELOW = f => f.below === true || (FLOOR_NO(f) ?? 0) < 0;
+const BD_FLOORS = BD.floors.every(f => FLOOR_NO(f) != null) ? [...BD.floors].sort((a, b) => FLOOR_NO(a) - FLOOR_NO(b)) : BD.floors;
+const NB = BD_FLOORS.filter(BELOW).length;          // 지하층 수
+// 층 윤곽: 다각형 하나 또는 여러 개(떨어진 동이 여러 채인 층 — 서서울미술관 1층처럼). 안쪽에서는 늘 '고리 목록'으로 다룸
+//   topFootprint: 그 층 외피 윗변의 윤곽 — 있으면 바닥 윤곽에서 그 윤곽까지 기울어진 곡면 외피(디아크처럼 위로 벌어지는 건물)
+//   open: 지붕 정원·데크처럼 외피 없는 층 · green: 바닥을 잔디·정원 색으로
+const LOOPS = fp => !fp?.length ? null : Array.isArray(fp[0]?.[0]) ? (fp.filter(l => l?.length >= 3).length ? fp.filter(l => l?.length >= 3) : null) : fp.length >= 3 ? [fp] : null;
+const inFoot = (x, y, ls) => ls.some(l => inPoly(x, y, l));
+const FLOORS = BD_FLOORS.map((f, fi) => ({ id:f.id, index:fi, below:BELOW(f), plan:null, hasVoid:!!f.atrium, footprint:LOOPS(f.footprint), shellFootprint:LOOPS(f.shellFootprint), top:LOOPS(f.topFootprint), open:!!f.open, green:!!f.green, note:f.note || null,
   openings:f.openWalls || [], partitions:f.partitions || [],
   rooms:f.rooms.map(r => ({ id:r.id, floorId:f.id, floorIndex:fi, name:r.name, num:r.number || null, type:r.type || 'room', poly:r.holes?.length ? Object.assign([...r.polygon], { holes:r.holes }) : r.polygon,
     kind:r.use || (r.type === 'room' || !r.type ? 'office' : 'none'), cap:r.capacity || 0, finish:r.finish || null, zoneOf:r.zoneOf || null, zoneBasis:r.zoneBasis || null,
@@ -719,7 +790,7 @@ for (const r of ROOMS) {
   r.extEdges = r.poly.map((p, i) => { const q = r.poly[(i+1) % r.poly.length];
     const fp = FLOOR_FOOT[r.floorId];
     if (fp) { const len = Math.hypot(q[0] - p[0], q[1] - p[1]) || 1, nx = -(q[1] - p[1]) / len * .4, ny = (q[0] - p[0]) / len * .4, mx = (p[0] + q[0]) / 2, my = (p[1] + q[1]) / 2;
-      return !inPoly(mx + nx, my + ny, fp) || !inPoly(mx - nx, my - ny, fp); }                       // 층 윤곽 밖에 닿은 변 = 외벽
+      return !inFoot(mx + nx, my + ny, fp) || !inFoot(mx - nx, my - ny, fp); }                       // 층 윤곽 밖에 닿은 변 = 외벽
     return (p[1] === 0 && q[1] === 0) || (p[1] === D && q[1] === D) || (p[0] === 0 && q[0] === 0) || (p[0] === W && q[0] === W); });
   for (const a of r.acs) { a.room = r; a.odu = a.odu || `ODU-${r.floorId}-${a.x < W/2 ? 'W' : 'E'}`; a.status = 'off'; a.power = 0; IDUS.push(a); }
 }
@@ -799,9 +870,9 @@ function drawPlan(f){
   for (const {a,b} of f.partitions) strokeWall(a,b);
   g.stroke();
   if (f.hasVoid) { g.strokeStyle = '#41607a'; g.lineWidth = .1 * S; g.strokeRect(X(VOID.x0), Y(VOID.y0), (VOID.x1 - VOID.x0)*S, (VOID.y1 - VOID.y0)*S); }
-  g.strokeStyle = '#2a2a2a'; g.lineWidth = .3 * S; if (f.footprint) loop(f.footprint); else g.strokeRect(X(0), Y(0), W*S, D*S);
+  g.strokeStyle = '#2a2a2a'; g.lineWidth = .3 * S; if (f.footprint) f.footprint.forEach(loop); else g.strokeRect(X(0), Y(0), W*S, D*S);
   g.fillStyle = '#2a2a2a';
-  for (const x of ax) for (const y of ay) if ((USER.floors || !(x > VOID.x0 && x < VOID.x1 && y > VOID.y0 && y < VOID.y1)) && (!f.footprint || inPoly(x, y, f.footprint))) g.fillRect(X(x) - .25*S, Y(y) - .25*S, .5*S, .5*S);
+  for (const x of ax) for (const y of ay) if ((USER.floors || !(x > VOID.x0 && x < VOID.x1 && y > VOID.y0 && y < VOID.y1)) && (!f.footprint || inFoot(x, y, f.footprint))) g.fillRect(X(x) - .25*S, Y(y) - .25*S, .5*S, .5*S);
   // windows on exterior edges
   for (const r of f.rooms) {
     if (r.type === 'core' || r.type === 'store') continue;
@@ -893,8 +964,8 @@ function loadSchedule(sc){ for (const k in SCHED) delete SCHED[k]; for (const c 
   for (const r of ROOMS) r.scheduled = !!SCHED[r.id]; }
 function loadMaint(m){ MAINT = m?.idus || {}; FILTER_H = m?.filterLimitHours || 2500; }
 function loadTariff(t){ TARIFF = +t?.wonPerKwh || 130; }
-const OUT_FCST = {};
-function loadWeather(w){ for (const k in OUT_FCST) delete OUT_FCST[k]; for (const it of w?.response?.body?.items?.item || []) (OUT_FCST[+String(it.fcstTime).slice(0, 2)] ||= {})[it.category] = +it.fcstValue; }
+const OUT_FCST = {}; let OUT_FCST_DATE = '';   // 예보 날짜 (YYYY-MM-DD) — 오늘과 다르면 시뮬레이션에 쓰지 않음 (예: 6월 예제 예보를 11월에 쓰면 외기 28°C로 계산됨)
+function loadWeather(w){ for (const k in OUT_FCST) delete OUT_FCST[k]; const d = String(w?.response?.body?.items?.item?.[0]?.fcstDate || ''); OUT_FCST_DATE = d.length === 8 ? `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6)}` : ''; for (const it of w?.response?.body?.items?.item || []) (OUT_FCST[+String(it.fcstTime).slice(0, 2)] ||= {})[it.category] = +it.fcstValue; }
 loadSchedule(DATA.schedule); loadMaint(DATA.maintenance); loadTariff(DATA.tariff); loadWeather(DATA.weather);
 const classAt = (r, m) => (SCHED[r.id]?.[simDay] || []).find(c => m >= c.s && m < c.e) || null;
 const nextClass = (r, m) => (SCHED[r.id]?.[simDay] || []).find(c => c.s > m) || null;
@@ -912,18 +983,22 @@ const monthNow = () => +(simDate || new Date(Date.now() + 9 * 3600e3).toISOStrin
 const comfortOf = r => CMF && r.acs.length ? CMF.roomComfort({ temp:r.temp, hum:r.hum, kind:r.kind, on:r.acs.some(a => a.status === 'on') }, monthNow()) : null;
 const heatingSeason = () => CMF ? CMF.cloOf(monthNow()) >= 1 : false;
 const pmvTxt = v => (v > 0 ? '+' : '') + v.toFixed(1);
+// 운전 모드: 5~9월 냉방, 그 밖 난방 (웹 데모·시뮬레이션 서버 modeOfMonth와 같은 기준)
+const simMode = () => { const m = monthNow(); return m >= 5 && m <= 9 ? 'cool' : 'heat'; };
+const modeKo = m => (m || simMode()) === 'heat' ? '난방' : '냉방';
 function alertOf(r){
   if (r.extAlert) return r.extAlert;
   if (!r.acs.length) return { level:0, items:[] };
   r.cmf = comfortOf(r);
   const items = [], on = r.acs.some(a => a.status === 'on');
   if (r.temp >= 29) items.push([2, `고온 ${r.temp.toFixed(1)}°C`]);
-  else if (r.temp >= 27 && on) items.push([1, `냉방 부족 ${r.temp.toFixed(1)}°C`]);
+  else if (simMode() === 'cool' && r.temp >= 27 && on) items.push([1, `냉방 부족 ${r.temp.toFixed(1)}°C`]);
+  else if (simMode() === 'heat' && r.temp <= 17 && on) items.push([1, `난방 부족 ${r.temp.toFixed(1)}°C`]);
   if (r.hum >= 72) items.push([2, `고습 ${Math.round(r.hum)}%`]);
   else if (r.hum >= 65) items.push([1, `습도 높음 ${Math.round(r.hum)}%`]);
   const err = r.acs.filter(a => a.status === 'fault');
   if (err.length) items.push([2, `실내기 에러 ${err.map(a => a.error).join(', ')}`]);
-  if (r.idle && r.emptyOn >= 20) items.push([1, `${r.occSrc === 'wifi' || r.occSrc === 'sensor' ? `빈 방(${r.occSrc === 'wifi' ? '와이파이' : '재실 센서'} 0명)` : r.scheduled ? '수업 없음' : '운영시간 외'} 냉방 ${Math.round(r.emptyOn)}분째`]);
+  if (r.idle && r.emptyOn >= 20) items.push([1, `${r.occSrc === 'wifi' || r.occSrc === 'sensor' ? `빈 방(${r.occSrc === 'wifi' ? '와이파이' : '재실 센서'} 0명)` : r.scheduled ? '수업 없음' : '운영시간 외'} ${modeKo()} ${Math.round(r.emptyOn)}분째`]);
   // 사용 중인데 ISO 7730 C등급(|PMV| 0.7) 밖이면 알림, 1.5 넘으면 심각
   const c = r.cmf;
   if (r.inUse && c && Math.abs(c.pmv) >= .7) items.push([Math.abs(c.pmv) >= 1.5 ? 2 : 1, `${c.pmv > 0 ? '더움' : '추움'} PMV ${pmvTxt(c.pmv)} · 불만족 ${Math.round(c.ppd)}%`]);
@@ -1006,12 +1081,14 @@ const ENERGY = { kwh:0, kw:0 };
 const PERSONA_IDS = ['owner', 'engineer', 'facility'];
 const state = { rv:{ vol:true, slice:true, air:true, hum:true }, view:'building', floor:null, room:null, metric: SCALES[params.get('metric')] ? params.get('metric') : 'temp', pipes:false, inspector:false, persona: [...PERSONA_IDS, 'sim'].includes(params.get('role')) ? params.get('role') : 'owner' };
 // 운전 시뮬레이션 상태: 기존 운전 vs 내가 고른 운전 (EnergyPlus 결과 = scenario.json 또는 서버 계산)
-const SIM = { result:DATA.scenario || null, busy:false, msg:'', form:null, ver:0 };
+//   미리 계산한 scenario.json은 여름(냉방) 설계일 결과라, 난방철엔 처음 화면에 보이지 않게 함 (계산하면 오늘 기준으로 새로 나옴)
+const SIM = { result:DATA.scenario && (DATA.scenario.mode || DATA.scenario.baseline?.scenario?.mode || 'cool') === simMode() ? DATA.scenario : null, busy:false, msg:'', form:null, ver:0 };
 const simRoom = id => SIM.result?.scenario?.rooms?.[id];
 function emit(type, payload = {}){ if (window.parent !== window) window.parent.postMessage({ type, ...payload }, CFG.allowedOrigin || '*'); }
 function metricValue(r, m){
   if (state.persona === 'sim' && SIM.result) { const x = simRoom(r.id);           // 시뮬레이션 모드: 예상 실온(재실 중 최고)으로 색칠
     if (m === 'temp' && x?.maxTempC != null) return x.maxTempC; if (m === 'power' && x) return x.elecKwh / 19; }
+  if (m === 'comfort') return r.cmf ? r.cmf.pmv : null;
   return m === 'temp' ? r.temp : m === 'hum' ? r.hum : m === 'power' ? r.power : r.alert.level; }
 let HL = { ids:new Set(), until:0 };
 function highlight(ids, secs = 8){ HL = { ids:new Set(ids), until: performance.now() + secs * 1000 }; if (state.view === 'floor') updatePlanSvg(); }
@@ -1063,7 +1140,7 @@ function planTexture(f){
   return texCache[k];
 }
 const toWorld = (x, y, h = 0) => new THREE.Vector3(x - W/2, h, y - D/2);
-const floorY = i => i * (FH + GAP);
+const floorY = i => (i - NB) * (FH + GAP);          // 1층 바닥 = 지면(0), 지하층은 그 아래
 // 겹친 점 제거: 같은 자리 점이 이어지면 길이 0인 벽면이 생기고, 그 면의 법선이 0이라 조명 계산이 NaN →
 // 블룸 흐림이 NaN을 번지게 해서 화면에 검은 네모가 한 프레임씩 깜빡임. 휜 윤곽(스카이뷰 보정)·안쪽 들여쓰기에서 잘 생김
 function cleanLoop(pts, eps = .02){
@@ -1079,12 +1156,35 @@ function shapeOf(poly, inset = 0){
   return s;
 }
 // 층 윤곽(footprint)이 있으면 그 모양으로, 없으면 W×D 사각형
+//   윤곽이 여러 개(떨어진 동)면 모양도 여러 개로 한꺼번에 밀어 올림
+function footShapes(foot, pad = 0){
+  const ls = LOOPS(foot);
+  return ls ? ls.map(l => new THREE.Shape(cleanLoop(l.map(([x, y]) => new THREE.Vector2(x, -y)))))
+    : [new THREE.Shape([new THREE.Vector2(-pad, pad), new THREE.Vector2(W + pad, pad), new THREE.Vector2(W + pad, -(D + pad)), new THREE.Vector2(-pad, -(D + pad))])];
+}
 function slabGeometry(hole, pad = .3, depth = .3, foot = null){
-  const s = foot?.length >= 3 ? new THREE.Shape(cleanLoop(foot.map(([x, y]) => new THREE.Vector2(x, -y))))
-    : new THREE.Shape([new THREE.Vector2(-pad, pad), new THREE.Vector2(W + pad, pad), new THREE.Vector2(W + pad, -(D + pad)), new THREE.Vector2(-pad, -(D + pad))]);
-  if (hole) s.holes.push(new THREE.Path([new THREE.Vector2(VOID.x0, -VOID.y0), new THREE.Vector2(VOID.x0, -VOID.y1), new THREE.Vector2(VOID.x1, -VOID.y1), new THREE.Vector2(VOID.x1, -VOID.y0)]));
-  const geo = new THREE.ExtrudeGeometry(s, { depth, bevelEnabled:false });
+  const ss = footShapes(foot, pad);
+  if (hole) ss[0].holes.push(new THREE.Path([new THREE.Vector2(VOID.x0, -VOID.y0), new THREE.Vector2(VOID.x0, -VOID.y1), new THREE.Vector2(VOID.x1, -VOID.y1), new THREE.Vector2(VOID.x1, -VOID.y0)]));
+  const geo = new THREE.ExtrudeGeometry(ss, { depth, bevelEnabled:false });
   geo.rotateX(-Math.PI/2); geo.translate(-W/2, -depth, -D/2); return geo;
+}
+/* 곡면 외피(로프트): 아래 윤곽 bot(y=0)과 위 윤곽 top(y=h)을 둘레 길이 기준으로 같은 개수 N점씩 다시 찍고,
+   위 윤곽의 시작점을 아래와 가장 가깝게 돌려 맞춘 뒤(꼬임 방지) 이웃 점끼리 사각형 띠로 이음.
+   반환: { geo, b, t (도면 좌표 점 목록), perim(아래 둘레) } */
+function loftGeometry(bot, top, h, N = 128){
+  const ccw = l => { let s = 0; for (let i = 0; i < l.length; i++) { const [x0, y0] = l[i], [x1, y1] = l[(i + 1) % l.length]; s += x0 * y1 - x1 * y0; } return s > 0 ? l : [...l].reverse(); };
+  const resample = l => { const L = [0]; for (let i = 0; i < l.length; i++) { const [x0, y0] = l[i], [x1, y1] = l[(i + 1) % l.length]; L.push(L[i] + Math.hypot(x1 - x0, y1 - y0)); }
+    const P = L[l.length], out = []; let j = 0;
+    for (let k = 0; k < N; k++) { const s = P * k / N; while (L[j + 1] < s) j++; const [x0, y0] = l[j], [x1, y1] = l[(j + 1) % l.length], u = (s - L[j]) / Math.max(1e-9, L[j + 1] - L[j]); out.push([lerp(x0, x1, u), lerp(y0, y1, u)]); }
+    return { pts:out, perim:P }; };
+  const B = resample(ccw(bot)), T0 = resample(ccw(top)).pts;
+  let best = 0, bd = Infinity;
+  for (let s = 0; s < N; s++) { let d = 0; for (let k = 0; k < N; k += 4) { const a = B.pts[k], c = T0[(k + s) % N]; d += (a[0] - c[0]) ** 2 + (a[1] - c[1]) ** 2; } if (d < bd) { bd = d; best = s; } }
+  const T = B.pts.map((_, k) => T0[(k + best) % N]), pos = [], idx = [];
+  for (const [l, y] of [[B.pts, 0], [T, h]]) for (const [x, z] of l) pos.push(x - W/2, y, z - D/2);
+  for (let k = 0; k < N; k++) { const k1 = (k + 1) % N; idx.push(k, k1, N + k1, k, N + k1, N + k); }
+  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setIndex(idx); geo.computeVertexNormals();
+  return { geo, b:B.pts, t:T, perim:B.perim };
 }
 function dispose(obj){ obj.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) [].concat(o.material).forEach(m => m.dispose()); }); }
 function glowTexture(color){
@@ -1233,18 +1333,18 @@ const floorGroups = [], pickables = [];
 for (const f of FLOORS) {
   if (!f.plan) f.plan = drawPlan(f);
   const grp = new THREE.Group(); grp.position.y = floorY(f.index); grp.userData = { floor:f, lift:0, fade:1, intro:0 };
-  const slab = new THREE.Mesh(slabGeometry(f.hasVoid, .3, .3, f.footprint), new THREE.MeshStandardMaterial({ color:isDark() ? 0x5b5e63 : 0xc1c1c1, roughness:.92, metalness:0, envMapIntensity:.35, transparent:true }));
+  const slab = new THREE.Mesh(slabGeometry(f.hasVoid, .3, .3, f.shellFootprint || f.footprint), new THREE.MeshStandardMaterial({ color:f.green ? (isDark() ? 0x4f9a5e : 0x8cc28f) : isDark() ? 0x5b5e63 : 0xc1c1c1, roughness:.92, metalness:0, envMapIntensity:.35, transparent:true }));
   slab.userData.floor = f; grp.add(slab); pickables.push(slab); grp.userData.slabMat = slab.material;
   // 평면도 판: 층 윤곽(footprint) 모양으로 잘라 바닥판과 크기를 맞춤 (중정은 비움)
-  const fl = f.footprint?.length >= 3 ? f.footprint : [[0, 0], [W, 0], [W, D], [0, D]];
-  const ps = new THREE.Shape(cleanLoop(fl.map(([x, y]) => new THREE.Vector2(x, -y))));
-  if (f.hasVoid) ps.holes.push(new THREE.Path([new THREE.Vector2(VOID.x0, -VOID.y0), new THREE.Vector2(VOID.x0, -VOID.y1), new THREE.Vector2(VOID.x1, -VOID.y1), new THREE.Vector2(VOID.x1, -VOID.y0)]));
+  const ps = footShapes(f.footprint);
+  if (f.hasVoid) ps[0].holes.push(new THREE.Path([new THREE.Vector2(VOID.x0, -VOID.y0), new THREE.Vector2(VOID.x0, -VOID.y1), new THREE.Vector2(VOID.x1, -VOID.y1), new THREE.Vector2(VOID.x1, -VOID.y0)]));
   const pg = new THREE.ShapeGeometry(ps); pg.rotateX(-Math.PI/2); pg.translate(-W/2, 0, -D/2);
   const p = f.plan, u0 = p.ox / p.w, u1 = (p.ox + W*p.S) / p.w, vt = 1 - p.oy / p.h, vb = 1 - (p.oy + D*p.S) / p.h;
   const uv = pg.attributes.uv, pos = pg.attributes.position;
   for (let i = 0; i < uv.count; i++) uv.setXY(i, lerp(u0, u1, (pos.getX(i) + W/2) / W), lerp(vt, vb, (pos.getZ(i) + D/2) / D));
   const planMesh = new THREE.Mesh(pg, new THREE.MeshBasicMaterial({ map: planTexture(f), color: isDark() ? 0xffffff : 0xc4ccd8, transparent:true }));
   planMesh.position.y = .012; planMesh.renderOrder = -1; grp.add(planMesh); grp.userData.planMat = planMesh.material;
+  if (f.green) planMesh.visible = false;          // 옥상정원·잔디: 평면도 그림 대신 바닥판 색(잔디)이 보이게
   grp.userData.blocks = []; grp.userData.coreMat = new THREE.MeshStandardMaterial({ color:0xb7c0cc, roughness:.6, metalness:.1, transparent:true, opacity:.92 });
   for (const r of f.rooms) {
     if (!r.acs.length) continue;   // 복도·화장실·계단 등 냉방 없는 공간은 표시하지 않음
@@ -1273,41 +1373,123 @@ for (const f of FLOORS) {
     m.position.copy(toWorld(a.x, a.y, CEIL - .1)); m.visible = false; grp.add(m); grp.userData.idus.push({ a, m });
   }
   // 외피(유리·멀리언·테두리·네온): 층 윤곽(footprint)을 따라 — 스카이뷰로 모양 보정된 윤곽도 그대로 보임
-  const loop = f.footprint?.length >= 3 ? f.footprint : [[0, 0], [W, 0], [W, D], [0, D]], hH = FH - .3;
-  const facade = BD.building?.facade;
-  const shell = new THREE.Mesh(slabGeometry(false, 0, hH, loop), new THREE.MeshPhysicalMaterial({ color:facade?.glassColor ?? 0xaecbff, transparent:true, opacity:facade?.glassOpacity ?? .06, roughness:.05, metalness:0, envMapIntensity:1.2, depthWrite:false, side:THREE.BackSide }));
-  shell.position.y = hH; grp.add(shell);
-  { // curtain-wall mullions around the perimeter
-    const seg = [], step = 1.6;
-    loop.forEach(([x0, y0], i) => { const [x1, y1] = loop[(i + 1) % loop.length], n = Math.max(1, Math.round(Math.hypot(x1 - x0, y1 - y0) / step));
-      for (let k = 0; k < n; k++) { const p = toWorld(lerp(x0, x1, k / n), lerp(y0, y1, k / n)); seg.push(p.x, 0, p.z, p.x, hH, p.z); } });
-    const mg = new THREE.BufferGeometry(); mg.setAttribute('position', new THREE.Float32BufferAttribute(seg, 3));
-    const mull = new THREE.LineSegments(mg, new THREE.LineBasicMaterial({ color:facade?.mullionColor ?? 0x9fb3cf, transparent:true, opacity:.22 })); grp.add(mull); grp.userData.mullMat = mull.material;
+  const loops = f.shellFootprint || f.footprint || [[[0, 0], [W, 0], [W, D], [0, D]]], hH = FH - .3;
+  const facade = BD.building?.facade, diagrid = facade?.pattern === 'diagrid';
+  // 외피 재질: 지하층 = 흙에 묻힌 콘크리트 옹벽(옅게) · 지상 = 유리(또는 facade 색·불투명도 — 디아크처럼 금속 패널이면 불투명도를 올림)
+  const shellMat = f.below
+    ? new THREE.MeshStandardMaterial({ color:isDark() ? 0x5d636e : 0x9aa1ab, transparent:true, opacity:.16, roughness:.95, metalness:0, depthWrite:false, side:THREE.BackSide })
+    : new THREE.MeshPhysicalMaterial({ color:facade?.glassColor ?? 0xaecbff, transparent:true, opacity:exteriorFirst ? .2 : facade?.glassOpacity ?? .06, roughness:facade?.roughness ?? (exteriorFirst ? .38 : .05), metalness:facade?.metalness ?? 0, envMapIntensity:exteriorFirst ? .65 : 1.2, depthWrite:false, side:f.top || exteriorFirst ? THREE.DoubleSide : THREE.BackSide });
+  const lineMat = new THREE.LineBasicMaterial({ color:facade?.mullionColor ?? 0x9fb3cf, transparent:true, opacity:diagrid ? .5 : .22 }), seg = [], frameSeg = [];
+  const pushLoop = (l, y, out) => l.forEach(([x0, y0], i) => { const [x1, y1] = l[(i + 1) % l.length], a = toWorld(x0, y0), b = toWorld(x1, y1); out.push(a.x, y, a.z, b.x, y, b.z); });
+  if (f.open) {
+    // 지붕 정원·데크: 외피 없음, 바닥 테두리만
+    for (const l of loops) pushLoop(l, .3, frameSeg);
+  } else if (f.top) {
+    // 기울어진 곡면 외피: 바닥 윤곽 → 윗 윤곽(topFootprint)을 같은 개수의 점으로 맞춰 띠로 이음 (디아크처럼 위로 벌어지는 그릇 모양)
+    // 층 사이 띄움(GAP)까지 이어 위층 바닥판 밑면에 닿게 → 층별 띠가 끊기지 않고 한 곡면으로 보임
+    const hL = FH + GAP - .3;
+    loops.forEach((l, li) => {
+      const tl = f.top[li] ?? f.top[0], L = loftGeometry(l, tl, hL);
+      const shell = new THREE.Mesh(L.geo, shellMat);
+      shell.userData.floor = f;
+      grp.add(shell);
+      // 외피는 클릭 대상에서 뺌: 반투명 외피 안의 방을 바로 고를 수 있게
+      pushLoop(l, 0, frameSeg); pushLoop(tl, hL, frameSeg);
+      // 디아그리드(마름모 격자): 아래 점 k에서 위 점 k±m으로 / 아니면 세로 멀리언
+      const N = L.b.length, m = Math.max(1, Math.round(hL / (L.perim / N)));
+      for (let k = 0; k < N; k += 2) {
+        const a = toWorld(...L.b[k]);
+        for (const d of diagrid ? [m, -m] : [0]) { const t = toWorld(...L.t[(k + d + N) % N]); seg.push(a.x, 0, a.z, t.x, hL, t.z); }
+      }
+    });
+  } else {
+    const shell = new THREE.Mesh(slabGeometry(false, 0, hH, loops), shellMat);
+    shell.position.y = hH; shell.userData.floor = f; grp.add(shell);
+    // 외피는 클릭 대상에서 뺌: 반투명 외피 안의 방을 바로 고를 수 있게
+    for (const l of loops) {
+      pushLoop(l, 0, frameSeg); pushLoop(l, hH, frameSeg);
+      if (!f.below) l.forEach(([x0, y0], i) => { const [x1, y1] = l[(i + 1) % l.length], n = Math.max(1, Math.round(Math.hypot(x1 - x0, y1 - y0) / 1.6));
+        for (let k = 0; k < n; k++) { const p = toWorld(lerp(x0, x1, k / n), lerp(y0, y1, k / n)); (k ? seg : frameSeg).push(p.x, 0, p.z, p.x, hH, p.z); } });   // 꼭짓점 기둥은 테두리, 나머지는 멀리언
+    }
   }
-  const frame = new THREE.LineSegments(new THREE.EdgesGeometry(slabGeometry(false, 0, hH, loop), 20), new THREE.LineBasicMaterial({ color:0x7b8798, transparent:true, opacity:.45 }));
-  frame.position.y = hH; grp.add(frame); grp.userData.frame = frame;
+  if (seg.length && !f.below) { const mg = new THREE.BufferGeometry(); mg.setAttribute('position', new THREE.Float32BufferAttribute(seg, 3));
+    const mull = new THREE.LineSegments(mg, lineMat); grp.add(mull); grp.userData.mullMat = mull.material; }
+  const fg = new THREE.BufferGeometry(); fg.setAttribute('position', new THREE.Float32BufferAttribute(frameSeg, 3));
+  const frame = new THREE.LineSegments(fg, new THREE.LineBasicMaterial({ color:0x7b8798, transparent:true, opacity:.45 }));
+  grp.add(frame); grp.userData.frame = frame;
   { // neon edge ring per floor (coloured by the floor's average of the current metric)
-    const t = .09, parts = loop.map(([x0, y0], i) => { const [x1, y1] = loop[(i + 1) % loop.length], L = Math.hypot(x1 - x0, y1 - y0); if (L < .01) return null;
-      const g = new THREE.BoxGeometry(L + t, t, t); g.rotateY(-Math.atan2(y1 - y0, x1 - x0)); const c = toWorld((x0 + x1) / 2, (y0 + y1) / 2); return g.translate(c.x, .03, c.z); }).filter(Boolean);
+    const t = .09, parts = loops.flatMap(loop => loop.map(([x0, y0], i) => { const [x1, y1] = loop[(i + 1) % loop.length], L = Math.hypot(x1 - x0, y1 - y0); if (L < .01) return null;
+      const g = new THREE.BoxGeometry(L + t, t, t); g.rotateY(-Math.atan2(y1 - y0, x1 - x0)); const c = toWorld((x0 + x1) / 2, (y0 + y1) / 2); return g.translate(c.x, .03, c.z); })).filter(Boolean);
     const neon = new THREE.Mesh(mergeGeometries(parts), new THREE.MeshBasicMaterial({ color:0x5b8cff, transparent:true, toneMapped:false, depthWrite:false }));
     grp.add(neon); grp.userData.neon = neon; grp.userData.neonC = new THREE.Color(0x5b8cff);
   }
   bScene.add(grp); floorGroups.push(grp);
 }
 const totalH = floorY(FLOORS.length - 1) + FH;
-const roofY = floorY(FLOORS.length - 1) + FH - .1;
+const topFloor = FLOORS.at(-1);
+const roofOutline = topFloor.top || topFloor.footprint;
+const roofY = floorY(topFloor.index) + (topFloor.top ? FH + GAP - .6 : FH - .1);
+const bottomY = floorY(0);                            // 가장 아래층 바닥 (지하층이 있으면 음수)
+// 지하층이 있으면 땅을 잘라 낸 단면처럼: 건물 둘레 흙 덩어리(안쪽 면만 옅게) + 지면 테두리선
+const soil = NB ? (() => {
+  const fp = FLOORS.filter(f => f.below).flatMap(f => (f.footprint || [[[0, 0], [W, 0], [W, D], [0, D]]]).flat());
+  const b = bbox(fp), m = 4, dep = -bottomY + .42 + .6;
+  const geo = new THREE.BoxGeometry(b.w + 2 * m, dep, b.h + 2 * m); geo.translate(b.cx - W / 2, -.42 - dep / 2, b.cy - D / 2);
+  const g = new THREE.Group();
+  g.add(new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color:isDark() ? 0x6b5640 : 0xa88a66, transparent:true, opacity:isDark() ? .16 : .13, roughness:1, depthWrite:false, side:THREE.BackSide })));
+  g.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color:isDark() ? 0x9c7f5c : 0x8d6d48, transparent:true, opacity:.35 })));
+  bScene.add(g); return g;
+})() : null;
 // roof + outdoor units with spinning fans
 const roof = new THREE.Group(); bScene.add(roof);
-{
-  const slab = new THREE.Mesh(slabGeometry(!USER.floors, .3, .3, FLOORS[FLOORS.length - 1].footprint), new THREE.MeshStandardMaterial({ color:isDark() ? 0x3a3c40 : 0xdddddd, roughness:.95, metalness:0, envMapIntensity:.25, transparent:true, opacity:isDark() ? .5 : .45, depthWrite:false }));
-  slab.position.y = roofY + .3; roof.add(slab); roof.userData.mat = slab.material;
-  const re = new THREE.LineSegments(new THREE.EdgesGeometry(slab.geometry), new THREE.LineBasicMaterial({ color:0xa9b8cc, transparent:true, opacity:.5 })); re.position.copy(slab.position); roof.add(re);
+// 지붕: 맨 위층 윗 윤곽(곡면 외피면 topFootprint) 모양 · 맨 위층이 지붕 정원(open)이면 따로 덮지 않음
+if (!topFloor.open) {
+  const facade = BD.building?.facade, roofColor = facade?.roofColor ?? (exteriorFirst ? facade?.glassColor : undefined);
+  const roofTint = roofColor ?? (isDark() ? 0x3a3c40 : 0xdddddd), translucent = { transparent:true, opacity:.59, depthWrite:true };
+  const folded = roofOutline && facade?.roofProfile?.length > 2 && foldedRoofGeometry(roofOutline, facade.roofProfile, W, D, FH * 2);
+  if (folded) {
+    const covering = new THREE.Mesh(folded.roof, new THREE.MeshStandardMaterial({ color:roofTint, roughness:.64, metalness:.24, side:THREE.DoubleSide, ...translucent }));
+    const sides = new THREE.Mesh(folded.sides, new THREE.MeshStandardMaterial({ color:facade.glassColor ?? roofTint, roughness:.55, side:THREE.DoubleSide, ...translucent }));
+    covering.position.y = sides.position.y = roofY + .3;
+    roof.add(covering,sides);
+  } else {
+    const slab = new THREE.Mesh(slabGeometry(!USER.floors, .3, .3, roofOutline), new THREE.MeshStandardMaterial({ color:roofTint, roughness:.7, metalness:0, envMapIntensity:.25, transparent:true, opacity:exteriorFirst ? .32 : roofColor ? .78 : isDark() ? .5 : .45, depthWrite:false }));
+    slab.position.y = roofY + .3; roof.add(slab);
+    const re = new THREE.LineSegments(new THREE.EdgesGeometry(slab.geometry), new THREE.LineBasicMaterial({ color:0xa9b8cc, transparent:true, opacity:.5 })); re.position.copy(slab.position); roof.add(re);
+  }
+  const dome = facade?.dome;
+  if (dome?.profile?.length > 2 && dome.radius > 0 && dome.height > 0) {
+    const profile = dome.profile.map(([r,h]) => new THREE.Vector2(r * dome.radius, h * dome.height));
+    const cap = new THREE.Mesh(new THREE.LatheGeometry(profile, 64),
+      new THREE.MeshStandardMaterial({ color:roofColor ?? 0xb8bec8, roughness:.6, metalness:.12, ...translucent }));
+    cap.position.copy(toWorld(dome.x, dome.y, roofY + .3));
+    roof.add(cap);
+  }
 }
 const fanMat = new THREE.MeshStandardMaterial({ color:0x3a4250, roughness:.5 });
-const oduObjs = ODUS.map((o, i) => {
-  const k = ODUS.filter(x => x.side === o.side).indexOf(o);
-  const x = o.side === 'W' ? 4 + k * 3.1 : W - 4 - k * 3.1;
-  const g = new THREE.Group(); g.position.copy(toWorld(x, D - 3.4, roofY + .3));
+const placedODUs = [], oduLocations = new Map((BD.odus || []).filter(o => o.pos?.length === 2 && o.pos.every(Number.isFinite)).map(o => [o.id,o.pos]));
+function roofUnitPosition(o) {
+  if (topFloor.open) return null;
+  const recorded = oduLocations.get(o.id), outline = roofOutline || [[[0,0],[W,0],[W,D],[0,D]]];
+  const supports = ([x,y]) => outline.some(loop => [-1.3,0,1.3].every(dx => [-.7,0,.7].every(dy => inPoly(x+dx,y+dy,loop)))) &&
+    placedODUs.every(([u,v]) => Math.abs(x-u) >= 2.8 || Math.abs(y-v) >= 1.6);
+  if (recorded) return supports(recorded) ? recorded : null;
+  if (exteriorFirst) return null;
+  const k = ODUS.filter(other => other.side === o.side).indexOf(o);
+  const preferred = [o.side === 'W' ? 4+k*3.1 : W-4-k*3.1,D-3.4];
+  if (supports(preferred)) return preferred;
+  let best = null, nearest = Infinity;
+  for(let y=1;y<D;y+=1.6)for(let x=1.5;x<W;x+=2.8){
+    const distance = Math.hypot(x-preferred[0],y-preferred[1]);
+    if(distance<nearest && supports([x,y])) { best=[x,y]; nearest=distance; }
+  }
+  return best;
+}
+const oduObjs = ODUS.flatMap(o => {
+  const position = roofUnitPosition(o);
+  if (!position) return [];
+  placedODUs.push(position);
+  const g = new THREE.Group(); g.position.copy(toWorld(...position, roofY + .3));
   const body = new THREE.Mesh(new THREE.BoxGeometry(2.3, 1.5, 1.1), new THREE.MeshStandardMaterial({ color:0xcfd6df, roughness:.5, metalness:.15, envMapIntensity:.5 }));
   body.position.y = .75; g.add(body);
   const grille = new THREE.Mesh(new THREE.CylinderGeometry(.48, .48, .04, 28), new THREE.MeshStandardMaterial({ color:0x58616e }));
@@ -1318,7 +1500,7 @@ const oduObjs = ODUS.map((o, i) => {
   const led = new THREE.Mesh(new THREE.SphereGeometry(.07, 12, 8), new THREE.MeshStandardMaterial({ color:0x22b07d, emissive:0x22b07d, emissiveIntensity:3 }));
   led.position.set(.95, 1.2, .56); g.add(led);
   roof.add(g);
-  return { o, g, fan, led, top:g.position.clone().add(new THREE.Vector3(0, .2, 0)) };
+  return [{ o, g, fan, led, top:g.position.clone().add(new THREE.Vector3(0, .2, 0)) }];
 });
 const oduObj = Object.fromEntries(oduObjs.map(x => [x.o.id, x]));
 // refrigerant piping: IDU → corridor ceiling → riser shaft → roof → ODU
@@ -1330,6 +1512,7 @@ const PIPE_PATHS = [];
   const RX0 = USER.floors ? 1.4 : 11, RX1 = USER.floors ? W - 1.4 : 36.8, RY0 = USER.floors ? D/2 : 10.6, RY1 = USER.floors ? D/2 : 25.4;
   for (const a of IDUS) {
     const f = FLOOR[a.room.floorId], yC = floorY(f.index) + CEIL - .02, side = ODU[a.odu].side, o = oduObj[a.odu];
+    if (!o) continue;
     const sx = side === 'W' ? RX0 : RX1, lane = (f.index - 2) * .22;
     const cand = [[clamp(a.x, RX0, RX1), RY0, 'N'], [clamp(a.x, RX0, RX1), RY1, 'S'], [RX0, clamp(a.y, RY0, RY1), 'W'], [RX1, clamp(a.y, RY0, RY1), 'E']]
       .sort((u, v) => Math.hypot(u[0] - a.x, u[1] - a.y) - Math.hypot(v[0] - a.x, v[1] - a.y))[0];
@@ -1366,11 +1549,12 @@ function pathPoint(P, s, out){
   return out.copy(P.pts[P.pts.length-1]);
 }
 
-const HOME = { pos:new THREE.Vector3(46, totalH * .95 + 24, 58), target:new THREE.Vector3(0, totalH * .4, 0) };
-// elevator shaft + moving cab (in the courtyard, per the plans)
+// 처음 시점: 지하층이 있으면 그만큼 아래까지 화면에 들어오게 가운데를 내림
+const HOME = { pos:new THREE.Vector3(46, totalH * .95 + 24, 58), target:new THREE.Vector3(0, bottomY + (totalH - bottomY) * .4, 0) };
+// elevator shaft + moving cab (in the courtyard, per the plans) — 가장 아래층부터 옥상까지
 const evC = { x:(EV.x0 + EV.x1)/2, y:(EV.y0 + EV.y1)/2 };
-const evShaft = new THREE.Mesh(new THREE.BoxGeometry(EV.x1 - EV.x0, roofY + 1.2, EV.y1 - EV.y0), new THREE.MeshStandardMaterial({ color:0xb8c6d4, transparent:true, opacity:.3, depthWrite:false }));
-evShaft.position.copy(toWorld(evC.x, evC.y, (roofY + 1.2) / 2));
+const evShaft = new THREE.Mesh(new THREE.BoxGeometry(EV.x1 - EV.x0, roofY + 1.2 - bottomY, EV.y1 - EV.y0), new THREE.MeshStandardMaterial({ color:0xb8c6d4, transparent:true, opacity:.3, depthWrite:false }));
+evShaft.position.copy(toWorld(evC.x, evC.y, (roofY + 1.2 + bottomY) / 2));
 const evCab = new THREE.Mesh(new THREE.BoxGeometry(EV.x1 - EV.x0 - .35, 2.3, EV.y1 - EV.y0 - .35), new THREE.MeshStandardMaterial({ color:0xf2c14e, emissive:0xf2a01f, emissiveIntensity:.35, roughness:.4 }));
 if (!USER.floors) bScene.add(evShaft, evCab);
 const fitK = () => clamp(1.55 / camera.aspect, 1, 3) * SC;
@@ -1415,16 +1599,32 @@ const dustMat = pointMaterial(55), dust = new THREE.Points(dustGeo, dustMat); bS
 bScene.remove(dust, stars, ...hud, ...scanRings);
 // HTML floor tags pinned to the right-most visible edge of each floor
 const tagsEl = $('#floorTags');
-tagsEl.innerHTML = FLOORS.map(f => `<div class="ftag" data-f="${f.id}"><span class="ln"></span><span class="bd glass"><span class="fl">${f.id}</span><span class="v"></span></span></div>`).join('');
+tagsEl.innerHTML = FLOORS.map(f => `<div class="ftag" data-f="${f.id}"><span class="ln"></span><span class="col"><span class="bd glass"><span class="fl">${f.id}</span><span class="v"></span></span><span class="ch glass"></span></span></div>`).join('');
 const tagEls = Object.fromEntries([...tagsEl.children].map(el => [el.dataset.f, el]));
-tagsEl.addEventListener('click', e => { const el = e.target.closest('.ftag'); if (el) goFloor(FLOOR[el.dataset.f]); });
+tagsEl.addEventListener('click', e => { const b = e.target.closest('[data-room]'); if (b && ROOM[b.dataset.room]) { e.stopPropagation(); goRoom(ROOM[b.dataset.room]); return; }
+  const el = e.target.closest('.ftag'); if (el) goFloor(FLOOR[el.dataset.f]); });
 tagsEl.addEventListener('pointerover', e => { const el = e.target.closest('.ftag'); if (el) { hoverFloor = FLOOR[el.dataset.f]; controls.autoRotate = false; } });
 tagsEl.addEventListener('pointerout', e => { if (!e.relatedTarget || !e.relatedTarget.closest || !e.relatedTarget.closest('.ftag')) hoverFloor = null; });
 function renderTags(){
   const m = state.metric;
+  // 전력: 층별 건물 전체 대비 비중 + 가장 많이 쓰는 층에 상위 호실 차트 (빈 방 운전은 주황 점)
+  const pw = m === 'power' ? Object.fromEntries(FLOORS.map(f => [f.id, floorAgg(f.rooms).power])) : null;
+  const tot = pw ? Object.values(pw).reduce((a, b) => a + b, 0) : 0;
+  const peak = pw && tot > 0 ? FLOORS.reduce((a, f) => pw[f.id] > pw[a.id] ? f : a, FLOORS[0]) : null;
+  for (const f of FLOORS) {
+    const el = tagEls[f.id], on = f === peak && state.view === 'building';
+    el.classList.toggle('peak', on);
+    if (on) { const top = f.rooms.filter(r => r.power > 0).sort((a, b) => b.power - a.power).slice(0, 5), mx = top[0]?.power || 1;
+      setHTML(el.querySelector('.ch'), `<h6>전력 최다 층 · 상위 호실</h6>${top.map(r => `<button data-room="${r.id}" title="${esc(r.name)} ${r.power.toFixed(2)}kW${r.idle ? ' · 사람 없이 운전 중' : ''}"><span class="nm">${esc(r.name)}${r.idle ? '<span class="em"></span>' : ''}</span><span class="br" style="width:${Math.max(6, r.power / mx * 100).toFixed(0)}%"></span><span class="kw">${r.power.toFixed(1)}kW</span></button>`).join('')}`); }
+  }
   for (const f of FLOORS) {
     const a = floorAgg(f.rooms), crit = f.rooms.some(r => r.alert.level === 2), warn = f.rooms.some(r => r.alert.level === 1);
-    const val = m === 'temp' ? `${a.temp.toFixed(1)}°C` : m === 'hum' ? `${Math.round(a.hum)}%` : m === 'power' ? `${a.power.toFixed(1)}kW` : `${a.alerts}실 주의`;
+    if (m === 'comfort') {   // 쾌적도: 사용 중인 방의 쾌적(|PMV| < 0.5) 비율, 색 = 평균 PMV
+      const us = f.rooms.filter(r => r.inUse && r.cmf), ok = us.filter(r => Math.abs(r.cmf.pmv) < .5).length, avg = us.length ? us.reduce((t, r) => t + r.cmf.pmv, 0) / us.length : null;
+      setHTML(tagEls[f.id].querySelector('.v'), `<span class="sw" style="background:${cssColor('comfort', avg)}"></span>${us.length ? `쾌적 ${ok}/${us.length}실<i>·</i>PMV ${pmvTxt(avg)}` : '사용 중인 방 없음'}<i>·</i>${a.occ}명`);
+      continue;
+    }
+    const val = m === 'temp' ? `${a.temp.toFixed(1)}°C` : m === 'hum' ? `${Math.round(a.hum)}%` : m === 'power' ? `${a.power.toFixed(1)}kW${tot > 0 ? `<i>·</i>${Math.round(a.power / tot * 100)}%` : ''}` : `${a.alerts}실 주의`;
     const sw = m === 'alert' ? cssColor('alert', crit ? 2 : warn ? 1 : 0) : cssColor(m, m === 'temp' ? a.temp : m === 'hum' ? a.hum : a.power / Math.max(f.rooms.filter(r => r.type === 'room').length, 1));
     setHTML(tagEls[f.id].querySelector('.v'), `<span class="sw" style="background:${sw}"></span>${val}<i>·</i>${a.occ}명${crit || warn ? `<span class="al" style="display:inline-flex;color:${crit ? 'var(--danger)' : 'var(--caution)'}">${crit ? IC.alert : IC.alertCircle}</span>` : ''}`);
   }
@@ -1440,24 +1640,27 @@ function placeTags(it){
       const sx = (_p.x * .5 + .5) * rc.width, sy = (-_p.y * .5 + .5) * rc.height;
       if (sx > bx) { bx = sx; by = sy; }
     }
-    el.style.transform = `translate(${(bx + 6).toFixed(1)}px, ${(by - 14).toFixed(1)}px)`;
+    bx = Math.min(bx + 6, rc.width - el.offsetWidth - 6);   // 오른쪽 끝을 넘으면 안쪽으로 (전력 차트가 잘리지 않게)
+    el.style.transform = `translate(${bx.toFixed(1)}px, ${(by - 14).toFixed(1)}px)`;
     el.style.opacity = explodeF ? 0 : it > 2.2 + f.index * .12 ? (hoverFloor && hoverFloor !== f ? .35 : 1) : 0;
     el.classList.toggle('hot', hoverFloor === f);
   }
 }
 
 function recolorBuilding(){
+  const act = actionsByRoom();
   for (const grp of floorGroups) {
     for (const bk of grp.userData.blocks) {
       bk.tc = bk.tc || new THREE.Color().copy(bk.mesh.material.color);
       colorInto(state.metric, metricValue(bk.r, state.metric), bk.tc);
-      const lv = bk.r.alert.level;
+      const lv = markLv(bk.r, act);
       bk.beacon.visible = lv > 0; bk.beacon.material.map = lv === 2 ? critTex : warnTex;
-      bk.beam.visible = lv === 2;
+      bk.beam.visible = bk.r.alert.level === 2;
     }
     for (const { a, m } of grp.userData.idus) m.material.emissive.setHex(STATUS_HEX[a.status]);
     { const rs = grp.userData.floor.rooms.filter(r => r.acs.length), m = state.metric;
-      const v = m === 'alert' ? Math.max(0, ...rs.map(r => r.alert.level)) : rs.reduce((s2, r) => s2 + metricValue(r, m), 0) / Math.max(rs.length, 1);
+      const vs = rs.map(r => metricValue(r, m)).filter(x => x != null);
+      const v = m === 'alert' ? Math.max(0, ...rs.map(r => r.alert.level)) : vs.length ? vs.reduce((s2, x) => s2 + x, 0) / vs.length : null;
       colorInto(m, v, grp.userData.neonC); grp.userData.crit = rs.some(r => r.alert.level === 2); }
   }
   for (const x of oduObjs) {
@@ -1470,8 +1673,10 @@ let scanY = null, explodeF = null, roofLift = 0;
 function updateBuilding(t, dt){
   if (introStart == null) introStart = t;
   const it = reduceMotion ? 99 : t - introStart, hlOn = performance.now() < HL.until, pulse = 1;   // 깜빡임 금지: 강조는 고정 밝기
+  const showArchitecture = exteriorFirst && !explodeF && !state.pipes;
+  if (soil) soil.visible = !showArchitecture;
   { // scan sweep: 처음 한 번만 건물을 훑으며 드러냄 (10초마다 반복하던 훑기는 화면이 번쩍여 보여 뺌)
-    const top = roofY + 1.5, ph = (it - 1.2) / 2.6, on = !reduceMotion && ph > 0 && ph < 1 && !state.pipes;
+    const top = roofY + 1.5, ph = (it - 1.2) / 2.6, on = !reduceMotion && ph > 0 && ph < 1 && !state.pipes && !showArchitecture;
     scanY = on ? -.3 + (top + .3) * (1 - Math.pow(1 - ph, 2)) : null;
     scan.visible = on;
     if (on) { const a = Math.sin(Math.PI * ph) * (it < 4 ? 1 : .55); scan.position.y = scanY; scan.userData.pl.material.opacity = .55 * a; scan.userData.fr.material.opacity = .95 * a; }
@@ -1480,28 +1685,35 @@ function updateBuilding(t, dt){
     if (isDarkNow) { for (let i = 0; i < DUSTN; i++) { let y = pa.getY(i) + dt * dustV[i]; if (y > 42) y = 0; pa.setY(i, y); } pa.needsUpdate = true; dust.rotation.y = t * .01; } }
   for (const grp of floorGroups) {
     const f = grp.userData.floor, hot = hoverFloor === f;
-    const k = clamp((it - f.index * .22) / 1.1, 0, 1), e = 1 - Math.pow(1 - k, 3);
+    const k = clamp((it - f.index * .22) / 1.1, 0, 1), e = showArchitecture ? 1 : 1 - Math.pow(1 - k, 3);
     const up = explodeF && f.index > explodeF.index;
-    grp.userData.lift = lerp(grp.userData.lift, explodeF ? (up ? 8 + (f.index - explodeF.index) * 6 : f === explodeF ? 1.2 : 0) : hot ? .8 : 0, explodeF ? .07 : .12);
-    grp.userData.fade = lerp(grp.userData.fade, explodeF ? (f === explodeF ? 1 : up ? 0 : .1) : hoverFloor && !hot ? .28 : 1, explodeF ? .08 : .15);
+    grp.userData.lift = lerp(grp.userData.lift, explodeF ? (up ? 8 + (f.index - explodeF.index) * 6 : f === explodeF ? 1.2 : 0) : hot && !showArchitecture ? .8 : 0, explodeF ? .07 : .12);
+    grp.userData.fade = lerp(grp.userData.fade, explodeF ? (f === explodeF ? 1 : up ? 0 : .1) : hoverFloor && !hot && !showArchitecture ? .28 : 1, explodeF ? .08 : .15);
     grp.position.y = floorY(f.index) + grp.userData.lift + (1 - e) * 22;
     const fade = grp.userData.fade * e;
     grp.userData.frame.material.color.set(hot ? (isDarkNow ? 0xe6e6e3 : 0x222222) : 0x8b99ad);
-    grp.userData.frame.material.opacity = (hot ? 1 : .4) * e;
-    grp.userData.mullMat.opacity = (hot ? .45 : .2) * fade;
+    grp.userData.frame.material.opacity = (hot ? 1 : showArchitecture ? .16 : .4) * e;
+    if (grp.userData.mullMat) grp.userData.mullMat.opacity = (hot ? .45 : showArchitecture ? .13 : .2) * fade;   // 지하층은 멀리언 없음
     { // 네온 색·밝기는 목표값으로 천천히 (1초마다 값이 바뀔 때 블룸 때문에 번쩍이지 않게)
       const nm = grp.userData.neon.material, sm = 1 - Math.exp(-dt * 2.5);
       (grp.userData.neonS ||= grp.userData.neonC.clone()).lerp(grp.userData.neonC, sm);
       grp.userData.boost = lerp(grp.userData.boost ?? 1.6, hot || explodeF === f ? 2.4 : 1.6, 1 - Math.exp(-dt * 6));
       nm.color.copy(grp.userData.neonS);
       if (grp.userData.crit) nm.color.lerp(_c.setHex(0xb91c1c), .35 + .45 * pulse);
-      nm.color.multiplyScalar(grp.userData.boost); nm.opacity = (hot || explodeF === f ? 1 : .85) * fade; }
-    grp.userData.planMat.opacity = fade * (state.pipes ? .3 : 1); grp.userData.slabMat.opacity = e * (explodeF ? grp.userData.fade : 1); grp.visible = grp.userData.fade > .01;
+      nm.color.multiplyScalar(grp.userData.boost); nm.opacity = (hot || explodeF === f ? 1 : showArchitecture ? .5 : .85) * fade; }
+    grp.userData.planMat.opacity = fade * (state.pipes ? .3 : showArchitecture && !f.open ? .85 : 1);   // 반투명 외피 안으로 층 평면·방이 보이게
+    grp.userData.planMat.visible = grp.userData.planMat.opacity > .01;
+    grp.userData.slabMat.opacity = e * (explodeF ? grp.userData.fade : showArchitecture && !f.open ? .7 : 1);
+    grp.visible = grp.userData.fade > .01 && (!showArchitecture || !f.below);
+    grp.userData.coreMat.visible = !showArchitecture;
     grp.userData.coreMat.opacity = .92 * fade * (state.pipes ? .3 : 1);
     const blockK = state.pipes ? .18 : 1;
     const grow = clamp((it - f.index * .22 - .6) / .8, 0, 1);
     const sweep = scanY == null ? 0 : 1;
     for (const bk of grp.userData.blocks) {
+      bk.mesh.visible = bk.edges.visible = true;
+      bk.beacon.visible = bk.r.alert.level > 0;
+      bk.beam.visible = bk.r.alert.level === 2;
       if (bk.tc) { bk.mesh.material.color.lerp(bk.tc, .08); bk.mesh.material.emissive.copy(bk.mesh.material.color); bk.edges.material.color.copy(bk.mesh.material.color).lerp(_c.setHex(0xffffff), .55); }
       bk.mesh.scale.y = Math.max(.001, 1 - Math.pow(1 - grow, 3));
       bk.edges.scale.y = bk.mesh.scale.y;
@@ -1520,13 +1732,14 @@ function updateBuilding(t, dt){
   for (const m of hud) { m.rotation.y += dt * m.userData.spd; m.material.opacity = (isDarkNow ? .5 : .35) * clamp(it / 2.5, 0, 1); }
   stars.visible = isDarkNow; starMat.uniforms.uTime.value = t; stars.rotation.y = t * .004;
   scanRings.forEach((m, k) => { const ph = (t * .12 + k * .5) % 1, R = 30 + ph * 55; m.scale.set(R, R, R); m.material.opacity = Math.sin(Math.PI * ph) * (isDarkNow ? .22 : .16); });
-  const roofK = clamp((it - FLOORS.length * .22) / .8, 0, 1);
+  const roofK = showArchitecture ? 1 : clamp((it - FLOORS.length * .22) / .8, 0, 1);
   roofLift = lerp(roofLift, explodeF ? 40 : 0, explodeF ? .06 : .1);
   roof.position.y = (1 - roofK) * 20 + roofLift; roof.visible = roofK > 0 && roofLift < 34;
-  evShaft.visible = evCab.visible = roofK > .99 && !explodeF;
+  evShaft.visible = evCab.visible = roofK > .99 && !explodeF && !showArchitecture;
   { const N = FLOORS.length, cyc = (t * .2) % (2 * (N - 1)), lv = cyc < N - 1 ? cyc : 2 * (N - 1) - cyc, base = Math.floor(lv), e2 = clamp((lv - base - .45) / .55, 0, 1);
     evCab.position.copy(toWorld(evC.x, evC.y, floorY(Math.min(base + e2 * e2 * (3 - 2 * e2), N - 1)) + 1.25)); }
   for (const x of oduObjs) {
+    x.g.visible = !mappedExterior || state.pipes || oduLocations.has(x.o.id);
     const load = x.o.idus.reduce((s, a) => s + (a.status === 'on' ? a.power : 0), 0);
     x.fan.rotation.y += dt * (1 + load * 2.2);
   }
@@ -2042,6 +2255,43 @@ function renderBackdrop(f){
   const v = state.view; state.view = 'building'; updateBuilding(clock.elapsedTime, 0); state.view = v;
   renderPass.scene = bScene; composer.render();
 }
+// 층 보기 3D: 평면도 대신 그 층만 띄운 3D 모델을 비스듬히 (다른 층은 snapExplode로 비켜 있음), 마우스로 돌려 보고 방을 누르면 방 3D로
+let plan3d = false, planAnim = false, planTiltAt = 0, planSeq = 0;   // planAnim: 3D→2D로 돌아가는 동안에도 3D를 계속 그림
+try { plan3d = localStorage.getItem('twin:plan3d') === '1'; } catch {}
+function planTiltCamera(f){
+  const t = new THREE.Vector3(0, floorY(f.index) + 1.2, 0), c = homePos().sub(HOME.target).setY(0).normalize(), k = (Math.max(W, D) * 1.05 + 12) * 1.6;
+  return { pos:t.clone().add(c.multiplyScalar(k * .78)).setY(t.y + k * .72), tgt:t };
+}
+function enterPlan3d(f, animate = true){
+  if (!f) return;
+  const seq = ++planSeq;
+  snapExplode(f); hoverFloor = f; viewShift = 0; if (camera.view && camera.view.enabled) camera.clearViewOffset();
+  controls.enabled = true; controls.autoRotate = false; controls.minDistance = 6; controls.maxDistance = 400 * SC;
+  const pc = planTiltCamera(f);
+  if (animate && !reduceMotion) {
+    // 평면도가 녹아 사라지는 동안(같은 위에서 본 3D라 화면이 그대로) 잠시 머문 뒤, 천천히 기울며 물러남
+    planTiltAt = performance.now() + 260;
+    tween = { update(){} };
+    setTimeout(() => { if (seq === planSeq && plan3d) flyTo(pc.pos, pc.tgt, 1500, null, FOV0); }, 260);
+  } else { planTiltAt = 0; camera.fov = FOV0; camera.updateProjectionMatrix(); camera.position.copy(pc.pos); controls.target.copy(pc.tgt); }
+}
+function setPlan3d(on){
+  if (plan3d === on && !planAnim) return;
+  plan3d = on; if (on) document.body.classList.add('plan3d');
+  try { localStorage.setItem('twin:plan3d', on ? '1' : '0'); } catch {}
+  for (const b of document.querySelectorAll('#planMode button')) b.setAttribute('aria-pressed', String((b.dataset.pm === '3d') === on));
+  if (state.view !== 'floor' || !state.floor) return;
+  if (on) { planAnim = false; enterPlan3d(state.floor); return; }
+  // 3D → 2D: 3D를 켜 둔 채 평면도와 똑같은 위 시점으로 천천히 돌아온 뒤, 그 위로 평면도가 서서히 떠오름
+  const f = state.floor, pc = planCamera(f, planScreenRect(f)), seq = ++planSeq; controls.enabled = false;
+  const land = () => { if (seq !== planSeq || plan3d) return; renderBackdrop(f); document.body.classList.remove('plan3d'); setTimeout(() => { if (seq === planSeq) planAnim = false; }, 600); };
+  if (reduceMotion) { planAnim = false; document.body.classList.remove('plan3d'); renderBackdrop(f); return; }
+  planAnim = true; document.body.classList.add('plan3d');
+  flyTo(pc.pos, pc.tgt, 1300, land, FOV_PLAN);
+}
+document.body.classList.toggle('plan3d', plan3d);
+for (const b of document.querySelectorAll('#planMode button')) b.setAttribute('aria-pressed', String((b.dataset.pm === '3d') === plan3d));
+$('#planMode').addEventListener('click', e => { const b = e.target.closest('[data-pm]'); if (b) setPlan3d(b.dataset.pm === '3d'); });
 function setBodyView(v){ document.body.classList.remove('v-building', 'v-floor', 'v-room'); document.body.classList.add('v-' + v); state.view = v; }
 
 function goBuilding(animate = true){
@@ -2095,10 +2345,11 @@ function goFloor(f){
   hideTip(); controls.autoRotate = false;
   if (state.floor !== f || state.view !== 'floor') tellHost('floorSelected', { floor:f.id });
   const enter = (seamless) => {
-    disposeRoom(); setInspector(false); setBodyView('floor'); state.floor = f; state.room = null; controls.enabled = false;
+    disposeRoom(); setInspector(false); setBodyView('floor'); state.floor = f; state.room = null; controls.enabled = false; resetPlanZoom();
     if (!seamless) { buildPlanSvg(f); updatePlanSvg(); }
     renderFloorStats(); renderCrumbs(); renderLegend();
     if (!seamless) renderBackdrop(f);
+    if (plan3d) enterPlan3d(f, true);
     emit('twin:view', { view:'floor', floor:f.id });
   };
   if (state.view === 'building' && !reduceMotion) {
@@ -2210,8 +2461,8 @@ function buildPlanSvg(f, intro = false){
   const P = ([x, y]) => `${(p.ox + x*p.S).toFixed(1)},${(p.oy + y*p.S).toFixed(1)}`;
   document.body.classList.toggle('dk', isDark());
   // 평면도 그림을 층 윤곽(footprint)으로 잘라 냄 — 3D 바닥판과 같은 모양 (중정은 비움)
-  const fl = f.footprint?.length >= 3 ? f.footprint : [[0, 0], [W, 0], [W, D], [0, D]];
-  const clipD = 'M' + fl.map(P).join('L') + 'Z' + (f.hasVoid ? 'M' + [[VOID.x0, VOID.y0], [VOID.x1, VOID.y0], [VOID.x1, VOID.y1], [VOID.x0, VOID.y1]].map(P).join('L') + 'Z' : '');
+  const fl = f.footprint || [[[0, 0], [W, 0], [W, D], [0, D]]];
+  const clipD = fl.map(l => 'M' + l.map(P).join('L') + 'Z').join('') + (f.hasVoid ? 'M' + [[VOID.x0, VOID.y0], [VOID.x1, VOID.y0], [VOID.x1, VOID.y1], [VOID.x0, VOID.y1]].map(P).join('L') + 'Z' : '');
   let html = `<defs><clipPath id="planClip"><path clip-rule="evenodd" d="${clipD}"/></clipPath></defs><image href="${isDark() ? p.srcDark : p.src}" x="0" y="0" width="${p.w}" height="${p.h}" clip-path="url(#planClip)"/>`;
   const dly = r => `animation-delay:${(120 + (r.b.cx / W) * 520 + (r.b.cy / D) * 160).toFixed(0)}ms`;
   const RS = f.rooms.filter(r => r.acs.length);
@@ -2230,7 +2481,17 @@ function buildPlanSvg(f, intro = false){
   planRefs = RS.map(r => ({ r, tint:svg.querySelector(`.tint[data-id="${r.id}"]`), chip:svg.querySelector(`.chip[data-id="${r.id}"]`), badge:svg.querySelector(`.badge[data-id="${r.id}"]`),
     idus:r.acs.map(a => [a, svg.querySelector(`.idu[data-a="${a.id}"]`)]) }));
 }
+// 앱 임베드(2026-11-20): 역할별 조치 항목을 목록 패널 대신 호실 표시(3D 신호, 평면 배지)와 말풍선으로 표시
+// - 표시 단계: 이상 단계(r.alert.level)와 조치 단계 중 큰 값, 조치는 최소 주의(1)
+function actionsByRoom(){
+  const m = new Map();
+  if (!HOST.on || state.persona === 'sim') return m;
+  for (const i of insights(state.persona, ROOMS)) m.set(i.r.id, [...(m.get(i.r.id) || []), i]);
+  return m;
+}
+const markLv = (r, act) => Math.max(r.alert.level, act.has(r.id) ? Math.max(1, ...act.get(r.id).map(i => i.lv)) : 0);
 function updatePlanSvg(){
+  const act = actionsByRoom();
   const m = state.metric, hlOn = performance.now() < HL.until;
   for (const { r, tint, chip, badge, idus } of planRefs) {
     const col = cssColor(m, metricValue(r, m)); tint.style.fill = col; tint.style.setProperty('--c', col);
@@ -2238,6 +2499,7 @@ function updatePlanSvg(){
     const narrow = r.b.w < 9.5;
     const parts = [['temp', `${r.temp.toFixed(1)}°`], ['hum', `${Math.round(r.hum)}%`], ['power', `${r.power.toFixed(1)}kW`]];
     if (r.cls || r.occSrc === 'wifi' || r.occSrc === 'sensor') parts.push(['occ', `${r.occ}명`]);
+    if (m === 'comfort' && r.cmf) parts.unshift(['comfort', `PMV ${pmvTxt(r.cmf.pmv)}`]);
     const show = narrow ? parts.filter(([k]) => k === (m === 'alert' ? 'temp' : m)) : parts;
     if (chip) {
     const text = chip.querySelector('text');
@@ -2245,7 +2507,7 @@ function updatePlanSvg(){
     const bb = text.getBBox(), rect = chip.querySelector('rect');
     rect.setAttribute('x', bb.x - 9); rect.setAttribute('y', bb.y - 5); rect.setAttribute('width', bb.width + 18); rect.setAttribute('height', bb.height + 10);
     }
-    const lv = r.alert.level;
+    const lv = markLv(r, act);
     badge.style.display = lv ? '' : 'none';
     badge.querySelector('circle').style.fill = lv === 2 ? 'var(--danger)' : 'var(--caution)';
     for (const [a, el] of idus) el.style.fill = STATUS_CSS[a.status];
@@ -2291,9 +2553,9 @@ const PERSONA = {
 };
 const FLOW = [
   { id:'kwh',     label:'건물 · 층별 전력량과 요금',      src:['meter', 'tariff'],            to:['owner'] },
-  { id:'waste',   label:'수업 없는 방 냉방 · 절감액',      src:['acs', 'sched', 'meter', 'tariff'], to:['owner', 'engineer'] },
+  { id:'waste',   label:'수업 없는 방 냉난방 · 절감액',      src:['acs', 'sched', 'meter', 'tariff'], to:['owner', 'engineer'] },
   { id:'anom',    label:'전력 이상 패턴 (동일 용도 비교)',  src:['meter', 'drawing'],           to:['owner', 'facility'] },
-  { id:'sched',   label:'시간표 기반 사전 냉방 · 자동 OFF', src:['sched', 'kma', 'acs'],        to:['owner', 'engineer'] },
+  { id:'sched',   label:'시간표 기반 사전 냉난방 · 자동 OFF', src:['sched', 'kma', 'acs'],        to:['owner', 'engineer'] },
   { id:'comfort', label:'실별 쾌적도 (PMV · PPD)',   src:['acs', 'sched', 'kma'],        to:['engineer'] },
   { id:'setp',    label:'설정온도 · 풍량 조정 권고',      src:['acs', 'sched'],               to:['engineer'] },
   { id:'zone',    label:'방 안 온도 분포 (기류 3D)',      src:['acs', 'drawing'],             to:['engineer'] },
@@ -2319,7 +2581,7 @@ function insights(persona, rs){
   rs = rs.filter(r => r.acs.length); const out = [];
   const roomTag = r => `${r.floorId}`;
   if (persona === 'owner') {
-    for (const r of wasteOf(rs).rooms) out.push({ lv:r.emptyOn >= 30 ? 2 : 1, r, title:`${r.name} ${r.scheduled ? '수업 없는데 냉방' : '운영시간 외 냉방'}`, src:['acs', 'sched', 'tariff'],
+    for (const r of wasteOf(rs).rooms) out.push({ lv:r.emptyOn >= 30 ? 2 : 1, r, title:`${r.name} ${r.scheduled ? '수업 없는데 ' : '운영시간 외 '}${modeKo()}`, src:['acs', 'sched', 'tariff'],
       d:`${r.scheduled ? (r.next ? `다음 수업 ${r.next.start}` : '오늘 남은 수업 없음') : '건물 운영시간 외'} · ${r.acs.filter(a => a.status === 'on').length}대 가동${r.emptyOn >= 1 ? ` ${Math.round(r.emptyOn)}분째` : ''} · <b>${r.acPower.toFixed(1)}kW</b> · 시간당 <b>${won(r.acPower * TARIFF)}</b>` });
     for (const { r, k } of anomalies(rs)) out.push({ lv:1, r, title:`${r.name} 전력 과다`, src:['meter', 'drawing'],
       d:`동일 용도(${KIND_LABEL[r.kind]}) 대비 면적당 <b>${k.toFixed(1)}배</b> · ${r.acPower.toFixed(1)}kW → 운전 설정 · 설비 효율 점검` });
@@ -2334,7 +2596,7 @@ function insights(persona, rs){
       else if (r.inUse && c && c.pmv <= -.5) out.push({ lv:c.pmv <= -1.5 ? 2 : 1, r, title:`${r.name} 추움 PMV ${pmvTxt(c.pmv)} (${r.temp.toFixed(1)}°C)`, src:['acs'],
         d:heat ? (fault ? `실내기 ${fault}대 에러로 난방 부족${ppd} → 시설 관리자 출동 요청` : `설정 ${r.setpoint}°C${ppd} → 설정 1°C 상향 · 풍향 아래로`) : `과냉방 · 설정 ${r.setpoint}°C${ppd} → 1~2°C 상향 (쾌적해지고 전력 절감)` });
       if (r.hum >= 65) out.push({ lv:r.hum >= 72 ? 2 : 1, r, title:`${r.name} 습도 ${Math.round(r.hum)}%`, src:['acs', 'kma'], d:`제습 운전 전환 권장${r.cmf ? ` · PMV ${pmvTxt(r.cmf.pmv)}` : ''} · 불쾌지수 ${DI(r.temp, r.hum).toFixed(0)}(참고)` });
-      if (r.idle && r.emptyOn >= 20) out.push({ lv:1, r, title:`${r.name} 냉방 OFF 권장`, src:['sched', 'acs'], d:`${r.scheduled ? (r.next ? `다음 수업 ${r.next.start}까지 비어 있음` : '오늘 남은 수업 없음') : '운영시간 외'} · ${r.acPower.toFixed(1)}kW` });
+      if (r.idle && r.emptyOn >= 20) out.push({ lv:1, r, title:`${r.name} ${modeKo()} OFF 권장`, src:['sched', 'acs'], d:`${r.scheduled ? (r.next ? `다음 수업 ${r.next.start}까지 비어 있음` : '오늘 남은 수업 없음') : '운영시간 외'} · ${r.acPower.toFixed(1)}kW` });
     }
   } else {
     for (const r of rs) {
@@ -2377,6 +2639,8 @@ $('#actions').addEventListener('pointerdown', e => {
   if (state.view === 'floor' && state.floor.id === r.floorId) goRoom(r);
   else { highlight([r.id], 6); goFloor(FLOOR[r.floorId]); }
 });
+if (window.parent !== window && innerWidth < 1100 && params.get('host') !== '1') document.body.classList.add('act-min');
+$('#actions').addEventListener('click', e => { if (!document.body.classList.contains('hosted') && e.target.closest('.hd') && !e.target.closest('button, a, input, select')) document.body.classList.toggle('act-min'); });
 $('#actions').addEventListener('pointerover', e => { const it = e.target.closest('[data-room]'); if (it && state.view === 'floor') highlight([it.dataset.room], 2.5); });
 function setPersona(pk, quiet){
   if (!PERSONA[pk]) return; state.persona = pk;
@@ -2396,13 +2660,17 @@ const fmt1 = v => v == null || !isFinite(v) ? '–' : (+v).toLocaleString('ko-KR
 function simAvgT(res){ let t = 0, a = 0; for (const [id, x] of Object.entries(res.rooms || {})) if (x.avgTempC != null) { const ar = ROOM[id]?.area || 1; t += x.avgTempC * ar; a += ar; } return a ? t / a : null; }
 function scenLine(r){
   const R = SIM.result, x = R?.scenario?.rooms?.[r.id], b = R?.baseline?.rooms?.[r.id]; if (!x) return '';
-  return `<div class="sub" style="margin-top:4px">운전 시뮬레이션(${esc(R.scenario.scenario.coolSetpoint + '°C')}): 재실 중 평균 <b>${fmt1(x.avgTempC)}°C</b> · 최고 <b>${fmt1(x.maxTempC)}°C</b> · PPD ${fmt1(x.ppd)}% <span style="opacity:.7">(기존 ${fmt1(b?.avgTempC)}°C · ${fmt1(b?.ppd)}%)</span></div>`; }
-const simBase = () => SIM.result?.baseline?.scenario || { coolSetpoint:BD.operation?.coolSetpoint ?? 24, hours:BD.operation?.weekday || ['08:00', '21:00'] };
+  return `<div class="sub" style="margin-top:4px">운전 시뮬레이션(${esc((R.scenario.scenario.window?.sp ?? R.scenario.scenario.coolSetpoint) + '°C')}): 재실 중 평균 <b>${fmt1(x.avgTempC)}°C</b> · 최고 <b>${fmt1(x.maxTempC)}°C</b> · PPD ${fmt1(x.ppd)}% <span style="opacity:.7">(기존 ${fmt1(b?.avgTempC)}°C · ${fmt1(b?.ppd)}%)</span></div>`; }
+const simBase = () => SIM.result?.baseline?.scenario?.mode === simMode() ? SIM.result.baseline.scenario
+  : { mode:simMode(), coolSetpoint:simMode() === 'heat' ? BD.operation?.heatSetpoint ?? 20 : BD.operation?.coolSetpoint ?? 24, hours:BD.operation?.weekday || ['08:00', '21:00'] };
+// 설정온도 범위: 냉방 22~28, 난방 18~26 · 처음 값 = 절감 쪽으로 2°C (냉방 올림, 난방 내림)
+const spRange = () => simMode() === 'heat' ? [18, 26] : [22, 28];
 function simForm(){
-  if (!SIM.form) { const s = SIM.result?.scenario?.scenario, b = simBase();
+  if (SIM.form && SIM.form.mode !== simMode()) SIM.form = null;   // 냉·난방이 바뀌면(날짜) 설정온도 기본값을 다시 잡음
+  if (!SIM.form) { const s = SIM.result?.scenario?.scenario?.mode === simMode() ? SIM.result.scenario.scenario : null, b = simBase();
     // period: 'now' = 지금부터 durH시간 (기준 = 현재 설정 유지 예측), 'range' = 시작·끝 시각 지정 (기준 = 오늘 실제 운전 / 기존 운전)
-    SIM.form = s && !s.inherit ? { coolSetpoint:s.coolSetpoint, start:s.hours[0], end:s.hours[1], offWhenEmpty:s.offWhenEmpty, precoolMin:s.precoolMin, useLive:true, period:'now', durH:2 }
-      : { coolSetpoint:Math.min(28, Math.max(26, b.coolSetpoint + 2)), start:BD.operation?.weekday?.[0] || '08:00', end:BD.operation?.weekday?.[1] || '21:00', offWhenEmpty:false, precoolMin:0, useLive:true, period:'now', durH:2 }; }
+    SIM.form = s && !s.inherit ? { mode:simMode(), coolSetpoint:s.coolSetpoint, start:s.hours[0], end:s.hours[1], offWhenEmpty:s.offWhenEmpty, precoolMin:s.precoolMin, useLive:true, period:'now', durH:2 }
+      : { mode:simMode(), coolSetpoint:simMode() === 'heat' ? Math.max(18, Math.min(20, b.coolSetpoint - 2)) : Math.min(28, Math.max(26, b.coolSetpoint + 2)), start:BD.operation?.weekday?.[0] || '08:00', end:BD.operation?.weekday?.[1] || '21:00', offWhenEmpty:false, precoolMin:0, useLive:true, period:'now', durH:2 }; }
   return SIM.form;
 }
 // 오늘 기록(twin.live/v1): 시간별 평균 재실·가동·설정온도·전력·외기 + 기상 예보 → 서버가 오늘 하루를 EnergyPlus로 돌림
@@ -2415,13 +2683,13 @@ function buildLive(){
       rooms[id] = x; }
     hours[h] = { minutes:Math.round(H.w), out:H.out[2] ? { temp:r1(H.out[0] / H.out[2]), hum:Math.round(H.out[1] / H.out[2]) } : null, rooms };
   }
-  return { schema:'twin.live/v1', date:simDate, day:simDay, now:r2(simMin / 60), forecast:OUT_FCST, hours,
+  return { schema:'twin.live/v1', date:simDate, day:simDay, now:r2(simMin / 60), forecast:OUT_FCST_DATE === simDate ? OUT_FCST : {}, hours,
     occupancy:{ source:occKind(), wifiAps:Object.keys(MEAS.wifi || {}).length } };
 }
 async function simCompare(scenario, useLive){
   if (HOST_PLAN) throw new Error('브라우저에 저장된 평면도의 EnergyPlus 계산은 지원되지 않습니다.');
   const r = await fetch('/api/sim/compare', { method:'POST', headers:{ 'Content-Type':'application/json' },
-    body:JSON.stringify({ data:DATA_BASE, scenario, ...(useLive ? { live:buildLive() } : {}) }) });
+    body:JSON.stringify({ data:DATA_BASE, scenario:{ mode:simMode(), ...scenario }, ...(useLive ? { live:buildLive() } : {}) }) });
   const j = await r.json().catch(() => null);
   if (!r.ok || !j?.compare) throw new Error(j?.error || (r.status === 404 || r.status === 501 ? '계산 서버가 없어요 — start-twin.bat(node 서버)로 열어 주세요' : `서버 오류 ${r.status}`));
   return j;
@@ -2436,6 +2704,29 @@ async function simRun(){
   } catch (e) { SIM.msg = '오류: ' + (e.message || e); }
   SIM.busy = false; SIM.ver++; renderSim(true); $('#kpis').innerHTML = ''; renderKpis(); if (state.view === 'room') renderInspector();
 }
+// 채팅 what-if: 대시보드 AI 도우미가 "3층 강의실 18도로 낮추면?"을 보내면 그 방들만 지금부터 N시간 설정을 바꿔 EnergyPlus로 계산하고 결과만 돌려줌
+//   시뮬레이션 패널의 결과(SIM.result)는 건드리지 않음
+//   1단계 즉시: 5R1C(pipeline/rc5.js)를 이 브라우저에서 바로 계산 (수십 ms, 서버 없음 — 노션 설계의 what-if 경로). 보정 계수가 있으면 EnergyPlus 대비 오차도 같이 보냄
+//   2단계 정밀: 계산 서버가 있으면 EnergyPlus로 다시 계산해 답을 바꿈 (10초 안팎). 서버가 없거나 브라우저 저장 건물이면 즉시 값만
+let RC5 = null;
+async function simAsk(m){
+  const ids = (m.rooms || []).filter(id => ROOM[id]), send = x => emit('simAnswer', { source:'twin', id:m.id, ...x });
+  if (!ids.length) return send({ ok:false, stage:'final', error:'3D 트윈에 없는 호실이에요' });
+  if (!hasLive()) return send({ ok:false, stage:'final', error:'오늘 실측 기록이 아직 없어요. 잠시 뒤 다시 물어 주세요' });
+  let fast = null;
+  try {
+    RC5 ||= await Promise.all([import('./pipeline/rc5.js'), import('./pipeline/live-day.js')]);
+    const [{ whatIf }, { liveDay, liveBaseline }] = RC5, L = liveDay(BD, buildLive(), { schedule:DATA.schedule });
+    fast = whatIf(BD, L, liveBaseline(BD, L, simMode()), { rooms:ids, setpoint:+m.setpoint, hours:+m.hours || 2, tariff:DATA.tariff, calib:DATA['rc5-calibration'] });
+    send({ ok:true, stage:'fast', engine:'5R1C', mode:fast.mode, window:fast.window, ms:fast.ms, accuracy:fast.accuracy });
+  } catch (e) { console.warn('[twin] 5R1C 즉시 계산 실패', e); }
+  try {
+    const j = await simCompare({ name:'AI what-if', coolSetpoint:+m.setpoint, window:{ hours:+m.hours || 2, rooms:ids } }, true);
+    send({ ok:true, stage:'final', engine:j.scenario.engine, mode:j.mode || 'cool', window:j.window, calibration:j.calibration?.factor ?? 1, seconds:j.scenario.run?.seconds ?? null,
+      fast:fast ? { savedKwh:fast.window.savedKwh, savedWon:fast.window.savedWon, ms:fast.ms } : null });
+  } catch (e) { send(fast ? { ok:true, stage:'final', engine:'5R1C', onlyFast:true, mode:fast.mode, window:fast.window, ms:fast.ms, accuracy:fast.accuracy, note:e.message || String(e) }
+    : { ok:false, stage:'final', error:e.message || String(e) }); }
+}
 // 대시보드의 '운전 시뮬레이션' 패널로 보내는 상태 (트윈 안 패널은 작아서 대시보드 쪽에 그림)
 function simReport(force){
   if (!HOST.on || !hostReady()) return;
@@ -2443,9 +2734,9 @@ function simReport(force){
   const R = SIM.result, f = simForm(), b = simBase(), scope = state.view !== 'building' && state.floor ? state.floor.rooms : ROOMS;
   const rooms = R ? scope.filter(r => R.scenario.rooms[r.id]).map(r => { const x = R.scenario.rooms[r.id], y = R.baseline.rooms[r.id];
     return { id:r.id, name:r.name, floor:r.floorId, maxT:x.maxTempC, avgT:x.avgTempC, baseAvgT:y?.avgTempC, ppd:x.ppd, basePpd:y?.ppd, kwh:x.elecKwh, baseKwh:y?.elecKwh }; })
-    .sort((p, q) => (q.maxT ?? 0) - (p.maxT ?? 0)).slice(0, 12) : [];
-  emit('sim', { source:'twin', form:f, base:b, hasLive:hasLive(), occ:OCC_SRC[occKind()], busy:SIM.busy, msg:SIM.msg, scope:scope === ROOMS ? '건물 전체' : state.floor.id,
-    result:R ? { window:R.window || null, baseName:R.baseline.scenario.name, live:R.live ? { date:R.live.date, day:R.live.day, now:R.live.now, weather:R.live.weather } : null, weather:R.baseline.weather, days:R.baseline.days, engine:R.scenario.engine,
+    .sort((p, q) => R.mode === 'heat' ? (p.avgT ?? 99) - (q.avgT ?? 99) : (q.maxT ?? 0) - (p.maxT ?? 0)).slice(0, 12) : [];   // 난방: 추운 방부터
+  emit('sim', { source:'twin', mode:simMode(), form:f, base:b, hasLive:hasLive(), occ:OCC_SRC[occKind()], busy:SIM.busy, msg:SIM.msg, scope:scope === ROOMS ? '건물 전체' : state.floor.id,
+    result:R ? { mode:R.mode || 'cool', window:R.window || null, baseName:R.baseline.scenario.name, live:R.live ? { date:R.live.date, day:R.live.day, now:R.live.now, weather:R.live.weather } : null, weather:R.baseline.weather, days:R.baseline.days, engine:R.scenario.engine,
       compare:R.compare, restOfDay:R.restOfDay || null, calibration:R.calibration || null, comfort:R.scenario.comfort || null,
       baseline:{ kpi:R.baseline.kpi, scenario:R.baseline.scenario, avgT:simAvgT(R.baseline) }, scenario:{ kpi:R.scenario.kpi, scenario:R.scenario.scenario, avgT:simAvgT(R.scenario) }, rooms } : null });
 }
@@ -2463,19 +2754,22 @@ function renderSim(force){
     const row = (l, x, y, u, good) => { const d = y - x, cls = Math.abs(d) < 1e-6 ? '' : (good ? d < 0 : d > 0) ? 'up' : 'dn';
       return `<tr><th>${l}</th><td>${fmt1(x)}${u}</td><td class="${cls}">${fmt1(y)}${u}</td></tr>`; };
     const rs = scope.filter(r => R.scenario.rooms[r.id]).map(r => ({ r, x:R.scenario.rooms[r.id], b:R.baseline.rooms[r.id] })).sort((p, q) => (q.x.maxTempC ?? 0) - (p.x.maxTempC ?? 0));
-    const tlv = t => t >= 28 ? 2 : t > (R.scenario.comfort?.upper ?? 26) ? 1 : 0;
+    const H = R.mode === 'heat', MK = modeKo(R.mode || 'cool');
+    if (H) rs.sort((p, q) => (p.x.avgTempC ?? 99) - (q.x.avgTempC ?? 99));   // 난방: 추운 방부터
+    const tlv = t => H ? (t < (R.scenario.comfort?.lower ?? 18) - 1 ? 2 : t < (R.scenario.comfort?.lower ?? 18) ? 1 : 0)
+      : t >= 28 ? 2 : t > (R.scenario.comfort?.upper ?? 26) ? 1 : 0;
     const L = R.live, K = R.calibration, RD = R.restOfDay;
     res = `${R.window ? `<div class="msg pad">계산 구간 <b>${R.window.label}</b> · ${esc(R.baseline.scenario.name)} 대비 ${fmt1(R.window.savedKwh)} kWh · ${won(R.window.savedWon)}</div>` : ''}<div class="hero">${L ? `오늘 실제 운전 대비 절감 <span>(${L.date.slice(5).replace('-', '/')}(${L.day}) ${Math.floor(L.now)}시 기준 · 외기 ${fmt1(L.weather.min)}~${fmt1(L.weather.max)}°C 예보·실측)</span>` : `기존 운전 대비 절감 <span>(${esc(R.baseline.weather)} · ${R.baseline.days}일)</span>`}
         <b>${fmt1(c.savedKwh)} kWh (${fmt1(c.savedPct)}%) · ${won(c.savedWon)}</b>
         ${RD ? `지금(${RD.fromHour}시)부터 오늘 끝까지 <b class="inline">${fmt1(RD.savedKwh)} kWh · ${won(RD.savedWon)}</b><br>` : ''}
         불쾌도 ${c.tdisChange > 0 ? '+' : ''}${fmt1(c.tdisChange)} K·h/실 · 불만족(PPD) ${c.ppdChange > 0 ? '+' : ''}${fmt1(c.ppdChange)}%p</div>
       ${K ? `<div class="msg pad" title="${esc(K.note)}">실측 보정 ×${fmt1(K.factor)} · 지난 ${K.hours}시간 실측 실내기 전력 ${fmt1(K.measuredKwh)}kWh 기준${K.cvrmsePct != null ? ` · 시간별 오차 CV(RMSE) ${fmt1(K.cvrmseRawPct)}% → ${fmt1(K.cvrmsePct)}%` : ''} · 재실 ${esc(OCC_SRC[R.live?.occSource] || '실측')}</div>` : ''}
-      <table class="simt"><thead><tr><th></th><th>${L ? '오늘 실제' : '기존'}<small>${L ? `평균 ${bs.coolSetpoint}°C · 실별 기록` : `${bs.coolSetpoint}°C · ${bs.hours.join('~')}`}</small></th><th>선택<small>${sc.coolSetpoint}°C · ${sc.hours.join('~')}${sc.offWhenEmpty ? ' · 빈시간 OFF' : ''}${sc.precoolMin ? ` · 사전 ${sc.precoolMin}분` : ''}</small></th></tr></thead><tbody>
-        ${row('냉방 전력', B.elecKwh, S.elecKwh, 'kWh', true)}${row('전기요금', B.costWon, S.costWon, '원', true)}
-        ${row('예상 실온(재실 평균)', simAvgT(R.baseline), simAvgT(R.scenario), '°C', true)}${row('가장 더운 실', B.hottest?.tempC, S.hottest?.tempC, '°C', true)}
+      <table class="simt"><thead><tr><th></th><th>${L ? '오늘 실제' : '기존'}<small>${L ? `평균 ${bs.coolSetpoint}°C · 실별 기록` : `${bs.coolSetpoint}°C · ${bs.hours.join('~')}`}</small></th><th>선택<small>${sc.window?.sp ?? sc.coolSetpoint}°C · ${sc.hours.join('~')}${sc.offWhenEmpty ? ' · 빈시간 OFF' : ''}${sc.precoolMin ? ` · 사전 ${sc.precoolMin}분` : ''}</small></th></tr></thead><tbody>
+        ${row(`${MK} 전력`, B.elecKwh, S.elecKwh, 'kWh', true)}${row('전기요금', B.costWon, S.costWon, '원', true)}
+        ${row('예상 실온(재실 평균)', simAvgT(R.baseline), simAvgT(R.scenario), '°C', true)}${H ? '' : row('가장 더운 실', B.hottest?.tempC, S.hottest?.tempC, '°C', true)}
         ${row('열 불쾌도 tdis', B.tdisKhPerZone, S.tdisKhPerZone, 'K·h/실', true)}${row('불만족 PPD', B.ppd, S.ppd, '%', true)}${row('|PMV|>0.5 비율', B.uncomfortPct, S.uncomfortPct, '%', true)}
       </tbody></table>
-      <div class="list">${rs.slice(0, 40).map(({ r, x, b }) => `<button class="it" data-room="${r.id}"><div class="t">${LV_ICON(tlv(x.maxTempC), true)}${esc(r.name)} 최고 ${fmt1(x.maxTempC)}°C<em>${r.floorId}</em></div>
+      <div class="list">${rs.slice(0, 40).map(({ r, x, b }) => `<button class="it" data-room="${r.id}"><div class="t">${LV_ICON(tlv(H ? x.avgTempC : x.maxTempC), true)}${esc(r.name)} ${H ? `재실 평균 ${fmt1(x.avgTempC)}` : `최고 ${fmt1(x.maxTempC)}`}°C<em>${r.floorId}</em></div>
         <div class="d">재실 평균 ${fmt1(b?.avgTempC)} → <b>${fmt1(x.avgTempC)}°C</b> · PPD ${fmt1(b?.ppd)} → <b>${fmt1(x.ppd)}%</b> · 전력 ${fmt1(b?.elecKwh)} → ${fmt1(x.elecKwh)}kWh</div></button>`).join('')}</div>`;
   } else res = `<div class="empty">아직 계산한 결과가 없어요. 조건을 고르고 <b>EnergyPlus로 계산</b>을 누르세요.</div>`;
   const opt = (v, l) => `<option value="${v}"${+f.precoolMin === v ? ' selected' : ''}>${l}</option>`;
@@ -2483,14 +2777,14 @@ function renderSim(force){
     <form class="simf" onsubmit="return false">
       ${hasLive() ? `<label class="chk"><input type="checkbox" name="useLive"${f.useLive ? ' checked' : ''}> 오늘 실측 기준 (${OCC_SRC[occKind()]} 재실 · 실제 운전 · 기상 예보 · 실측 전력 보정)</label>` : ''}
       <div class="base">${f.useLive && hasLive() ? `기존 운전 = <b>오늘 실제 운전</b> (방마다 켠 시간·설정온도 기록, 지금 이후는 재실 예상으로)` : `기존 운전 <b>${b.coolSetpoint}°C · ${b.hours.join('~')}</b> · 사람 유무와 관계없이 운전`}</div>
-      <label>설정온도 <output>${(+f.coolSetpoint).toFixed(1)}°C</output><input type="range" name="coolSetpoint" min="22" max="28" step="0.5" value="${f.coolSetpoint}"></label>
+      <label>${modeKo()} 설정온도 <output>${(+f.coolSetpoint).toFixed(1)}°C</output><input type="range" name="coolSetpoint" min="${spRange()[0]}" max="${spRange()[1]}" step="0.5" value="${f.coolSetpoint}"></label>
       <div class="two"><label>운전 시작<input type="time" name="start" value="${f.start}"></label><label>운전 끝<input type="time" name="end" value="${f.end === '24:00' ? '23:59' : f.end}"></label></div>
       <div class="two"><label class="chk"><input type="checkbox" name="offWhenEmpty"${f.offWhenEmpty ? ' checked' : ''}> 사람 적은 시간 끄기</label>
-        <label>사전 냉방<select name="precoolMin">${opt(0, '없음')}${opt(30, '30분')}${opt(60, '1시간')}${opt(120, '2시간')}</select></label></div>
+        <label>사전 ${modeKo()}<select name="precoolMin">${opt(0, '없음')}${opt(30, '30분')}${opt(60, '1시간')}${opt(120, '2시간')}</select></label></div>
       <button type="button" data-simrun ${SIM.busy ? 'disabled' : ''}>${SIM.busy ? '계산 중…' : 'EnergyPlus로 계산'}</button>
       ${msgHtml(SIM.msg)}
     </form>${res}
-    <div class="ft"><span title="전력 = 냉방 열량 ÷ 실내기 정격 COP(외기 보정) · 요금 = 시간별 전력 × 한전 계시별 단가 · 불쾌도 = 재실 중 쾌적 범위(${R?.scenario?.comfort?.lower ?? 20}~${R?.scenario?.comfort?.upper ?? 26}°C) 밖 K·h (BOPTEST tdis) · PMV/PPD = ISO 7730 (옷 0.5clo, 기류 0.15m/s)">${IC.info}EnergyPlus 24.2 · ISO 7730 PMV/PPD · BOPTEST KPI · 한전 요금</span></div>`;
+    <div class="ft"><span title="전력 = ${modeKo(R?.mode)} 열량 ÷ 실내기 정격 COP(외기 보정) · 요금 = 시간별 전력 × 한전 계시별 단가 · 불쾌도 = 재실 중 쾌적 범위(${R?.scenario?.comfort?.lower ?? 20}~${R?.scenario?.comfort?.upper ?? 26}°C) 밖 K·h (BOPTEST tdis) · PMV/PPD = ISO 7730 (옷 ${(R?.mode || simMode()) === 'heat' ? '1.0' : '0.5'}clo, 기류 0.15m/s)">${IC.info}EnergyPlus 24.2 · ISO 7730 PMV/PPD · BOPTEST KPI · 한전 요금</span></div>`;
   if (force || html !== renderActions.last) { const sc = el.querySelector('.list')?.scrollTop || 0; el.innerHTML = html; renderActions.last = html; const l = el.querySelector('.list'); if (l) l.scrollTop = sc; }
 }
 $('#actions').addEventListener('input', e => { const t = e.target; if (!t.closest('.simf')) return; const f = simForm();
@@ -2702,6 +2996,7 @@ function wiResult(r){
   let hs = [...Array(24).keys()].filter(h => h >= now && (!busy || busy[h] === '1')); const occ = hs.length > 0;
   if (!hs.length) hs = [...Array(24).keys()].filter(h => h >= now);
   const pick = o => o.hourlyT ? hs.map(h => o.hourlyT[h]).filter(v => v != null) : null, mx = a => Math.max(...a), av = a => a.reduce((t, v) => t + v, 0) / a.length;
+  const H = j.mode === 'heat', REF = H ? 20 : 26;   // 기준선: 냉방 26°C(상한 권장) · 난방 20°C(권장)
   const tb = pick(b), tx = pick(x), kw = o => o.hourlyKwh ? o.hourlyKwh.slice(now).reduce((t, v) => t + v, 0) : o.elecKwh;
   const eb = kw(b), ex = kw(x), d = eb - ex, cls = v => v > 0 ? 'dn' : v < 0 ? 'up' : '';
   const tmax = tb ? [mx(tb), mx(tx)] : [b.maxTempC, x.maxTempC], tavg = tb ? [av(tb), av(tx)] : [b.avgTempC, x.avgTempC];
@@ -2709,23 +3004,24 @@ function wiResult(r){
   // 시간별 예상 실온 그래프 (회색 = 지금 설정 그대로, 파랑 = 바꾼 설정)
   let chart = '';
   if (b.hourlyT && x.hourlyT) {
-    const all = [...b.hourlyT, ...x.hourlyT].filter(v => v != null), lo = Math.floor(Math.min(...all, 22)), hi = Math.ceil(Math.max(...all, 27)), Wc = 280, Hc = 120;
+    const all = [...b.hourlyT, ...x.hourlyT].filter(v => v != null), lo = Math.floor(Math.min(...all, H ? 17 : 22)), hi = Math.ceil(Math.max(...all, H ? 23 : 27)), Wc = 280, Hc = 120;
     const X = h => 16 + h / 23 * (Wc - 32), Y = t => 8 + (hi - t) / (hi - lo) * (Hc - 34), line = a => a.map((t, h) => t == null ? '' : `${X(h).toFixed(1)},${Y(t).toFixed(1)}`).filter(Boolean).join(' ');
     const band = busy ? [...busy].map((c, h) => c === '1' ? `<rect x="${(X(h) - (Wc - 32) / 46).toFixed(1)}" y="8" width="${((Wc - 32) / 23).toFixed(1)}" height="${Hc - 34}" fill="currentColor" opacity=".1"/>` : '').join('') : '';
     chart = `<svg class="chart" viewBox="0 0 ${Wc} ${Hc}" role="img" aria-label="시간별 예상 실온">${band}
-      <line x1="8" x2="${Wc - 8}" y1="${Y(26).toFixed(1)}" y2="${Y(26).toFixed(1)}" stroke="var(--warn)" stroke-dasharray="3 3" stroke-width="1"/>
+      <line x1="8" x2="${Wc - 8}" y1="${Y(REF).toFixed(1)}" y2="${Y(REF).toFixed(1)}" stroke="var(--warn)" stroke-dasharray="3 3" stroke-width="1"/>
       ${live ? `<line x1="${X(j.live.now).toFixed(1)}" x2="${X(j.live.now).toFixed(1)}" y1="4" y2="${Hc - 26}" stroke="var(--muted)" stroke-width="1"/><text x="${X(j.live.now) + 4}" y="20" font-size="14" fill="var(--muted)">지금</text>` : ''}
       <polyline points="${line(b.hourlyT)}" fill="none" stroke="var(--chart-prev)" stroke-width="2" stroke-dasharray="4 3"/>
       <polyline points="${line(x.hourlyT)}" fill="none" stroke="var(--chart-cur)" stroke-width="2.5"/>
       ${[0, 6, 12, 18, 23].map(h => `<text x="${X(h)}" y="${Hc - 4}" font-size="14" text-anchor="middle" fill="var(--muted)">${h}시</text>`).join('')}
-      <text x="${Wc - 8}" y="${Y(26) - 4}" font-size="14" text-anchor="end" fill="var(--warn)">26°C</text></svg>
+      <text x="${Wc - 8}" y="${Y(REF) - 4}" font-size="14" text-anchor="end" fill="var(--warn)">${REF}°C</text></svg>
       <div class="key"><span><i class="prev"></i>지금 ${sp0}°C</span><span><i class="cur"></i>${sp}°C</span>${busy ? '<span><i class="busy"></i>사람 있는 시간</span>' : ''}</div>`;
   }
   return `<div class="res">${live ? `${now}시부터 오늘 끝까지` : '표준 하루(설계일)'} · ${sp0}°C → <b>${sp}°C</b><br>
     ${occ ? '재실 중 ' : ''}실온 최고 ${fmt1(tmax[0])} → <b>${fmt1(tmax[1])}°C</b> · 평균 ${fmt1(tavg[0])} → <b>${fmt1(tavg[1])}°C</b><br>
-    이 방 냉방 전력 ${fmt1(eb)} → <b>${fmt1(ex)} kWh</b> <span class="${cls(d)}">(${d >= 0 ? '−' : '+'}${fmt1(Math.abs(d))}kWh${eb > 0 ? `, ${d >= 0 ? '−' : '+'}${fmt1(Math.abs(d / eb * 100))}%` : ''})</span>
+    이 방 ${modeKo(j.mode || 'cool')} 전력 ${fmt1(eb)} → <b>${fmt1(ex)} kWh</b> <span class="${cls(d)}">(${d >= 0 ? '−' : '+'}${fmt1(Math.abs(d))}kWh${eb > 0 ? `, ${d >= 0 ? '−' : '+'}${fmt1(Math.abs(d / eb * 100))}%` : ''})</span>
     · 요금 <span class="${cls(j.restOfDay ? j.restOfDay.savedWon : j.compare.savedWon)}">${won2(-(j.restOfDay ? j.restOfDay.savedWon : j.compare.savedWon))}</span>
-    ${tmax[1] > 26.5 ? `<br><span class="up">재실 중 26°C를 넘는 시간이 있어요 — 덥다는 민원 가능</span>` : ''}</div>${chart}
+    ${H ? (tb && Math.min(...tx) < 18 ? `<br><span class="up">재실 중 18°C 아래로 내려가는 시간이 있어요 — 춥다는 민원 가능</span>` : '')
+      : tmax[1] > 26.5 ? `<br><span class="up">재실 중 26°C를 넘는 시간이 있어요 — 덥다는 민원 가능</span>` : ''}</div>${chart}
     <div class="msg">EnergyPlus ${j.scenario.run?.seconds ?? ''}s${j.calibration ? ` · 실측 보정 ×${fmt1(j.calibration.factor)}` : ''}</div>`;
 }
 async function wiRun(){
@@ -2783,6 +3079,38 @@ function renderLegend(){
 }
 $('#metrics').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setMetric(b.dataset.m); });
 $('#pipesBtn').addEventListener('click', () => setPipes(!state.pipes));
+/* 화면 도구 ─ 돋보기: 3D는 카메라를 대상 쪽으로 한 단계(×0.8) 당기고, 층 평면도는 평면도를 1.25배씩 확대(최대 4배, 확대 중엔 끌어서 이동)
+               전체화면: 트윈 화면 전체 (대시보드 안에서는 iframe의 allow="fullscreen" 필요) */
+var PZ = { k:1, x:0, y:0 };   // var: 처음 화면이 층(?floor=)이면 이 줄보다 먼저 goFloor가 불릴 수 있음
+function clampPan(){   // 평면도 그림(여백 제외)이 틀 밖으로 완전히 나가지 않게: 확대한 그림 크기 − 틀 크기의 절반까지만 이동
+  const w = $('#planWrap').clientWidth, h = $('#planWrap').clientHeight, p = state.floor?.plan;
+  const sc = p ? Math.min(w / p.w, h / p.h) : 1, cw = p ? p.w * sc : w, ch = p ? p.h * sc : h;
+  const mx = Math.max(0, (PZ.k * cw - w) / 2), my = Math.max(0, (PZ.k * ch - h) / 2);
+  PZ.x = clamp(PZ.x, -mx, mx); PZ.y = clamp(PZ.y, -my, my); }
+function applyPlanZoom(){ svg.style.transform = PZ.k === 1 ? '' : `translate(${PZ.x}px,${PZ.y}px) scale(${PZ.k})`; $('#planWrap').classList.toggle('zoomed', PZ.k > 1); }
+function resetPlanZoom(){ PZ.k = 1; PZ.x = PZ.y = 0; applyPlanZoom(); }
+function zoomView(f){                                   // f < 1 확대, f > 1 축소
+  if (state.view === 'floor') { PZ.k = clamp(Math.round(PZ.k / f * 100) / 100, 1, 4); PZ.x /= f; PZ.y /= f; clampPan(); applyPlanZoom(); return; }
+  const tgt = controls.target.clone(), dir = camera.position.clone().sub(tgt), d = dir.length();
+  const nd = clamp(d * f, controls.minDistance, controls.maxDistance); if (Math.abs(nd - d) < 1e-3) return;
+  flyTo(tgt.clone().add(dir.setLength(nd)), tgt, 320);
+}
+$('#zoomIn').addEventListener('click', () => zoomView(.8));
+$('#zoomOut').addEventListener('click', () => zoomView(1.25));
+{ // 확대한 평면도 끌어서 옮기기 (조금이라도 끌었으면 그 클릭은 방 선택으로 보지 않음)
+  const wrap = $('#planWrap'); let drag = null, moved = false;
+  wrap.addEventListener('pointerdown', e => { if (PZ.k <= 1 || e.button !== 0) return; drag = { x:e.clientX, y:e.clientY, px:PZ.x, py:PZ.y }; moved = false; });
+  addEventListener('pointermove', e => { if (!drag) return; const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    if (!moved && Math.hypot(dx, dy) < 4) return; moved = true; wrap.classList.add('panning'); PZ.x = drag.px + dx; PZ.y = drag.py + dy; clampPan(); applyPlanZoom(); });
+  addEventListener('pointerup', () => { drag = null; wrap.classList.remove('panning'); });
+  wrap.addEventListener('click', e => { if (moved) { e.stopPropagation(); e.preventDefault(); moved = false; } }, true);
+}
+{ const b = $('#fsBtn'), ICON = { on:'M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5', off:'M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5' };
+  if (!document.fullscreenEnabled) b.hidden = true;
+  b.addEventListener('click', () => document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen().catch(e => console.warn('[twin] 전체화면을 열지 못했어요', e)));
+  document.addEventListener('fullscreenchange', () => { const on = !!document.fullscreenElement;
+    b.setAttribute('aria-pressed', on); b.title = b.ariaLabel = on ? '전체화면 끝내기 (Esc)' : '전체화면'; b.querySelector('path').setAttribute('d', on ? ICON.on : ICON.off); });
+}
 function setMetric(m){ if (!SCALES[m]) return; state.metric = m; renderLegend(); recolorBuilding(); renderTags(); if (state.view === 'floor') updatePlanSvg(); }
 function renderCrumbs(){
   const c = [`<a data-go="building">${esc(CFG.buildingName)}</a>`];
@@ -2811,7 +3139,8 @@ function showRoomTip(r, e){
     ${r.scheduled ? `<div class="row"><span>학사 시간표</span><span>${r.cls ? `${esc(r.cls.course)} · ${r.occ}명` : r.next ? `다음 ${r.next.start} ${esc(r.next.course)}` : '오늘 수업 끝'}</span></div>` : ''}
     ${r.cmf ? `<div class="row"><span>쾌적도 PMV</span><span>${pmvTxt(r.cmf.pmv)} · 불만족 ${Math.round(r.cmf.ppd)}%</span></div>` : ''}
     ${r.acs.length ? `<div class="row"><span>실내기</span><span>${on}/${r.acs.length} 가동${fault ? ` · 고장 ${fault}` : ''} · ${r.setpoint}°</span></div>` : ''}
-    ${r.alert.items.map(([lv, m]) => `<div class="al" style="color:${lv === 2 ? 'var(--danger)' : 'var(--caution)'}">${lv === 2 ? IC.alert : IC.alertCircle}${esc(m)}</div>`).join('')}`;
+    ${r.alert.items.map(([lv, m]) => `<div class="al" style="color:${lv === 2 ? 'var(--danger)' : 'var(--caution)'}">${lv === 2 ? IC.alert : IC.alertCircle}${esc(m)}</div>`).join('')}
+    ${(actionsByRoom().get(r.id) || []).filter(i => !r.alert.items.some(([, m]) => m === i.title)).map(i => `<div class="al" style="color:${i.lv === 2 ? 'var(--danger)' : 'var(--caution)'}">${i.lv === 2 ? IC.alert : IC.alertCircle}${esc(i.title)}</div><div class="act-d">${i.d}</div>`).join('')}`;
   tip.style.display = 'block'; placeTip(e);
 }
 function showFloorTip(f, e){
@@ -2832,7 +3161,7 @@ function pick(e){
   const rc = canvas.getBoundingClientRect();
   ndc.set((e.clientX - rc.left) / rc.width * 2 - 1, -(e.clientY - rc.top) / rc.height * 2 + 1);
   ray.setFromCamera(ndc, camera);
-  const hit = ray.intersectObjects(pickables, false)[0];
+  const hit = ray.intersectObjects(pickables, false).find(({object}) => object.visible && object.parent.visible && object.material.visible);
   return hit ? hit.object.userData.floor : null;
 }
 canvas.addEventListener('pointerdown', e => { downAt = [e.clientX, e.clientY]; controls.autoRotate = false; });
@@ -2844,14 +3173,27 @@ canvas.addEventListener('pointermove', e => {
   f ? showFloorTip(f, e) : hideTip();
 });
 canvas.addEventListener('pointerleave', () => { if (state.view === 'building') { hoverFloor = null; hideTip(); renderFloorPicker(); } });
+function pickRoom(e){
+  const grp = floorGroups.find(g => g.userData.floor === state.floor); if (!grp) return null;
+  const rc = canvas.getBoundingClientRect();
+  ndc.set((e.clientX - rc.left) / rc.width * 2 - 1, -(e.clientY - rc.top) / rc.height * 2 + 1);
+  ray.setFromCamera(ndc, camera);
+  const meshes = grp.userData.blocks.map(bk => bk.mesh), hit = ray.intersectObjects(meshes, false)[0];
+  return hit ? grp.userData.blocks.find(bk => bk.mesh === hit.object).r : null;
+}
 canvas.addEventListener('pointerup', e => {
+  if (downAt && state.view === 'floor' && plan3d && !tween) {
+    const moved = Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]); downAt = null;
+    if (moved < 6) { const r = pickRoom(e); if (r) goRoom(r); }
+    return;
+  }
   if (!downAt || state.view !== 'building') return;
   const moved = Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]); downAt = null;
   if (moved < 6) { const f = pick(e); if (f) goFloor(f); }
 });
 
 /* ═════════════════════════ loop / resize / visibility ═════════════════════════ */
-function resize(){ const w = stage.clientWidth, h = stage.clientHeight; if (!w || !h) return; renderer.setSize(w, h, false); composer.setPixelRatio(renderer.getPixelRatio()); composer.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix(); if (state.view === 'floor' && state.floor && typeof renderBackdrop === 'function') renderBackdrop(state.floor); }
+function resize(){ const w = stage.clientWidth, h = stage.clientHeight; if (!w || !h) return; renderer.setSize(w, h, false); composer.setPixelRatio(renderer.getPixelRatio()); composer.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix(); if (state.view === 'floor' && state.floor && !plan3d && !planAnim && typeof renderBackdrop === 'function') renderBackdrop(state.floor); }
 new ResizeObserver(resize).observe(stage); resize();
 let visible = true;
 document.addEventListener('visibilitychange', () => { visible = !document.hidden; });
@@ -2861,7 +3203,7 @@ let viewShift = 0;
 function frame(now){
   requestAnimationFrame(frame);
   const dt = Math.min(clock.getDelta(), .05);
-  if (!visible || state.view === 'floor') return;
+  if (!visible || (state.view === 'floor' && !plan3d && !planAnim)) return;
   const t = clock.elapsedTime;
   if (tween) tween.update(now);
   controls.update();
@@ -2869,10 +3211,18 @@ function frame(now){
     const nr = clamp(camera.position.distanceTo(controls.target) * .01, .05, 8);
     if (Math.abs(nr - camera.near) > camera.near * .1) { camera.near = nr; camera.updateProjectionMatrix(); } }
   if (state.view === 'building') {
-    const sw = stage.clientWidth, sh = stage.clientHeight, want = explodeF == null && !tween && sw > 760 ? Math.min(340, sw * .3) / 2 : (explodeF == null ? viewShift : 0);
+    // 단독 화면은 왼쪽 패널만큼 모델을 오른쪽으로 비킴. 앱에 넣으면(hosted) 버튼·정보가 앱 쪽에 있으므로 가운데
+    const sw = stage.clientWidth, sh = stage.clientHeight, want = explodeF == null && !tween && sw > 760 && !document.body.classList.contains('hosted') ? Math.min(340, sw * .3) / 2 : (explodeF == null ? viewShift : 0);
     viewShift += (want - viewShift) * .08;
     if (Math.abs(viewShift) < .5 && want === 0) { if (camera.view && camera.view.enabled) camera.clearViewOffset(); viewShift = 0; } else camera.setViewOffset(sw, sh, viewShift, 0, sw, sh);
-    updateBuilding(t, dt); renderPass.scene = bScene; bloom.strength = isDarkNow ? .48 : .22; composer.render(); }
+    updateBuilding(t, dt); renderPass.scene = bScene; bloom.strength = exteriorFirst && !explodeF && !state.pipes ? .035 : isDarkNow ? .48 : .22; composer.render(); }
+  else if (state.view === 'floor' && (plan3d || planAnim)) {   // 층 3D: 건물 화면과 같은 장면을 그 층만 띄워서
+    // 단독 화면은 오른쪽 정보 패널(372px)만큼 모델을 왼쪽으로 비킴(기울기 시작과 함께 천천히), 앱에 넣으면 가운데
+    const sw = stage.clientWidth, sh = stage.clientHeight, want = plan3d && now >= planTiltAt && sw > 760 && !document.body.classList.contains('hosted') ? -186 : 0;
+    viewShift += (want - viewShift) * .05;
+    if (Math.abs(viewShift) < .5 && want === 0) { if (camera.view && camera.view.enabled) camera.clearViewOffset(); viewShift = 0; } else camera.setViewOffset(sw, sh, -viewShift, 0, sw, sh);
+    state.view = 'building'; updateBuilding(t, dt); state.view = 'floor';
+    renderPass.scene = bScene; bloom.strength = isDarkNow ? .48 : .22; composer.render(); }   // 평면도 뒤 배경과 같은 밝기 → 전환 때 번쩍임 없음
   else if (room3d) { if (camera.view && camera.view.enabled) { camera.clearViewOffset(); viewShift = 0; } room3d.update(dt, t); renderPass.scene = room3d.scene; bloom.strength = isDarkNow ? .14 : .06; composer.render(); }
 }
 requestAnimationFrame(frame);
@@ -2924,8 +3274,8 @@ window.DigitalTwin = API;
    대시보드 → 트윈: {source:'maestro', type:'state', building, floor, mode, highlight, rooms} (버튼을 누를 때마다 옴)
      mode(온도·전력·습도·이상 감지) → 트윈 색 기준, floor(층 목록) → 트윈 층, highlight(AI 응답 대상 호실) → 깜빡임
    트윈 → 대시보드: {source:'twin', type:'roomSelected'|'floorSelected'|'modeSelected'} — 트윈에서 고르면 대시보드 버튼도 따라감 */
-const HOST_MODE = { temp:'temp', humidity:'hum', powerKw:'power', anomaly:'alert' }, MODE_HOST = { temp:'temp', hum:'humidity', power:'powerKw', alert:'anomaly' };
-const METRIC_KO = { temp:'온도', hum:'습도', power:'전력', alert:'이상 감지' };
+const HOST_MODE = { temp:'temp', humidity:'hum', powerKw:'power', anomaly:'alert', comfort:'comfort' }, MODE_HOST = { temp:'temp', hum:'humidity', power:'powerKw', alert:'anomaly', comfort:'comfort' };
+const METRIC_KO = { temp:'온도', hum:'습도', power:'전력', alert:'이상 감지', comfort:'쾌적도' };
 const HOST = { on:false, last:null, applying:false, timer:0, since:0 };
 // 앱 데이터를 받은 뒤에만 보고: 그 전 값은 트윈 자체 계산이라 앱 화면 값이 바뀌어 보임. 5초 안에 못 받으면 그대로 보고
 const hostReady = () => HOST.dataAt != null || performance.now() - HOST.since > 5000;
@@ -2995,6 +3345,7 @@ window.addEventListener('message', e => {
   else if (m.type === 'twin:persona') API.setPersona(m.persona);
   else if (m.source === 'maestro' && m.type === 'state') syncHost(m);
   else if (m.source === 'maestro' && m.type === 'simRun' && !SIM.busy) { Object.assign(simForm(), m.form || {}); simRun(); }
+  else if (m.source === 'maestro' && m.type === 'simAsk') simAsk(m);
   else if (m.source === 'maestro' && m.type === 'simRoom' && ROOM[m.room]) goRoom(ROOM[m.room]);
   else if (m.source === 'maestro' && m.type === 'ui' && typeof m.action === 'string') hostUi(m.action);
 });

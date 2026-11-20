@@ -107,7 +107,7 @@ aws cognito-idp admin-add-user-to-group --user-pool-id "$POOL" --username 관리
 | 항목 | 규칙 |
 |---|---|
 | 중지 기업 | 기업 `status`가 `suspended`면 구성원의 모든 건물 API(`GET /buildings` 포함)와 `/company*`는 403 `{error: '서비스가 중지된 기업입니다. 판매사에 문의하십시오.', code: 'COMPANY_SUSPENDED'}`. WebSocket `ask`는 같은 문구의 `error` 이벤트. `GET /me`는 허용, `admin`은 검사 안 함 |
-| 관리자 최소 1명 | 마지막 `manager`의 역할 변경·소속 해제는 409 `관리자는 최소 1명이어야 합니다.` |
+| 관리자 최소 인원 | 제한 없음(2026-11-20 해제). 마지막 `manager`도 역할 변경·소속 해제 가능 |
 | 소속 해제 | 구성원 항목만 삭제. Cognito 계정은 유지되고 기업 코드로 다시 가입 가능 |
 | 고객사 변경 차단 | `PATCH /company`, `PATCH·DELETE /company/members/{sub}`, `PATCH /buildings/{id}`는 구성원(중지 기업 포함)에게 403 `판매사 관리자만 변경할 수 있습니다.`. 이전 화면 호환을 위해 경로 유지 |
 | 건물 정보 수정 | `PATCH /admin/buildings/{id}`. `name`(1~40자), `use`(1~20자), `hours`([시작, 종료] 0~24 정수, 시작 < 종료), `weekend`(true·false)만 대상. 층·호실은 트윈 확정 저장으로 변경 |

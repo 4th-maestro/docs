@@ -1,10 +1,11 @@
-import { Suspense, lazy, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import type { CSSProperties } from 'react'
+import { Suspense, lazy, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { AlertTriangle, ArrowLeft, CalendarClock, Droplets, Info, Moon, RefreshCw, Sun, Zap } from 'lucide-react'
 import AdminPage from './admin/AdminPage'
 import ChatPanel, { type ChatMsg } from './ai/ChatPanel'
 import type { AskResult } from './ai/types'
 import { useAsk } from './ai/useAsk'
-import { actOps, BUILDINGS_CHANGED, clearChat, getBuildings, getChat, getMe, getOps, getStatus, getTwin, joinCompany, saveSchedule, setAutoApply, SUSPENDED, type Me } from './api'
+import { actOps, BUILDINGS_CHANGED, clearChat, getBuildings, getChat, getHistory, getMe, getOps, getStatus, getTwin, joinCompany, saveSchedule, setAutoApply, SUSPENDED, type Me } from './api'
 import type { Decision, OpsAction, OpsOverview } from './ops/types'
 import LoginScreen, { NoCompany, Suspended } from './auth/LoginScreen'
 import { AUTH_ON, currentEmail, isAdmin, onAuthChange, signedIn } from './auth/cognito'
@@ -20,15 +21,15 @@ import PowerTrend from './panels/PowerTrend'
 import RecommendPanel from './panels/RecommendPanel'
 import ScheduleTimeline from './panels/ScheduleTimeline'
 import SimPanel from './panels/SimPanel'
-import TwinActions from './panels/TwinActions'
 import TwinTools from './panels/TwinTools'
 import FlowModal from './panels/FlowModal'
+import { getCompare, query } from './energy/api'
 import ExperimentPanel from './panels/ExperimentPanel'
 import { usePoll } from './panels/usePoll'
 import Portfolio from './portfolio/Portfolio'
 import { FloorList, Layout } from './shell/Shell'
 import { href, parseRoute, type FloorSummary, type Tab } from './shell/route'
-import { TWIN_URL, onNeedBuilding, onTwinReady, onTwinControl, onTwinReport, onTwinSimAnswer, onRoomSelected, onTwinChange, postState, postTheme, postUi, sendTwin, twinSrc, type TwinBuilding, type TwinData, type TwinKpi, type TwinReport } from './twin'
+import { TWIN_URL, onNeedBuilding, onTwinReady, onTwinControl, onTwinReport, onTwinSimAnswer, onRoomSelected, onTwinChange, postState, postTheme, postUi, sendTwin, twinSrc, type TwinBuilding, type TwinData, type TwinReport } from './twin'
 import { answerText, draftOf, parseWhatIf, pendingText, type WhatIf } from './whatif'
 import type { BuildingCard, Draft, Mode, Room, Status } from './types'
 import { Sk, SkFloors, SkKpis, SkPlan } from './skeleton/Skeleton'
@@ -56,6 +57,8 @@ const NO_ROOMS: Room[] = []
 const NO_IDS: string[] = []
 // 자동 운영 조회: 건물 id가 빈 값(운영 탭 아님)이면 조회하지 않음. usePoll 의존성 고정을 위해 모듈 수준 함수
 const fetchOps = (b: string) => (b ? getOps(b) : Promise.resolve(null))
+// 전기요금 단가(서버 전력 분석과 같은 값): 쿼리 문자열이 빈 값(운영 탭 아님)이면 조회하지 않음
+const fetchPrice = (q: string) => (q ? getCompare(q) : Promise.resolve(null))
 const uid = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`
 
 const STOPPED = '서비스가 중지된 기업입니다. 판매사에 문의하십시오.'
@@ -281,6 +284,13 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
   const all = status?.rooms ?? NO_ROOMS
   const rooms = useMemo(() => floor ? all.filter((r) => r.floor === floor) : all, [all, floor])
   const summary = useMemo(() => summarize(rooms), [rooms])
+  const occupants = useMemo(() => rooms.reduce((s, r) => s + (r.occupants ?? 0), 0), [rooms])
+  // 상단 전력·요금 카드와 전력 추이는 같은 시간별 전력 응답 사용(층 선택 시 그 층, 아니면 건물 전체). 운영 탭에서만 조회
+  const loadHist = useCallback((f: string | null) => (f === null ? Promise.resolve(null) : getHistory(f, building)), [building])
+  const hist = usePoll(loadHist, ops ? floor : null)
+  const price = usePoll(fetchPrice, ops ? query({ period: 'day' }) : '', 600_000)
+  const todayKwh = hist.data ? Math.round(hist.data.today.reduce((s, p) => s + p.kwh, 0) * 10) / 10 : null
+  const unitPrice = price.data?.unitPriceKrw ?? null
   const floorSummaries: FloorSummary[] = useMemo(() => floors.map((f) => {
     const t = twin?.floors.find((x) => x.floor === f)
     if (t) return t
@@ -437,15 +447,22 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
             {ops && !status && <SkKpis />}
             {ops && status && (
               <section className="kpis" aria-label={`${scope} 요약`}>
-                <Kpi label="운전 중 HVAC" value={summary.on} unit="대" sub={`${scope} ${rooms.length}대 중`} />
-                <Kpi label="정지" value={summary.off} unit="대" sub="현재 OFF 상태" />
-                <Kpi label="이상 감지" value={summary.anomaly} unit="건" sub="설정온도 미도달" bad={summary.anomaly > 0} />
-                <Kpi label="현재 전력" value={summary.powerKw} unit="kW" sub={`외기 ${status.outdoorTemp}℃, ${hhmm(status.generatedAt)} 기준`} />
-                {twinOn && report?.kpis.filter((k) => !KPI_DUP[report.ui.persona]?.includes(k.key)).map((k) => <KpiText key={k.key} k={k} />)}
-                {/* 트윈 지표 자리: 보고 전에도 같은 칸을 잡아 두어 줄이 늘어나며 화면이 밀리지 않게 함 */}
-                {twinOn && !report && Array.from({ length: 4 }, (_, i) => <div key={i} className="kpi" aria-hidden><Sk w="45%" h={15} /><Sk w="38%" h={34} /><Sk w="70%" h={14} /></div>)}
+                {/* 운영 상태 4칸, 전력·요금 3칸을 각각 카드 1개(4열 중 2열)로 묶음. 역할별 지표는 3D 플로팅 요약(2026-11-20) */}
+                <div className="kpi wide" role="group" aria-label="운영 상태">
+                  <KpiItem label="운전 중 HVAC" value={summary.on} unit="대" sub={`${scope} ${rooms.length}대 중`} />
+                  <KpiItem label="정지" value={summary.off} unit="대" sub="현재 OFF 상태" />
+                  <KpiItem label="이상 감지" value={summary.anomaly} unit="건" sub="설정온도 미도달" bad={summary.anomaly > 0} />
+                  <KpiItem label="재실 인원" value={occupants} unit="명" sub={`${scope} 합계`} />
+                </div>
+                <div className="kpi wide" role="group" aria-label="전력·요금" style={{ '--n': 3 } as CSSProperties}>
+                  <KpiItem label="현재 전력" value={summary.powerKw} unit="kW" sub={`외기 ${status.outdoorTemp}℃, ${hhmm(status.generatedAt)} 기준`} />
+                  <KpiItem label="오늘 누적 사용량" value={todayKwh} unit="kWh" sub={`0시부터 ${hhmm(status.generatedAt)}까지`} />
+                  <KpiItem label="오늘 전기요금(추정)" value={todayKwh != null && unitPrice != null ? Math.round(todayKwh * unitPrice) : null} unit="원" sub={unitPrice != null ? `단가 ${unitPrice}원/kWh` : '단가 조회 중'} />
+                </div>
               </section>
             )}
+            {/* 전력 추이: 두 카드 아래 전체 너비, 항상 표시(층을 고르면 그 층, 아니면 건물 전체) */}
+            {ops && <div className="trend-wide"><PowerTrend poll={hist} scope={scope} id={`${building}-${floor}`} /></div>}
 
             <main className="grid">
               <div className="main-col">
@@ -479,7 +496,6 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
                   <Legend mode={sim ? 'temp' : mode} status={status} units={twinOn ? report?.ui.idu : undefined} />
                   {room ? <RoomDetail r={room} /> : <p className="muted pick-hint">{floor ? '호실을 누르면 HVAC 상태가 여기에 표시됩니다.' : '층을 선택하면 평면도가 표시됩니다.'}</p>}
                 </section>
-                {ops && floor && <PowerTrend building={building} floor={floor} />}
                 {/* 트윈 건물은 층이 비어 있을 수 있음: 빈 층이면 시간표는 전체 층 보기(2026-11-20 결정) */}
                 {ops && <ScheduleTimeline building={building} floor={floor || 'all'} floors={floors} refreshKey={scheduleKey} rooms={all} onLocate={locate} />}
               </div>
@@ -495,7 +511,6 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
                   onClose={(m) => { setMessages((ms) => ms.map((x) => (x.id === m.id ? { ...x, draftState: 'closed' as const } : x))); setFocus(NO_IDS) }}
                   onFocus={setFocus} onSelect={setSelected}
                 />}
-                {ops && twinOn && report?.actions && <TwinActions actions={report.actions} at={status?.generatedAt} onLocate={locate} />}
                 {ops && floor && <AnomalyPanel building={building} floor={floor} onLocate={(id) => { setMode('anomaly'); locate(id) }} />}
                 {ops && floor && <RecommendPanel key={`${floor}-${scheduleKey}`} building={building} floor={floor} onDraft={showDraft} onLocate={locate} />}
               </aside>
@@ -507,23 +522,12 @@ function Dashboard({ building, info, tab, buildings, themeButton, dark }: Dashbo
   )
 }
 
-// 트윈 지표 중 앱 요약 카드와 겹치는 칸(에너지 총괄의 건물 전력, 현장 엔지니어·시설 관리자의 실내기 대수)
-const KPI_DUP: Record<string, string[]> = { owner: ['power'], engineer: ['idu'], facility: ['idu'] }
-function KpiText({ k }: { k: TwinKpi }) {
+// 묶음 카드 안 지표 1칸: 값이 아직 없으면(조회 중) 같은 크기 자리 표시
+function KpiItem({ label, value, unit, sub, bad }: { label: string; value: number | null; unit: string; sub: string; bad?: boolean }) {
   return (
-    <div className="kpi">
-      <span className="klabel">{k.label}</span>
-      <span className={k.bad ? 'kval bad' : 'kval'}>{k.value}<small>{k.unit}</small></span>
-      <span className="ksub">3D 트윈 계산</span>
-    </div>
-  )
-}
-
-function Kpi({ label, value, unit, sub, bad }: { label: string; value: number; unit: string; sub: string; bad?: boolean }) {
-  return (
-    <div className="kpi">
+    <div className="kitem">
       <span className="klabel">{label}</span>
-      <span className={bad ? 'kval bad' : 'kval'}><CountUp value={value} /><small>{unit}</small></span>
+      {value == null ? <Sk w="60%" h={40} /> : <span className={bad ? 'kval bad' : 'kval'}><CountUp value={value} /><small>{unit}</small></span>}
       <span className="ksub">{sub}</span>
     </div>
   )

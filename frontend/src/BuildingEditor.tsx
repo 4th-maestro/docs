@@ -335,10 +335,11 @@ export default function BuildingEditor({ initial, floor, onSave, onCancel, draft
             {TOOLS.map(t => <button className={tool === t.id ? 'pill on' : 'pill'} key={t.id} aria-pressed={tool === t.id}
               onClick={() => { setTool(t.id); resetCursor() }}>{t.label}</button>)}
             {!current.rooms.length && current.footprint && <button className="pill" onClick={() => {
-              if (!current.footprint) return
-              const space = { id: level+'-edit-'+crypto.randomUUID(), name: '새 공간', polygon: current.footprint, type: 'room' }
-              apply([space])
-              choose(space)
+              const spaces = outer.map((polygon, index) => ({
+                id: level+'-edit-'+crypto.randomUUID(), name: outer.length === 1 ? '새 공간' : '새 공간 ' + (index + 1), polygon, type: 'room',
+              }))
+              apply(spaces)
+              choose(spaces[0])
               setTool('select')
             }}>층 외곽을 편집 공간으로 만들기</button>}
           </div>
@@ -346,8 +347,7 @@ export default function BuildingEditor({ initial, floor, onSave, onCancel, draft
           {unitTool.panel}
           <svg ref={svg} aria-label={level+' 평면도'} className={'edit-plan '+tool} viewBox={[-1,-1,w+2,d+2].join(' ')}
             onPointerDown={click} onPointerMove={e => { const p = pointAt(e); setCursor(p); if (p) unitTool.move(p) }} onPointerUp={unitTool.up} onPointerLeave={() => setCursor(null)}>
-            <rect x="0" y="0" width={w} height={d} className="edit-outline" />
-            {current.footprint && <polygon points={current.footprint.map(p => p.join(',')).join(' ')} className="edit-outline" />}
+            {outer.map((polygon, i) => <polygon key={i} points={polygon.map(p => p.join(',')).join(' ')} className="edit-outline" />)}
             {current.rooms.map(r => {
               const [x,y] = r.polygon.reduce<Point>((p,q) => [p[0]+q[0]/r.polygon.length,p[1]+q[1]/r.polygon.length],[0,0])
               return <g key={r.id}>

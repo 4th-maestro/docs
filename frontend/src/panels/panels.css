@@ -46,13 +46,6 @@
 .pn-tagline { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; color: var(--body); }
 .pn-tagline.bad { color: var(--danger); }
 .pn-tagline.warn { color: var(--caution); }
-/* 트윈 조치 목록 요약(에너지 총괄: 지금 바로 아낄 수 있는 전력 등) */
-.tw-hero { display: flex; flex-direction: column; gap: 4px; padding: 16px; margin-bottom: 8px; border-radius: var(--r-sm); background: var(--surface-soft); }
-.tw-hero > span { display: flex; justify-content: space-between; gap: 8px; font-size: 15px; color: var(--body); }
-.tw-hero > span small { color: var(--muted); }
-.tw-hero > b { font-size: 22px; font-weight: 700; color: var(--ink); }
-.tw-hero > small { font-size: 14px; color: var(--muted); }
-.tw-foot { margin: 8px 0 0; font-size: 14px; }
 
 /* 최적 제어 추천, 전력 추이 핵심 수치 */
 .pn-stat { display: flex; flex-direction: column; gap: 2px; padding-bottom: 12px; border-bottom: 1px solid var(--hairline); }
@@ -171,3 +164,5 @@
 .sim-more > summary svg { transition: transform .2s; }
 .sim-more[open] > summary svg { transform: rotate(180deg); }
 .sim-more .sim-note { margin: 6px 0; }
+/* 전력 추이 비교 한 줄(오늘 누적 값은 상단 전력·요금 카드) */
+.pn-cmp { margin: 0 0 8px; font-size: 15px; color: var(--body); }

@@ -135,6 +135,12 @@
       "type": "explanation"
     },
     {
+      "path": "docs/human/explanation/improvements/2026-11-20(3D 카드 건물 전체 돌아가기 버튼 복원).md",
+      "title": "3D 카드 건물 전체 돌아가기 버튼 복원",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
       "path": "docs/human/explanation/improvements/2026-11-20(AI 답변 구조화 응답 3문장 보장).md",
       "title": "AI 답변 구조화 응답 3문장 보장",
       "audience": "human",
@@ -171,8 +177,20 @@
       "type": "explanation"
     },
     {
+      "path": "docs/human/explanation/improvements/2026-11-20(상단 지표 카드 묶음과 전체 너비 전력 추이).md",
+      "title": "상단 지표 카드 묶음과 전체 너비 전력 추이",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
       "path": "docs/human/explanation/improvements/2026-11-20(새로고침 후 3D 도면 즉시 표시).md",
       "title": "새로고침 후 3D 도면 즉시 표시",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/improvements/2026-11-20(역할 조치 3D 플로팅 요약과 호실 표시).md",
+      "title": "역할 조치 3D 플로팅 요약과 호실 표시",
       "audience": "human",
       "type": "explanation"
     },
@@ -191,6 +209,12 @@
     {
       "path": "docs/human/explanation/improvements/2026-11-20(트윈 로딩 화면 고정과 전송 크기 축소).md",
       "title": "트윈 로딩 화면 고정과 전송 크기 축소",
+      "audience": "human",
+      "type": "explanation"
+    },
+    {
+      "path": "docs/human/explanation/improvements/2026-11-20(트윈 평면도 실내기 유형별 기호).md",
+      "title": "트윈 평면도 실내기 유형별 기호",
       "audience": "human",
       "type": "explanation"
     },
